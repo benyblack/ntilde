@@ -296,6 +296,14 @@ public sealed class TerminalViewLinkActivationTests
         Assert.Equal((40, 1), view.ToMouseReportCell(CellCentre(0, 79)));
         Assert.Equal((6, 2), view.ToMouseReportCell(CellCentre(1, 5)));
         Assert.Equal((80, 2), view.ToMouseReportCell(CellCentre(1, 79)));
+
+        // A generated pointer event aimed at a cell lands on that cell: the inverse of the report conversion.
+        Assert.Equal((7, 1), view.ToMouseReportCell(view.MouseReportCellCentre(7, 1)));
+        Assert.Equal((40, 1), view.ToMouseReportCell(view.MouseReportCellCentre(40, 1)));
+        Assert.NotEqual((41, 1), view.ToMouseReportCell(view.MouseReportCellCentre(41, 1))); // not a cell of the double row
+        Assert.Equal((7, 2), view.ToMouseReportCell(view.MouseReportCellCentre(7, 2)));
+        Assert.True(view.IsDoubleSizeViewportRow(1));
+        Assert.False(view.IsDoubleSizeViewportRow(2));
     }
 
     /// <summary>

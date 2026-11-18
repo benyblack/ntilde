@@ -480,6 +480,28 @@ namespace Ntilde.Shell
         }
 
         /// <summary>
+        /// The centre of a one-based viewport cell: the inverse of <see cref="ToMouseReportCell"/>, so on a double-size
+        /// line, whose cells are two cells wide, a column is found where it is drawn.
+        /// </summary>
+        internal bool IsDoubleSizeViewportRow(int row)
+        {
+            if (_buffer == null || row < 1 || row > _buffer.Rows) return false;
+            int displayStart = Math.Max(0, _buffer.TotalLines - _buffer.Rows - _scrollOffset);
+            return _buffer.LineSizeAtAbsoluteRow(displayStart + row - 1) != Ntilde.VT.LineSize.SingleWidth;
+        }
+
+        internal Point MouseReportCellCentre(int column, int row)
+        {
+            double cellWidth = _metrics.CellWidth;
+            if (_buffer != null && row >= 1 && row <= _buffer.Rows)
+            {
+                int displayStart = Math.Max(0, _buffer.TotalLines - _buffer.Rows - _scrollOffset);
+                if (_buffer.LineSizeAtAbsoluteRow(displayStart + row - 1) != Ntilde.VT.LineSize.SingleWidth) cellWidth *= 2;
+            }
+            return new Point((column - 0.5) * cellWidth, (row - 0.5) * _metrics.CellHeight);
+        }
+
+        /// <summary>
         /// The column under a horizontal position on the row at <paramref name="absRow"/>, clamped to the row. A
         /// double-size line (DECDWL / DECDHL) shows each of its cells two cells wide and holds half the columns.
         /// </summary>

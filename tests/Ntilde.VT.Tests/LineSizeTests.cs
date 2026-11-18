@@ -249,6 +249,14 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_tab_stop_set_after_a_vertical_move_is_set_at_the_column_the_cursor_is_shown_on()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Esc}[3g{Esc}[2;1H{Dwl}{Esc}[1;10H{Esc}[B{Esc}H\r\t");
+        Assert.Equal((1, 4), (buffer.CursorRow, buffer.CursorCol));
+    }
+
+    [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
         var (buffer, parser) = Create();

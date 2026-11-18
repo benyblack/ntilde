@@ -268,6 +268,7 @@ namespace Ntilde.VT
 
         private void CaptureCursorStateNoLock(CursorState target)
         {
+            SnapCursorToLineSizeNoLock();
             target.Row = _cursorRow;
             target.Col = _cursorCol;
             target.Foreground = CurrentForeground;

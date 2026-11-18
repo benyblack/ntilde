@@ -122,6 +122,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                SnapCursorToLineSizeNoLock();
                 if (_cursorCol >= 0 && _cursorCol < _tabStops.Length)
                 {
                     _tabStops[_cursorCol] = true;
@@ -138,6 +139,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                SnapCursorToLineSizeNoLock();
                 if (_cursorCol >= 0 && _cursorCol < _tabStops.Length)
                 {
                     _tabStops[_cursorCol] = false;
