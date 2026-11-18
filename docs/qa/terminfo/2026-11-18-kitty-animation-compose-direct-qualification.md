@@ -10,7 +10,7 @@ worker the App's own child, as in a full collection. The case is `extensions.kit
 |---|---|---|---|---|
 | `extensions.kitty-graphics.animation` | inconclusive by design | inconclusive by design | **supported** (`ntilde-kitty-animation-direct-compose-effect-v1`) | none (no stock collector ran in this run) |
 
-All 10 stages of the two cases passed (run `5e359d6e`, App commit `91b111e0`, scripts commit `86783304`, source policy v68), with sixteen validity controls held: the nine of the direct-tab publication, four ordinary-tab lineage controls (the tab was configured `SessionPersistence Off`, every observation proved the
+All 10 stages of the two cases passed (run `bb8b9354`, App commit `91b111e0`, scripts commit `a3404c55`, source policy v68), with sixteen validity controls held: the nine of the direct-tab publication, four ordinary-tab lineage controls (the tab was configured `SessionPersistence Off`, every observation proved the
 worker a direct child of the App with no daemon in its lineage, the proof records no daemon, cleanup verified) and the same three composition controls as the persistent publication. The pinned callbacks are replayed from the retained bundle and stay inconclusive.
 
 ## What the panes showed
@@ -26,11 +26,11 @@ The same observations as in the persistent tab, through the other route:
 One desktop (macOS), one App build, one 16x16 image. Only **whole-frame** compositions are observed (the classifier names one uniform color per capture); rectangle offsets and sizes smaller than the image are pinned by `KittyAnimationTests`. A composition whose source or destination is a PNG-encoded root is not measured
 (the root is raw RGBA, `f=32`; only the added frame is PNG), nor a second client, remote sessions or other platforms. No stock grade, Core score or common-harness comparison changes.
 
-## Retained evidence and the one earlier attempt
+## Retained evidence and the earlier attempts
 
-`2026-11-18-kitty-animation-compose-direct/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy and the generated `summary.json` and `report.json`. The published run is `5e359d6e1de924b26360301b7ba62ce8`. `superseded-attempts/` keeps one earlier attempt
-(`attempts.json` records its scripts commit, outcome, reason and the SHA-256 and size of each retained file): the first ordinary-tab collection passed all ten stages but the runner then failed to finish the receipt (the receipt completion read the run's scope before it had read the run's context), so it produced no receipt;
-the runner was fixed and the suite collected again. `kitty-animation-compose-publication.test.mjs` runs the same checks over both compose publications: it rederives the receipt binding, settings, measured sources, lineage and the whole carrier report from the journals and refuses a downgraded, stripped,
+`2026-11-18-kitty-animation-compose-direct/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy and the generated `summary.json` and `report.json`. The published run is `bb8b9354f65098ed5e5219f7792819ce`. `superseded-attempts/` keeps two earlier attempts
+(`attempts.json` records their scripts commit, outcome, reason and the SHA-256 and size of each retained file): the first ordinary-tab collection passed all ten stages but the runner then failed to finish the receipt (the receipt completion read the run's scope before it had read the run's context), so it produced no receipt;
+the runner was fixed and the suite collected again, a complete 10/10 run (`86783304`) that review then superseded because its carrier report described the run as being in a persistent tab (the suite's scope text named one kind of tab for both) and the ordinary-tab verification did not bind every observation to the launch proof's App and worker identities. `kitty-animation-compose-publication.test.mjs` runs the same checks over both compose publications: it rederives the receipt binding, settings, measured sources, lineage and the whole carrier report from the journals and refuses a downgraded, stripped,
 relaunched or foreign run (a foreign App pid included), and re-checks every retained attempt file.
 
 ```sh

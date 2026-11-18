@@ -10,7 +10,7 @@ daemon, the App's pane as one of its clients). The case is `extensions.kitty-gra
 |---|---|---|---|---|
 | `extensions.kitty-graphics.animation` | inconclusive by design | inconclusive by design | **supported** (`ntilde-kitty-animation-persistent-compose-effect-v1`) | none (no stock collector ran in this run) |
 
-All 10 stages of the two compose cases passed (run `ab2afb75`, App commit `8fed8e5f`, scripts commit `ebe82081`), with sixteen validity controls held: the nine of the direct-tab publication, the four persistent-lineage controls of
+All 10 stages of the two compose cases passed (run `d7277dd1`, App commit `91b111e0`, scripts commit `a3404c55`), with sixteen validity controls held: the nine of the direct-tab publication, the four persistent-lineage controls of
 [#1025](2026-11-17-kitty-animation-persistent-qualification.md) and three composition controls (one App process throughout, the same worker under the same daemon, the three refusals answered with exactly the named codes).
 The pinned callbacks are replayed from the retained bundle and stay inconclusive; the divergence is recorded as `pinned-inconclusive-by-design`.
 
@@ -34,9 +34,10 @@ because the classifier names one uniform color per capture: rectangle offsets an
 
 ## Retained evidence
 
-`2026-11-18-kitty-animation-compose/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy and the generated `summary.json` and `report.json`. The published run is `ab2afb750fc19020975ea13a31c2c808`. One earlier attempt is retained under `superseded-attempts/` (`attempts.json` records its scripts commit, outcome, reason and the SHA-256 and size of each retained file): a complete 10/10 run on the
+`2026-11-18-kitty-animation-compose/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy and the generated `summary.json` and `report.json`. The published run is `d7277dd1ca4e84f9d837c00d84849f33`. Two earlier attempts are retained under `superseded-attempts/` (`attempts.json` records its scripts commit, outcome, reason and the SHA-256 and size of each retained file): a complete 10/10 run on the
 first version of the suite, superseded because review found that its replace stage copied an opaque frame onto an opaque one (a terminal that ignored `C=1` would have passed it) and that the qualification did not bind every observation to the launch proof's App process; the
-fixes edit measured files, so the suite's replace stage was changed and re-measured. `kitty-animation-compose-publication.test.mjs` rederives the receipt binding, settings, measured sources, lineage and the whole carrier report from its journals refuses
+fixes edit measured files, so the suite's replace stage was changed and re-measured; and a complete 10/10 run on the revised suite (`ebe82081`), superseded because its carrier report named a persistent tab in the suite's scope text, which the same suite then shared with the ordinary-tab
+collection, and making that text neutral edits a measured file. `kitty-animation-compose-publication.test.mjs` rederives the receipt binding, settings, measured sources, lineage and the whole carrier report from its journals refuses
 a downgraded, stripped, relaunched or foreign run (a foreign App pid included), and re-checks every retained attempt file.
 
 Fresh measurement and assembly, into a new publication directory of your own (the assembler refuses one that already holds a publication, and the revisions must be the measured constants of `kitty-animation-compose-qualification.mjs`). Set the variables first:

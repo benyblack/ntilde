@@ -18,10 +18,10 @@ const publication = name => fileURLToPath(new URL(`../../docs/qa/terminfo/${name
 /** The two publications of the same suite: a live persistent tab (policy 4) and an ordinary tab. */
 const variants = [
     { label: 'persistent tab', kind: 'persistent', dir: publication('2026-11-18-kitty-animation-compose'), scope: persistentComposeScope, receiptSuiteId: composeReceiptSuiteId, qualificationSuiteId: composeQualificationSuiteId,
-        contract: composeEffectContract, app: measuredAppRevision, scripts: measuredScriptsRevision, attempts: 1, daemon: true,
+        contract: composeEffectContract, app: measuredAppRevision, scripts: measuredScriptsRevision, attempts: 2, daemon: true,
         limits: ['image policy 4', 'No stock collector ran', 'an ordinary (non-persistent) tab on the desktop', 'rectangle offsets and sizes smaller than the image', 'a second client', 'remote persistent sessions'] },
     { label: 'ordinary tab', kind: 'direct', dir: publication('2026-11-18-kitty-animation-compose-direct'), scope: directComposeScope, receiptSuiteId: directComposeReceiptSuiteId, qualificationSuiteId: directComposeQualificationSuiteId,
-        contract: directComposeEffectContract, app: directMeasuredAppRevision, scripts: directMeasuredScriptsRevision, attempts: 1, daemon: false,
+        contract: directComposeEffectContract, app: directMeasuredAppRevision, scripts: directMeasuredScriptsRevision, attempts: 2, daemon: false,
         limits: ['ordinary (non-persistent, SessionPersistence Off) tab', 'through the host decoder', 'No stock collector ran', 'a persistent tab in this publication', 'rectangle offsets and sizes smaller than the image', 'a second client', 'remote sessions'] },
 ];
 
@@ -126,7 +126,10 @@ for (const variant of variants) describe(`compose publication: ${variant.label}`
         });
         refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches = []; }), /relaunched it/);
         // The captured App process must be the one the launch proof names: a foreign pid, re-bound to the receipt, is refused.
-        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].app.pid += 1; }), /other than the launched one/);
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].app.pid += 1; }), /other than the launched one|not bound to the launched App/);
+        // The launch proof's own identities are what every observation is held to: a foreign App executable, or a worker whose parent is another process, is refused in either kind of tab.
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].app.executable = '/foreign/Ntilde'; }), /launched executable|not bound to the launched App|not a child of the recorded daemon|launched executable serving/);
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].worker.ppid = 1; }), /not bound to the launched App|not a child of the recorded daemon/);
         refuses(context => rebind(context, 'context.json', value => { value.collectionScope = { ...value.collectionScope, suiteVersion: 2 }; }), /declare the persistent .*scope/);
         refuses(context => {
             rebind(context, 'initial-settings.json', settings => { settings.SessionPersistence = variant.daemon ? 'Off' : 'KeepOnClose'; });
