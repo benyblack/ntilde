@@ -95,8 +95,8 @@ export const animationSpanOf = frame => {
 const scopeTail = 'independently captured raw replies, paired original offscreen PNGs, complete cells/modes and wall-clock capture spans. '
     + 'Elapsed-time claims are bounded to this App build and run: no display-refresh cadence, other platform, frame-rate, snapshot/persistent-session or stock-grade claim.';
 const scopes = Object.freeze({
-    4: 'Two bounded Kitty animation frame-composition cases in a persistent tab (a=c: replace and blend onto frames, and refused compositions that change nothing); whole-frame compositions only, so every observation is one uniform color. '
-        + 'The composed pixels are read from retained sources by the App\'s pane model; ' + scopeTail,
+    4: 'Two bounded Kitty animation frame-composition cases in one tab (a=c: replace and blend onto frames, and refused compositions that change nothing); the run\'s collection scope says whether that tab is a persistent one or an ordinary one. '
+        + 'Whole-frame compositions only, so every observation is one uniform color; ' + scopeTail,
     1: 'Three bounded Kitty animation cases; ' + scopeTail,
     2: 'Four bounded Kitty animation cases (a stationary control, playback, stop-freeze, and PNG and root-based frames); ' + scopeTail,
     3: 'Three bounded Kitty animation restore cases in a persistent tab (a running animation, a stopped one, and PNG and root-edited frames), each read again after the App was terminated with SIGTERM (not a graceful quit) and started again on the same persistent session; '

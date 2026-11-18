@@ -399,7 +399,8 @@ test('a faithful compose run grades every stage passed, and the refusals count o
         assert.deepEqual(report.caseResults.map(item => item.result), ['passed', 'passed']);
         const refuse = report.observations.find(item => item.featureId === refused + '.refuse');
         assert.deepEqual(refuse.reply.statuses, ['ENOENT', 'EINVAL', 'EINVAL']); assert.equal(refuse.reply.passed, true);
-        assert.match(report.scope, /whole-frame compositions only/);
+        assert.match(report.scope, /Whole-frame compositions only/);
+        assert.doesNotMatch(report.scope, /in a persistent tab|in an ordinary tab/, 'the carrier report names no kind of tab: the same suite runs in both and the collection scope says which');
     });
     // A terminal that accepts what must be refused (or refuses with the wrong code) fails the stage on its reply.
     for (const answer of [raw => raw.replaceAll('ENOENT', 'OK').replaceAll('EINVAL', 'OK'), raw => raw.replaceAll('EINVAL', 'ENOENT'), raw => raw.replaceAll('ENOENT', 'ENOTSUP')]) {
@@ -425,5 +426,18 @@ test('a composition that did not take effect, or that changed what it refused, f
     });
     withCompose({ paint: paintAs(refused, 'refuse', 'second') }, ({ build }) => {              // the refusals changed the displayed frame
         assert.equal(results(build())[refused + '.refuse'], 'failed');
+    });
+});
+
+test('the compose suite also grades as it runs in an ordinary tab: the worker the App\'s own child, no daemon anywhere in the lineage', () => {
+    withCompose({ direct: true }, ({ build, frames, actions }) => {
+        const report = build();
+        assert.ok(report.observations.every(item => item.result === 'passed'));
+        assert.ok(frames.every(frame => frame.ownership.daemon === undefined && frame.ownership.worker.ppid === frame.ownership.app.pid), 'an ordinary-tab journal names no daemon');
+        assert.ok(actions.every(action => action.ownership.daemon === undefined));
+    });
+    // The same suite still fails on its own evidence there: a composition that did not take effect.
+    withCompose({ direct: true, paint: (entry, shown) => (entry.caseId === replaceBlend && entry.stageId === 'blend' ? 'root' : shown) }, ({ build }) => {
+        assert.equal(results(build())[replaceBlend + '.blend'], 'failed');
     });
 });
