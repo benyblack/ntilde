@@ -236,7 +236,8 @@ test('a relaunch in flight can neither start a new App after the run stopped nor
 test('the App is terminated only for the next declared relaunch stage, a failed relaunch fails the run, and a cancelled run stops waiting for the pane', () => {
     const runner = readFileSync(real('../terminfo-owned-runner.mjs'), 'utf8');
     const at = (text, within = runner) => { const index = within.indexOf(text); assert.ok(index >= 0, 'missing: ' + text); return index; };
-    const answer = runner.slice(at("if (request.kind === 'kan-relaunch') {"), at("if (request.kind.startsWith('kan-')) {"));
+    at("if (request.kind === 'kan-relaunch') return answerRelaunchRequest(run, request);");
+    const answer = runner.slice(at('async function answerRelaunchRequest'), at('/** Answer one lineage-proved owner request'));
     const [admitted, started, rejected] = ['admitRelaunch(run, request, animationSuites[run.version])', 'relaunchPersistentApp(run)', 'run.reject(error)'].map(text => at(text, answer));
     assert.ok(admitted < started && started < rejected, 'a relaunch is admitted before the App is touched, and its failure rejects the run');
     const wait = runner.slice(at('async function waitForReattachedPane'), at('Terminate the App (SIGTERM, not a graceful quit)'));

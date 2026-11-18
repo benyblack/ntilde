@@ -4473,17 +4473,20 @@ function retainPersistentFirstProof(run, owner, worker, tty, budget) {
         kittyAnimation: { policy: ownedAnimationPolicies[run.version] }, ...(run.version === currentAnimationVersion ? {} : { relaunches: run.relaunches }) });
 }
 
+/** Admit one relaunch request and carry it out: the App is terminated and started again, and the answer follows once the new pane shows the restored screen. */
+async function answerRelaunchRequest(run, request) {
+    if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
+    admitRelaunch(run, request, animationSuites[run.version]);
+    run.relaunchInFlight = relaunchPersistentApp(run);
+    // A relaunch that fails after the outgoing App exited leaves nothing to finish the run: reject it with the cause instead of waiting for the deadline.
+    try { await run.relaunchInFlight; } catch (error) { run.reject(error); throw error; }
+    return {};
+}
+
 /** Answer one lineage-proved owner request of the persistent animation collection. */
 async function answerPersistentRequest(run, request, budget, { owner, worker, daemon }) {
     const [proofs, tty] = [run.proofs, request.tty];
-    if (request.kind === 'kan-relaunch') {
-        if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
-        admitRelaunch(run, request, animationSuites[run.version]);
-        run.relaunchInFlight = relaunchPersistentApp(run);
-        // A relaunch that fails after the outgoing App exited leaves nothing to finish the run: reject it with the cause instead of waiting for the deadline.
-        try { await run.relaunchInFlight; } catch (error) { run.reject(error); throw error; }
-        return {};
-    }
+    if (request.kind === 'kan-relaunch') return answerRelaunchRequest(run, request);
     if (request.kind.startsWith('kan-')) {
         if (!run.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
         const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
