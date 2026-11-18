@@ -269,6 +269,23 @@ internal static class KittyFrameCompositor
         }
     }
 
+    /// <summary>
+    /// Composes the <paramref name="sourceRect"/> of a whole straight-alpha RGBA frame (<paramref name="frameWidth"/> pixels wide) onto the canvas at
+    /// (<paramref name="destX"/>, <paramref name="destY"/>); the caller has checked both rectangles fit and, for one frame, do not overlap.
+    /// </summary>
+    internal static void DrawFrameRect(byte[] canvas, byte[] sourceFrame, int frameWidth, KittyFrameRect sourceRect, int destX, int destY, bool overwrite)
+    {
+        for (int row = 0; row < sourceRect.Height; row++)
+        {
+            for (int col = 0; col < sourceRect.Width; col++)
+            {
+                int s = ((sourceRect.Y + row) * frameWidth + sourceRect.X + col) * 4;
+                int d = ((destY + row) * frameWidth + destX + col) * 4;
+                BlendPixel(canvas, d, sourceFrame[s], sourceFrame[s + 1], sourceFrame[s + 2], sourceFrame[s + 3], overwrite);
+            }
+        }
+    }
+
     private static void BlendPixel(byte[] canvas, int d, byte sr, byte sg, byte sb, byte sa, bool overwrite)
     {
         if (overwrite || sa == 255)

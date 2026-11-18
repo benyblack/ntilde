@@ -137,6 +137,45 @@ public sealed class HeadlessImagePolicyTests
         Assert.True(thirdPane.Buffer.HasKittyAnimations);
     }
 
+    private static readonly string ComposeCommands =
+        Kitty("a=T,i=1,f=32,s=2,v=1,p=1,c=2,r=1,C=1", Convert.ToBase64String([255, 0, 0, 255, 0, 0, 255, 255]))
+        + Kitty("a=f,i=1,f=32,s=2,v=1,z=100", Convert.ToBase64String([0, 255, 0, 255, 0, 255, 0, 255]))
+        + Kitty("a=c,i=1,r=1,c=2,w=1,X=1,x=0,C=1")
+        + Kitty("a=a,i=1,c=2");
+
+    [Fact]
+    public async Task Every_client_of_a_policy_four_session_composes_the_same_frames_and_a_policy_three_one_refuses_composition()
+    {
+        using var host = new MuxTestHost();
+        var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+        MuxClient first = await host.ConnectClientAsync(options);
+        int policy = PersistentImagePolicy.CompositionImagesVersion;
+        Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = policy }, Ct);
+        ClientPaneModel firstPane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: policy);
+        host.Fake(id).Emit(ComposeCommands[..ComposeCommands.IndexOf("\x1b_Ga=c", StringComparison.Ordinal)]);
+        await host.SettleAsync(id, first);
+        MuxClient second = await host.ConnectClientAsync(options);
+        ClientPaneModel secondPane = await MuxTestHost.AttachPaneAsync(second, id, imagePolicy: policy);
+        host.Fake(id).Emit(ComposeCommands[ComposeCommands.IndexOf("\x1b_Ga=c", StringComparison.Ordinal)..]);
+        await host.SettleAsync(id, first, second);
+        string daemon = Frames(host.Mux(id).Buffer);
+        Assert.Contains("\"frames\":[", daemon, StringComparison.Ordinal);
+        Assert.Equal(daemon, Frames(firstPane.Buffer));
+        Assert.Equal(daemon, Frames(secondPane.Buffer));
+        host.AssertPaneMatchesMux(id, firstPane, "attached throughout");
+        host.AssertPaneMatchesMux(id, secondPane, "attached between the frames");
+
+        // Under policy three the same composition is refused on the daemon, and every client then holds the frames it had before.
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession(PersistentImagePolicy.AnimationImagesVersion, conPtyFiltering: false);
+        using (mux)
+        {
+            fake.Emit(ComposeCommands);
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count >= 4, "the replies reached the child writer");
+            Assert.Contains("ENOTSUP", fake.SentInput.ToArray()[2], StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public async Task A_policy_two_session_still_refuses_animation_and_its_snapshot_carries_none()
     {

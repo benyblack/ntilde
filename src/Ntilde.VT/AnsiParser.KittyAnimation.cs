@@ -4,10 +4,9 @@ using System.Globalization;
 namespace Ntilde.VT;
 
 /// <summary>
-/// Kitty graphics animation: <c>a=f</c> frame data and <c>a=a</c> playback control. Frames are raw RGB/RGBA
-/// or PNG (<c>f=100</c>, decoded to pixels by a host decoder that can expose them), the root frame can be a base or an edit
-/// target (its pixels are read back from its decoded handle when needed), and <c>a=c</c> composition stays unsupported;
-/// each limit has its own negative reply.
+/// Kitty graphics animation: <c>a=f</c> frame data, <c>a=a</c> playback control and <c>a=c</c> frame composition. Frames are raw RGB/RGBA
+/// or PNG (<c>f=100</c>, decoded to pixels by a host decoder that can expose them), the root frame can be a base, an edit
+/// target or a composition source or destination (its pixels are read back from its decoded handle when needed); each limit has its own negative reply.
 /// </summary>
 public partial class AnsiParser
 {
@@ -19,10 +18,55 @@ public partial class AnsiParser
         internal uint CanvasFrame => Edit != 0 ? Edit : Base;
     }
 
+    /// <summary>The validated controls of one <c>a=c</c> command: 1-based frame numbers, the source rectangle and the destination offset it lands on.</summary>
+    private readonly record struct KittyComposeRequest(int Source, int Destination, KittyFrameRect SourceRect, int DestX, int DestY, bool Overwrite);
+
     private static bool Refuse(out string error, string message)
     {
         error = message;
         return false;
+    }
+
+    /// <summary>
+    /// <c>a=c</c>: composes a rectangle of frame <c>r</c> onto frame <c>c</c> of a retained image (alpha-blended, or replacing with <c>C=1</c>); the result replaces
+    /// the destination frame in place and keeps its gap. An image or frame that does not exist is <c>ENOENT</c>; a rectangle outside the image, or overlapping
+    /// itself when the frames are the same, is <c>EINVAL</c>; a result the quotas cannot hold is <c>ENOSPC</c>, decided before any pixel is read.
+    /// </summary>
+    private string ComposeKittyFrames(KittyCommandIdentity identity, out uint id)
+    {
+        id = identity.Id;
+        KittyImageAsset? asset = _buffer.FindKittyImage(identity.Id, identity.Number);
+        if (asset is null) return "ENOENT:Image not found";
+        id = asset.Id;
+        if (!TryReadKittyComposeRequest(asset, out KittyComposeRequest request, out string error)) return error;
+        int destinationIndex = request.Destination - 1;
+        long charge = KittyFrameCharge(asset, (uint)request.Destination);
+        KittyFrameStoreResult room = _buffer.CheckKittyFrameRoom(asset, destinationIndex, charge);
+        if (room != KittyFrameStoreResult.Stored) return KittyFrameStatus(room);
+        byte[]? source = _buffer.ReadKittyFramePixels(asset, request.Source - 1, ImageDecoder, PersistentFrames);
+        byte[]? canvas = _buffer.ReadKittyFramePixels(asset, destinationIndex, ImageDecoder, PersistentFrames);
+        if (source is null || canvas is null) return "ENOTSUP:Frame pixels are unavailable";
+        KittyFrameCompositor.DrawFrameRect(canvas, source, asset.PixelWidth, request.SourceRect, request.DestX, request.DestY, request.Overwrite);
+        return StoreKittyFrame(asset, new KittyFrameRequest(4, 32, default, 0, (uint)request.Destination, 0, 0, request.Overwrite), canvas);
+    }
+
+    private bool TryReadKittyComposeRequest(KittyImageAsset asset, out KittyComposeRequest request, out string error)
+    {
+        request = default;
+        if (!TryReadKittyUInt("c", out uint destination) || !TryReadKittyUInt("r", out uint source) || !TryReadKittyUInt("x", out uint x) || !TryReadKittyUInt("y", out uint y)
+            || !TryReadKittyUInt("w", out uint width) || !TryReadKittyUInt("h", out uint height) || !TryReadKittyUInt("X", out uint sourceX) || !TryReadKittyUInt("Y", out uint sourceY))
+            return Refuse(out error, "EINVAL:Invalid frame composition control");
+        if (!TryReadKittyCompositionMode("C", out bool overwrite)) return Refuse(out error, "EINVAL:Invalid composition mode");
+        int frames = TerminalBuffer.KittyFrameCount(asset);
+        if (source == 0 || destination == 0 || source > frames || destination > frames) return Refuse(out error, "ENOENT:Frame not found");
+        long rectWidth = width == 0 ? asset.PixelWidth : width, rectHeight = height == 0 ? asset.PixelHeight : height;
+        if (sourceX + rectWidth > asset.PixelWidth || sourceY + rectHeight > asset.PixelHeight || x + rectWidth > asset.PixelWidth || y + rectHeight > asset.PixelHeight)
+            return Refuse(out error, "EINVAL:Composition rectangle outside the image");
+        if (source == destination && sourceX < x + rectWidth && x < sourceX + rectWidth && sourceY < y + rectHeight && y < sourceY + rectHeight)
+            return Refuse(out error, "EINVAL:Source and destination rectangles overlap");
+        request = new KittyComposeRequest((int)source, (int)destination, new KittyFrameRect((int)sourceX, (int)sourceY, (int)rectWidth, (int)rectHeight), (int)x, (int)y, overwrite);
+        error = "";
+        return true;
     }
 
     /// <summary><c>a=f</c>: adds a frame to a retained image, or edits one of its later frames.</summary>
@@ -53,7 +97,7 @@ public partial class AnsiParser
             || !TryReadKittyUInt("r", out uint editFrame) || !TryReadKittyUInt("Y", out uint background))
             return Refuse(out error, "EINVAL:Invalid animation frame control");
         if (!TryReadKittyGap(out int gap)) return Refuse(out error, "EINVAL:Invalid animation frame gap");
-        if (!TryReadKittyCompositionMode(out bool overwrite)) return Refuse(out error, "EINVAL:Invalid composition mode");
+        if (!TryReadKittyCompositionMode("X", out bool overwrite)) return Refuse(out error, "EINVAL:Invalid composition mode");
         if (!TryReadKittyFrameSize(asset, format == "100", x, y, out int width, out int height, out error)) return false;
         request = new KittyFrameRequest(format == "24" ? 3 : 4, int.Parse(format, CultureInfo.InvariantCulture), new KittyFrameRect((int)x, (int)y, width, height),
             baseFrame, editFrame, background, gap, overwrite);
@@ -76,11 +120,11 @@ public partial class AnsiParser
         return (long)x + width <= asset.PixelWidth && (long)y + height <= asset.PixelHeight || Refuse(out error, "EINVAL:Frame rectangle outside the image");
     }
 
-    /// <summary><c>X=</c>: 0 (the default) alpha-blends, 1 overwrites; anything else is invalid.</summary>
-    private bool TryReadKittyCompositionMode(out bool overwrite)
+    /// <summary>The composition mode key (<c>X=</c> for <c>a=f</c>, <c>C=</c> for <c>a=c</c>): 0 (the default) alpha-blends, 1 overwrites; anything else is invalid.</summary>
+    private bool TryReadKittyCompositionMode(string key, out bool overwrite)
     {
         overwrite = false;
-        if (!_kittyPendingParams.TryGetValue("X", out string? composition)) return true;
+        if (!_kittyPendingParams.TryGetValue(key, out string? composition)) return true;
         overwrite = composition == "1";
         return composition is "0" or "1";
     }

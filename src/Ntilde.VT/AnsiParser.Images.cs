@@ -150,6 +150,9 @@ namespace Ntilde.VT
         /// </summary>
         public bool RetainedAnimation { get; set; }
 
+        /// <summary>Whether frame composition (<c>a=c</c>) is carried where images are retained for snapshots: persistent image policy 4 and later (a peer that predates it answers <c>ENOTSUP</c>).</summary>
+        public bool RetainedComposition { get; set; }
+
         /// <summary>Frames are retained for snapshots and their pixels never come from a decoder.</summary>
         private bool PersistentFrames => RetainImageSources && RetainedAnimation;
 
