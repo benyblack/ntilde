@@ -487,7 +487,7 @@ namespace Ntilde.VT
                 else if (!_isAltScreen && absRow < _scrollback.Count)
                 {
                     // Scrollback row (paged)
-                    long absRowId = _scrollback.TotalRowsEvicted + absRow;
+                    long absRowId = PagedRowId_NoLock(absRow);
                     var (cells, containsBlink) = GetOrBuildCachedPagedRenderRowCells_NoLock(r, absRow, absRowId, viewportCols, PagedRenderRevision);
                     rowSnapshot = new RenderRowSnapshot
                     {
@@ -616,7 +616,7 @@ namespace Ntilde.VT
                         Cols = viewportCols,
                         Cells = cells,
                         ContainsBlink = containsBlink,
-                        RowId = _scrollback.TotalRowsEvicted + absRow
+                        RowId = PagedRowId_NoLock(absRow)
                     };
                 }
                 else
@@ -995,6 +995,15 @@ namespace Ntilde.VT
             }
             intervals.Insert(index, new SearchInterval(start, end));
         }
+
+        /// <summary>
+        /// Snapshot id of the paged history row at <paramref name="absRow"/>: its eviction-stable
+        /// absolute position, mapped onto the negative numbers. A live <see cref="TerminalRow.Id"/>
+        /// is always positive and 0 is the "no row here" id the draw path skips, so a history row
+        /// can carry neither. The oldest row of a history that has evicted nothing used to get 0
+        /// and was never drawn.
+        /// </summary>
+        private long PagedRowId_NoLock(int absRow) => -(_scrollback.TotalRowsEvicted + absRow) - 1;
 
         private (RenderCellSnapshot[] Cells, bool ContainsBlink) GetOrBuildCachedPagedRenderRowCells_NoLock(int rowIndex, int absRow, long rowId, int viewportCols, uint revision)
         {

@@ -123,9 +123,13 @@ export function copyResolvedColors(runs, cells, binding) {
 
 /** Expand validated runs into independent per-cell channel pairs. */
 export function expandResolvedColors(runs, cells, binding) {
-    return copyResolvedColors(runs, cells, binding)
-        .flatMap(({ count, ...value }) => Array.from({ length: count }, () => ({ fg: { ...value.fg }, bg: { ...value.bg },
-            ...(value.ul === undefined ? {} : { ul: { ...value.ul } }) })));
+    // A plain loop, for the reason given on expandCellDetails.
+    const result = [];
+    for (const { count, fg, bg, ul } of copyResolvedColors(runs, cells, binding)) {
+        if (ul === undefined) for (let index = 0; index < count; index++) result.push({ fg: { ...fg }, bg: { ...bg } });
+        else for (let index = 0; index < count; index++) result.push({ fg: { ...fg }, bg: { ...bg }, ul: { ...ul } });
+    }
+    return result;
 }
 
 /** The pinned projection of one channel: default is null (defined, distinguishing it

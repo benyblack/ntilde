@@ -351,6 +351,101 @@ public sealed class PersistentKittyAnimationTests
         Assert.Equal(Json(client), Json(restored));
     }
 
+    /// <summary>Kitty commands for one transfer of <paramref name="data"/>, in 4 KiB base64 chunks the way a real client sends a large frame.</summary>
+    private static string Chunked(string controls, byte[] data)
+    {
+        string base64 = Convert.ToBase64String(data);
+        var commands = new System.Text.StringBuilder();
+        for (int at = 0; at < base64.Length; at += 4096)
+        {
+            string chunk = base64.Substring(at, Math.Min(4096, base64.Length - at)), more = at + 4096 < base64.Length ? "1" : "0";
+            commands.Append(Kitty((at == 0 ? controls + "," : "") + "m=" + more, chunk));
+        }
+        return commands.ToString();
+    }
+
+    private static byte[] Noise(int pixels, uint seed)
+    {
+        var bytes = new byte[pixels * 4];
+        for (int i = 0; i < bytes.Length; i++) { seed = seed * 1664525 + 1013904223; bytes[i] = (byte)(seed >> 24); }
+        return bytes;
+    }
+
+    /// <summary>
+    /// The measured premise of the #1026 decision: for frames that do not pack (noise costs 4.008 bytes per pixel) the 32 MiB image-source budget and the 64 MiB per-screen
+    /// pixel quota (8 bytes per frame pixel) allow the same number of frames to within about one, so the budget usually neither refuses nor evicts before the quota refuses (unless other
+    /// retained images share it, or the sources outnumber 512, or the size is one of the few where the budget is a frame tighter: see the 512x512 test).
+    /// At 640x480 both allow 26 frames beside the root: the 27th is refused by the quota and every one of the 26 still has its pixels.
+    /// </summary>
+    [Fact]
+    public void Noise_frames_fill_the_pixel_quota_exactly_when_they_fill_the_source_budget_so_nothing_is_evicted_first()
+    {
+        const int width = 640, height = 480, pixels = width * height;
+        var side = new Side(decoder: null, policy: Composing);
+        side.Send(Chunked($"a=t,f=32,s={width},v={height},i=1", Noise(pixels, 1)));
+        Assert.EndsWith(";OK\x1b\\", Assert.Single(side.Replies), StringComparison.Ordinal);
+        int accepted = 0;
+        for (uint seed = 2; seed < 40; seed++)
+        {
+            side.Replies.Clear();
+            side.Send(Chunked($"a=f,f=32,s={width},v={height},i=1", Noise(pixels, seed)));
+            if (!side.Replies[0].EndsWith(";OK\x1b\\", StringComparison.Ordinal)) break;
+            accepted++;
+        }
+        Assert.Equal(26, accepted);
+        Assert.Contains(";ENOSPC:Animation frame storage exceeded", side.Replies[0], StringComparison.Ordinal);
+        TerminalKittyAnimationState animation = Assert.Single(side.Buffer.ExportState(int.MaxValue).KittyImages!).Animation!;
+        Assert.Equal(1 + 26, animation.Frames.Count);
+        Assert.NotNull(side.Asset().Source?.Data);                                                                     // the root's own bytes are still retained too
+        Assert.Empty(animation.Frames[0].Data);                                                                        // an unedited root carries no packing of its own: its pixels are the image's retained bytes
+        Assert.All(animation.Frames.Skip(1), frame => Assert.NotEmpty(frame.Data));                                    // nothing was evicted: every later frame still has its pixels
+        Assert.True(side.Buffer.ImageSources.RetainedBytes <= ImageSourceBudget.DefaultMaxBytes);
+        Assert.InRange(side.Buffer.ImageSources.RetainedBytes, ImageSourceBudget.DefaultMaxBytes - 1_000_000, ImageSourceBudget.DefaultMaxBytes);   // and the budget is all but full
+    }
+
+    /// <summary>
+    /// The boundary the premise test does not reach: the budget also holds the root's own bytes and each frame's control bytes, so at 512x512 the quota allows 31 frames beside the root
+    /// (66,060,288 of 67,108,864 bytes) while the retained sources of the root and 31 noise frames (33,617,920 bytes) pass the 32 MiB budget by 63,488: every frame is accepted, and the
+    /// budget evicts the oldest source, which is the root's, with no other image involved. The budget is therefore slightly the tighter limit, by about a frame.
+    /// </summary>
+    [Fact]
+    public void At_512_by_512_the_budget_binds_one_frame_before_the_quota_and_evicts_the_root_source()
+    {
+        const int width = 512, height = 512, pixels = width * height;
+        var side = new Side(decoder: null, policy: Composing);
+        side.Send(Chunked($"a=t,f=32,s={width},v={height},i=1", Noise(pixels, 1)));
+        Assert.NotNull(side.Asset().Source?.Data);
+        int accepted = 0;
+        for (uint seed = 2; seed < 40; seed++)
+        {
+            side.Replies.Clear();
+            side.Send(Chunked($"a=f,f=32,s={width},v={height},i=1", Noise(pixels, seed)));
+            if (!side.Replies[0].EndsWith(";OK\x1b\\", StringComparison.Ordinal)) break;
+            accepted++;
+        }
+        Assert.Equal(31, accepted);                                                                                    // the quota still accepts all 31
+        Assert.Null(side.Asset().Source!.Data);                                                                        // but the budget evicted the root's bytes
+        Assert.All(side.Animation().Frames.Skip(1), frame => Assert.NotNull(frame.Source?.Data));                      // and kept every frame
+        Assert.True(side.Buffer.ImageSources.RetainedBytes <= ImageSourceBudget.DefaultMaxBytes);
+    }
+
+    /// <summary>The source count is a limit of its own: small flat frames cost almost no bytes or quota but each is one of the budget's 512 sources.</summary>
+    [Fact]
+    public void Many_small_animations_lose_their_oldest_sources_to_the_source_count_long_before_any_byte_or_quota_limit()
+    {
+        var side = new Side(decoder: null, policy: Composing);
+        for (uint image = 1; image <= 9; image++)
+        {
+            side.Send(Kitty($"a=t,f=32,s=16,v=16,i={image}", Solid(1, 2, 3, 255, 256)));
+            for (int frame = 0; frame < 63; frame++) side.Send(Kitty($"a=f,f=32,s=16,v=16,i={image},z=40", Solid((byte)frame, 2, 3, 255, 256)));
+        }
+        Assert.All(side.Replies, reply => Assert.EndsWith(";OK\x1b\\", reply, StringComparison.Ordinal));          // every command was accepted: quota and bytes are nowhere near their limits
+        Assert.Equal(ImageSourceBudget.DefaultMaxSources, side.Buffer.ImageSources.Count);                              // 9 images x 64 sources = 576 asked for, 512 kept
+        Assert.True(side.Buffer.ImageSources.RetainedBytes < 1024 * 1024);
+        Assert.Empty(Assert.IsType<TerminalKittyAnimationState>(side.Buffer.ExportState(int.MaxValue).KittyImages!.First(image => image.Id == 1).Animation).Frames[1].Data);   // the first image's earliest frame lost its pixels
+        Assert.NotEmpty(side.Buffer.ExportState(int.MaxValue).KittyImages!.First(image => image.Id == 9).Animation!.Frames[1].Data);
+    }
+
     [Fact]
     public void Deleting_the_image_releases_every_frame_source_and_a_replacement_releases_the_replaced_frame()
     {

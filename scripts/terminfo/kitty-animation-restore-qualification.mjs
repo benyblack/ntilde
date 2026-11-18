@@ -3,17 +3,12 @@
 // pinned-probe replay, one separately identified effect contract for the restore, and explicit validity controls over the lineage (App processes, multiplexer daemon,
 // worker). The run has no stock collector, so there is no stock grade, and the pinned verdict, the effect verdict and any other result never merge.
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
-import { isDeepStrictEqual } from 'node:util';
 import { snapshotHash } from './agent-observer.mjs';
 import { persistentRestoreScope } from './collection-scope.mjs';
 import { animationCasesByVersion, animationSuiteIds } from './kitty-animation-cases.mjs';
-import { buildAnimationReport, ownedAnimationPolicies } from './kitty-animation.mjs';
+import { ownedAnimationPolicies } from './kitty-animation.mjs';
 import { gradeEffect, kittyAnimationQualificationIds, pinnedSpanDigests, replayPinnedAnimationProbe, upstreamBundleSha256, validityControls } from './kitty-animation-qualification.mjs';
-import { checkDaemon, checkRetainedDirectories, checkSources, persistentControls } from './kitty-animation-persistent-qualification.mjs';
-import { pngHash } from './pixels-capture.mjs';
-import { checkImages } from './static-images.mjs';
-import { journal, json, present, read } from './static-images-receipt.mjs';
+import { persistentControls, verifyPersistentSuiteRun } from './kitty-animation-persistent-qualification.mjs';
 
 export const restoreQualificationSuiteId = 'ntilde-owned-kitty-animation-restore-qualification-v1';
 export const restoreQualificationVersion = 1;
@@ -70,41 +65,11 @@ function checkRelaunches(proof, frames) {
     check(snapshotHash(reattached) === snapshotHash(chain.map(item => item.to)), 'the first frame under each new App process is not its reattach stage');
 }
 
-/**
- * Re-derive everything a restore run claims from its retained bytes: the receipt binding, the persistent settings, the measured sources, the chain of App
- * processes and the daemon lineage, the whole carrier report (from its journals, with every relaunch epoch) and the retained directories.
- */
+/** The shared persistent-suite verification, then the restore's own: the chain of App processes the relaunches make. */
 export function verifyRestoreRun(dir) {
-    const receipt = json(dir, 'persistent-animation-receipt.json'), context = json(dir, 'context.json'), proofBytes = read(dir, 'ownership-proof.json'), proof = JSON.parse(proofBytes);
-    const observationBytes = read(dir, 'animation-observations.json'), settings = json(dir, 'initial-settings.json');
-    const original = proof.proofs?.[0], marker = original?.kittyAnimation, binding = receipt.animationEvidence;
-    check(receipt.schemaVersion === 1 && receipt.suiteId === restoreReceiptSuiteId && receipt.fixtureRemoved === true && receipt.runId === context.runId
-        && /^[a-f\d]{32}$/.test(context.runId) && isDeepStrictEqual(receipt.collectionScope, persistentRestoreScope) && isDeepStrictEqual(context.collectionScope, persistentRestoreScope),
-        'the receipt does not declare the persistent restore scope of this run');
-    check(receipt.ownershipProofSha256 === sha(proofBytes) && receipt.contextSha256 === sha(read(dir, 'context.json')), 'the receipt does not bind the retained proof and context');
-    check(settings.SessionPersistence === 'KeepOnClose' && context.initialSettingsSha256 === sha(read(dir, 'initial-settings.json')), 'the run was not configured for a persistent tab');
-    check(proof.completed === true && proof.cleanedUpAt && !proof.cleanupError && proof.sourceSnapshot?.removedAt, 'the ownership proof has no completed cleanup');
-    check(binding?.runId === context.runId && binding.suiteId === suiteId && binding.file === 'animation-observations.json' && binding.sha256 === pngHash(observationBytes),
-        'the receipt does not bind the retained animation report');
-    check(context.animationSuiteId === suiteId && context.ownedAnimationPolicy === policy && marker?.policy === policy
-        && !present(join(dir, 'animation-failed-observation.json')) && !present(join(dir, 'animation-unavailable.json')) && !present(join(dir, 'animation-raw-failure.json')),
-        'the carrier did not run the restore suite under its paired raw render policy without failure');
-    checkSources(dir, context);
-    const frames = journal(dir, 'animation-snapshots.jsonl'), actions = journal(dir, 'animation-actions.jsonl'), report = JSON.parse(observationBytes);
-    check(snapshotHash(actions) === snapshotHash(marker.actions), 'the journaled actions differ from the proof');
-    const derived = buildAnimationReport(frames, actions, marker.seal, context.runId, dir, [], version);
-    check(snapshotHash(report) === snapshotHash(derived) && snapshotHash(marker.geometry) === snapshotHash({ rows: frames[0].screen.rows, cols: frames[0].screen.cols }),
-        'the retained report does not re-derive from its journals');
-    check(marker.paneId === frames[0].paneId, 'the recorded pane is not the first App\'s pane');
-    check(Date.parse(marker.seal.ownership.at) <= Date.parse(proof.cleanedUpAt), 'the seal postdates cleanup');
-    checkDaemon(proof, context, frames);
-    checkRelaunches(proof, frames);
-    const counts = {};
-    for (const item of derived.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;
-    check(snapshotHash(counts) === snapshotHash(binding.counts), 'the receipt counts differ from the re-derived stages');
-    checkRetainedDirectories(dir, frames, version);
-    checkImages(frames.length === derived.snapshots.length);
-    return { receipt, context, proof, report, observationBytes, frames };
+    const run = verifyPersistentSuiteRun(dir, { scope: persistentRestoreScope, receiptSuiteId: restoreReceiptSuiteId, version, suiteId, policy, noun: 'restore' });
+    checkRelaunches(run.proof, run.frames);
+    return run;
 }
 
 /** Validity controls specific to the restore, each re-checkable from the retained proof. */

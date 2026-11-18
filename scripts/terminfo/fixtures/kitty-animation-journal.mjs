@@ -59,12 +59,12 @@ function plannedTiming(stage, startedAt, clock) {
     return { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
 }
 
-/** Only the restore suite (version 3) runs in a persistent tab; versions 1 and 2 stay on the direct-worker path. */
-const restoreVersion = 3;
+/** Only the restore (3) and compose (4) suites run in a persistent tab; versions 1 and 2 stay on the direct-worker path. */
+const persistentVersions = new Set([3, 4]);
 
 /** The ownership proof at a moment: a direct run names the App; a persistent one also names the daemon the worker hangs from and the last relaunch. */
 function ownershipStamp(base, { appPid, daemonRecord, relaunchInfo, version }, at) {
-    const persistent = version === restoreVersion;
+    const persistent = persistentVersions.has(version);
     return { ...structuredClone(base), app: { ...structuredClone(base.app), pid: appPid },
         ...(persistent ? { worker: { ...structuredClone(base.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) } : {}),
         ...(relaunchInfo ? { relaunch: structuredClone(relaunchInfo) } : {}), at: iso(at) };

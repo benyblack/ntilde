@@ -49,7 +49,13 @@ export const persistentAnimationScope = Object.freeze({ id: 'owned-kitty-animati
  */
 export const persistentRestoreScope = Object.freeze({ id: 'owned-kitty-animation-persistent-restore-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-animation-restore']), suiteVersion: 3, deadlineMs: 600000 });
 export const isPersistentRestoreScope = value => JSON.stringify(value) === JSON.stringify(persistentRestoreScope);
-export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope) || isPersistentRestoreScope(value);
+/**
+ * The frame-composition collection (#1027): the same persistent tab, no relaunch, and the animation suite read is the version 4 compose suite (`a=c`, persistent image policy 4).
+ * It has its own receipt, like the other persistent collections.
+ */
+export const persistentComposeScope = Object.freeze({ id: 'owned-kitty-animation-persistent-compose-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-animation-compose']), suiteVersion: 4, deadlineMs: 300000 });
+export const isPersistentComposeScope = value => JSON.stringify(value) === JSON.stringify(persistentComposeScope);
+export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope) || isPersistentRestoreScope(value) || isPersistentComposeScope(value);
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV4) || same(value, osc5Osc633ScopeV4) || same(value, osc633ScopeV3) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
