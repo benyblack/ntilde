@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Assemble the persistent-tab Kitty animation publication from a finished owned run (#1025).
-// Usage: node scripts/terminfo/kitty-animation-persistent-assemble.mjs <artifacts/terminfo/owned-RUN> <docs/qa/terminfo/PUBLICATION> <pinned-bundle.mjs.gz> <app-revision> <scripts-revision>
+// Assemble a persistent-tab Kitty animation publication from a finished owned run: the live tab (#1025) or the restore after a relaunch (#1030).
+// Usage: node scripts/terminfo/kitty-animation-persistent-assemble.mjs <live|restore> <artifacts/terminfo/owned-RUN> <docs/qa/terminfo/PUBLICATION> <pinned-bundle.mjs.gz> <app-revision> <scripts-revision>
 // The raw run is archived byte-for-byte (sorted, deflate 9); the summary and report are projected from the extracted archive, so what is
 // published is exactly what the publication test re-derives. Everything is built and verified in a staging directory and only then copied to the
 // destination, which must not already hold a publication; the scripts revision must be the commit whose measured files the run's digests name.
@@ -12,16 +12,19 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 import { retainedInventory } from './metadata-receipt.mjs';
 import { ownedSourcePath } from './owned-sources.mjs';
-import { measuredAppRevision, measuredScriptsRevision, persistentAnimationQualification, pinnedBundleArchive } from './kitty-animation-persistent-qualification.mjs';
+import * as live from './kitty-animation-persistent-qualification.mjs';
+import * as restore from './kitty-animation-restore-qualification.mjs';
 
 // Absolute executables (override with NTILDE_TERMINFO_GIT_EXECUTABLE / PYTHON): no PATH lookup decides what runs.
 const gitExecutable = process.env.NTILDE_TERMINFO_GIT_EXECUTABLE ?? '/usr/bin/git';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
-const [runArgument, publicationArgument, bundleArgument, appRevision, scriptsRevision] = process.argv.slice(2);
-if (!runArgument || !publicationArgument || !bundleArgument || !/^[a-f\d]{40}$/.test(appRevision ?? '') || !/^[a-f\d]{40}$/.test(scriptsRevision ?? '')) {
-    throw new Error('Usage: kitty-animation-persistent-assemble.mjs <owned run> <publication directory> <pinned bundle .gz> <40-hex app revision> <40-hex scripts revision>');
+const [kind, runArgument, publicationArgument, bundleArgument, appRevision, scriptsRevision] = process.argv.slice(2);
+const { measuredAppRevision, measuredScriptsRevision, pinnedBundleArchive } = kind === 'restore' ? restore : live;
+const qualify = kind === 'restore' ? restore.restoreQualification : live.persistentAnimationQualification;
+if (!['live', 'restore'].includes(kind) || !runArgument || !publicationArgument || !bundleArgument || !/^[a-f\d]{40}$/.test(appRevision ?? '') || !/^[a-f\d]{40}$/.test(scriptsRevision ?? '')) {
+    throw new Error('Usage: kitty-animation-persistent-assemble.mjs <live|restore> <owned run> <publication directory> <pinned bundle .gz> <40-hex app revision> <40-hex scripts revision>');
 }
-if (appRevision !== measuredAppRevision || scriptsRevision !== measuredScriptsRevision) throw new Error('The revisions differ from the measured constants of kitty-animation-persistent-qualification.mjs; update them first.');
+if (appRevision !== measuredAppRevision || scriptsRevision !== measuredScriptsRevision) throw new Error('The revisions differ from the measured constants of the qualification module; update them first.');
 const run = resolve(runArgument), publication = resolve(publicationArgument);
 if (existsSync(join(publication, 'manifest.json'))) throw new Error('The destination already holds a publication; refusing to overwrite it.');
 
@@ -60,7 +63,7 @@ with zipfile.ZipFile(sys.argv[2],'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
     const manifest = { archives: { 'owned-run.zip': sha(readFileSync(archive)), [pinnedBundleArchive]: sha(bundle) } };
     writeFileSync(join(stage, 'manifest.json'), JSON.stringify(manifest) + '\n');
     extractOwnedArchive(stage, manifest, root, archive);
-    const projected = await persistentAnimationQualification(root, { appRevision, scriptsRevision }, bundle);
+    const projected = await qualify(root, { appRevision, scriptsRevision }, bundle);
     writeFileSync(join(stage, 'summary.json'), JSON.stringify(projected.summary, null, 2) + '\n');
     writeFileSync(join(stage, 'report.json'), JSON.stringify(projected.report, null, 2) + '\n');
     mkdirSync(publication, { recursive: true });

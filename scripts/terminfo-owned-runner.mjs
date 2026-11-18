@@ -124,7 +124,7 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
-import { legacyScope, osc633Scope, persistentAnimationScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
+import { legacyScope, osc633Scope, persistentAnimationScope, persistentRestoreScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
 import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
 import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
 import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
@@ -217,7 +217,7 @@ import { buildSelectionColorsGradingReport, selectionColorsCounts } from './term
 import { buildTruecolorFindingReport } from './terminfo/truecolor-literal-finding-grading.mjs';
 import { asciiSgrContractsVersion, asciiSgrSuiteId } from './terminfo/ascii-sgr-contracts.mjs';
 import { buildAsciiSgrGradingReport } from './terminfo/ascii-sgr-grading.mjs';
-import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists, readPersistentDaemon, persistentDaemonIdentity, terminateRecordedDaemon } from './terminfo/ownership.mjs';
+import { processBirth, outputDevice, assertProcessOwnership, matchesRecordedWorker, processRecord, terminateRecordedWorker, workerExists, readPersistentDaemon, persistentDaemonIdentity, terminateRecordedDaemon, admitRelaunch } from './terminfo/ownership.mjs';
 import { createPrivateScratch, createProcessBudget, installLockedCollector, readCollectorLockfile, resolveOwnedExecutable, validateCollectorInputs } from './terminfo/runtime.mjs';
 import { OwnedSavedObserver } from './terminfo/saved-capture.mjs';
 import { savedSuiteId, ownedSavedPolicy } from './terminfo/saved-cases.mjs';
@@ -235,10 +235,10 @@ import { querySuiteId, ownedQueryPolicy, queryPriorCounts } from './terminfo/que
 import { OwnedStaticImageObserver } from './terminfo/static-images-capture.mjs';
 import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
 import { ownedStaticImagePolicy } from './terminfo/static-images.mjs';
-import { OwnedAnimationObserver } from './terminfo/kitty-animation-capture.mjs';
-import { animationSuiteId, animationCases } from './terminfo/kitty-animation-cases.mjs';
-import { ownedAnimationPolicy, animationPlannedStages } from './terminfo/kitty-animation.mjs';
-import { OwnedCellObserver } from './terminfo/agent-observer.mjs';
+import { OwnedAnimationObserver, animationObserverOf } from './terminfo/kitty-animation-capture.mjs';
+import { animationSuiteId, animationSuiteIds, animationCases, animationCasesByVersion, currentAnimationVersion } from './terminfo/kitty-animation-cases.mjs';
+import { ownedAnimationPolicy, ownedAnimationPolicies, animationPlannedStages, animationSuites } from './terminfo/kitty-animation.mjs';
+import { OwnedCellObserver, agentRequest, observerEndpoint } from './terminfo/agent-observer.mjs';
 import { buildCellReport } from './terminfo/cells.mjs';
 import { buildSgrReport } from './terminfo/sgr.mjs';
 import { buildRgbReport, rgbCases, rgbSuiteId } from './terminfo/rgb.mjs';
@@ -396,7 +396,7 @@ function retainFailedMetadataAttempt(output, request, error, observer, file = 'm
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2071,18 +2071,22 @@ function launchOwnedApp(lease, executable, runId, env, logFd) {
     return spawn(executable, [`--ntilde-terminfo-owner=${runId}`, `--ntilde-terminfo-private-clipboard=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
 }
 
+/** Terminate the App: SIGTERM first, SIGKILL if it is still running two seconds later. Resolves with whether the kill was escalated. */
 async function terminateLaunchedApp(app) {
-    if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
+    const outcome = { escalated: false };
+    if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return outcome;
     app.kill('SIGTERM');
     await new Promise((resolve, reject) => {
         let killTimer, giveUpTimer;
         app.once('exit', () => { clearTimeout(killTimer); clearTimeout(giveUpTimer); resolve(); });
         killTimer = setTimeout(() => {
+            outcome.escalated = true;
             app.kill('SIGKILL');
             // An App that outlives SIGKILL must fail cleanup (and so retain the desktop lease), not hang the run.
             giveUpTimer = setTimeout(() => { app.unref(); reject(new Error(`Owned app ${app.pid} did not exit after SIGKILL.`)); }, 2000);
         }, 2000);
     });
+    return outcome;
 }
 
 async function cleanupOwnedRun({ lease, workerIdentity, daemonIdentity, daemonProof, executable, appData, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }) {
@@ -2127,7 +2131,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2142,7 +2146,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         return;
     }
     const executable = validateInvocation(args);
-    if (args[5] === 'persistent-animation') return persistentAnimationMain(args, executable, snapshot);
+    if (args[5] === 'persistent-animation') return persistentAnimationMain(args, executable, snapshot, persistentAnimationScope);
+    if (args[5] === 'persistent-restore') return persistentAnimationMain(args, executable, snapshot, persistentRestoreScope);
     const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
@@ -4407,6 +4412,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
 /** Fixed identity of the persistent-tab animation collection: its receipt, adapter and the one suite it carries. */
 const persistentAnimationAdapterId = 'ntilde-owned-kitty-animation-persistent-adapter-v1';
 export const persistentAnimationReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-receipt-v1';
+export const persistentRestoreReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-restore-receipt-v1';
 
 /**
  * The receipt of a persistent-tab animation collection. It binds the one retained suite report, the ownership proof (which records the
@@ -4417,18 +4423,18 @@ function completePersistentAnimationReceipt(output, scratch, evidence) {
     if (!proof.completed || !proof.cleanedUpAt || proof.cleanupError || !proof.persistentDaemon || existsSync(scratch)) throw new Error('Persistent animation evidence has no completed cleanup.');
     const contextBytes = readFileSync(join(output, 'context.json')), context = JSON.parse(contextBytes);
     const binding = evidence.animationEvidence;
-    if (binding?.runId !== context.runId || binding.suiteId !== animationSuiteId || binding.file !== 'animation-observations.json'
+    if (binding?.runId !== context.runId || binding.suiteId !== context.animationSuiteId || binding.file !== 'animation-observations.json'
         || hash(readFileSync(join(output, binding.file))) !== binding.sha256) throw new Error('Invalid persistent animation receipt binding.');
-    const receipt = { schemaVersion: 1, suiteId: persistentAnimationReceiptSuiteId, runId: context.runId, collectionScope: context.collectionScope,
+    const receipt = { schemaVersion: 1, suiteId: context.collectionScope.suiteVersion === undefined ? persistentAnimationReceiptSuiteId : persistentRestoreReceiptSuiteId, runId: context.runId, collectionScope: context.collectionScope,
         animationEvidence: binding, ownershipProofSha256: hash(proofBytes), contextSha256: hash(contextBytes), fixtureRemoved: true, completedAt: new Date().toISOString() };
     writeFileSync(join(output, 'persistent-animation-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     return receipt;
 }
 
 /** The disposable fixture of one persistent animation collection: private settings, a worker profile and the identity the owner server and cleanup share. */
-function preparePersistentRun(args, executable, snapshot, lease, output) {
+function preparePersistentRun(args, executable, snapshot, lease, output, collectionScope) {
     const scratch = createPrivateScratch();
-    try { return preparePersistentRunIn(scratch, args, executable, snapshot, lease, output); }
+    try { return preparePersistentRunIn(scratch, args, executable, snapshot, lease, output, collectionScope); }
     catch (error) {
         // The scratch holds the run token: if it cannot be removed, keep both errors and say where it is.
         try { rmSync(scratch, { recursive: true, force: true }); }
@@ -4437,8 +4443,8 @@ function preparePersistentRun(args, executable, snapshot, lease, output) {
     }
 }
 
-function preparePersistentRunIn(scratch, args, executable, snapshot, lease, output) {
-    const appData = join(scratch, 'appdata'), collectionScope = persistentAnimationScope;
+function preparePersistentRunIn(scratch, args, executable, snapshot, lease, output, collectionScope) {
+    const appData = join(scratch, 'appdata'), version = collectionScope.suiteVersion ?? currentAnimationVersion;
     mkdirSync(appData, { mode: 0o700 });
     const runId = lease.leaseId, profileName = `terminfo disposable worker ${runId}`, configPath = join(scratch, 'worker.json'), command = join(scratch, 'worker.sh');
     const run = { args, executable, snapshot, lease, output, scratch, appData, runId, profileName, collectionScope, token: randomBytes(32).toString('hex'),
@@ -4453,9 +4459,11 @@ function preparePersistentRunIn(scratch, args, executable, snapshot, lease, outp
         sourceSnapshotPolicy, sourceSnapshotManifestSha256: snapshot.sha256, sourceSnapshotRoot: sourceRepo, ...digests,
         initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))), executable, executableSha256: hash(readFileSync(executable)),
         assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
-        nodeVersion: process.version, startedAt: new Date().toISOString(), runId, animationSuiteId, ownedAnimationPolicy };
-    run.carrier = { label: 'Animation', prefix: 'kan-', proof: 'kittyAnimation', file: 'animation', suiteId: animationSuiteId, Observer: OwnedAnimationObserver,
-        pixelDir: 'animation-pixels', inputDir: 'animation-inputs', planned: { experiments: animationCases.length, stages: animationPlannedStages },
+        nodeVersion: process.version, startedAt: new Date().toISOString(), runId, animationSuiteId: animationSuiteIds[version], ownedAnimationPolicy: ownedAnimationPolicies[version] };
+    const cases = animationCasesByVersion[version];
+    run.version = version; run.relaunches = [];
+    run.carrier = { label: 'Animation', prefix: 'kan-', proof: 'kittyAnimation', file: 'animation', suiteId: animationSuiteIds[version], Observer: version === currentAnimationVersion ? OwnedAnimationObserver : animationObserverOf(version),
+        pixelDir: 'animation-pixels', inputDir: 'animation-inputs', planned: { experiments: cases.length, stages: cases.reduce((total, item) => total + item.stages.length, 0) },
         require() {}, state: () => run.animationState, setState: value => (run.animationState = value), priorFrames: () => [] };
     run.imageEnvironment = { appData, profileName, runId, proofs: run.proofs, get app() { return run.app; }, output, reference: undefined };
     return run;
@@ -4466,18 +4474,29 @@ function retainPersistentFirstProof(run, owner, worker, tty, budget) {
     if (run.proofs.length > 0) return;
     run.proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()), workerBirth: processBirth(worker.pid, budget()),
         outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(),
-        kittyAnimation: { policy: ownedAnimationPolicy } });
+        kittyAnimation: { policy: ownedAnimationPolicies[run.version] }, ...(run.version === currentAnimationVersion ? {} : { relaunches: run.relaunches }) });
+}
+
+/** Admit one relaunch request and carry it out: the App is terminated and started again, and the answer follows once the new pane shows the restored screen. */
+async function answerRelaunchRequest(run, request) {
+    if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
+    admitRelaunch(run, request, animationSuites[run.version]);
+    run.relaunchInFlight = relaunchPersistentApp(run);
+    // A relaunch that fails after the outgoing App exited leaves nothing to finish the run: reject it with the cause instead of waiting for the deadline.
+    try { await run.relaunchInFlight; } catch (error) { run.reject(error); throw error; }
+    return {};
 }
 
 /** Answer one lineage-proved owner request of the persistent animation collection. */
 async function answerPersistentRequest(run, request, budget, { owner, worker, daemon }) {
     const [proofs, tty] = [run.proofs, request.tty];
+    if (request.kind === 'kan-relaunch') return answerRelaunchRequest(run, request);
     if (request.kind.startsWith('kan-')) {
         if (!run.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
         const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
         if (!matchesRecordedWorker(worker, run.identities.worker, workerCommand, run.runId)) throw new Error('Recorded animation worker identity or marker changed.');
         return observeImageCarrierIn(run.imageEnvironment, run.carrier, request, budget, { app: owner, worker, daemon: daemon.record, tty, at: new Date().toISOString(),
-            terminalOutput: readOwnedOutputMode(tty, budget()) });
+            terminalOutput: readOwnedOutputMode(tty, budget()), ...(run.relaunches?.length ? { relaunch: run.relaunches.at(-1) } : {}) });
     }
     switch (request.kind) {
         case 'prove':
@@ -4512,7 +4531,7 @@ async function handlePersistentRequest(run, text) {
     if (!app?.pid || app.exitCode !== null || app.signalCode !== null) throw new Error('Owned app is no longer live.');
     assertExecutableUnchanged(executable, run.image);
     const budget = createProcessBudget(4000), owner = processRecord(app.pid, budget()), worker = processRecord(request.workerPid, budget());
-    const daemon = readPersistentDaemon(worker.ppid, app.pid, appData, budget());
+    const daemon = readPersistentDaemon(worker.ppid, app.pid, appData, budget(), { firstAppBirth: run.proofs[0]?.privateClipboard?.appBirth });
     if (run.identities.daemon && run.identities.daemon.pid !== daemon.record.pid) throw new Error('Another multiplexer daemon tried to use this run.');
     assertProcessOwnership({ app: { ...owner, executable: realpathSync(owner.executable) }, worker, ownerPid: app.pid, executable, uid: process.getuid(), runId, tty: request.tty, daemon, appData,
         appCommand: execFileSync('/bin/ps', ['-p', String(app.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 }) });
@@ -4534,26 +4553,71 @@ function createPersistentOwnerServer(run) {
             if (buffer.length > 8192) return socket.destroy();
             if (!buffer.includes('\n')) return;
             socket.removeAllListeners('data');
+            socket.setTimeout(90000, () => socket.destroy()); // a relaunch request outlives the five-second idle window of the others
             try { socket.end(JSON.stringify(await handlePersistentRequest(run, buffer.slice(0, buffer.indexOf('\n')))) + '\n'); }
             catch (error) { socket.end(JSON.stringify(ownerFailure(error, false)) + '\n'); }
         });
     });
 }
 
+/** Start (or restart) the owned App on the run's private root; the only call that launches one in the persistent collections. */
+function startPersistentApp(run) {
+    const app = launchOwnedApp(run.lease, run.executable, run.runId, run.env, run.logFd);
+    run.app = app;
+    app.once('error', run.reject);
+    // Only the App a relaunch is replacing may exit unannounced; any other exit, the new App's during its start included, fails the run at once.
+    app.once('exit', (code, signal) => { if (!run.completed && run.outgoing !== app) run.reject(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
+    return app;
+}
+
+/** The App's agent endpoint answers with this run's one local pane: the previous session was reattached or a fresh one spawned (the next lineage proof tells which). */
+async function waitForReattachedPane(run, deadline = Date.now() + 60000) {
+    if (run.stopping) throw new Error('The run stopped while the relaunched App was starting.');
+    // The endpoint descriptor still names the previous App until the new one publishes its own, so the lookup itself may throw: that only means "not yet".
+    const endpoint = () => observerEndpoint(run.appData, run.app.pid);
+    const sessions = await Promise.resolve().then(() => agentRequest(endpoint(), 'listSessions', {}, 2000)).then(value => value.sessions, () => undefined);
+    // The pane exists before its session attaches: wait until it shows the restored screen (the label line the carrier bound before the relaunch), so the first read sees the snapshot.
+    const restored = sessions?.length === 1 && sessions[0].kind === 'local' && !sessions[0].windowless && sessions[0].profileName === run.profileName
+        && await agentRequest(endpoint(), 'readScreen', { paneId: sessions[0].paneId }, 2000).then(screen => screen.lines?.[0] === 'NTILDE_IMG_' + run.runId, () => false);
+    if (run.stopping) throw new Error('The run stopped while the relaunched App was starting.');
+    if (restored) return;
+    if (Date.now() > deadline) throw new Error('The relaunched App did not show the persistent pane.');
+    await new Promise(resolve => setTimeout(resolve, 250));
+    await waitForReattachedPane(run, deadline);
+}
+
+/**
+ * Terminate the App (SIGTERM, not a graceful quit) and start it again on the same private root while the multiplexer daemon and the worker keep running (`KeepOnClose`). The App
+ * saves its session after each attach, so a killed App leaves the file the next one restores; the new App's pane reattaches `IfUnattached`.
+ */
+async function relaunchPersistentApp(run) {
+    const previous = run.app;
+    run.outgoing = previous;
+    try {
+        const { escalated } = await terminateLaunchedApp(previous);
+        if (run.stopping) throw new Error('The run stopped before the App was started again.');
+        for (const [what, pid] of [['shell', run.identities.worker.pid], ['multiplexer daemon', run.identities.daemon.pid]]) {
+            if (!workerExists(pid)) throw new Error(`The ${what} ended with the App.`);
+        }
+        const startedAt = new Date().toISOString(), next = startPersistentApp(run);
+        await waitForReattachedPane(run);
+        run.relaunches.push({ from: previous.pid, to: next.pid, appBirth: processBirth(next.pid), startedAt, at: new Date().toISOString(), terminatedBy: escalated ? 'SIGKILL' : 'SIGTERM' });
+    } finally { run.outgoing = undefined; }
+}
+
 /** Start the disposable App and wait for the worker's completion; the evidence is retained only for a restored, sealed suite. */
 async function collectPersistentAnimation(run, server) {
-    const { output, runId, appData, executable, args, lease, collectionScope } = run;
+    const { output, runId, appData, args, collectionScope } = run;
     await Promise.race([run.done, new Promise((resolve, reject) => { server.once('error', reject); server.listen(run.socketPath, resolve); })]);
     if (run.interruption) throw run.interruption;
     chmodSync(run.socketPath, 0o600);
     const env = { ...process.env, NTILDE_APPDATA_ROOT: appData, TERMINFO_RUN_ID: runId, TERM_PROGRAM: 'Ntilde', TERM_PROGRAM_VERSION: args[3], PATH: dirname(process.execPath) + ':' + process.env.PATH };
     for (const name of ['__CFBundleIdentifier', 'TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY']) delete env[name];
     run.logFd = openSync(join(output, 'app-output.log'), 'wx', 0o600);
-    run.app = launchOwnedApp(lease, executable, runId, env, run.logFd);
-    run.app.once('error', run.reject);
-    run.app.once('exit', (code, signal) => { if (!run.completed) run.reject(new Error(`Owned app exited before collection (${code ?? signal}).`)); });
+    run.env = env;
+    startPersistentApp(run);
     writeJson(join(output, 'context.json'), { ...run.context, ownerPid: run.app.pid });
-    run.deadline = setTimeout(() => run.reject(new Error('Persistent animation collection exceeded 5 minutes.')), collectionScope.deadlineMs);
+    run.deadline = setTimeout(() => run.reject(new Error(`Persistent animation collection exceeded ${collectionScope.deadlineMs / 60000} minutes.`)), collectionScope.deadlineMs);
     console.log(`Collecting in disposable Ntilde pid ${run.app.pid} (persistent tab); results: ${output}`);
     await run.done;
     assertOwnedSourcesUnchanged(sourceRepo, run.context);
@@ -4566,7 +4630,7 @@ async function collectPersistentAnimation(run, server) {
  * hosts the worker, so ownership is proved through that daemon (ownership.mjs) and cleanup stops it. No other owned suite runs and the
  * full collection's receipt is not produced: this run has its own, narrower receipt.
  */
-async function persistentAnimationMain(args, executable, snapshot) {
+async function persistentAnimationMain(args, executable, snapshot, collectionScope) {
     let interruption, run, output, lease, resolveDone, rejectDone;
     const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
     done.catch(() => {});
@@ -4579,8 +4643,8 @@ async function persistentAnimationMain(args, executable, snapshot) {
         mkdirSync(join(repo, 'artifacts', 'terminfo'), { recursive: true });
         output = mkdtempSync(join(repo, 'artifacts', 'terminfo', 'owned-'));
         writeFileSync(join(output, 'source-snapshot.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 });
-        run = preparePersistentRun(args, executable, snapshot, lease, output);
-        Object.assign(run, { done, resolve: resolveDone, reject: rejectDone });
+        run = preparePersistentRun(args, executable, snapshot, lease, output, collectionScope);
+        Object.assign(run, { done, resolve: resolveDone, reject: error => { run.stopping = true; rejectDone(error); } });
         Object.defineProperty(run, 'interruption', { get: () => interruption });
         if (interruption) throw interruption;
         const outcome = await runPersistentAnimation(run);
@@ -4602,6 +4666,9 @@ async function runPersistentAnimation(run) {
     try { evidence = await collectPersistentAnimation(run, server); }
     catch (error) { failure = error; }
     clearTimeout(run.deadline);
+    // A relaunch still in flight must finish (or give up) before cleanup, or its new App could outlive the cleanup that targets the old one.
+    run.stopping = true;
+    await run.relaunchInFlight?.catch(() => {});
     run.preserveScratch = true;
     const cleanup = await captureOwnedCleanup(() => cleanupOwnedRun({ lease: run.lease, workerIdentity: run.identities.worker, daemonIdentity: run.identities.daemon, daemonProof: run.daemonProof,
         executable: run.executable, appData: run.appData, runId: run.runId, app: run.app, logFd: run.logFd, server, output: run.output, proofs: run.proofs, completed: run.completed,

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-kitty-animation-persistent-restore-receipt-v1",
+  "runId": "f8ee33cbd3592763820728adae67934f",
+  "collectionScope": {
+    "id": "owned-kitty-animation-persistent-restore-v1",
+    "persistence": "KeepOnClose",
+    "suites": [
+      "kitty-animation-restore"
+    ],
+    "suiteVersion": 3,
+    "deadlineMs": 600000
+  },
+  "animationEvidence": {
+    "runId": "f8ee33cbd3592763820728adae67934f",
+    "suiteId": "ntilde-owned-kitty-animation-restore-v1",
+    "file": "animation-observations.json",
+    "sha256": "c3c340728cbec04fcbf30f921d8b3eed28577a6c73aa146d7b1edeb3ac9a7649",
+    "counts": {
+      "passed": 22
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "ownershipProofSha256": "a3b56432bf94dc42777dcc3e614b9d5ddb617e1533f4c0a7604c28173007c91a",
+  "contextSha256": "0df95aa2ea2b9149cc628d7278ee77a951c79f6170fb9c935e2f084c226d9f07",
+  "fixtureRemoved": true,
+  "completedAt": "2026-11-17T20:05:40.513Z"
+}

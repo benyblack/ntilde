@@ -75,6 +75,6 @@ and requires the scripts revision to be the commit whose files the run's digests
 
 ```sh
 node scripts/terminfo-owned.mjs --executable <abs>/Ntilde --app-version 0.14.0 --scope persistent-animation
-node scripts/terminfo/kitty-animation-persistent-assemble.mjs artifacts/terminfo/owned-<run> docs/qa/terminfo/2026-11-17-kitty-animation-persistent <pinned bundle .gz> <app commit> <scripts commit>
+node scripts/terminfo/kitty-animation-persistent-assemble.mjs live artifacts/terminfo/owned-<run> docs/qa/terminfo/2026-11-17-kitty-animation-persistent <pinned bundle .gz> <app commit> <scripts commit>
 node --test scripts/terminfo/kitty-animation-persistent-publication.test.mjs
 ```

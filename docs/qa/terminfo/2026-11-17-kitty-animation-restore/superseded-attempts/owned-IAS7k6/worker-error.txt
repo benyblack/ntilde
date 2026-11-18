@@ -1,0 +1,7 @@
+Error: Invalid or incomplete owned static-image evidence.
+    at Socket.<anonymous> (file:///private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-rIh7Ca/scripts/terminfo/ownership.mjs:231:35)
+    at Socket.emit (node:events:514:28)
+    at addChunk (node:internal/streams/readable:569:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:520:3)
+    at Readable.push (node:internal/streams/readable:400:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:194:23)
