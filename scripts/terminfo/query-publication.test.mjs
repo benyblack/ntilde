@@ -24,18 +24,22 @@ const publication = () => {
 function archiveMembers(descriptor) {
     assert.match(descriptor.file, /^[a-z\d.-]+\.zip$/);
     const archive = readFileSync(new URL(descriptor.file, directory));
-    assert.equal(archive.length, descriptor.bytes); assert.equal(hash(archive), descriptor.sha256);
+    assert.equal(archive.length, descriptor.bytes);
+            assert.equal(hash(archive), descriptor.sha256);
     const files = new Map(); let offset = 0;
     while (archive.readUInt32LE(offset) === 0x04034b50) {
         const flags = archive.readUInt16LE(offset + 6), method = archive.readUInt16LE(offset + 8);
         const compressed = archive.readUInt32LE(offset + 18), size = archive.readUInt32LE(offset + 22);
         const length = archive.readUInt16LE(offset + 26), extra = archive.readUInt16LE(offset + 28), start = offset + 30;
-        assert.equal(flags & 9, 0); assert.ok(method === 0 || method === 8); assert.ok(size <= 16 * 1024 * 1024);
+        assert.equal(flags & 9, 0);
+            assert.ok(method === 0 || method === 8);
+            assert.ok(size <= 16 * 1024 * 1024);
         const file = archive.subarray(start, start + length).toString();
         assert.ok(!file.startsWith('/') && !file.split('/').includes('..') && !files.has(file));
         const bytes = archive.subarray(start + length + extra, start + length + extra + compressed);
         const value = method === 8 ? inflateRawSync(bytes, { maxOutputLength: 16 * 1024 * 1024 }) : Buffer.from(bytes);
-        assert.equal(value.length, size); assert.equal(crc32(value), archive.readUInt32LE(offset + 14));
+        assert.equal(value.length, size);
+            assert.equal(crc32(value), archive.readUInt32LE(offset + 14));
         assert.equal(hash(value), descriptor.fileSha256[file]); files.set(file, value);
         offset = start + length + extra + compressed;
     }
@@ -68,7 +72,8 @@ function evidenceFrom(receipt) {
 }
 function compareReceipt(actual, expected) {
     const { completedAt: actualTime, ...actualFields } = actual, { completedAt: oldTime, ...expectedFields } = expected;
-    assert.deepEqual(actualFields, expectedFields); assert.ok(Date.parse(actualTime) >= Date.parse(oldTime));
+    assert.deepEqual(actualFields, expectedFields);
+            assert.ok(Date.parse(actualTime) >= Date.parse(oldTime));
 }
 function writeFiles(files, output) {
     for (const [file, bytes] of files) {
@@ -77,13 +82,15 @@ function writeFiles(files, output) {
     }
 }
 async function privateEvidence(action) {
-    publication(); const files = historicalArchive(name), output = mkdtempSync(join(tmpdir(), 'nt-real-query-v11-'));
+    publication();
+            const files = historicalArchive(name), output = mkdtempSync(join(tmpdir(), 'nt-real-query-v11-'));
     try { writeFiles(files, output); return await action(output, files); }
     finally { rmSync(output, { recursive: true, force: true }); }
 }
 async function deriveReport(entry, output, data, files) {
     const [name, file, method] = entry, report = read(files, name + '-observations.json');
-    const frames = journal(files, name + '-snapshots.jsonl'); assert.deepEqual(frames, name === 'query' ? report.frames : report.snapshots);
+    const frames = journal(files, name + '-snapshots.jsonl');
+            assert.deepEqual(frames, name === 'query' ? report.frames : report.snapshots);
     const module = await import(new URL('./' + file, import.meta.url));
     if (name === 'query') return module[method]({ binding: report.binding, priorChallenges: report.priorChallenges, initial: read(files, 'query-initial.json'), actions: journal(files, 'query-actions.jsonl'), frames, seal: data.ownershipProof.proofs[0].queries.seal });
     if (name === 'resize') return module[method](frames, journal(files, 'resize-actions.jsonl'), data.ownedRunId);
@@ -95,20 +102,28 @@ async function deriveReport(entry, output, data, files) {
 test('v11 publication binds the complete original context, proof and all 16 suite summaries', () => {
     const data = publication(), files = historicalArchive(name), original = read(files, 'context.json');
     const { executable, ...context } = original;
-    assert.equal(typeof executable, 'string'); assert.deepEqual(data.context, context);
-    assert.equal(data.appBuildSource, '630fe12606f24a0cf482b8756da32cf02c46ae72'); assert.equal(data.adapterSource, data.appBuildSource);
+    assert.equal(typeof executable, 'string');
+            assert.deepEqual(data.context, context);
+    assert.equal(data.appBuildSource, '630fe12606f24a0cf482b8756da32cf02c46ae72');
+            assert.equal(data.adapterSource, data.appBuildSource);
     assert.equal(data.context.appVersionSource, 'operator supplied; not independently verified');
-    assert.equal(data.ownedRunId, '34412a050e77b76da29514b3f483246f'); assert.equal(data.stockRunId, 'f11ba90e3cad6138fa0ee2ee6bcf9c7f');
+    assert.equal(data.ownedRunId, '34412a050e77b76da29514b3f483246f');
+            assert.equal(data.stockRunId, 'f11ba90e3cad6138fa0ee2ee6bcf9c7f');
     assert.notEqual(data.stockRunId, data.ownedRunId);
     for (const [key, file] of [['queryReport', 'query-observations.json'], ['receipt', 'cell-receipt.json'], ['ownershipProof', 'ownership-proof.json'], ['sourceSnapshot', 'source-snapshot.json']]) assert.deepEqual(data[key], read(files, file));
-    assert.deepEqual(data.sourceInventory, capturedV11SourceFiles); assert.deepEqual(data.sourceInventory, read(files, 'sources/owned-source-inventory.json'));
-    assert.equal(Object.keys(data.sourceInventory).length, 74); assert.equal(data.sourceSnapshot.policy, 'readonly-owned-source-graph-v4');
+    assert.deepEqual(data.sourceInventory, capturedV11SourceFiles);
+            assert.deepEqual(data.sourceInventory, read(files, 'sources/owned-source-inventory.json'));
+    assert.equal(Object.keys(data.sourceInventory).length, 74);
+            assert.equal(data.sourceSnapshot.policy, 'readonly-owned-source-graph-v4');
     assert.equal(hash(files.get('source-snapshot.json')), data.context.sourceSnapshotManifestSha256);
     for (const [key, file] of Object.entries(capturedV11SourceFiles)) {
-        assert.equal(hash(files.get('sources/' + file)), data.context[key]); assert.equal(data.sourceSnapshot.hashes[key], data.context[key]);
+        assert.equal(hash(files.get('sources/' + file)), data.context[key]);
+            assert.equal(data.sourceSnapshot.hashes[key], data.context[key]);
     }
     assert.equal(data.context.sourceImportsSourceSha256, '27737137fc22aa080b671153573a1f0741ba136fc7e35c0db39b6a3849fda6fd');
-    assert.equal(data.receipt.schemaVersion, 11); assert.equal(data.receipt.fixtureRemoved, true); assert.equal(data.ownershipProof.completed, true);
+    assert.equal(data.receipt.schemaVersion, 11);
+            assert.equal(data.receipt.fixtureRemoved, true);
+            assert.equal(data.ownershipProof.completed, true);
     assert.deepEqual(data.sourceSnapshotCleanup, data.ownershipProof.sourceSnapshot);
     assert.ok(Date.parse(data.ownershipProof.cleanedUpAt) < Date.parse(data.sourceSnapshotCleanup.removedAt));
     assert.ok(Date.parse(data.sourceSnapshotCleanup.removedAt) < Date.parse(data.receipt.completedAt));
@@ -116,44 +131,60 @@ test('v11 publication binds the complete original context, proof and all 16 suit
     for (const [name] of reportEntries) {
         const report = read(files, name + '-observations.json'), summary = data.suiteSummaries[name];
         assert.deepEqual(summary.binding, bindingProjection(bindingFor(data.receipt, name)));
-        assert.equal(summary.pairedFrames, (name === 'query' ? report.frames : report.snapshots).length); assert.equal(summary.observations, report.observations.length);
+        assert.equal(summary.pairedFrames, (name === 'query' ? report.frames : report.snapshots).length);
+            assert.equal(summary.observations, report.observations.length);
     }
 });
 
 test('the exact 266-member archive preserves all original bytes and decodable PNG inputs', () => {
-    const data = publication(); assert.equal(data.archive.bytes, 1055814); assert.equal(data.archive.files, 266);
+    const data = publication();
+            assert.equal(data.archive.bytes, 1055814);
+            assert.equal(data.archive.files, 266);
     assert.equal(data.archive.sha256, '38b81ecf9592e5eed3df554f4a5a750eb4711e2a994ea443d9a04e90849ffc5b');
-    const files = archiveMembers(data.archive); assert.deepEqual(files, historicalArchive(name));
+    const files = archiveMembers(data.archive);
+            assert.deepEqual(files, historicalArchive(name));
     let pngs = 0, sources = 0;
     for (const [file, bytes] of files) if (file.endsWith('.png')) {
         const decoded = decodeCapturePng(bytes); pngs++;
-        if (file.startsWith('image-inputs/')) { sources++; assert.equal(decoded.width, 16); assert.equal(decoded.height, 16); assert.deepEqual(decoded.pixels, files.get(file.replace('.png', '.rgba'))); }
+        if (file.startsWith('image-inputs/')) { sources++; assert.equal(decoded.width, 16);
+            assert.equal(decoded.height, 16);
+            assert.deepEqual(decoded.pixels, files.get(file.replace('.png', '.rgba'))); }
     }
-    assert.equal(pngs, 140); assert.equal(sources, 3);
+    assert.equal(pngs, 140);
+            assert.equal(sources, 3);
 });
 
 test('exact query packets, 110 prior and 44 new paired fences retain mismatch semantics', async () => {
     const data = publication(), files = historicalArchive(name), report = data.queryReport;
     const { queryWitnessPlan } = await import('./query-witness-cases.mjs');
     const contracts = queryWitnessPlan({ rows: 40, cols: 140, top: 1, bottom: 40 });
-    assert.equal(contracts.length, 40); assert.equal(report.actions.length, 44); assert.equal(report.frames.length, 44);
-    assert.deepEqual(report.readerCounts, [48, 42]); assert.deepEqual(report.unobservedState, ['reverseVideo']);
+    assert.equal(contracts.length, 40);
+            assert.equal(report.actions.length, 44);
+            assert.equal(report.frames.length, 44);
+    assert.deepEqual(report.readerCounts, [48, 42]);
+            assert.deepEqual(report.unobservedState, ['reverseVideo']);
     const prior = ['input', 'image'].flatMap(prefix => read(files, prefix + '-observations.json').snapshots.filter(frame => frame.capture).map(frame => frame.capture.nonces.join(',')));
-    assert.equal(prior.length, 110); assert.deepEqual(report.priorChallenges, prior);
+    assert.equal(prior.length, 110);
+            assert.deepEqual(report.priorChallenges, prior);
     const pairs = [...prior]; const queryActions = report.actions.filter(action => action.kind === 'query');
     assert.equal(queryActions.length, contracts.length);
     for (const [index, contract] of contracts.entries()) {
-        assert.equal(queryActions[index].id, contract.id); assert.equal(queryActions[index].commandHex, Buffer.from(contract.request).toString('hex'));
+        assert.equal(queryActions[index].id, contract.id);
+            assert.equal(queryActions[index].commandHex, Buffer.from(contract.request).toString('hex'));
     }
     for (const frame of report.frames) {
         const capture = frame.capture; assert.equal(capture.byteLength, Buffer.from(capture.hex, 'hex').length);
         assert.equal(capture.barrier, capture.nonces.map(n => '\x1b[?' + n + ';0$y').join(''));
-        assert.equal(capture.nonces.length, 2); assert.notEqual(...capture.nonces);
+        assert.equal(capture.nonces.length, 2);
+            assert.notEqual(...capture.nonces);
         for (const nonce of capture.nonces) assert.ok(Number.isInteger(nonce) && nonce >= 32768 && nonce <= 65535);
         pairs.push(capture.nonces.join(','));
     }
-    assert.equal(pairs.length, 154); assert.equal(new Set(pairs).size, 154);
-    assert.equal(report.seal.status.attempts, 44); assert.equal(report.seal.status.failed, false); assert.equal(report.seal.status.disposed, true);
+    assert.equal(pairs.length, 154);
+            assert.equal(new Set(pairs).size, 154);
+    assert.equal(report.seal.status.attempts, 44);
+            assert.equal(report.seal.status.failed, false);
+            assert.equal(report.seal.status.disposed, true);
     const last = report.frames.at(-1).capture;
     assert.equal(report.seal.status.lastAttempt.hex, last.hex + Buffer.from(last.barrier).toString('hex'));
     assert.deepEqual(report.seal.status.lastAttempt.nonces, last.nonces);
@@ -170,7 +201,8 @@ test('exact query packets, 110 prior and 44 new paired fences retain mismatch se
 test('all 16 reports and complete schema 11 finalizer rederive in a private copy', () => privateEvidence(async (output, files) => {
     const data = publication(); assertRetainedSourceClosure(join(output, 'sources'), capturedV11SourceFiles);
     for (const entry of reportEntries) assert.deepEqual(await deriveReport(entry, output, data, files), read(files, entry[0] + '-observations.json'), entry[0]);
-    const old = read(files, 'cell-receipt.json'); rmSync(join(output, 'cell-receipt.json'));
+    const old = read(files, 'cell-receipt.json');
+            rmSync(join(output, 'cell-receipt.json'));
     compareReceipt(completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidenceFrom(old)), old);
 }));
 
@@ -182,9 +214,11 @@ test('existing cursor/pixel negatives, calibrated image negative and stock delta
         assert.deepEqual(witness.counts, witness.suite === 'cursor' ? { passed: 8, failed: 1 } : { passed: 24, failed: 1 });
     }
     assert.deepEqual(data.receipt.staticImageEvidence.counts, { passed: 21, failed: 1, inconclusive: 1 });
-    assert.deepEqual(data.receipt.inputEvidence.counts, { passed: 39 }); assert.deepEqual(data.receipt.metadataEvidence.counts, { passed: 10, inconclusive: 2, failed: 1 });
+    assert.deepEqual(data.receipt.inputEvidence.counts, { passed: 39 });
+            assert.deepEqual(data.receipt.metadataEvidence.counts, { passed: 10, inconclusive: 2, failed: 1 });
     assert.deepEqual(data.metadataSummary.observations, read(files, 'metadata-observations.json').observations);
-    assert.deepEqual(data.stockCollector.counts, { inconclusive: 170, supported: 85 }); assert.equal(data.stockCollector.suiteComplete, false);
+    assert.deepEqual(data.stockCollector.counts, { inconclusive: 170, supported: 85 });
+            assert.equal(data.stockCollector.suiteComplete, false);
     assert.deepEqual(data.stockCollector.ungradedDiagnostics['cursor.reverse-wrap'].name, 'UndeclaredTerminalGeometry');
     const raw = read(files, 'raw.json'), previous = read(historicalArchive('2026-11-04-image-observations'), 'raw.json');
     const changed = raw.observations.filter(value => previous.observations.find(old => old.featureId === value.featureId).outcome !== value.outcome);
@@ -212,7 +246,8 @@ for (const variant of ['promote', 'strip-prior', 'unavailable', 'downgrade'])
         const bytes = JSON.stringify(report, null, 2) + '\n'; writeFileSync(join(output, 'query-observations.json'), bytes);
         if (evidence.queryEvidence) evidence.queryEvidence.sha256 = hash(bytes);
         const summary = read(files, 'summary.json'); summary.queryEvidence = evidence.queryEvidence;
-        writeFileSync(join(output, 'summary.json'), JSON.stringify(summary)); rmSync(join(output, 'cell-receipt.json'));
+        writeFileSync(join(output, 'summary.json'), JSON.stringify(summary));
+            rmSync(join(output, 'cell-receipt.json'));
         assert.throws(() => completeOwnedReceipt(output, join(output, 'removed-fixture'), evidence), /Invalid|comparison|ENOENT/);
     }));
 
@@ -227,13 +262,16 @@ for (const [label, grow, policy] of [['inventory', true, false], ['policy', fals
             }
             if (policy) {
                 const path = join(modules, 'owned-sources.mjs'); writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v70';"));
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v71';"));
             }
             const sources = await import(pathToFileURL(join(modules, 'owned-sources.mjs')).href);
-            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v70' : 'readonly-owned-source-graph-v69');
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 464 : 463); assert.deepEqual(sources.capturedV11SourceFiles, capturedV11SourceFiles);
-            const next = await import(pathToFileURL(join(modules, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
-            const files = historicalArchive(name); writeFiles(files, output); const old = read(files, 'cell-receipt.json'); rmSync(join(output, 'cell-receipt.json'));
+            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v71' : 'readonly-owned-source-graph-v70');
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 470 : 469);
+            assert.deepEqual(sources.capturedV11SourceFiles, capturedV11SourceFiles);            const next = await import(pathToFileURL(join(modules, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
+            const files = historicalArchive(name);
+            writeFiles(files, output);
+            const old = read(files, 'cell-receipt.json');
+            rmSync(join(output, 'cell-receipt.json'));
             compareReceipt(next.completeOwnedReceipt(output, join(output, 'removed-fixture'), evidenceFrom(old)), read(files, 'cell-receipt.json'));
         } finally { rmSync(root, { recursive: true, force: true }); }
     });

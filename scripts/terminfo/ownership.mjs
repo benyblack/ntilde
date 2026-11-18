@@ -70,7 +70,7 @@ const daemonBirthMs = birth => Date.parse(birth + ' UTC');
  * assertPersistentDaemon's.
  */
 export function readPersistentDaemon(daemonPid, appPid, appData, timeout = 2000, {
-    record = processRecord, birth = processBirth, canonical = realpathSync, run = execFileSync, status = lstatSync, read = readFileSync,
+    record = processRecord, birth = processBirth, canonical = realpathSync, run = execFileSync, status = lstatSync, read = readFileSync, firstAppBirth,
 } = {}) {
     const daemon = record(daemonPid, timeout);
     const text = run('/bin/ps', ['eww', '-p', String(daemonPid), '-o', 'command='], { encoding: 'utf8', timeout, maxBuffer: 262144 }).trim();
@@ -78,7 +78,7 @@ export function readPersistentDaemon(daemonPid, appPid, appData, timeout = 2000,
     const stat = status(path);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('The multiplexer descriptor is not a regular file.');
     const descriptor = JSON.parse(read(path, 'utf8'));
-    return { record: { ...daemon, executable: canonical(daemon.executable) }, text, birth: birth(daemonPid, timeout), appBirth: birth(appPid, timeout),
+    return { record: { ...daemon, executable: canonical(daemon.executable) }, text, birth: birth(daemonPid, timeout), appBirth: firstAppBirth ?? birth(appPid, timeout),
         descriptor: { pid: descriptor.pid, processName: descriptor.processName, endpoint: descriptor.endpoint } };
 }
 
@@ -188,7 +188,7 @@ export async function terminateRecordedWorker(recorded, runId) {
  */
 /** The observation kinds (`<prefix>-<operation>`) whose answers may carry complete screens and metadata: they get the 512 KiB response cap, every other kind 16 KiB. */
 const largeResponsePrefixes = new Set(['cell', 'sgr', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing', 'history', 'resize', 'saved', 'metadata', 'input', 'images',
-    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'vsc', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'csz', 'xcs', 'xss', 'xsv', 'kcl', 'ocx', 'cw', 'irm', 'kan', 'ovu', 'ptr']);
+    'sels', 'cole', 'csum', 'lrmm', 'crst', 'shi', 'vsc', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'csz', 'fnt', 'xcs', 'xss', 'xsv', 'kcl', 'ocx', 'cw', 'irm', 'kan', 'ovu', 'ptr']);
 function largeResponsePrefix(kind) {
     return typeof kind === 'string' && kind.includes('-') && largeResponsePrefixes.has(kind.slice(0, kind.indexOf('-')));
 }
@@ -202,6 +202,22 @@ function preservedOwnerCode(kind, code) {
         && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(code);
 }
 
+/** A relaunch (#1030) terminates the App (SIGTERM) and waits for a new one to reattach the pane: it alone may take longer than the five-second owner answer. */
+const relaunchKind = 'kan-relaunch', relaunchTimeoutMs = 90000;
+/**
+ * Whether the worker may have the App terminated now: the run is live and no relaunch is in progress, and the animation observer is healthy and idle in its admit phase
+ * with the next planned entry being exactly the requested relaunch stage, which must also be the next relaunch stage of the plan in order (one admission per stage).
+ * An early, repeated, mislabeled or mid-capture request therefore never takes the App down. `suite` is the animation suite whose plan the observer walks.
+ */
+export function admitRelaunch(run, request, suite) {
+    if (run.stopping || run.outgoing) throw new Error('A relaunch is not admissible while the run is stopping or another relaunch is in progress.');
+    const observer = run.animationState?.observer;
+    if (!observer || observer.failed || observer.busy || observer.phase !== 'admit') throw new Error('A relaunch is only admissible while the observer is idle between stages.');
+    const next = suite.plan[observer.next], expected = suite.plan.filter(suite.relaunches)[run.relaunches.length];
+    const named = entry => entry?.caseId === request.caseId && entry?.stageId === request.stageId;
+    if (!expected || !suite.relaunches(next) || !named(next) || !named(expected)) throw new Error('The relaunch request does not name the next relaunch stage of the plan.');
+}
+
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {
         const socket = createConnection(config.socket);
@@ -212,7 +228,7 @@ export function requestOwner(config, kind, extra = {}) {
             socket.destroy();
             if (error) reject(error); else resolve(result);
         };
-        socket.setTimeout(5000, () => finish(new Error('Ntilde owner did not respond.')));
+        socket.setTimeout(kind === relaunchKind ? relaunchTimeoutMs : 5000, () => finish(new Error('Ntilde owner did not respond.')));
         socket.on('error', reject);
         socket.on('connect', () => socket.write(JSON.stringify({
             ...extra, kind, token: config.token, runId: config.runId, workerPid: process.pid,

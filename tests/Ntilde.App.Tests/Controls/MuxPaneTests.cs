@@ -259,7 +259,7 @@ public sealed class MuxPaneTests : IDisposable
             new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, ct), "test", null);
         MuxClientSession s = StartPane(factory: new MuxTerminalSessionFactory(_imageHost, new RecordingSessionFactory(new FakeTerminalSession()), null));
 
-        Assert.Equal(PersistentImagePolicy.AnimationImagesVersion, s.RequiredImagePolicy);   // the negotiated maximum, which now carries Kitty animation (#1017)
+        Assert.Equal(PersistentImagePolicy.CompositionImagesVersion, s.RequiredImagePolicy);   // the negotiated maximum, which now carries Kitty animation (#1017) and frame composition (#1027)
         Assert.Equal(s.RequiredImagePolicy, _mux.Mux(s.Id).RequiredImagePolicy);
         Assert.True(_pane!.Parser!.AllowNonSixelImages);
         Assert.True(_pane.Parser.RetainImageSources);

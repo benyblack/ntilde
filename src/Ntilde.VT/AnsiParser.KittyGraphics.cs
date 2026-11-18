@@ -174,8 +174,10 @@ namespace Ntilde.VT
                     "t" or "T" => TransmitKittyImage(identity, action == "T", out id),
                     "p" => DisplayStoredKittyImage(identity, out id),
                     "f" or "a" when RetainImageSources && !RetainedAnimation => "ENOTSUP:Animation is not supported where images are retained for snapshots without policy 3",
+                    "c" when RetainImageSources && !(RetainedAnimation && RetainedComposition) => "ENOTSUP:Frame composition is not supported where images are retained for snapshots without policy 4",
                     "f" => TransmitKittyFrame(identity, out id),
                     "a" => ControlKittyAnimation(identity, out id),
+                    "c" => ComposeKittyFrames(identity, out id),
                     "d" => DeleteStoredKittyImages(identity),
                     _ => "ENOTSUP:Graphics action not supported"
                 };
@@ -233,10 +235,10 @@ namespace Ntilde.VT
             string probeTransport = _kittyPendingParams.TryGetValue("t", out var probeT) ? probeT : "d";
             bool transportSupported = probeTransport == "d"
                 || (probeTransport == "f" && ReadFileBytes != null);
-            // a=a/a=f are implemented; a=c composition is not, and a client probing it (e=c) must fall back.
-            // Animation is refused where images are retained for snapshots without persistent image policy 3, so a probe must not advertise it there.
+            // a=a, a=f and a=c are implemented. Animation is refused where images are retained for snapshots without persistent image policy 3, and composition without
+            // policy 4, so a probe (e=f, e=a, e=c) must not advertise what the session would answer ENOTSUP.
             bool probesComposition = _kittyPendingParams.TryGetValue("e", out string? probedAction)
-                && (probedAction == "c" || (RetainImageSources && !RetainedAnimation && probedAction is "f" or "a"));
+                && ((RetainImageSources && !RetainedAnimation && probedAction is "f" or "a" or "c") || (RetainImageSources && !RetainedComposition && probedAction == "c"));
             string status = !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) || !transportSupported || probesComposition
                 ? "ERR"
                 : "OK";

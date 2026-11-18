@@ -1,0 +1,568 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-osc-font-size-v1",
+  "contractsVersion": 1,
+  "runId": "20768dd95adc04324b37659b5520839a",
+  "adapter": {
+    "id": "ntilde-owned-osc-font-size-grading-v1",
+    "bundleSha256": "9648ee4aae988536a9870d015eafd497fbd92f785b14b58c12678c8404f79ee4",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Read-only exact OSC7770/7777 integer typographic point queries in a disposable direct-local macOS pane. Raw framed replies are graded against actual view FontSize and effective/backing scales; actual client geometry and stored state must remain unchanged. Completed DA barriers, CSI16t controls, BEL/ST, unavailable mutation forms and verified restoration/cleanup are mandatory. OSC710 remains a separate no-operation pinned audit, outside the graded inventory. No font/window mutation, glyph appearance, remote/mux, other-platform or Core/common-harness score claim.",
+  "cases": [
+    {
+      "caseId": "extensions.osc7770-font-size",
+      "pinned": {
+        "termless": {
+          "probeId": "extensions.osc7770-font-size",
+          "pass": true,
+          "response": "\u001b]7770;10\u0007",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Complete OSC 7770 font-size reply",
+              "observed": "\u001b]7770;10\u0007"
+            }
+          ]
+        },
+        "terminal": {
+          "probeId": "extensions.osc7770-font-size",
+          "pass": true,
+          "response": "\u001b]7770;10\u0007\u001b[?62;4;22c",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Complete OSC 7770 font-size reply",
+              "observed": "\u001b]7770;10\u0007"
+            }
+          ]
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "unchanged-pinned-query",
+        "evidence": "owned-raw-replies-and-unchanged-state"
+      },
+      "effectContract": {
+        "id": "ntilde-osc-font-size-query-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "validity": [
+          {
+            "id": "positive-before",
+            "held": true
+          },
+          {
+            "id": "positive-after",
+            "held": true
+          }
+        ],
+        "required": [
+          {
+            "id": "documented-bel",
+            "held": true
+          },
+          {
+            "id": "documented-st",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-0",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-1",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-2",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-3",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-4",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-5",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-6",
+            "held": true
+          }
+        ]
+      },
+      "observed": {
+        "geometry": {
+          "viewRows": 40,
+          "viewCols": 140,
+          "cellWidthDip": 8,
+          "cellHeightDip": 18,
+          "fontAscentDip": 13.600056648254395,
+          "renderScaling": 2,
+          "backingScale": 2,
+          "fontSizeDip": 13.333333333333334,
+          "windowWidthDip": 1128,
+          "windowHeightDip": 787
+        },
+        "exchanges": [
+          {
+            "id": "positive-before",
+            "role": "control",
+            "request": "\u001b[16t",
+            "protocol": "csi",
+            "snapshot": 2,
+            "report": {
+              "replies": [
+                "\u001b[6;36;16t"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "pinned",
+            "role": "pinned",
+            "request": "\u001b]7770;?\u0007",
+            "protocol": "7770",
+            "terminator": "\u0007",
+            "snapshot": 3,
+            "report": {
+              "replies": [
+                "\u001b]7770;10\u0007"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "documented-bel",
+            "role": "required",
+            "request": "\u001b]7770;?\u0007",
+            "protocol": "7770",
+            "terminator": "\u0007",
+            "snapshot": 4,
+            "report": {
+              "replies": [
+                "\u001b]7770;10\u0007"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "documented-st",
+            "role": "required",
+            "request": "\u001b]7770;?\u001b\\",
+            "protocol": "7770",
+            "terminator": "\u001b\\",
+            "snapshot": 5,
+            "report": {
+              "replies": [
+                "\u001b]7770;10\u001b\\"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-0",
+            "role": "required",
+            "request": "\u001b]7770\u0007",
+            "protocol": "silence",
+            "snapshot": 6,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-1",
+            "role": "required",
+            "request": "\u001b]7770;\u0007",
+            "protocol": "silence",
+            "snapshot": 7,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-2",
+            "role": "required",
+            "request": "\u001b]7770;??\u0007",
+            "protocol": "silence",
+            "snapshot": 8,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-3",
+            "role": "required",
+            "request": "\u001b]7770;?;1\u0007",
+            "protocol": "silence",
+            "snapshot": 9,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-4",
+            "role": "required",
+            "request": "\u001b]7770;18\u0007",
+            "protocol": "silence",
+            "snapshot": 10,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-5",
+            "role": "required",
+            "request": "\u001b]7770;+2\u0007",
+            "protocol": "silence",
+            "snapshot": 11,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-6",
+            "role": "required",
+            "request": "\u001b]7770;-2\u0007",
+            "protocol": "silence",
+            "snapshot": 12,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "positive-after",
+            "role": "control",
+            "request": "\u001b[16t",
+            "protocol": "csi",
+            "snapshot": 13,
+            "report": {
+              "replies": [
+                "\u001b[6;36;16t"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          }
+        ]
+      },
+      "stock": {
+        "featureId": "extensions.osc7770-font-size",
+        "outcome": "supported",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc7770-font-size"
+      }
+    },
+    {
+      "caseId": "extensions.osc7777-font-window-size",
+      "pinned": {
+        "termless": {
+          "probeId": "extensions.osc7777-font-window-size",
+          "pass": true,
+          "response": "\u001b]7777;10\u0007",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Complete OSC 7777 window-size reply",
+              "observed": "\u001b]7777;10\u0007"
+            }
+          ]
+        },
+        "terminal": {
+          "probeId": "extensions.osc7777-font-window-size",
+          "pass": true,
+          "response": "\u001b]7777;10\u0007\u001b[?62;4;22c",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Complete OSC 7777 window-size reply",
+              "observed": "\u001b]7777;10\u0007"
+            }
+          ]
+        }
+      },
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "unchanged-pinned-query",
+        "evidence": "owned-raw-replies-and-unchanged-state"
+      },
+      "effectContract": {
+        "id": "ntilde-osc-font-size-query-effect-v1",
+        "version": 1,
+        "outcome": "supported",
+        "validity": [
+          {
+            "id": "positive-before",
+            "held": true
+          },
+          {
+            "id": "positive-after",
+            "held": true
+          }
+        ],
+        "required": [
+          {
+            "id": "documented-bel",
+            "held": true
+          },
+          {
+            "id": "documented-st",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-0",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-1",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-2",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-3",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-4",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-5",
+            "held": true
+          },
+          {
+            "id": "unavailable-form-6",
+            "held": true
+          }
+        ]
+      },
+      "observed": {
+        "geometry": {
+          "viewRows": 40,
+          "viewCols": 140,
+          "cellWidthDip": 8,
+          "cellHeightDip": 18,
+          "fontAscentDip": 13.600056648254395,
+          "renderScaling": 2,
+          "backingScale": 2,
+          "fontSizeDip": 13.333333333333334,
+          "windowWidthDip": 1128,
+          "windowHeightDip": 787
+        },
+        "exchanges": [
+          {
+            "id": "positive-before",
+            "role": "control",
+            "request": "\u001b[16t",
+            "protocol": "csi",
+            "snapshot": 14,
+            "report": {
+              "replies": [
+                "\u001b[6;36;16t"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "pinned",
+            "role": "pinned",
+            "request": "\u001b]7777;?\u0007",
+            "protocol": "7777",
+            "terminator": "\u0007",
+            "snapshot": 15,
+            "report": {
+              "replies": [
+                "\u001b]7777;10\u0007"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "documented-bel",
+            "role": "required",
+            "request": "\u001b]7777;?\u0007",
+            "protocol": "7777",
+            "terminator": "\u0007",
+            "snapshot": 16,
+            "report": {
+              "replies": [
+                "\u001b]7777;10\u0007"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "documented-st",
+            "role": "required",
+            "request": "\u001b]7777;?\u001b\\",
+            "protocol": "7777",
+            "terminator": "\u001b\\",
+            "snapshot": 17,
+            "report": {
+              "replies": [
+                "\u001b]7777;10\u001b\\"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-0",
+            "role": "required",
+            "request": "\u001b]7777\u0007",
+            "protocol": "silence",
+            "snapshot": 18,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-1",
+            "role": "required",
+            "request": "\u001b]7777;\u0007",
+            "protocol": "silence",
+            "snapshot": 19,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-2",
+            "role": "required",
+            "request": "\u001b]7777;??\u0007",
+            "protocol": "silence",
+            "snapshot": 20,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-3",
+            "role": "required",
+            "request": "\u001b]7777;?;1\u0007",
+            "protocol": "silence",
+            "snapshot": 21,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-4",
+            "role": "required",
+            "request": "\u001b]7777;18\u0007",
+            "protocol": "silence",
+            "snapshot": 22,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-5",
+            "role": "required",
+            "request": "\u001b]7777;+2\u0007",
+            "protocol": "silence",
+            "snapshot": 23,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "unavailable-form-6",
+            "role": "required",
+            "request": "\u001b]7777;-2\u0007",
+            "protocol": "silence",
+            "snapshot": 24,
+            "report": {
+              "replies": [],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          },
+          {
+            "id": "positive-after",
+            "role": "control",
+            "request": "\u001b[16t",
+            "protocol": "csi",
+            "snapshot": 25,
+            "report": {
+              "replies": [
+                "\u001b[6;36;16t"
+              ],
+              "barrier": "\u001b[?62;4;22c"
+            },
+            "matches": true
+          }
+        ]
+      },
+      "stock": {
+        "featureId": "extensions.osc7777-font-window-size",
+        "outcome": "supported",
+        "evidence": "query",
+        "rawReplyRef": "extensions.osc7777-font-window-size"
+      }
+    }
+  ]
+}

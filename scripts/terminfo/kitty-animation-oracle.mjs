@@ -93,7 +93,20 @@ function runningTiming(stage, facts) {
     if (!facts.start) return timingNo('animation start time unavailable');
     const possible = framesPossibleAt(facts.start, facts.capture);
     if (possible.length !== 1) return timingNo('capture span straddles a frame boundary: ' + possible.join('/'));
+    // A timeline stage shows whichever frame the original start gives for the capture span (the one frame `possible` names).
+    const expected = stage.appearance === 'timeline' ? possible[0] : stage.appearance;
+    // After a relaunch a restored playhead and one the new App restarted must predict different frames here, or this read cannot tell a restore from a restart.
+    if (facts.relaunch && framesPossibleAt(facts.relaunch, facts.capture).includes(expected)) {
+        return timingNo(`a playhead restarted by the relaunch could show the ${expected} frame here as well`);
+    }
+    if (stage.appearance === 'timeline') return timingOk;
     return possible[0] === stage.appearance ? timingOk : timingNo(`read landed in the ${possible[0]} window, not the planned ${stage.appearance} window`);
+}
+/** The one frame the timeline allows for a stage whose frame depends on when it was read; undefined when the capture span could show more than one (the stage is then inconclusive). */
+export function timelineAppearance(facts) {
+    if (!facts.start || !facts.capture) return undefined;
+    const possible = framesPossibleAt(facts.start, facts.capture);
+    return possible.length === 1 ? possible[0] : undefined;
 }
 function frozenTiming(stage, facts) {
     const { capture } = facts;
@@ -103,8 +116,24 @@ function frozenTiming(stage, facts) {
     const frozenAt = framesPossibleAt(facts.start, { start: facts.stop.earliest, end: facts.stop.latest });
     if (frozenAt.length !== 1 || frozenAt[0] !== stage.appearance) return timingNo('stop did not land inside the ' + stage.appearance + ' window');
     if (capture.start < facts.stop.latest) return timingNo('read precedes the stop taking effect');
+    // The first read after a relaunch must also rule out a playhead the App restarted from the root: it shows the root early on, so only a capture soon enough after the relaunch can tell it from a stop.
+    if (stage.relaunch && facts.relaunch && framesPossibleAt(facts.relaunch, capture).includes(stage.appearance)) {
+        return timingNo(`a playhead restarted from the root by the relaunch could show the ${stage.appearance} frame here as well`);
+    }
     if (stage.waitMs === undefined) return timingOk;
-    return framesPossibleAt(facts.start, capture).includes(stage.appearance) ? timingNo('a running animation could still show ' + stage.appearance + ' here') : timingOk;
+    if (framesPossibleAt(facts.start, capture).includes(stage.appearance)) return timingNo('a running animation could still show ' + stage.appearance + ' here');
+    return resumedPlayhead(stage, facts) ? timingNo('a playhead resumed from the frozen frame by the relaunch could still show ' + stage.appearance + ' here') : timingOk;
+}
+/**
+ * After a relaunch a stopped animation must also be told apart from one that resumed from its frozen frame when the App came back: such a playhead shows the frame it resumed on for
+ * at most one hold from the moment it resumed (anywhere in the relaunch window), so its start time ranges from two holds before the window (it resumed late in the frame's own hold)
+ * to one hold before the window's end, shifted by the frame's place in the cycle.
+ */
+function resumedPlayhead(stage, facts) {
+    if (!facts.relaunch) return false;
+    const position = animationHoldCycle.indexOf(stage.appearance) * animationHoldMs;
+    const resumed = { earliest: facts.relaunch.earliest - position - animationHoldMs, latest: facts.relaunch.latest - position };
+    return framesPossibleAt(resumed, facts.capture).includes(stage.appearance);
 }
 /**
  * Whether the timing facts let a read of this stage stand for its declared frame. Invalid timing makes a stage

@@ -262,7 +262,8 @@ public partial class TerminalBuffer
         KittyFrame old = animation.Frames[replaceIndex];
         animation.Frames[replaceIndex] = frame;
         if (replaceIndex == animation.Displayed) ShowKittyFrame(asset, frame);
-        if (replaceIndex == animation.Current && !KittyAnimationPaused) animation.RebaseCurrentGap(now);
+        // Only a gap that changed applies from now on: a replacement with the gap it had (a pixel-only edit, an a=c composition) leaves the playhead where it was.
+        if (replaceIndex == animation.Current && !KittyAnimationPaused && old.GapMs != frame.GapMs) animation.RebaseCurrentGap(now);
         return old;
     }
 

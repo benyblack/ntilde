@@ -44,10 +44,12 @@ test('each scope generation is bound to the one source policy it was collected u
         const reorder = ([dir, evidence, context, proof]) => validateCollectionScope(dir, evidence, context, proof);
         assert.equal(reorder(scoped(osc633ScopeV2, 'readonly-owned-source-graph-v62')), true);
         assert.equal(reorder(scoped(osc633Scope, 'readonly-owned-source-graph-v65')), true);
+        assert.equal(reorder(scoped(osc633Scope, 'readonly-owned-source-graph-v69')), true);
         assert.throws(() => reorder(scoped(osc633ScopeV2, 'readonly-owned-source-graph-v65')), /scoped collection/);
         assert.throws(() => reorder(scoped(osc633Scope, 'readonly-owned-source-graph-v62')), /scoped collection/);
         assert.equal(reorder(legacy(legacyScopeV2, 'readonly-owned-source-graph-v62')), true);
         assert.equal(reorder(legacy(legacyScope, 'readonly-owned-source-graph-v65')), true);
+        assert.equal(reorder(legacy(legacyScope, 'readonly-owned-source-graph-v69')), true);
         assert.throws(() => reorder(legacy(legacyScopeV2, 'readonly-owned-source-graph-v65')), /scoped collection/);
         assert.throws(() => reorder(legacy(legacyScope, 'readonly-owned-source-graph-v62')), /scoped collection/);
         assert.equal(osc633ScopeV2.id.endsWith('-v2'), true); assert.equal(osc633Scope.id.endsWith('-v5'), true);

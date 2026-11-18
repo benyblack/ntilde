@@ -1008,15 +1008,137 @@ public sealed class KittyAnimationTests
     }
 
     [Fact]
-    public void Composition_is_not_advertised_but_animation_is()
+    public void Composition_is_advertised_with_animation_in_an_ordinary_tab()
     {
         var h = new Harness();
-        h.Send("a=q,i=31,s=1,v=1,f=24,t=d,e=f", "AAAA");
-        Assert.Equal("\x1b_Gi=31;OK\x1b\\", h.Reply());
-        h.Send("a=q,i=31,s=1,v=1,f=24,t=d,e=c", "AAAA");
-        Assert.Equal("\x1b_Gi=31;ERR\x1b\\", h.Reply());
-        h.Send("a=c,i=1,r=2,c=3");
+        foreach (string extension in new[] { "f", "a", "c" })
+        {
+            h.Send($"a=q,i=31,s=1,v=1,f=24,t=d,e={extension}", "AAAA");
+            Assert.Equal("\x1b_Gi=31;OK\x1b\\", h.Reply());
+        }
+    }
+
+    [Fact]
+    public void Composition_blends_a_source_frame_onto_the_root_in_place_and_overwrite_replaces()
+    {
+        var h = new Harness();                                                // root: opaque red | opaque blue
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=77", Solid(255, 255, 255, 128));       // frame 2: half-transparent white
+        h.Replies.Clear();
+        h.Send("a=c,i=1,r=2,c=1");                                            // blend it over the whole root
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        var animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        Assert.Equal(2, animation.Frames.Count);                              // composition replaces the destination, it adds no frame
+        byte[] root = h.FramePixels(0).Rgba;                                  // half-white over opaque red | opaque blue
+        Assert.Equal(255, root[0]); Assert.InRange(root[1], 126, 129); Assert.InRange(root[2], 126, 129); Assert.Equal(255, root[3]);
+        Assert.InRange(root[4], 126, 129); Assert.InRange(root[5], 126, 129); Assert.Equal(255, root[6]); Assert.Equal(255, root[7]);
+        Assert.Equal(new byte[] { 255, 255, 255, 128, 255, 255, 255, 128 }, h.FramePixels(1).Rgba);   // the source frame is untouched
+        h.Send("a=c,i=1,r=2,c=1,C=1");                                        // replace: the pixels, alpha included, are the source's
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 255, 255, 255, 128, 255, 255, 255, 128 }, h.FramePixels(0).Rgba);
+    }
+
+    [Fact]
+    public void Composition_lands_a_rectangle_at_its_offsets_and_keeps_the_destination_gap()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=77", Solid(0, 255, 0, 255));           // frame 2: green | green, 77 ms
+        h.Replies.Clear();
+        object old = h.FramePixels(1);
+        h.Send("a=c,i=1,r=1,c=2,w=1,h=1,X=0,Y=0,x=1,y=0");                    // the root's red pixel onto frame 2's right pixel
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 0, 255, 0, 255, 255, 0, 0, 255 }, h.FramePixels(1).Rgba);
+        Assert.Equal(77, h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames[1].GapMs);
+        Assert.Equal(new byte[] { 255, 0, 0, 255, 0, 0, 255, 255 }, h.FramePixels(0).Rgba);              // the source frame is untouched
+        var retired = new List<object>(); h.Buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+        Assert.Contains(old, retired);                                        // the replaced destination's pixels are released
+    }
+
+    [Fact]
+    public void A_frame_composes_onto_itself_only_when_the_rectangles_do_not_overlap()
+    {
+        var h = new Harness(4, 1);                                            // root: red | blue | red | blue
+        h.Send("a=c,i=1,r=1,c=1,w=1,X=1,x=2");                                // the blue pixel onto the third
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 255, 0, 0, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255 }, h.FramePixels(0).Rgba);
+        h.Send("a=c,i=1,r=1,c=1,w=2,X=0,x=1");                                // [0,2) onto [1,3) overlaps
+        Assert.Contains(";EINVAL:", h.Reply());
+        h.Send("a=c,i=1,r=1,c=1,w=2,X=0,x=2");                                // [0,2) onto [2,4) touches but does not overlap
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(new byte[] { 255, 0, 0, 255, 0, 0, 255, 255, 255, 0, 0, 255, 0, 0, 255, 255 }, h.FramePixels(0).Rgba);
+    }
+
+    [Theory]
+    [InlineData("a=c,i=2,r=1,c=2", "ENOENT")]                                 // unknown image
+    [InlineData("a=c,i=1,c=2", "ENOENT")]                                     // no source frame named
+    [InlineData("a=c,i=1,r=1", "ENOENT")]                                     // no destination frame named
+    [InlineData("a=c,i=1,r=0,c=2", "ENOENT")]
+    [InlineData("a=c,i=1,r=3,c=2", "ENOENT")]
+    [InlineData("a=c,i=1,r=1,c=9", "ENOENT")]
+    [InlineData("a=c,i=1,r=5,c=2,w=9", "ENOENT")]                             // a missing frame is reported before a bad rectangle
+    [InlineData("a=c,i=1,r=1,c=2,w=3", "EINVAL")]                             // wider than the image
+    [InlineData("a=c,i=1,r=1,c=2,h=2", "EINVAL")]
+    [InlineData("a=c,i=1,r=1,c=2,w=1,X=2", "EINVAL")]                         // source rectangle leaves the image
+    [InlineData("a=c,i=1,r=1,c=2,w=2,x=1", "EINVAL")]                         // destination rectangle leaves the image
+    [InlineData("a=c,i=1,r=1,c=2,w=1,h=1,y=1", "EINVAL")]
+    [InlineData("a=c,i=1,r=1,c=2,C=2", "EINVAL")]
+    [InlineData("a=c,i=1,r=1,c=2,w=abc", "EINVAL")]
+    [InlineData("a=c,i=1,r=2,c=2,w=2", "EINVAL")]                             // a frame onto itself, the whole rectangle overlaps
+    [InlineData("a=c,i=1,r=2,c=2,w=1,X=0,x=0", "EINVAL")]
+    public void Invalid_compositions_get_a_correlated_negative_reply_and_change_nothing(string controls, string code)
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1,z=77", Solid(0, 255, 0, 255));
+        h.Replies.Clear();
+        byte[] root = (byte[])h.FramePixels(0).Rgba.Clone(), second = (byte[])h.FramePixels(1).Rgba.Clone();   // copies: a regression that mutates a frame in place must not mutate the expectation
+        h.Send(controls);
+        string reply = h.Reply();
+        Assert.Contains(";" + code + ":", reply);
+        Assert.StartsWith("\x1b_Gi=" + (controls.Contains("i=2") ? "2" : "1") + ";", reply, StringComparison.Ordinal);
+        Assert.Equal(2, h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames.Count);
+        Assert.Equal(root, h.FramePixels(0).Rgba); Assert.Equal(second, h.FramePixels(1).Rgba);
+    }
+
+    [Fact]
+    public void Composing_onto_the_current_frame_leaves_the_playhead_where_it_was()
+    {
+        var h = ThreeFrames();                                                    // gaps: root 50 ms, frame 2 100 ms, frame 3 200 ms
+        h.Now = 1000;
+        h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        Assert.False(h.Advance(1030));                                            // 30 ms into the root
+        h.Send("a=c,i=1,r=2,c=1,C=1");                                            // the current frame's pixels are replaced, its gap is not
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(0, Index(h));
+        Assert.Same(h.FramePixels(0), h.Shown);                                   // the placement shows the composed pixels at once
+        Assert.False(h.Advance(1049));
+        Assert.True(h.Advance(1050));                                             // the root still ends 50 ms after it began, not 50 ms after the composition
+        Assert.Equal(1, Index(h));
+    }
+
+    [Fact]
+    public void Composing_onto_the_current_frame_of_a_stopped_animation_does_not_move_its_frame_start()
+    {
+        var h = ThreeFrames();
+        h.Now = 1000;
+        h.Send("a=a,i=1,s=3"); h.Send("a=a,i=1,s=1"); h.Replies.Clear();
+        KittyAnimation animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        long start = animation.FrameStartMs;
+        h.Now = 60_000;                                                           // long after the frame's gap ran out: it is stopped, so nothing advanced
+        h.Send("a=c,i=1,r=2,c=1,C=1");
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(start, animation.FrameStartMs);
+    }
+
+    [Fact]
+    public void Composition_needs_readable_pixels_and_says_so_when_there_are_none()
+    {
+        var h = new Harness();
+        h.Send("a=f,i=1,f=32,s=2,v=1", Solid(0, 255, 0, 255));
+        h.Replies.Clear();
+        h.Parser.ImageDecoder = null;                                          // the root's pixels can only be read back through a decoder
+        h.Send("a=c,i=1,r=1,c=2");
         Assert.Contains(";ENOTSUP:", h.Reply());
+        h.Send("a=c,i=1,r=2,c=2,w=1,X=0,x=1");                                  // frame 2 keeps its own pixels: composing within it needs no decoder
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
     }
 
     [Fact]

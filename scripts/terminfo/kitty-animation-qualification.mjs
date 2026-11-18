@@ -86,16 +86,16 @@ const stageSummary = item => ({
 });
 
 /** Validity controls over the whole carrier run: every one must hold before any animation verdict is reported. */
-export function validityControls(report, receipt, context, observationBytes) {
+export function validityControls(report, receipt, context, observationBytes, { suiteId = kittyAnimationCarrierSuiteId, policy = kittyAnimationCarrierPolicy, caseCount = animationCases.length } = {}) {
     const binding = receipt.animationEvidence, captures = report.snapshots.filter(frame => frame.capture);
     const pairs = captures.map(frame => frame.capture.nonces.join(',')), prior = new Set(report.priorChallenges);
     const stages = report.observations, blanks = stages.filter(item => item.featureId.endsWith('.blank'));
     const timed = stages.filter(item => item.timing.clock !== 'static');
     const controls = [
-        ['receipt-binds-animation-report', binding?.runId === context.runId && binding.suiteId === kittyAnimationCarrierSuiteId && binding.sha256 === sha(observationBytes) && receipt.fixtureRemoved === true,
+        ['receipt-binds-animation-report', binding?.runId === context.runId && binding.suiteId === suiteId && binding.sha256 === sha(observationBytes) && receipt.fixtureRemoved === true,
             'the complete receipt binds this exact report and records fixture removal'],
-        ['carrier-policy', report.suiteId === kittyAnimationCarrierSuiteId && report.policy === kittyAnimationCarrierPolicy && context.ownedAnimationPolicy === kittyAnimationCarrierPolicy && report.runId === context.runId,
-            'the retained report is the paired raw render policy v2 animation report of this run'],
+        ['carrier-policy', report.suiteId === suiteId && report.policy === policy && context.ownedAnimationPolicy === policy && report.runId === context.runId,
+            policy === kittyAnimationCarrierPolicy ? 'the retained report is the paired raw render policy v2 animation report of this run' : `the retained report is the ${policy} animation report of this run`],
         ['raw-reader-healthy', report.seal.failed === false && report.seal.disposed === true && report.seal.attempts === report.actions.length,
             'the exclusive raw reader sealed without failure over every admitted write'],
         ['state-restored', report.initialSnapshot === 0 && report.restoredSnapshot === report.actions.length && report.snapshots.length === report.actions.length + 1,
@@ -105,7 +105,7 @@ export function validityControls(report, receipt, context, observationBytes) {
             'every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme'],
         ['fresh-paired-fences', captures.length === report.actions.length && pairs.length === new Set(pairs).size && pairs.every(pair => !prior.has(pair)),
             'every capture carries its own unpredictable paired challenges, none reused from the earlier phases or another capture'],
-        ['blank-before-controls', blanks.length === animationCases.length && blanks.every(item => item.result === 'passed' && item.assertions.length === 2 && item.assertions.every(value => value.passed)),
+        ['blank-before-controls', blanks.length === caseCount && blanks.every(item => item.result === 'passed' && item.assertions.length === 2 && item.assertions.every(value => value.passed)),
             'every case began from an independently blank, unchanged-surroundings target'],
         ['acknowledgement-separate-from-pixels', stages.every(item => item.reply?.passed === true) && stages.every(item => item.assertions.length > 0),
             'every write was acknowledged by its raw fence while pixel assertions were graded separately'],
@@ -116,8 +116,8 @@ export function validityControls(report, receipt, context, observationBytes) {
 }
 
 /** Derive the effect verdict from the carrier stages; the carrier's own per-case result must agree. */
-export function gradeEffect(report) {
-    const cases = effectContract.carrierCases.map(caseId => {
+export function gradeEffect(report, contract = effectContract) {
+    const cases = contract.carrierCases.map(caseId => {
         const stages = report.observations.filter(item => item.featureId.startsWith(`${caseId}.`));
         const carrier = report.caseResults.find(item => item.caseId === caseId);
         check(carrier && same(carrier.stages, stages.map(item => item.featureId)), `${caseId}: stage list differs`);
@@ -125,7 +125,7 @@ export function gradeEffect(report) {
         check(carrier.result === derived, `${caseId}: carrier result ${carrier.result} differs from its stages (${derived})`);
         return { caseId, result: derived, stages: stages.map(stageSummary) };
     });
-    return { contract: effectContract, cases, outcome: effectOf(caseOutcome(cases.map(item => item.result))) };
+    return { contract, cases, outcome: effectOf(caseOutcome(cases.map(item => item.result))) };
 }
 
 const criteria = Object.freeze({

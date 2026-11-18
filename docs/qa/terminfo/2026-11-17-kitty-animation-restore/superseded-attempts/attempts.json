@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "note": "Development attempts of #1030 in order. Only the retained files are kept; none of the failures produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-tkjOcR",
+      "runId": "93ea0a4bc257c90b323eedd714ee0f77",
+      "scripts": "23b33eab",
+      "collection": "persistent-restore scope",
+      "outcome": "no evidence",
+      "reason": "The first restore collection. The relaunch worked (the App was killed and a new one started), but the lookup of the new App's agent endpoint threw while the descriptor still named the old App: \"Observer descriptor does not identify the launched app\". The wait now treats that as \"not yet\".",
+      "files": [
+        {
+          "file": "owned-tkjOcR/failure.json",
+          "sha256": "9227a8ad97aa0d5aae4b80ea8692c6edfd695b13c0b7baded23be99a02108912",
+          "bytes": 109
+        },
+        {
+          "file": "owned-tkjOcR/worker-error.txt",
+          "sha256": "02a902004d331e1b40f8ac02c2acd1eb6aa4d74a7b9bb8aa598805aec434c75c",
+          "bytes": 520
+        },
+        {
+          "file": "owned-tkjOcR/ownership-proof.json",
+          "sha256": "6d9d89064090d19b5741254cdfab4c11378593b9676201c84467ed31c2de967b",
+          "bytes": 21686
+        }
+      ]
+    },
+    {
+      "attempt": "owned-CzUpLU",
+      "runId": "c554678dc87b96c411dfb56bd45f64c6",
+      "scripts": "336af1b9",
+      "collection": "persistent-restore scope",
+      "outcome": "no evidence",
+      "reason": "The new App's pane reattached the same session, but the ownership admission after the relaunch refused it: the daemon's parent is the first App until that App is gone and init afterwards, and the epoch check compared it as if it were fixed.",
+      "files": [
+        {
+          "file": "owned-CzUpLU/failure.json",
+          "sha256": "c691760237496bde6eaa6021b03b19cdae57d67d11ef698c6122c60c6e8976c1",
+          "bytes": 104
+        },
+        {
+          "file": "owned-CzUpLU/worker-error.txt",
+          "sha256": "736a3759a3145033b864e21d663071b5ab4c1ccaa8b54d5f64489807de6aebb5",
+          "bytes": 515
+        },
+        {
+          "file": "owned-CzUpLU/ownership-proof.json",
+          "sha256": "3b6c581462df9082f5b2ec9842ca8d64660cc608d5ac411ea60533025c8358ef",
+          "bytes": 21854
+        }
+      ]
+    },
+    {
+      "attempt": "owned-IAS7k6",
+      "runId": "33c80cb620134df7bfbb373542508b57",
+      "scripts": "78e30594",
+      "collection": "persistent-restore scope",
+      "outcome": "no evidence",
+      "reason": "The same refusal, rerun with the failing ownership retained so the cause (the daemon's changed parent) could be read from the evidence.",
+      "files": [
+        {
+          "file": "owned-IAS7k6/failure.json",
+          "sha256": "bcec0121f407ee43627f5db15715ab1734c00a2b234c005dbc457057f4fbdcab",
+          "bytes": 104
+        },
+        {
+          "file": "owned-IAS7k6/worker-error.txt",
+          "sha256": "c28f66e0f6589b8dc4d8e92da021916ea4058ba2920831f85a83b9c28a3c9c58",
+          "bytes": 515
+        },
+        {
+          "file": "owned-IAS7k6/ownership-proof.json",
+          "sha256": "71279ad6a743a375aa02694bcf269489fa6675305db2d411e0027d6b9ad972a4",
+          "bytes": 21854
+        }
+      ]
+    },
+    {
+      "attempt": "owned-eUoL23",
+      "runId": "47360412a0baa25dd3064e6290055792",
+      "scripts": "8cc5a2fa",
+      "collection": "persistent-restore scope",
+      "outcome": "22/22 passed",
+      "reason": "A complete run (22/22) on the first working scripts. Review then found that a declared relaunch need not change the App process, that the first read could precede the snapshot, that an interrupted relaunch could outlive cleanup, and that an early relaunch made a restarted playhead indistinguishable from a restored one; the fixes edit measured files, so it is superseded by the published run.",
+      "files": [
+        {
+          "file": "owned-eUoL23/animation-observations.json",
+          "sha256": "670b1476fb3668c51d9248d4d2cc0c94b035fb20787832bbffe80f3b3ed4368f",
+          "bytes": 881018
+        },
+        {
+          "file": "owned-eUoL23/persistent-animation-receipt.json",
+          "sha256": "939f353575d4aec84e2303011c03e63bd1c4cfb55897db27b9c0b64355e7b0d6",
+          "bytes": 969
+        },
+        {
+          "file": "owned-eUoL23/ownership-proof.json",
+          "sha256": "2e6f4b8c9c66d4fb9ca77fa2e2b15727d0d2657f4365df3aa38137df18347511",
+          "bytes": 96967
+        }
+      ]
+    },
+    {
+      "attempt": "owned-7JpVzZ",
+      "runId": "4dd87225fece96be086e40bde582238f",
+      "scripts": "8fa2d38f",
+      "collection": "persistent-restore scope",
+      "outcome": "22/22 passed",
+      "reason": "A complete run (source policy v67) on the scripts after the review fixes, published first. Merging main (the OSC 22 collection: source policy v68 and changes to the shared image-carrier seal checks) changed the measured graph, so it is superseded by a fresh run on the merged tree. Its retained report scope says the App was \"quit\"; the runner terminated it with SIGTERM and a graceful quit was not measured.",
+      "files": [
+        {
+          "file": "owned-7JpVzZ/animation-observations.json",
+          "sha256": "7d2cec103a18085031a170a9f6c4f66204259f4c72641c0e043a417b54c4787d",
+          "bytes": 892733
+        },
+        {
+          "file": "owned-7JpVzZ/persistent-animation-receipt.json",
+          "sha256": "33cb8286bca9c334829569d4fc2c9ed8676d9f253848da6c39de8480c6f602f6",
+          "bytes": 969
+        },
+        {
+          "file": "owned-7JpVzZ/ownership-proof.json",
+          "sha256": "74412e10f5e6efd816dd45f62ba4194ff342eefa8fd6102f9537e39229ed8be0",
+          "bytes": 103534
+        }
+      ]
+    },
+    {
+      "attempt": "owned-AK2q6J",
+      "runId": "f8ee33cbd3592763820728adae67934f",
+      "scripts": "601cd051",
+      "collection": "persistent-restore scope",
+      "outcome": "22/22 passed",
+      "reason": "A complete run (22/22, source policy v68) on the merged tree, published first. Review then found that the PNG-derived frame 2 was never read back after a relaunch, that a timeline read and the stopped hold did not rule out a restarted or resumed playhead, that the relaunch timing used a record the validated frame did not carry, and that a relaunch request was not tied to the next declared stage; the fixes edit measured files, so it is superseded by a fresh run of the 23-stage suite. Its retained report scope says the App was \"quit\"; the runner terminated it with SIGTERM and a graceful quit was not measured.",
+      "files": [
+        {
+          "file": "owned-AK2q6J/animation-observations.json",
+          "sha256": "c3c340728cbec04fcbf30f921d8b3eed28577a6c73aa146d7b1edeb3ac9a7649",
+          "bytes": 892703
+        },
+        {
+          "file": "owned-AK2q6J/persistent-animation-receipt.json",
+          "sha256": "15ca43ba50b45a951bbc50afd370133b5bf5ac7efd02f2e4d3bda74a33bbfbae",
+          "bytes": 969
+        },
+        {
+          "file": "owned-AK2q6J/ownership-proof.json",
+          "sha256": "a3b56432bf94dc42777dcc3e614b9d5ddb617e1533f4c0a7604c28173007c91a",
+          "bytes": 103514
+        }
+      ]
+    },
+    {
+      "attempt": "owned-Vp00jh",
+      "runId": "9246dd3ea80834ac469fae4cc5fd85f3",
+      "scripts": "41dfe4c1",
+      "collection": "persistent-restore scope",
+      "outcome": "23/23 passed",
+      "reason": "A complete run of the 23-stage plan (source policy v68), published first after the review fixes. A further review found that a relaunch request was admitted on the count of relaunches alone, so one naming the first relaunch stage before the setup stages, or during a capture, would have terminated the App; the admission now requires the observer idle in its admit phase on the requested stage, which edits measured files, so it is superseded by a fresh run.",
+      "files": [
+        {
+          "file": "owned-Vp00jh/animation-observations.json",
+          "sha256": "0f45d9a6652c2e6878b6980c483efdaddb92e20b611b60b793bdf77af75f44ca",
+          "bytes": 924819
+        },
+        {
+          "file": "owned-Vp00jh/persistent-animation-receipt.json",
+          "sha256": "a243cae67deb4709da14c72c6b59667b40692238e3eaf40c3b58b95bdf127fb6",
+          "bytes": 969
+        },
+        {
+          "file": "owned-Vp00jh/ownership-proof.json",
+          "sha256": "8b1edfa8b4b0338982441e2f55d980fdc94cd1cebfad1035e267d3192bd8e69a",
+          "bytes": 106313
+        }
+      ]
+    },
+    {
+      "attempt": "owned-0tb9EH",
+      "runId": "b36c2616a9ee8880b98b18d167812723",
+      "scripts": "251e0320",
+      "collection": "persistent-restore scope",
+      "outcome": "23/23 passed",
+      "reason": "A complete run of the 23-stage plan (source policy v68) on the relaunch admission fix, published first. A behavior-preserving split of the runner's relaunch answer (to clear a cognitive complexity finding) edits a measured file, so it is superseded by a fresh run.",
+      "files": [
+        {
+          "file": "owned-0tb9EH/animation-observations.json",
+          "sha256": "ba0eb3d6d66f447ce90b6618522c274e1ad8e4fef30885ce43e6e7def15795fb",
+          "bytes": 924854
+        },
+        {
+          "file": "owned-0tb9EH/persistent-animation-receipt.json",
+          "sha256": "004c4784603de1a8576f8ec586715cafbc4c4793700370067fe3234ab8665c63",
+          "bytes": 969
+        },
+        {
+          "file": "owned-0tb9EH/ownership-proof.json",
+          "sha256": "0117ac29ae70c9f22e538b7ff0b334370645de539451967ca2848538bbbf0cb7",
+          "bytes": 106336
+        }
+      ]
+    },
+    {
+      "attempt": "owned-KdC1ne",
+      "runId": "b7b803c301961b814367ff6c20be45c7",
+      "scripts": "c0d1c2f9",
+      "collection": "persistent-restore scope",
+      "outcome": "23/23 passed",
+      "reason": "A complete run of the 23-stage plan (source policy v68) after the relaunch answer was split out, published first. A third review found that the relaunch record did not say how the App ended (a kill escalated to SIGKILL would have passed as a SIGTERM restore), that the first read after a relaunch of a stopped animation did not rule out a playhead restarted from the root, and that the restore verifier did not check relaunch ordering; the fixes edit measured files, so it is superseded by a fresh run.",
+      "files": [
+        {
+          "file": "owned-KdC1ne/animation-observations.json",
+          "sha256": "f634b5995a0cb98769f0aded72abfdddb18dfe4e17fb828cac794025a17d81b1",
+          "bytes": 924819
+        },
+        {
+          "file": "owned-KdC1ne/persistent-animation-receipt.json",
+          "sha256": "441ab820ca5561e4d60ec03e2fabfc5061b9d3b27cbd0bfeba6ba4231deaf4f7",
+          "bytes": 969
+        },
+        {
+          "file": "owned-KdC1ne/ownership-proof.json",
+          "sha256": "cc8930a9e7e79f183f3c79a03e50f93dc49d67ac2a88a142def48422bcdc6f5c",
+          "bytes": 106313
+        }
+      ]
+    }
+  ]
+}

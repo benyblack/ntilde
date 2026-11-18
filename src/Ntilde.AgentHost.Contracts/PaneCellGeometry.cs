@@ -13,3 +13,11 @@ public sealed record PaneCellGeometry
     [JsonPropertyName("renderScaling")] public double RenderScaling { get; init; }
     [JsonPropertyName("backingScale")] public double BackingScale { get; init; }
 }
+
+/// <summary>Read-only App properties, independent of the parser's host snapshot.</summary>
+public sealed record PaneFontGeometry
+{
+    [JsonPropertyName("fontSizeDip")] public double FontSizeDip { get; init; }
+    [JsonPropertyName("windowWidthDip")] public double WindowWidthDip { get; init; }
+    [JsonPropertyName("windowHeightDip")] public double WindowHeightDip { get; init; }
+}

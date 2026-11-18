@@ -19,7 +19,7 @@ export const checkImages = value => { if (!value) throw new Error('Invalid or in
 /** Cheap wire-seal checks run before acknowledgment and again during full report grading. */
 export function validateImageSeal(frames, seal, suite, output) {
     const first = frames[0], last = frames.at(-1);
-    validateImageOwnership(seal?.ownership, first.ownership, first.screen);
+    validateImageOwnership(seal?.ownership, last.ownership, first.screen); // the seal follows the last frame in the same App process
     checkImages(Date.parse(last.ownership.at) <= Date.parse(seal.ownership.at));
     checkImages(seal?.failed === false && seal.disposed === true && seal.attempts === suite.plan.length && seal.lastAttempt?.completed === true
         && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
@@ -151,6 +151,20 @@ export function validateImageOwnership(actual, original, geometry) {
         && actual.worker.tty === actual.tty.slice(5));
     validateOutputGeometry(actual.terminalOutput.description, geometry.rows, geometry.cols);
 }
+/**
+ * A relaunch (#1030) replaces the App process under the same persistent session: the next ownership fact may name another App process, but
+ * the worker, the multiplexer daemon, the PTY and the App's user and executable must be exactly the ones before.
+ */
+export function validateEpochChange(actual, previous) {
+    checkImages(actual?.app && previous?.app && actual.app.pid !== previous.app.pid && actual.app.uid === previous.app.uid && actual.app.executable === previous.app.executable);
+    checkImages(actual.tty === previous.tty && previous.daemon !== undefined && actual.daemon !== undefined);
+    // The parent's own record of this relaunch must link the two App processes: the one the previous facts name, and the one these name.
+    checkImages(actual.relaunch?.from === previous.app.pid && actual.relaunch.to === actual.app.pid && Number.isFinite(Date.parse(actual.relaunch.startedAt))
+        && Date.parse(actual.relaunch.startedAt) <= Date.parse(actual.relaunch.at) && Date.parse(actual.relaunch.at) <= Date.parse(actual.at));
+    checkImages(['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => actual.worker[key] === previous.worker[key]));
+    // The daemon is the same process, but its parent is not: the App that started it was its parent until that App went away, then it belongs to init.
+    checkImages(['pid', 'uid', 'tty', 'executable'].every(key => actual.daemon[key] === previous.daemon[key]));
+}
 export function buildStaticImageReport(frames, actions, seal, runId, output, priorChallenges = []) {
     checkImages(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === 31 && actions?.length === 30
         && Array.isArray(priorChallenges) && priorChallenges.length <= inputPriorCaptureCap && new Set(priorChallenges).size === priorChallenges.length);
@@ -169,12 +183,21 @@ export class StaticImageReport {
     constructor(frames, actions, runId, output, priorChallenges, suite = staticImageSuite) {
         this.suite = suite;
         this.frames = frames; this.actions = actions; this.runId = runId; this.output = output;
-        this.initial = frames[0].screen; this.paneId = frames[0].paneId; this.bound = imageBoundScreen(this.initial, runId);
+        this.initial = frames[0].screen; this.paneId = frames[0].paneId; this.bound = imageBoundScreen(this.initial, runId); this.epoch = frames[0].ownership;
         checkImages(pristineImageBaseline(this.initial) && this.initial.rows >= 8 && this.initial.cols >= 60);
         this.used = new Set(priorChallenges); this.states = new Map(); this.observations = []; this.backgrounds = []; this.total = 0; this.lastTime = -Infinity;
     }
+    /** The ownership every later fact is compared with: the first of the current App process; it changes only at a stage the suite declares a relaunch, and there it must. */
+    adoptEpoch(frame, entry) {
+        const changed = frame.ownership?.app?.pid !== this.epoch.app.pid;
+        checkImages(changed === (this.suite.relaunches?.(entry) === true));
+        if (!changed) return;
+        validateEpochChange(frame.ownership, this.epoch);
+        this.epoch = frame.ownership; this.paneId = frame.paneId;
+    }
     validateFrame(frame, index, entry) {
-        validateImageOwnership(frame.ownership, this.frames[0].ownership, this.initial);
+        this.adoptEpoch(frame, entry);
+        validateImageOwnership(frame.ownership, this.epoch, this.initial);
         checkImages(frame.index === index && frame.kind === this.suite.prefix + entry.kind && frame.paneId === this.paneId
             && frame.caseId === (entry.caseId ?? null) && frame.stageId === (entry.stageId ?? null));
         for (const screen of [frame.screen, frame.afterScreen]) screenSnapshot(screen, false, true, true, true, true);
@@ -197,7 +220,7 @@ export class StaticImageReport {
     }
     validateAction(frame, index, entry) {
         const action = this.actions[index - 1];
-        validateImageOwnership(action.ownership, this.frames[0].ownership, this.initial);
+        validateImageOwnership(action.ownership, this.epoch, this.initial);
         const actionTime = Date.parse(action.ownership.at), frameTime = Date.parse(frame.ownership.at);
         checkImages(this.lastTime <= actionTime && actionTime <= frameTime); this.lastTime = frameTime;
         checkImages(action.index === index - 1 && frame.actionIndex === action.index && action.kind === frame.kind

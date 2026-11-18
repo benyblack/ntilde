@@ -21,7 +21,7 @@ const osc5 = () => ({ sourceSnapshotPolicy: policy(63), osc5ContractsSourceSha25
 const cell64 = () => ({ ...cell(), ...kitty(), sourceSnapshotPolicy: policy(64), collectionScope: legacyScopeV4 });
 const osc564 = () => ({ ...osc5(), ...kitty(), sourceSnapshotPolicy: policy(64), collectionScope: osc5LegacyScopeV4 });
 
-test('frozen graphs remain distinct from the live455-input v68 graph', () => {
+test('frozen graphs remain distinct from the live461-input v69 graph', () => {
     for (const [graph, count] of [[capturedV70SourceFiles, 420], [capturedCellSizeForkV70Files, 425], [capturedOsc5ForkV63Files, 420],
         [capturedV71SourceFiles, 432], [capturedOsc5ForkV64Files, 427], [capturedV72SourceFiles, 439], [capturedV73SourceFiles, 444], [capturedV74SourceFiles, 450]]) assert.equal(Object.keys(graph).length, count);
     assert.deepEqual(ownedSourceFiles, capturedV76SourceFiles);

@@ -876,7 +876,12 @@ actual outcomes, including eight earlier complete runs of the three-case suite a
 The [2026-11-17 persistent-tab animation qualification](terminfo/2026-11-17-kitty-animation-persistent-qualification.md)
 (#1025) measures the same animation suite in a live persistent (`KeepOnClose`) tab: effect supported (24/24 stages), pinned callbacks inconclusive by design, no stock run and no Core,
 stock or common-harness change. It uses `--scope persistent-animation`, a separate collection with its own receipt, because the worker is the multiplexer daemon's child and the full
-collection is not claimed for persistent tabs (the ownership proof is extended, not relaxed). Reattach or restart (snapshot restore) is not measured.
+collection is not claimed for persistent tabs (the ownership proof is extended, not relaxed). Reattach or restart (snapshot restore) is measured by the next batch.
+
+The [2026-11-17 persistent restore qualification](terminfo/2026-11-17-kitty-animation-restore-qualification.md)
+(#1030) measures that restore: `--scope persistent-restore` terminates the App with SIGTERM while the daemon and shell keep running, starts it again on the same private root, and reads the reattached pane
+(a running animation continuing from its original start, a stopped one staying stopped, edited and PNG-derived frames surviving). Ownership is held per App process, and a read that a playhead restarted by the new App would also pass is
+inconclusive, not passed. Effect supported (23/23), pinned callbacks inconclusive by design, no stock run and no Core, stock or common-harness change; a graceful quit is not measured.
 
 The [completed v11 exact-query measurement](terminfo/2026-11-05-query-observations.md)
 retains 40 exact contracts (38 matched, two mismatched), 44 original actions and
@@ -1361,6 +1366,9 @@ The [OSC 3008 batch](terminfo/2026-11-17-osc3008-qualification.md) implements [U
 
 The [OSC 22 batch](terminfo/2026-11-17-osc22-qualification.md) implements bounded direct-local App setters and measures the requested shape and the actual Avalonia Cursor kind independently. Eight required checks and nine controls held across 15 reads; prepared null/Arrow restoration and complete teardown are receipted (schema75, source policy68, 455 inputs). The exact pinned CPR-only probe remains inconclusive; the separate App effect is supported, with no stock/Core/Modern or native-pointer-image score claim. All three attempts are retained: failed dispatch, the earlier successful App, and the fresh App after the screen-switch hover fix. Stacks/queries/other names, runtime hover/alternate screens, mux/replay and other platforms remain outside this qualification.
 
+### OSC 7770 and OSC 7777 font-size queries (#994)
+
+The [font query qualification](terminfo/2026-11-18-osc-font-queries-qualification.md) measures exact replies for both read-only integer-point queries on the disposable direct-local macOS App. The App returned 10 points with matching BEL and ST framing. Independent font/window readback, two delivery controls per case, unchanged stored state and confirmed restoration support both effects. Both pinned paths and fresh stock support each query. The separate OSC 710 audit records its no-operation pinned probe and unqualified X11 font-description service.
 ### iTerm2 feature reporting (OSC 1337 RequestCapabilities)
 
 The [feature-reporting batch](terminfo/2026-11-17-osc1337-capabilities-qualification.md) implements the response half of iTerm2's
@@ -1369,5 +1377,5 @@ The [feature-reporting batch](terminfo/2026-11-17-osc1337-capabilities-qualifica
 accepts OSC 52 writes, the XTGETTCAP `Ms` gate; `Aw`, `Uw` and the measured-unsupported `Sx` stay undeclared; unsolicited `Capabilities` forms stay silent — the [#1003 policy audit](terminfo/2026-11-17-term-features-policy.md)
 regressions are retained). The pinned probe's valid pattern accepts any feature string, so the graded conclusion is the separately identified effect contract `ntilde-osc1337-capabilities-effect-v1`,
 which demands the specification-table literal: **supported**, with the exact-query witness (query policy v7) matching byte for byte. The stock grade moves from inconclusive to **supported**
-(95/159/1). Receipt schema 74 and source policy v69 bind 463 inputs; the inventory adds one pinned-and-effect-supported ID and no Core, Modern or common-harness score increase. The
+(95/159/1). Receipt schema 77 and source policy v70 bind 469 inputs; the inventory adds one pinned-and-effect-supported ID and no Core, Modern or common-harness score increase. The
 [TERM_FEATURES environment declaration](terminfo/2026-11-17-term-features-policy.md) stays unset.

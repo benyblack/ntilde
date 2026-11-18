@@ -93,6 +93,7 @@ export const benchmarkSuites = Object.freeze([
     // rxvt OSC 720 (view up / erase saved lines): pinned terminal path preserved inconclusive by design, the replayed termless function and one effect contract, graded from the App view position, history, cursor and screen with wheel and ED 3 controls.
     { ...directory('osc720', '2026-11-17-osc720', '2026-11-17-osc720-qualification.md'), module: 'osc720-inventory.mjs', exports: ['osc720SuiteId', 'osc720ContractsVersion', 'osc720CaseIds'], test: 'osc720-publication.test.mjs' },
     { ...directory('osc22', '2026-11-17-osc22', '2026-11-17-osc22-qualification.md'), module: 'osc22-inventory.mjs', exports: ['osc22SuiteId', 'osc22ContractsVersion', 'osc22CaseIds'], test: 'osc22-publication.test.mjs' },
+    { ...directory('font-size', '2026-11-18-osc-font-queries', '2026-11-18-osc-font-queries-qualification.md'), module: 'font-size-contracts.mjs', exports: ['fontSizeSuiteId', 'fontSizeVersion', 'fontSizeIds'], test: 'font-size-publication.test.mjs' },
     // Kitty graphics animation: the pinned callbacks replayed (always inconclusive), one effect contract composed from the owned animation carrier of the same run.
     { ...directory('kitty-animation', '2026-11-16-kitty-animation', '2026-11-16-kitty-animation-qualification.md'), module: 'kitty-animation-qualification.mjs', exports: ['kittyAnimationQualificationSuiteId', 'kittyAnimationQualificationVersion', 'kittyAnimationQualificationIds'], receiptSuiteId: 'ntilde-owned-kitty-animation-v2', test: 'kitty-animation-publication.test.mjs' },
     { ...directory('cell-size', '2026-11-17-osc-cell-size-integrated', '2026-11-17-osc-cell-size-integrated-qualification.md'), module: 'cell-size-contracts.mjs', exports: ['cellSizeSuiteId', 'cellSizeVersion', 'cellSizeIds'], test: 'cell-size-integrated-publication.test.mjs' },
@@ -118,6 +119,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'reset-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',
     'insert-replace-publication-projection.test.mjs': 'unit test of the projection of the registered insert-replace suite',
     'kitty-animation-persistent-publication.test.mjs': 'second measurement of the already registered extensions.kitty-graphics.animation, in a live persistent tab by its own receipt (no stock run); it adds no benchmark-suite claim or id',
+    'kitty-animation-restore-publication.test.mjs': 'third measurement of the already registered extensions.kitty-graphics.animation, after a killed-and-restarted App in a persistent tab by its own receipt (no stock run); it adds no benchmark-suite claim or id',
     'common-core-publication.test.mjs': 'common-harness comparison, a different evidence class from owned effect contracts',
     'core-erase-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
     'core-reverse-wide-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',

@@ -79,7 +79,8 @@ namespace Ntilde.Controls
                 double backingScale = Avalonia.Controls.TopLevel.GetTopLevel(TermView)?.RenderScaling ?? double.NaN;
                 double pointScale = scale / backingScale;
                 parser.CellSizeReports = new CellSizeReportMetrics(metrics.CellWidth * pointScale, metrics.CellHeight * pointScale,
-                    backingScale, metrics.Ascent * pointScale);
+                    backingScale, metrics.Ascent * pointScale)
+                { FontSizePoints = TermView.FontSize * pointScale * 72.0 / 96.0 };
                 if (!double.IsFinite(scale) || scale <= 0) scale = 1;
                 float width = (float)(TermView.Metrics.CellWidth * scale);
                 float height = (float)(TermView.Metrics.CellHeight * scale);

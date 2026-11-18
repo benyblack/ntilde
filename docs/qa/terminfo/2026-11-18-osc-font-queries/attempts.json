@@ -1,0 +1,33 @@
+[
+  {
+    "runId": "7f95d3818c574edbbc56b78082c47de7",
+    "archive": "failed/attempt-1.zip",
+    "disposition": "failed",
+    "error": "Pinned erase.screen.below feed 0 differs from the contract.",
+    "runnerLog": [
+      "Collecting in disposable Ntilde pid 30364; results: /Users/behnam/.codex/worktrees/issue-994-font-extensions/ntilde/artifacts/terminfo/owned-ZcmERH",
+      "[terminfo-owned] Pinned erase.screen.below feed 0 differs from the contract. Evidence retained in /Users/behnam/.codex/worktrees/issue-994-font-extensions/ntilde/artifacts/terminfo/owned-ZcmERH",
+      "[terminfo-owned] desktop lease 7f95d3818c574edbbc56b78082c47de7 released after verified cleanup."
+    ]
+  },
+  {
+    "runId": "3167f4b0eae6be7775460946e25a8256",
+    "archive": "failed/attempt-2.zip",
+    "disposition": "failed",
+    "error": "Core SGR raster: decoded pixel budget exhausted",
+    "runnerLog": [
+      "Collecting in disposable Ntilde pid 34488; results: /Users/behnam/.codex/worktrees/issue-994-font-extensions/ntilde/artifacts/terminfo/owned-9gPw20",
+      "[terminfo-owned] Core SGR raster: decoded pixel budget exhausted Evidence retained in /Users/behnam/.codex/worktrees/issue-994-font-extensions/ntilde/artifacts/terminfo/owned-9gPw20",
+      "[terminfo-owned] desktop lease 3167f4b0eae6be7775460946e25a8256 released after verified cleanup."
+    ]
+  },
+  {
+    "runId": "20768dd95adc04324b37659b5520839a",
+    "archive": "owned-run.zip",
+    "disposition": "admitted",
+    "runnerLog": [
+      "Collecting in disposable Ntilde pid 40675; results: /Users/behnam/.codex/worktrees/issue-994-font-extensions/ntilde/artifacts/terminfo/owned-dsygta",
+      "[terminfo-owned] desktop lease 20768dd95adc04324b37659b5520839a released after verified cleanup."
+    ]
+  }
+]

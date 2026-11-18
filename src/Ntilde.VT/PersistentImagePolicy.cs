@@ -33,8 +33,15 @@ public static class PersistentImagePolicy
     /// </summary>
     public const int AnimationImagesVersion = 3;
 
+    /// <summary>
+    /// <see cref="AnimationImagesVersion"/> plus Kitty frame composition (<c>a=c</c>, #1027). A version of its own because a version-3 peer answers <c>ENOTSUP</c> to it:
+    /// under one policy, one side would compose a frame and the other would not, and the two would then hold different frames. A composed frame is an ordinary frame
+    /// (its result replaces the destination frame), so snapshots carry nothing new.
+    /// </summary>
+    public const int CompositionImagesVersion = 4;
+
     /// <summary>The highest policy this build supports.</summary>
-    public const int EnabledVersion = AnimationImagesVersion;
+    public const int EnabledVersion = CompositionImagesVersion;
 
     /// <summary>Whether <paramref name="version"/> carries Kitty graphics and iTerm2 inline images.</summary>
     public static bool AllowsImages(int version) => version >= RetainedImagesVersion;
@@ -44,6 +51,9 @@ public static class PersistentImagePolicy
 
     /// <summary>Whether <paramref name="version"/> retains Kitty animation frames in snapshots.</summary>
     public static bool AllowsAnimation(int version) => version >= AnimationImagesVersion;
+
+    /// <summary>Whether <paramref name="version"/> composes Kitty animation frames (<c>a=c</c>).</summary>
+    public static bool AllowsComposition(int version) => version >= CompositionImagesVersion;
 
     /// <summary>Configures a persistent-session parser (daemon or client) for <paramref name="version"/>.</summary>
     public static void Apply(AnsiParser parser, int version)
@@ -55,5 +65,6 @@ public static class PersistentImagePolicy
         parser.AllowNativeKittyGraphics = images;
         parser.AllowITerm2Multipart = AllowsITerm2Multipart(version);
         parser.RetainedAnimation = AllowsAnimation(version);
+        parser.RetainedComposition = AllowsComposition(version);
     }
 }
