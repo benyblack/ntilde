@@ -86,7 +86,7 @@ const stageSummary = item => ({
 });
 
 /** Validity controls over the whole carrier run: every one must hold before any animation verdict is reported. */
-export function validityControls(report, receipt, context, observationBytes, { suiteId = kittyAnimationCarrierSuiteId, policy = kittyAnimationCarrierPolicy, caseCount = animationCases.length } = {}) {
+export function validityControls(report, receipt, context, observationBytes, { suiteId = kittyAnimationCarrierSuiteId, policy = kittyAnimationCarrierPolicy, caseCount = animationCases.length, requireTimed = true } = {}) {
     const binding = receipt.animationEvidence, captures = report.snapshots.filter(frame => frame.capture);
     const pairs = captures.map(frame => frame.capture.nonces.join(',')), prior = new Set(report.priorChallenges);
     const stages = report.observations, blanks = stages.filter(item => item.featureId.endsWith('.blank'));
@@ -109,8 +109,9 @@ export function validityControls(report, receipt, context, observationBytes, { s
             'every case began from an independently blank, unchanged-surroundings target'],
         ['acknowledgement-separate-from-pixels', stages.every(item => item.reply?.passed === true) && stages.every(item => item.assertions.length > 0),
             'every write was acknowledged by its raw fence while pixel assertions were graded separately'],
-        ['wall-clock-windows-valid', timed.length > 0 && timed.every(item => item.timing.valid === true && item.timing.facts.capture.end >= item.timing.facts.capture.start),
-            'every timed read landed wholly inside its planned frame window, measured against retained wall-clock brackets rather than synthetic presentation time'],
+        ['wall-clock-windows-valid', requireTimed ? timed.length > 0 && timed.every(item => item.timing.valid === true && item.timing.facts.capture.end >= item.timing.facts.capture.start) : timed.length === 0,
+            requireTimed ? 'every timed read landed wholly inside its planned frame window, measured against retained wall-clock brackets rather than synthetic presentation time'
+                : 'the suite has no timed stage: every observation is a static frame chosen by an explicit command, so no elapsed-time window is claimed'],
     ];
     return controls.map(([name, held, detail]) => ({ name, held, detail }));
 }

@@ -14,7 +14,8 @@ namespace Ntilde.VT
         // DEC G0..G3 charset designation + GL shift state.
         // mc/ncurses draw box characters via terminfo `smacs`/`rmacs` (SO/SI) and `ESC ( 0`
         // to designate G0 as DEC Special Graphics; printable letters then map per the table.
-        private enum Charset { Ascii, DecSpecialGraphics }
+        // Ordinals are persisted (parser state, saved cursors): append, never reorder.
+        private enum Charset { Ascii, DecSpecialGraphics, Uk }
         private readonly Charset[] _charsets = new Charset[] { Charset.Ascii, Charset.Ascii, Charset.Ascii, Charset.Ascii };
         private int _gl; // 0..3 — index into _charsets currently shifted to GL
         private int _pendingCharsetSlot = -1;
@@ -405,6 +406,10 @@ namespace Ntilde.VT
             }
             else
             {
+                // ENQ (0x05) lands here too and is deliberately never answered. It asks a VT100 for its
+                // operator-set answerback message; there is none and no setting for one, because the
+                // reply would be typed into whatever program is reading and any text the terminal is
+                // shown can request it. The buffer ignores it like every other control it has no action for.
                 if (_swallowNextNewline)
                 {
                     if (c == '\r' || c == '\n')
@@ -417,6 +422,26 @@ namespace Ntilde.VT
                 _buffer.WriteChar(c);
             }
         }
+
+        /// <summary>A GL code point (0x20..0x7E) as the designated set presents it.</summary>
+        private static char MapCharset(Charset charset, char c) => charset switch
+        {
+            Charset.DecSpecialGraphics => MapDecSpecialGraphics(c),
+            Charset.Uk => c == '#' ? '£' : c, // The VT100 UK set is ASCII with the pound sign at 2/3.
+            _ => c,
+        };
+
+        /// <summary>
+        /// The set an SCS designator selects. <c>A</c> is the UK set, <c>0</c> DEC Special Graphics. The two
+        /// VT100 alternate-ROM designators follow xterm: <c>1</c> (alternate ROM standard) is ASCII and <c>2</c>
+        /// (alternate ROM special graphics) is DEC Special Graphics. <c>B</c> and every other designator is ASCII.
+        /// </summary>
+        private static Charset CharsetForDesignator(char designator) => designator switch
+        {
+            '0' or '2' => Charset.DecSpecialGraphics,
+            'A' => Charset.Uk,
+            _ => Charset.Ascii,
+        };
 
         // DEC Special Graphics: maps 0x5F..0x7E to box-drawing/symbol characters.
         // Anything outside that range passes through unchanged.
@@ -534,6 +559,10 @@ namespace Ntilde.VT
                     _buffer.SetTabStopAtCursor();
                     _state = State.Normal;
                     return true;
+                case 'Z': // DECID: answered exactly as primary DA, as the VT100 and xterm do
+                    OnResponse?.Invoke(PrimaryDeviceAttributesReply);
+                    _state = State.Normal;
+                    return true;
                 case '\\': // ST outside a string - ignore
                     _state = State.Normal;
                     return true;
@@ -611,7 +640,8 @@ namespace Ntilde.VT
                                 else
                                 {
                                     // Printable Characters — translate via active GL charset.
-                                    _textBuffer.Append(_charsets[_gl] == Charset.DecSpecialGraphics ? MapDecSpecialGraphics(c) : c);
+                                    Charset gl = _charsets[_gl];
+                                    _textBuffer.Append(gl == Charset.Ascii ? c : MapCharset(gl, c));
                                 }
                                 break;
 
@@ -657,13 +687,16 @@ namespace Ntilde.VT
                                 }
                                 else if (c == '(' || c == ')' || c == '*' || c == '+' || c == '-')
                                 {
-                                    // G0..G3 charset designation. '(' '-' designate G0,
-                                    // ')' G1, '*' G2, '+' G3. Capture slot, then consume the
-                                    // designator char on the next byte.
+                                    // G0..G3 charset designation. '(' designates G0, ')' G1,
+                                    // '*' G2, '+' G3. Capture slot, then consume the designator
+                                    // char on the next byte. '-' introduces a 96-character set,
+                                    // where 'A' is ISO Latin-1 supplemental rather than the UK
+                                    // set; no 96-character set is implemented, so its designator
+                                    // is consumed and no slot changes.
                                     _pendingCharsetSlot = c switch
                                     {
                                         '(' => 0,
-                                        '-' => 0,
+                                        '-' => -1,
                                         ')' => 1,
                                         '*' => 2,
                                         '+' => 3,
@@ -684,11 +717,10 @@ namespace Ntilde.VT
 
                             case State.Charset:
                                 // The designator chooses the table loaded into the slot captured in State.Esc.
-                                // '0' = DEC Special Graphics; everything else (including 'B' = US-ASCII and
-                                // unsupported designators like 'A'/'1'/'2') falls back to ASCII pass-through.
+                                // See CharsetForDesignator for the designators that are not ASCII pass-through.
                                 if (_pendingCharsetSlot >= 0 && _pendingCharsetSlot < _charsets.Length)
                                 {
-                                    _charsets[_pendingCharsetSlot] = c == '0' ? Charset.DecSpecialGraphics : Charset.Ascii;
+                                    _charsets[_pendingCharsetSlot] = CharsetForDesignator(c);
                                 }
                                 _pendingCharsetSlot = -1;
                                 _state = State.Normal;

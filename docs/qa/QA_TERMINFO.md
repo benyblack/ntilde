@@ -878,6 +878,11 @@ The [2026-11-17 persistent-tab animation qualification](terminfo/2026-11-17-kitt
 stock or common-harness change. It uses `--scope persistent-animation`, a separate collection with its own receipt, because the worker is the multiplexer daemon's child and the full
 collection is not claimed for persistent tabs (the ownership proof is extended, not relaxed). Reattach or restart (snapshot restore) is measured by the next batch.
 
+The [2026-11-18 persistent composition qualification](terminfo/2026-11-18-kitty-animation-compose-qualification.md)
+(#1027) measures `a=c` frame composition in a live persistent tab with `--scope persistent-compose` (suite version 4, whole-frame compositions and refused ones; 10/10 stages,
+effect supported, pinned callbacks inconclusive by design, no stock run and no Core, stock or common-harness change; partial rectangles are covered by unit tests only). The
+[ordinary-tab measurement](terminfo/2026-11-18-kitty-animation-compose-direct-qualification.md) runs the same suite with `--scope direct-compose` (no daemon, the root read back through the host decoder): 10/10, effect supported.
+
 The [2026-11-17 persistent restore qualification](terminfo/2026-11-17-kitty-animation-restore-qualification.md)
 (#1030) measures that restore: `--scope persistent-restore` terminates the App with SIGTERM while the daemon and shell keep running, starts it again on the same private root, and reads the reattached pane
 (a running animation continuing from its original start, a stopped one staying stopped, edited and PNG-derived frames surviving). Ownership is held per App process, and a read that a playhead restarted by the new App would also pass is

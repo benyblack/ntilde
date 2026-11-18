@@ -10,7 +10,7 @@ import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageB
 import { pngHash } from './pixels-capture.mjs';
 
 /** Policies by suite version; a retained run's context names the one it was collected under, and its evidence is rederived under that version's plan. */
-export const ownedAnimationPolicies = Object.freeze({ 1: 'owned-kitty-animation-paired-raw-render-v1', 2: 'owned-kitty-animation-paired-raw-render-v2', 3: 'owned-kitty-animation-paired-raw-render-restore-v1' });
+export const ownedAnimationPolicies = Object.freeze({ 1: 'owned-kitty-animation-paired-raw-render-v1', 2: 'owned-kitty-animation-paired-raw-render-v2', 3: 'owned-kitty-animation-paired-raw-render-restore-v1', 4: 'owned-kitty-animation-paired-raw-render-compose-v1' });
 export const ownedAnimationPolicy = ownedAnimationPolicies[currentAnimationVersion];
 /** The suite version a retained policy string names, or null for an unknown one. */
 export const animationVersionOfPolicy = policy => Object.keys(ownedAnimationPolicies).map(Number).find(version => ownedAnimationPolicies[version] === policy) ?? null;
@@ -61,7 +61,9 @@ export function animationReply(raw, stage, imageId) {
     checkImages(parsed.length <= expected.length && parsed.every((reply, index) => reply.placement === expected[index].placement));
     const statuses = parsed.map(reply => reply.status);
     if (!expected.length) return { passed: true, statuses };
-    return { passed: statuses.length === expected.length && statuses.every(status => status === 'OK'), statuses };
+    // A reply passes when it has the status the stage expects: OK exactly, or the named error code (its message is the terminal's own wording).
+    const code = status => status.split(':')[0];
+    return { passed: statuses.length === expected.length && statuses.every((status, index) => (expected[index].status === 'OK' ? status === 'OK' : code(status) === expected[index].status)), statuses };
 }
 
 export function animationBoundScreen(initial, runId) { return imageBoundScreen(initial, runId); }
@@ -93,6 +95,8 @@ export const animationSpanOf = frame => {
 const scopeTail = 'independently captured raw replies, paired original offscreen PNGs, complete cells/modes and wall-clock capture spans. '
     + 'Elapsed-time claims are bounded to this App build and run: no display-refresh cadence, other platform, frame-rate, snapshot/persistent-session or stock-grade claim.';
 const scopes = Object.freeze({
+    4: 'Two bounded Kitty animation frame-composition cases in one tab (a=c: replace and blend onto frames, and refused compositions that change nothing); the run\'s collection scope says whether that tab is a persistent one or an ordinary one. '
+        + 'Whole-frame compositions only, so every observation is one uniform color; ' + scopeTail,
     1: 'Three bounded Kitty animation cases; ' + scopeTail,
     2: 'Four bounded Kitty animation cases (a stationary control, playback, stop-freeze, and PNG and root-based frames); ' + scopeTail,
     3: 'Three bounded Kitty animation restore cases in a persistent tab (a running animation, a stopped one, and PNG and root-edited frames), each read again after the App was terminated with SIGTERM (not a graceful quit) and started again on the same persistent session; '
@@ -136,7 +140,7 @@ function suiteOf(version) {
         factsMatch: (action, state) => action.imageId === (state.imageId ?? null),
     });
 }
-export const animationSuites = Object.freeze({ 1: suiteOf(1), 2: suiteOf(2), 3: suiteOf(3) });
+export const animationSuites = Object.freeze({ 1: suiteOf(1), 2: suiteOf(2), 3: suiteOf(3), 4: suiteOf(4) });
 export const animationSuite = animationSuites[currentAnimationVersion];
 
 class AnimationReport extends StaticImageReport {

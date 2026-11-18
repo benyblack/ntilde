@@ -9,7 +9,7 @@ import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { collectOsc133 } from './osc133-collector.mjs';
 import { collectOsc633 } from './osc633-collector.mjs';
-import { isLegacyScope, isOsc633Scope, isPersistentAnimationScope } from './collection-scope.mjs';
+import { isAnimationOnlyScope, isLegacyScope, isOsc633Scope } from './collection-scope.mjs';
 import { collectOsc78 } from './osc78-collector.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -134,10 +134,10 @@ let config;
 try {
     assertPrivateFile(process.argv[2]);
     config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-    if (config.collectionScope !== undefined && !isOsc633Scope(config.collectionScope) && !isLegacyScope(config.collectionScope) && !isPersistentAnimationScope(config.collectionScope)) throw new Error('Unknown owned collection scope.');
+    if (config.collectionScope !== undefined && !isOsc633Scope(config.collectionScope) && !isLegacyScope(config.collectionScope) && !isAnimationOnlyScope(config.collectionScope)) throw new Error('Unknown owned collection scope.');
     // Establish the real process/PTY relation before loading the probe engine.
     const binding = await verifyNtildeOutput(config, process.stdout);
-    if (isPersistentAnimationScope(config.collectionScope)) await runPersistentAnimation(config, binding);
+    if (isAnimationOnlyScope(config.collectionScope)) await runPersistentAnimation(config, binding);
     else {
         const fence = terminalFence(process.stdin, process.stdout);
         let restoreOutput;

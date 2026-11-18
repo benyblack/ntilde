@@ -1,0 +1,810 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-kitty-animation-compose-qualification-v1",
+  "carrierSuiteId": "ntilde-owned-kitty-animation-compose-v1",
+  "contractsVersion": 1,
+  "runId": "d7277dd1ca4e84f9d837c00d84849f33",
+  "adapter": {
+    "id": "ntilde-owned-kitty-animation-persistent-adapter-v1",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "pinnedSpans": {
+      "helper": "e337ddbb1f81a40c2c6f997912e6f53aa9a86fa4d0cfde2705dbdb0b6b9899bb",
+      "extensions.kitty-graphics.animation": "4932e05f5f45fe474ebf7df9adf6eb248c04ebe5145b0b5c19fb51a5c72ea25f"
+    }
+  },
+  "scope": "The Kitty animation frame-composition suite alone in one persistent (KeepOnClose, image policy 4) tab on a disposable macOS sidecar: two cases (whole-frame a=c compositions that replace and blend, and refused compositions that change nothing), over paired original offscreen PNGs and complete cells/modes. No stock collector ran, so there is no stock grade and no Core or common-harness claim; the pinned callbacks are replayed from the retained bundle and stay inconclusive by design. Not measured: an ordinary (non-persistent) tab on the desktop in this publication (see the ordinary-tab one), rectangle offsets and sizes smaller than the image (pinned by unit tests; a partial composition is not one uniform color), a composition source or destination that is a PNG-encoded root (the root image is raw RGBA, f=32; only the added frame is PNG), a second client, remote persistent sessions, other platforms, a restart or reattach after composing.",
+  "cases": [
+    {
+      "caseId": "extensions.kitty-graphics.animation",
+      "pinned": {
+        "pass": false,
+        "note": "Declared Kitty graphics capability does not establish timed animation playback",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "Declared Kitty graphics capability does not establish timed animation playback"
+        },
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":true}",
+          "note": "Declared Kitty graphics capability does not establish timed animation playback",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "declaredFalseResponse": "{\"declared\":false}"
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No timed frame playback or pixel readback for Kitty animation",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No timed frame playback or pixel readback for Kitty animation"
+          }
+        }
+      },
+      "effectContract": {
+        "id": "ntilde-kitty-animation-persistent-compose-effect-v1",
+        "version": 1,
+        "statement": "In a persistent tab, a=c composes a whole source frame onto a destination frame of a retained image as the Kitty protocol specifies, read by paired offscreen captures: with C=1 the destination frame is replaced by the source frame's pixels, alpha included (a half-transparent green frame 4, built on no base, replaces the opaque blue frame 3, so the pane shows the green at its own alpha over the terminal background, where a blend would have shown it over the blue); by default the source is alpha-blended, so the same half-transparent frame blended onto the opaque red root shows the protocol's blend of the two; and compositions the protocol refuses (a missing frame: ENOENT; a rectangle wider than the image, and one frame onto itself with overlapping rectangles: EINVAL) answer exactly those error codes and change nothing (the displayed frame stays the root, and frame 2 is still its own green afterwards). Every other command that expects a Kitty reply returned OK, and each clear passed its fence and left its target blank (a=d success is silent).",
+        "primary": "https://sw.kovidgoyal.net/kitty/graphics-protocol/#composing-animation-frames",
+        "carrierCases": [
+          "kitty.animation.compose-replace-blend",
+          "kitty.animation.compose-refused"
+        ],
+        "validity": [
+          {
+            "name": "receipt-binds-animation-report",
+            "held": true,
+            "detail": "the complete receipt binds this exact report and records fixture removal"
+          },
+          {
+            "name": "carrier-policy",
+            "held": true,
+            "detail": "the retained report is the owned-kitty-animation-paired-raw-render-compose-v1 animation report of this run"
+          },
+          {
+            "name": "raw-reader-healthy",
+            "held": true,
+            "detail": "the exclusive raw reader sealed without failure over every admitted write"
+          },
+          {
+            "name": "state-restored",
+            "held": true,
+            "detail": "the final paired state is bound to the initial state after every write"
+          },
+          {
+            "name": "controlled-background",
+            "held": true,
+            "detail": "every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme"
+          },
+          {
+            "name": "fresh-paired-fences",
+            "held": true,
+            "detail": "every capture carries its own unpredictable paired challenges, none reused from the earlier phases or another capture"
+          },
+          {
+            "name": "blank-before-controls",
+            "held": true,
+            "detail": "every case began from an independently blank, unchanged-surroundings target"
+          },
+          {
+            "name": "acknowledgement-separate-from-pixels",
+            "held": true,
+            "detail": "every write was acknowledged by its raw fence while pixel assertions were graded separately"
+          },
+          {
+            "name": "wall-clock-windows-valid",
+            "held": true,
+            "detail": "the suite has no timed stage: every observation is a static frame chosen by an explicit command, so no elapsed-time window is claimed"
+          },
+          {
+            "name": "persistent-tab-configured",
+            "held": true,
+            "detail": "the run set SessionPersistence KeepOnClose in its private settings, so the local pane runs in the multiplexer daemon"
+          },
+          {
+            "name": "worker-hosted-by-daemon",
+            "held": true,
+            "detail": "every observation proved the worker a child of the recorded daemon, never a direct child of the App"
+          },
+          {
+            "name": "daemon-is-the-launched-executable",
+            "held": true,
+            "detail": "the daemon is the launched sidecar serving this run's private app-data root, advertised through that root's descriptor"
+          },
+          {
+            "name": "daemon-stopped",
+            "held": true,
+            "detail": "cleanup stopped the daemon and verified it gone before the receipt"
+          },
+          {
+            "name": "one-app-process-throughout",
+            "held": true,
+            "detail": "the same App process observed every stage: nothing was relaunched, so every composition ran in the live persistent pane"
+          },
+          {
+            "name": "same-session-throughout",
+            "held": true,
+            "detail": "every observation saw the same worker under the same multiplexer daemon"
+          },
+          {
+            "name": "refusals-were-the-named-errors",
+            "held": true,
+            "detail": "the three refused compositions answered ENOENT, EINVAL and EINVAL in order, and nothing else"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "carrierCases": [
+          {
+            "caseId": "kitty.animation.compose-replace-blend",
+            "result": "passed"
+          },
+          {
+            "caseId": "kitty.animation.compose-refused",
+            "result": "passed"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "caseId": "kitty.animation.compose-replace-blend",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "kitty.animation.compose-replace-blend.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "capture": {
+                    "start": 1795030632392,
+                    "end": 1795030632449
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.animation.compose-replace-blend.build",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK",
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.compose-replace-blend.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795030632465,
+                    "latest": 1795030632484
+                  },
+                  "capture": {
+                    "start": 1795030632488,
+                    "end": 1795030632546
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.compose-replace-blend.replace",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the overBackground frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.compose-replace-blend.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.compose-replace-blend.build",
+                  "snapshot": 3,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "overBackground",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795030632465,
+                    "latest": 1795030632484
+                  },
+                  "capture": {
+                    "start": 1795030632582,
+                    "end": 1795030632635
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.compose-replace-blend.blend",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the overRoot frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.compose-replace-blend.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.compose-replace-blend.replace",
+                  "snapshot": 4,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "overRoot",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795030632465,
+                    "latest": 1795030632484
+                  },
+                  "capture": {
+                    "start": 1795030632666,
+                    "end": 1795030632718
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.compose-replace-blend.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.compose-replace-blend.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.compose-replace-blend.blend",
+                  "snapshot": 5,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795030632465,
+                    "latest": 1795030632484
+                  },
+                  "capture": {
+                    "start": 1795030632750,
+                    "end": 1795030632800
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "kitty.animation.compose-refused",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "kitty.animation.compose-refused.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "capture": {
+                    "start": 1795030632910,
+                    "end": 1795030632959
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.animation.compose-refused.build",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK",
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.compose-refused.blank",
+                  "snapshot": 8,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795030632973,
+                    "latest": 1795030632992
+                  },
+                  "capture": {
+                    "start": 1795030632996,
+                    "end": 1795030633043
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.compose-refused.refuse",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "ENOENT:Frame not found",
+                  "EINVAL:Composition rectangle outside the image",
+                  "EINVAL:Source and destination rectangles overlap"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the root frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.compose-refused.blank",
+                  "snapshot": 8,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.compose-refused.build",
+                  "snapshot": 9,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "root",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795030632973,
+                    "latest": 1795030632992
+                  },
+                  "capture": {
+                    "start": 1795030633074,
+                    "end": 1795030633121
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.compose-refused.intact",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "undistorted placement filled with the second frame color",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.compose-refused.blank",
+                  "snapshot": 8,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.compose-refused.refuse",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "frame",
+                "frameId": "second",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795030632973,
+                    "latest": 1795030632992
+                  },
+                  "capture": {
+                    "start": 1795030633152,
+                    "end": 1795030633200
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 36
+                }
+              }
+            },
+            {
+              "stage": "kitty.animation.compose-refused.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.animation.compose-refused.blank",
+                  "snapshot": 8,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.animation.compose-refused.intact",
+                  "snapshot": 11,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795030632973,
+                    "latest": 1795030632992
+                  },
+                  "capture": {
+                    "start": 1795030633231,
+                    "end": 1795030633278
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            }
+          ]
+        }
+      ],
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "pinned-callbacks-preserved-plus-owned-composition-pixel-effect-v1",
+        "evidence": "owned-controlled-pixels-paired-raw-render-persistent-compose",
+        "note": "Declared Kitty graphics capability does not establish timed animation playback"
+      }
+    }
+  ]
+}

@@ -59,12 +59,11 @@ function plannedTiming(stage, startedAt, clock) {
     return { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
 }
 
-/** Only the restore suite (version 3) runs in a persistent tab; versions 1 and 2 stay on the direct-worker path. */
-const restoreVersion = 3;
+/** Only the restore (3) and compose (4) suites run in a persistent tab; versions 1 and 2 stay on the direct-worker path. */
+const persistentVersions = new Set([3, 4]);
 
 /** The ownership proof at a moment: a direct run names the App; a persistent one also names the daemon the worker hangs from and the last relaunch. */
-function ownershipStamp(base, { appPid, daemonRecord, relaunchInfo, version }, at) {
-    const persistent = version === restoreVersion;
+function ownershipStamp(base, { appPid, daemonRecord, relaunchInfo, persistent }, at) {
     return { ...structuredClone(base), app: { ...structuredClone(base.app), pid: appPid },
         ...(persistent ? { worker: { ...structuredClone(base.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) } : {}),
         ...(relaunchInfo ? { relaunch: structuredClone(relaunchInfo) } : {}), at: iso(at) };
@@ -97,9 +96,10 @@ function pairPixels(output, frameIndex, screen, appearance, { shownOther, bleed 
 
 /**
  * A scripted run on a simulated wall clock. Running reads aim their capture centre at the stage's target; holds wait out their gap.
+ * `direct`: a version that normally runs in a persistent tab (the compose suite) as it runs in an ordinary tab, with the worker the App's own child and no daemon.
  * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry, side) -> boolean, pairDiffer(entry) -> the appearance of the second capture of a pair.
  */
-export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer, version = currentAnimationVersion, relaunchAt, daemon, keepApp } = {}) {
+export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer, version = currentAnimationVersion, relaunchAt, daemon, keepApp, direct = false } = {}) {
     const bound = animationBoundScreen(initial, runId), frames = [], actions = [], states = new Map();
     const { plan: animationPlan } = animationSuites[version], cases = animationCasesByVersion[version], animationActionCount = animationPlan.length;
     mkdirSync(join(output, animationPixelPrefix)); mkdirSync(join(output, 'animation-inputs'));
@@ -108,7 +108,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
     // A restore run (the restore version) lives in a persistent tab: the worker is the multiplexer daemon's child, and every relaunch stage brings a new App process (and pane).
     const firstApp = baseOwnership.app.pid, daemonRecord = { pid: 700, ppid: firstApp, uid: baseOwnership.app.uid, tty: '??', executable: baseOwnership.app.executable, ...daemon };
     let appPid = baseOwnership.app.pid, currentPane = paneId, relaunchInfo;
-    const stamp = at => ownershipStamp(baseOwnership, { appPid, daemonRecord, relaunchInfo, version }, at);
+    const stamp = at => ownershipStamp(baseOwnership, { appPid, daemonRecord, relaunchInfo, persistent: persistentVersions.has(version) && !direct }, at);
     const add = (entry, screen, sample, action, appearance, readAt, span) => {
         const pixels = pairPixels(output, frames.length, screen, appearance, { shownOther: pairDiffer?.(entry), bleed: side => bleed?.(entry, side) === true });
         frames.push({ index: frames.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,

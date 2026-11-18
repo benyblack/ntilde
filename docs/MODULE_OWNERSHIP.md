@@ -1231,6 +1231,9 @@ requires public test classes.
   restores. Ownership is then held per App process (an epoch): `validateEpochChange` requires the same worker, daemon (whose parent legitimately changes from the first App to init),
   PTY, user and executable, a new App pid, and the parent's own relaunch record linking the two; only a stage the suite declares `relaunch` may change the pid, and it must. A
   restored playhead is told from one the new App restarted (or, for a stopped animation, resumed) by requiring the reads to predict different frames under the readings (otherwise the stage is inconclusive); the worker may have the App terminated only for the next declared relaunch stage, once.
+  `--scope persistent-compose` and `--scope direct-compose` (#1027) collect the composition suite (version 4, `a=c`, whole-frame stages) in a persistent tab and in an ordinary tab: the
+  ordinary-tab scope (`SessionPersistence Off`) has no daemon, so `handlePersistentRequest` proves only that the worker is the App's own child (`assertProcessOwnership` without a daemon), the receipt
+  is chosen by scope id (the same suite version has a receipt per kind of tab), and `verifyPersistentSuiteRun` checks the daemon lineage only for a persistent scope. Only the restore suite (`restoreAnimationVersion`) relaunches the App.
 - **Owned routed-input QA is a separate parent-owned acting boundary.** Policy v2
   captures a fixed 60-file graph and schema 9 requires all fourteen suites. Only
   source-selected standalone App events may run in the re-proved disposable local

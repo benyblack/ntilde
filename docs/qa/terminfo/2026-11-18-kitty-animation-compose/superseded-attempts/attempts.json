@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "note": "Development attempts of #1027 step 4 in order. Only the retained files are kept; none of the failures produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-WgMfV0",
+      "runId": "744414caccad5b6868bab0f353b24c67",
+      "scripts": "786faf96",
+      "collection": "persistent-compose scope",
+      "outcome": "10/10 passed",
+      "reason": "A complete run (10/10, source policy v68), published first. Review then found that its replace stage copied an opaque frame onto an opaque one, so a terminal that ignored C=1 and blended would have passed it, and that the qualification did not bind every observation to the launch proof's App process. The fixes edit measured files (the suite's commands and appearances), so it is superseded by a fresh run in which the replacement source is half-transparent.",
+      "files": [
+        {
+          "file": "owned-WgMfV0/animation-observations.json",
+          "sha256": "fb0ef747b3e7eabcbe1dfc1db9d3518ed7041ab64fde762e62f8d674cae4daf2",
+          "bytes": 471159
+        },
+        {
+          "file": "owned-WgMfV0/persistent-animation-receipt.json",
+          "sha256": "42cf08f0c4649f27b7498873a01c5bd3d832596d8944df739ab66b04a353dc8e",
+          "bytes": 969
+        },
+        {
+          "file": "owned-WgMfV0/ownership-proof.json",
+          "sha256": "89af4e8064f840e54200f6d4df8e2a9274e25a43b4fc590aa9f583d32331061a",
+          "bytes": 58199
+        }
+      ]
+    },
+    {
+      "attempt": "owned-ULQVDR",
+      "runId": "ab2afb750fc19020975ea13a31c2c808",
+      "scripts": "ebe82081",
+      "collection": "persistent-compose scope",
+      "outcome": "10/10 passed",
+      "reason": "A complete persistent-tab run (10/10, source policy v68), published first. Its carrier report named a persistent tab in the suite's scope text, which the same suite then shared with the ordinary-tab collection; making that text neutral edits a measured file, so it is superseded by a fresh run on the same App as the ordinary-tab measurement.",
+      "files": [
+        {
+          "file": "owned-ULQVDR/animation-observations.json",
+          "sha256": "ede5e83c3d8f12cac70fde0f26f182894ccb2be4138ccc60c6ebe4f5e3751009",
+          "bytes": 470953
+        },
+        {
+          "file": "owned-ULQVDR/persistent-animation-receipt.json",
+          "sha256": "b14a5ecbd6260f5dad9f13aa6b6460b1ed9c7de515e3a61ccef8cf88f801f964",
+          "bytes": 969
+        },
+        {
+          "file": "owned-ULQVDR/ownership-proof.json",
+          "sha256": "c5497771a56cf2b446116495bf13aac2dfcce3775abe901d6e3870010d871fbd",
+          "bytes": 58077
+        }
+      ]
+    }
+  ]
+}
