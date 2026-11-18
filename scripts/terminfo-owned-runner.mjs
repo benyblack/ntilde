@@ -4484,8 +4484,8 @@ const isPersistentScope = scope => scope.persistence === 'KeepOnClose';
 
 function completePersistentAnimationReceipt(output, scratch, evidence) {
     const proofBytes = readFileSync(join(output, 'ownership-proof.json')), proof = JSON.parse(proofBytes);
-    if (!proof.completed || !proof.cleanedUpAt || proof.cleanupError || (isPersistentScope(context.collectionScope) && !proof.persistentDaemon) || existsSync(scratch)) throw new Error('Animation-only evidence has no completed cleanup.');
     const contextBytes = readFileSync(join(output, 'context.json')), context = JSON.parse(contextBytes);
+    if (!proof.completed || !proof.cleanedUpAt || proof.cleanupError || (isPersistentScope(context.collectionScope) && !proof.persistentDaemon) || existsSync(scratch)) throw new Error('Animation-only evidence has no completed cleanup.');
     const binding = evidence.animationEvidence;
     if (binding?.runId !== context.runId || binding.suiteId !== context.animationSuiteId || binding.file !== 'animation-observations.json'
         || hash(readFileSync(join(output, binding.file))) !== binding.sha256) throw new Error('Invalid persistent animation receipt binding.');
