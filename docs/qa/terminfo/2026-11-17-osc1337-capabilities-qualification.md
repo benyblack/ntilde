@@ -4,7 +4,7 @@ Qualifies one pinned terminfo.dev@4.0.0 case (bundle SHA-256 `aa5f2bf9…e1f6`, 
 `OSC 1337 ; RequestCapabilities BEL`. Like the [rxvt special-color batch](2026-11-17-osc5-special-colors-qualification.md), **this batch adds production code**: main did not answer the request (the
 [#1003 policy audit](2026-11-17-term-features-policy.md) recorded the undeclaration and its owning regressions), so a qualification had nothing to measure. The VT now answers the iTerm2
 feature-reporting query with an evidence-backed declaration ([contract](iterm-feature-reporting.md)), and the batch measures it. The batch is restacked on the merged OSC 5, OSC cell-size,
-OSC 3008 and Kitty-animation batches (live source policy v67, receipt schema 74; every earlier publication remains retained).
+OSC 3008, OSC 720, OSC 22 and Kitty-animation batches (live source policy v69, receipt schema 76; every earlier publication remains retained).
 
 ## What the pinned probe can say
 
@@ -32,7 +32,7 @@ writes under its default initial settings; a host that cannot answer omits it (p
 screen unchanged, and the silent forms (an unsolicited `Capabilities=…` assignment, a bare or query `Capabilities`, a suffixed request, both wrong-case spellings) stayed silent with the exact request
 still answered after them.
 
-The stock collector in owned run `fd80abff940550734e8f78adee6967a7` grades 95 supported / 1 unsupported / 159 inconclusive (`suiteComplete=false`), 255 graded cases. `extensions.osc1337-capabilities`
+The stock collector in owned run `46c19e896560dbb0474df63723627443` grades 95 supported / 1 unsupported / 159 inconclusive (`suiteComplete=false`), 255 graded cases. `extensions.osc1337-capabilities`
 is the one case this batch newly moves from inconclusive to supported; the frozen November 9 baseline and every other stock grade stay unchanged. No Core point is added.
 
 ## Production
@@ -65,12 +65,22 @@ pinned verdict.
 3. Completed every suite (stock 95/159/1, all caps groups matched) but receipt finalization refused: the metadata snapshot policy list, the per-suite retained-source policy lists and the query
    receipt's report rederivation did not carry the new policy/marker. All fixed; retained at `artifacts/terminfo/owned-TUkIzc`. The fixes are checked by the offline receipt fixtures; the retained
    evidence was not repackaged as the publication.
+4. Completed every suite on the pre-restack graph (stock 95/159/1, caps supported, witness matched; live source policy v67, schema 74, 452 inputs) and was packaged, then superseded when upstream
+   main merged OSC 720 and OSC 22 and the live graph moved to v69/463 inputs; retained at `artifacts/terminfo/owned-wKLg39` (session-local, not committed).
+5. Aborted at receipt finalization: resolving the restack conflicts dropped the caps suite's wiring from the owned runner (undefined bundle path); retained at `artifacts/terminfo/owned-iC8o0v`
+   (session-local, not committed).
+6. Aborted mid-collection: the fence refused stray bytes injected into the PTY from outside the run (`Unexpected input … Bytes: d8a7`); retained at `artifacts/terminfo/owned-jduaQZ` (session-local,
+   not committed).
+7. Completed every suite but receipt finalization refused: the restacked metadata receipt did not import the new source-graph table (`capturedV76SourceFiles`); retained at
+   `artifacts/terminfo/owned-MLbzEo` (session-local, not committed).
+8. Completed every suite (caps supported, all groups matched) but the exact-query witness recorded unexpected bytes: resolving the restack conflicts dropped the `capabilitiesReport` flag, so the
+   witness demanded silence while the App answered the declared reply. Fixed; retained at `artifacts/terminfo/owned-Gv81Xb` (session-local, not committed).
 
 ## Identities
 
-App 0.14.0 (operator supplied) built from `fd9b0ab99023…` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`); measured scripts `fd9b0ab99023…`;
+App 0.14.0 (operator supplied) built from `7bfbbdc13415…` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`); measured scripts `7bfbbdc13415…`;
 source policy `readonly-owned-source-graph-v69`; query policy `owned-exact-query-paired-raw-state-v7`; initial settings include `AllowOsc52ClipboardWrite: true` (the `Cw` gate), `AllowTitleReport: on`
-for the title-report suites and `AllowRectangleChecksumReport: on`; receipt schema 74; owned run `fd80abff940550734e8f78adee6967a7`; collected 2026-11-17T18:26Z on macOS. The build is not
+for the title-report suites and `AllowRectangleChecksumReport: on`; receipt schema 76; owned run `46c19e896560dbb0474df63723627443`; collected 2026-11-18T12:00Z on macOS. The build is not
 binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
 ## Retained run and reproduction
@@ -84,4 +94,4 @@ node scripts/terminfo-inventory.mjs --check
 ```
 
 The first command extracts the archive, re-issues the receipt, rebuilds the caps report from the retained journal and compares the published projection; the second re-derives the whole registered
-inventory (146 ids / 148 claims; 144 effect-supported, 95 pinned-and-effect-supported) and compares it to the committed JSON.
+inventory (148 ids / 150 claims; 145 effect-supported, 95 pinned-and-effect-supported) and compares it to the committed JSON.
