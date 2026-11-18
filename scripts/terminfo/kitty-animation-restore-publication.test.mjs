@@ -119,10 +119,10 @@ test('what the restored panes show: the running playhead continues from the orig
     assert.ok(report.observations.every(value => value.reply.passed === true));
 });
 
-test('only the one requested case is qualified; the claim stays bounded to a killed-and-restarted App', () => {
+test('only the one requested case is qualified; the claim stays bounded to a terminated-and-restarted App', () => {
     const report = JSON.parse(read('report.json'));
     assert.equal(report.cases.length, 1);
-    for (const limit of ['killed and started again', 'No stock collector ran', 'a graceful quit', 'a second client', 'remote persistent sessions', 'a non-PNG root'])
+    for (const limit of ['terminated with SIGTERM and started again', 'No stock collector ran', 'a graceful quit', 'a second client', 'remote persistent sessions', 'a PNG-encoded root (the root image is raw RGBA'])
         assert.ok(report.scope.includes(limit), limit);
 });
 
@@ -135,6 +135,10 @@ test('a downgraded, stripped, unchained or foreign restore run is refused', () =
     refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches[1].from += 1; }), /ordered chain/);
     refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches[2].to = proof.proofs[0].relaunches[0].to; }), /ordered chain|did not observe|App process|not dated inside the run/);
     refuses(context => rebind(context, 'ownership-proof.json', proof => { delete proof.proofs[0].relaunches; }), /relaunches/);
+    // A kill escalated to SIGKILL (or one that was not recorded) is not a SIGTERM restore; a relaunch that starts before the previous one finished overlaps it.
+    refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches[1].terminatedBy = 'SIGKILL'; }), /did not end the App with SIGTERM/);
+    refuses(context => rebind(context, 'ownership-proof.json', proof => { delete proof.proofs[0].relaunches[0].terminatedBy; }), /did not end the App with SIGTERM/);
+    refuses(context => rebind(context, 'ownership-proof.json', proof => { const chain = proof.proofs[0].relaunches; chain[1].startedAt = new Date(Date.parse(chain[0].at) - 1000).toISOString(); }), /starts before the previous one finished/);
     refuses(context => rebind(context, 'ownership-proof.json', proof => { delete proof.persistentDaemon; }), /no multiplexer daemon/);
     refuses(context => rebind(context, 'context.json', value => { value.collectionScope = { ...value.collectionScope, suiteVersion: 2 }; }), /declare the persistent restore scope/);
     // The settings digest and the receipt are re-bound to the changed settings, so only the persistence mode itself can be what the verifier refuses.
@@ -164,7 +168,8 @@ test('a restore claim without a real relaunch is refused by the carrier report i
 test('every development attempt of the collection is retained with its real outcome, and none of them is the published run', () => {
     const attempts = JSON.parse(read('superseded-attempts/attempts.json')), published = JSON.parse(read('summary.json')).ownedRunId;
     assert.equal(attempts.schemaVersion, 1);
-    assert.equal(attempts.attempts.length, 8);
+    assert.equal(attempts.attempts.length, 9);
+    assert.equal(new Set(attempts.attempts.map(item => item.runId)).size, attempts.attempts.length, 'every retained attempt is a distinct run');
     for (const item of attempts.attempts) {
         assert.notEqual(item.runId, published);
         assert.ok(item.reason.length > 20 && item.scripts.length > 0 && item.files.length >= 2, item.attempt);

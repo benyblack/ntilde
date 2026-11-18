@@ -34,10 +34,10 @@ export const restoreEffectContract = Object.freeze({
     id: 'ntilde-kitty-animation-persistent-restore-effect-v1', version: 1,
     carrierCases: Object.freeze(animationCasesByVersion[version].map(item => item.id)),
     statement: 'In a persistent tab, after the App is terminated with SIGTERM and started again on the same persistent session (the daemon and the shell keep running), the pane shows the animation state that '
-        + 'was in effect, read by paired offscreen captures against the App\'s wall clock: a running animation shows the frame its original start time gives (the root, then the third frame at about 12.5 s, '
-        + 'the root again at about 17.5 s), not one restarted from the moment the App came back; an animation stopped on its second frame stays on it past a hold that would have advanced it; and '
+        + 'was in effect, read by paired offscreen captures against the App\'s wall clock: a running animation shows the frame its original start time gives for each read (the second frame at the first read after the relaunch, the third frame at about 12.5 s, '
+        + 'the root at about 17.5 s), not one restarted from the moment the App came back (which would show the root at the first read); an animation stopped on its second frame stays on it past a hold that would have advanced it; and '
         + 'edited frames survive: the root edited by a=f,r=1 still shows its edit, and a half-transparent PNG frame built over it afterwards shows the protocol\'s blend of the edited pixels. '
-        + 'Every write is acknowledged OK and every cleared target is blank again.',
+        + 'Every command that expects a Kitty reply returned OK, and each clear passed its fence and left its target blank (a=d success is silent).',
     primary: 'https://sw.kovidgoyal.net/kitty/graphics-protocol/#animation',
 });
 
@@ -53,6 +53,11 @@ function checkRelaunches(proof, frames) {
     }
     // Each relaunch finished before the first observation under its new App process, and every one before cleanup.
     const cleanedUpAt = Date.parse(proof.cleanedUpAt);
+    // Each relaunch starts after the previous one finished and was ended by SIGTERM: a kill escalated to SIGKILL is not a SIGTERM restore.
+    for (const [index, item] of chain.entries()) {
+        check(item.terminatedBy === 'SIGTERM', 'a relaunch did not end the App with SIGTERM (or its termination was not recorded)');
+        check(index === 0 || Date.parse(item.startedAt) >= Date.parse(chain[index - 1].at), 'a relaunch starts before the previous one finished');
+    }
     for (const item of chain) {
         const firstFrame = frames.find(frame => frame.ownership.app.pid === item.to);
         check(Date.parse(item.startedAt) <= Date.parse(item.at) && Date.parse(item.at) <= Date.parse(firstFrame?.ownership.at) && Date.parse(item.at) <= cleanedUpAt,
@@ -134,9 +139,9 @@ export async function restoreQualification(dir, source, archive) {
     const suite = { schemaVersion: 1, suiteId: restoreQualificationSuiteId, carrierSuiteId: suiteId, contractsVersion: restoreQualificationVersion,
         runId: context.runId, adapter: { id: context.adapter, upstreamBundleSha256, pinnedSpans: pinnedSpanDigests },
         scope: 'The Kitty animation restore suite alone in one persistent (KeepOnClose) tab on a disposable macOS sidecar: three cases (a running animation, a stopped one, and PNG and root-edited frames), each read again after the App process '
-            + 'was killed and started again on the same private root while the multiplexer daemon and the shell kept running, so the pane reattached the same session from the daemon\'s snapshot (the App saves its session after each attach, as it would after a crash). '
+            + 'was terminated with SIGTERM and started again on the same private root while the multiplexer daemon and the shell kept running, so the pane reattached the same session from the daemon\'s snapshot (the App saves its session after each attach, as it would after a crash). '
             + 'Over paired original offscreen PNGs, complete cells/modes and wall-clock capture spans. No stock collector ran, so there is no stock grade and no Core or common-harness claim; the pinned callbacks are replayed from the retained bundle and stay inconclusive by design. '
-            + 'Not measured: a graceful quit (the session is saved by the App\'s own attach-time save, not its shutdown path), a second client, remote persistent sessions, other platforms, a non-PNG root, frame-rate or display-refresh cadence.',
+            + 'Not measured: a graceful quit (the session is saved by the App\'s own attach-time save, not its shutdown path), a second client, remote persistent sessions, other platforms, a PNG-encoded root (the root image is raw RGBA, f=32; only the added frames are PNG), frame-rate or display-refresh cadence.',
         cases: [entry] };
     const summary = { schemaVersion: 1, ownedRunId: context.runId, appRevision: source.appRevision, scriptsRevision: source.scriptsRevision, context, receipt,
         daemon: verified.proof.persistentDaemon, relaunches: verified.proof.proofs[0].relaunches,

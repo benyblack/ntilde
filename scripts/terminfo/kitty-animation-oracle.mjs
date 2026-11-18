@@ -116,6 +116,10 @@ function frozenTiming(stage, facts) {
     const frozenAt = framesPossibleAt(facts.start, { start: facts.stop.earliest, end: facts.stop.latest });
     if (frozenAt.length !== 1 || frozenAt[0] !== stage.appearance) return timingNo('stop did not land inside the ' + stage.appearance + ' window');
     if (capture.start < facts.stop.latest) return timingNo('read precedes the stop taking effect');
+    // The first read after a relaunch must also rule out a playhead the App restarted from the root: it shows the root early on, so only a capture soon enough after the relaunch can tell it from a stop.
+    if (stage.relaunch && facts.relaunch && framesPossibleAt(facts.relaunch, capture).includes(stage.appearance)) {
+        return timingNo(`a playhead restarted from the root by the relaunch could show the ${stage.appearance} frame here as well`);
+    }
     if (stage.waitMs === undefined) return timingOk;
     if (framesPossibleAt(facts.start, capture).includes(stage.appearance)) return timingNo('a running animation could still show ' + stage.appearance + ' here');
     return resumedPlayhead(stage, facts) ? timingNo('a playhead resumed from the frozen frame by the relaunch could still show ' + stage.appearance + ' here') : timingOk;

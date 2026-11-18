@@ -2071,18 +2071,22 @@ function launchOwnedApp(lease, executable, runId, env, logFd) {
     return spawn(executable, [`--ntilde-terminfo-owner=${runId}`, `--ntilde-terminfo-private-clipboard=${runId}`], { env, cwd: dirname(executable), stdio: ['ignore', logFd, logFd] });
 }
 
+/** Terminate the App: SIGTERM first, SIGKILL if it is still running two seconds later. Resolves with whether the kill was escalated. */
 async function terminateLaunchedApp(app) {
-    if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return;
+    const outcome = { escalated: false };
+    if (!app?.pid || app.exitCode !== null || app.signalCode !== null) return outcome;
     app.kill('SIGTERM');
     await new Promise((resolve, reject) => {
         let killTimer, giveUpTimer;
         app.once('exit', () => { clearTimeout(killTimer); clearTimeout(giveUpTimer); resolve(); });
         killTimer = setTimeout(() => {
+            outcome.escalated = true;
             app.kill('SIGKILL');
             // An App that outlives SIGKILL must fail cleanup (and so retain the desktop lease), not hang the run.
             giveUpTimer = setTimeout(() => { app.unref(); reject(new Error(`Owned app ${app.pid} did not exit after SIGKILL.`)); }, 2000);
         }, 2000);
     });
+    return outcome;
 }
 
 async function cleanupOwnedRun({ lease, workerIdentity, daemonIdentity, daemonProof, executable, appData, runId, app, logFd, server, output, proofs, completed, scratch, collectionScope }) {
@@ -4590,14 +4594,14 @@ async function relaunchPersistentApp(run) {
     const previous = run.app;
     run.outgoing = previous;
     try {
-        await terminateLaunchedApp(previous);
+        const { escalated } = await terminateLaunchedApp(previous);
         if (run.stopping) throw new Error('The run stopped before the App was started again.');
         for (const [what, pid] of [['shell', run.identities.worker.pid], ['multiplexer daemon', run.identities.daemon.pid]]) {
             if (!workerExists(pid)) throw new Error(`The ${what} ended with the App.`);
         }
         const startedAt = new Date().toISOString(), next = startPersistentApp(run);
         await waitForReattachedPane(run);
-        run.relaunches.push({ from: previous.pid, to: next.pid, appBirth: processBirth(next.pid), startedAt, at: new Date().toISOString() });
+        run.relaunches.push({ from: previous.pid, to: next.pid, appBirth: processBirth(next.pid), startedAt, at: new Date().toISOString(), terminatedBy: escalated ? 'SIGKILL' : 'SIGTERM' });
     } finally { run.outgoing = undefined; }
 }
 

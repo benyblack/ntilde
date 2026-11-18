@@ -242,4 +242,12 @@ test('the App is terminated only for the next declared relaunch stage, a failed 
     assert.ok(admitted < started && started < rejected, 'a relaunch is admitted before the App is touched, and its failure rejects the run');
     const wait = runner.slice(at('async function waitForReattachedPane'), at('Terminate the App (SIGTERM, not a graceful quit)'));
     assert.equal(wait.match(/if \(run\.stopping\) throw/g).length, 2, 'cancellation is checked before each poll and after the pending reads');
+    // The pane read sits between the two guards: a run that stops while it is pending is caught by the second one.
+    const [before, read, afterRead] = ['if (run.stopping) throw', "'readScreen'", 'if (run.stopping) throw'].map((text, index) => (index === 2 ? wait.indexOf(text, wait.indexOf("'readScreen'")) : wait.indexOf(text)));
+    assert.ok(before >= 0 && read > before && afterRead > read, 'a stop during the pending pane read is detected after it');
+    // The relaunch record says how the App ended, and the kill is escalated (and recorded) only after SIGTERM had two seconds.
+    const relaunch = runner.slice(at('async function relaunchPersistentApp'), at('/** Start the disposable App and wait'));
+    at("terminatedBy: escalated ? 'SIGKILL' : 'SIGTERM'", relaunch);
+    const terminate = runner.slice(at('async function terminateLaunchedApp'), at('async function cleanupOwnedRun'));
+    assert.ok(at("app.kill('SIGTERM')", terminate) < at('outcome.escalated = true', terminate) && at('outcome.escalated = true', terminate) < at("app.kill('SIGKILL')", terminate));
 });

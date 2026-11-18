@@ -212,4 +212,8 @@ test('after a relaunch a read must differ from what a playhead the App restarted
     const hold = { clock: 'frozen', appearance: 'second', waitMs: 6000 }, stop = { earliest: 6200, latest: 6300 }, relaunch = { earliest: 6400, latest: 8200 };
     assert.deepEqual(evaluateAnimationTiming(hold, { start: original, stop, relaunch, capture: window(14_700, 14_860) }), { valid: true, reason: null });
     assert.match(evaluateAnimationTiming(hold, { start: original, stop, relaunch, capture: window(26_000, 26_200) }).reason, /resumed from the frozen frame by the relaunch could still show second/);
+    // The first read after the relaunch of a stopped animation must rule out a playhead restarted from the root: a prompt capture shows the root for it, a delayed one could show the second frame.
+    const reattach = { clock: 'frozen', appearance: 'second', relaunch: true };
+    assert.deepEqual(evaluateAnimationTiming(reattach, { start: original, stop, relaunch, capture: window(7600, 7700) }), { valid: true, reason: null });
+    assert.match(evaluateAnimationTiming(reattach, { start: original, stop, relaunch, capture: window(13_000, 13_100) }).reason, /restarted from the root by the relaunch could show the second frame/);
 });

@@ -309,8 +309,11 @@ test('the relaunch record the timing uses is the validated frame\'s, and the adm
     const reattach = items => items.find(value => value.stageId === 'reattach' && value.caseId === stopped);
     refuses((frames, actions) => { const action = reattach(actions); action.ownership.relaunch = { ...action.ownership.relaunch, startedAt: action.ownership.relaunch.at, at: action.ownership.relaunch.startedAt }; });
     refuses((frames, actions) => { delete reattach(actions).ownership.relaunch; });
-    // A record that begins after it ended is no window at all.
-    refuses(frames => { const frame = reattach(frames); frame.ownership.relaunch = { ...frame.ownership.relaunch, startedAt: new Date(Date.parse(frame.ownership.relaunch.at) + 500).toISOString() }; });
+    // A record that begins after it ended is no window at all, even when the frame and the action agree on it (so only the ordering check can refuse it).
+    refuses((frames, actions) => {
+        const frame = reattach(frames), action = reattach(actions), inverted = { ...frame.ownership.relaunch, startedAt: new Date(Date.parse(frame.ownership.relaunch.at) + 500).toISOString() };
+        frame.ownership.relaunch = inverted; action.ownership.relaunch = structuredClone(inverted);
+    });
 });
 
 test('only a declared relaunch stage may change the App process, and the worker, daemon and PTY must stay exactly the same', () => {
