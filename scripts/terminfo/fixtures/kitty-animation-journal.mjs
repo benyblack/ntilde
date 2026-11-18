@@ -65,6 +65,21 @@ function ownershipStamp(base, { appPid, daemonRecord, relaunchInfo, version }, a
         ...(relaunchInfo ? { relaunch: structuredClone(relaunchInfo) } : {}), at: iso(at) };
 }
 
+/** The bytes the terminal answered with for one action (the stage's expected replies, optionally rewritten by the reply hook) and the background query's answer. */
+function replySample(entry, stage, state, action, reply) {
+    const expected = stage ? animationExpectedReplies(stage, state.imageId).join('') : '';
+    const raw = reply?.(entry, expected) ?? expected;
+    const background = imageBackgroundReply(entry.kind === 'finish' ? 0xff000000 : 0xff101010);
+    return inputCapture(Buffer.from(raw + background).toString('hex') + imageModeReplyHex, 100 + action.index);
+}
+
+/** What the pane shows at a read: the stage's appearance (a timeline stage depends on the playback start), optionally repainted by the paint hook; non-reads show nothing. */
+function appearanceOf(entry, stage, paint, startedAt, span) {
+    if (entry.kind !== 'read') return 'absent';
+    const shown = stage?.appearance === 'timeline' ? timelineFrame(startedAt, span) : stage?.appearance;
+    return paint?.(entry, shown ?? 'absent') ?? shown ?? 'absent';
+}
+
 /** The two captures of a pair: the second may show another appearance (pairDiffer); each is written under its frame index. */
 function pairPixels(output, frameIndex, screen, appearance, { shownOther, bleed }) {
     return [appearance, shownOther ?? appearance].map((shown, side) => {
@@ -114,13 +129,9 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
             imageId: state.imageId ?? null, commandHex: Buffer.from(expected.command).toString('hex'),
             commandSha256: pngHash(Buffer.from(expected.command)), skipReason: expected.skipReason, ownership: stamp(plan.actionAt) };
         actions.push(action);
-        let raw = stage ? animationExpectedReplies(stage, state.imageId).join('') : '';
-        raw = reply?.(entry, raw) ?? raw;
-        const background = imageBackgroundReply(entry.kind === 'finish' ? 0xff000000 : 0xff101010);
-        const sample = inputCapture(Buffer.from(raw + background).toString('hex') + imageModeReplyHex, 100 + action.index);
-        const shown = stage?.appearance === 'timeline' ? timelineFrame(startedAt.get(entry.caseId), plan.span) : stage?.appearance;
-        const appearance = paint?.(entry, shown ?? 'absent') ?? shown ?? 'absent';
-        add(entry, entry.kind === 'finish' ? initial : bound, sample, action, entry.kind === 'read' ? appearance : 'absent', plan.readAt, plan.span);
+        const sample = replySample(entry, stage, state, action, reply);
+        const appearance = appearanceOf(entry, stage, paint, startedAt.get(entry.caseId), plan.span);
+        add(entry, entry.kind === 'finish' ? initial : bound, sample, action, appearance, plan.readAt, plan.span);
         clock = plan.span[1];
     }
     const final = frames.at(-1).capture;
