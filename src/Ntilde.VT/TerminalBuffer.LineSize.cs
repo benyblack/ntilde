@@ -27,6 +27,14 @@ public partial class TerminalBuffer
         return viewportRow < Rows ? _viewport[viewportRow].LineSize : LineSize.SingleWidth;
     }
 
+    /// <summary>The line attribute of the row at an absolute index, history included; takes the read lock itself.</summary>
+    public LineSize LineSizeAtAbsoluteRow(int absRow)
+    {
+        bool lockTaken = EnterReadLockIfNeeded();
+        try { return GetLineSizeAbsolute(absRow); }
+        finally { ExitReadLockIfNeeded(Lock, lockTaken); }
+    }
+
     /// <summary>The line attribute of a visible row.</summary>
     public LineSize GetLineSize(int row)
     {

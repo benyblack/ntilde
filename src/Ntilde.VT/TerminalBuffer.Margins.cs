@@ -54,8 +54,11 @@ public partial class TerminalBuffer
             if (!enable) ResetHorizontalMarginsNoLock();
             else
             {
-                // Left/right margins and double-size lines do not combine: every line returns to single width.
+                // Left/right margins and double-size lines do not combine: every line returns to single width,
+                // on the screen that is not showing too, or it would bring double-size lines back under the margins.
                 ResetLineSizesNoLock(_viewport);
+                ResetLineSizesNoLock(_mainScreen);
+                ResetLineSizesNoLock(_altScreen);
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }

@@ -250,6 +250,10 @@ public sealed class LineSizeTests
         Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
         parser.Process($"{Esc}[?69l{Dwl}");
         Assert.Equal(LineSize.DoubleWidth, buffer.GetLineSize(0));
+
+        // Setting the mode on the alternate screen resets the main screen's lines too.
+        parser.Process($"{Esc}[?1049h{Esc}[?69h{Esc}[?1049l");
+        Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
     }
 
     [Fact]
