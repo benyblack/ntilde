@@ -222,5 +222,7 @@ namespace Ntilde.VT
         public int GridRows { get; init; }
         /// <summary>A placeholder run's own background colour, shown through transparent pixels; null for the theme's.</summary>
         public TermColor? TileBackground { get; init; }
+        /// <summary>A placeholder run's palette background index (resolved through the theme); null when it has none.</summary>
+        public short? TileBackgroundIndex { get; init; }
     }
 }

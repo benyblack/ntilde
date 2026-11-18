@@ -853,9 +853,7 @@ namespace Ntilde.Shell
                             // Clear image target region first so transparent/semi-transparent
                             // image pixels do not reveal previously drawn text layers.
                             // A placeholder run keeps its own cells' background colour instead, shown through transparent pixels.
-                            using var runBgPaint = isPlaceholderRun && img.TileBackground is { } runBg
-                                ? new SKPaint { Color = new SKColor(runBg.R, runBg.G, runBg.B, runBg.A), Style = SKPaintStyle.Fill, IsAntialias = false }
-                                : null;
+                            using var runBgPaint = isPlaceholderRun ? PlaceholderBackgroundPaint(img, renderSnapshot.Theme) : null;
                             canvas.DrawRect(rect, runBgPaint ?? imageBgPaint);
                             IncrementRectDrawCall();
                             SKBitmap? bitmap = img.ImageHandle as SKBitmap;
@@ -2173,6 +2171,20 @@ namespace Ntilde.Shell
                 buffer[i] = FromDevicePx(originPx + (i * deviceCellSize));
             }
             return buffer;
+        }
+
+        /// <summary>The paint for a placeholder run's own background: its RGB colour or palette entry, or null for the theme background.</summary>
+        private static SKPaint? PlaceholderBackgroundPaint(in RenderImageSnapshot run, RenderThemeSnapshot theme)
+        {
+            SKColor fill;
+            if (run.TileBackgroundIndex is { } index)
+            {
+                TermColor entry = ResolvePaletteIndex(index, theme);
+                fill = new SKColor(entry.R, entry.G, entry.B, 255);
+            }
+            else if (run.TileBackground is { } rgb) fill = new SKColor(rgb.R, rgb.G, rgb.B, rgb.A);
+            else return null;
+            return new SKPaint { Color = fill, Style = SKPaintStyle.Fill, IsAntialias = false };
         }
 
         /// <summary>

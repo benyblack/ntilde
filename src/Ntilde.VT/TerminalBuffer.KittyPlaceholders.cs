@@ -18,6 +18,8 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
+            // A placement id names one placement of an image, whether it is drawn at the cursor or is virtual: the new one replaces the old.
+            if (placementId != 0) RemoveKittyPlacements(asset, placementId);
             List<KittyVirtualPlacement> placements = asset.VirtualPlacements;
             placements.RemoveAll(item => item.PlacementId == placementId);
             if (placements.Count >= MaxKittyVirtualPlacements) placements.RemoveAt(0);
@@ -25,6 +27,18 @@ public partial class TerminalBuffer
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
+    }
+
+    /// <summary>Retires the asset's placements drawn at the cursor that carry <paramref name="placementId"/>.</summary>
+    private void RemoveKittyPlacements(KittyImageAsset asset, uint placementId)
+    {
+        for (int i = _images.Count - 1; i >= 0; i--)
+        {
+            TerminalImage image = _images[i];
+            if (!ReferenceEquals(image.KittyAsset, asset) || image.KittyPlacementId != placementId) continue;
+            RetireImage(image);
+            _images.RemoveAt(i);
+        }
     }
 
     /// <summary>
@@ -79,13 +93,14 @@ public partial class TerminalBuffer
                 continue;
             }
             TermColor? background = cell.IsDefaultBackground || cell.IsPaletteBackground ? null : cell.Background;
-            if (run is { } open && open.Continues(asset!, placement, resolved, col, background))
+            short backgroundIndex = cell.IsDefaultBackground ? (short)-1 : cell.BgIndex;
+            if (run is { } open && open.Continues(asset!, placement, resolved, col, background, backgroundIndex))
             {
                 run = open with { Count = open.Count + 1 };
                 continue;
             }
             FlushPlaceholderRun(images, ref run, absRow);
-            run = new PlaceholderRun(asset!, placement, resolved.Row, resolved.Column, col, 1, background);
+            run = new PlaceholderRun(asset!, placement, resolved.Row, resolved.Column, col, 1, background, backgroundIndex);
         }
         FlushPlaceholderRun(images, ref run, absRow);
     }
@@ -128,6 +143,7 @@ public partial class TerminalBuffer
             GridColumns = finished.Placement.Columns,
             GridRows = finished.Placement.Rows,
             TileBackground = finished.Background,
+            TileBackgroundIndex = finished.BackgroundIndex >= 0 ? finished.BackgroundIndex : null,
             IsSticky = true
         });
     }
@@ -145,10 +161,10 @@ public partial class TerminalBuffer
     }
 
     /// <summary>The cells of one grid row of a virtual placement shown side by side on one screen row.</summary>
-    private readonly record struct PlaceholderRun(KittyImageAsset Asset, KittyVirtualPlacement Placement, int Row, int GridColumn, int StartColumn, int Count, TermColor? Background)
+    private readonly record struct PlaceholderRun(KittyImageAsset Asset, KittyVirtualPlacement Placement, int Row, int GridColumn, int StartColumn, int Count, TermColor? Background, short BackgroundIndex)
     {
-        internal bool Continues(KittyImageAsset asset, KittyVirtualPlacement placement, KittyPlaceholders.Cell cell, int column, TermColor? background) =>
+        internal bool Continues(KittyImageAsset asset, KittyVirtualPlacement placement, KittyPlaceholders.Cell cell, int column, TermColor? background, short backgroundIndex) =>
             ReferenceEquals(Asset, asset) && Placement == placement && Row == cell.Row
-            && GridColumn + Count == cell.Column && StartColumn + Count == column && Nullable.Equals(Background, background);
+            && GridColumn + Count == cell.Column && StartColumn + Count == column && Nullable.Equals(Background, background) && BackgroundIndex == backgroundIndex;
     }
 }

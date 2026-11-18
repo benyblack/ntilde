@@ -320,4 +320,80 @@ public sealed class KittyUnicodePlaceholderTests
         parser.Process($"\x1b[38;5;42m\x1b[48;2;1;1;1m{Cell(0, 0)}\x1b[48;2;2;2;2m{Cell(0, 1)}\x1b[0m");
         Assert.Equal(2, Runs(buffer).Count);
     }
+
+    [Fact]
+    public void A_placement_id_names_one_placement_whether_it_is_real_or_virtual()
+    {
+        var (buffer, parser, _) = Create();
+        Transmit(parser, 42);
+        parser.Process(Command("a=p,i=42,p=7,C=1,c=1,r=1"));
+        Assert.Single(buffer.Images);
+        VirtualPlacement(parser, 42, 1, 1, placement: 7);
+        Assert.Empty(buffer.Images);                       // the virtual placement replaced the one at the cursor
+        parser.Process($"\x1b[38;5;42m\x1b[58;5;7m{Cell(0, 0)}\x1b[59m\x1b[39m");
+        Assert.Single(Runs(buffer));
+        parser.Process(Command("a=p,i=42,p=7,C=1,c=1,r=1"));
+        Assert.Single(buffer.Images);
+        Assert.Empty(Runs(buffer));                        // and the real one replaced the virtual one
+        // A different id is a different placement.
+        VirtualPlacement(parser, 42, 1, 1, placement: 8);
+        Assert.Single(buffer.Images);
+    }
+
+    [Fact]
+    public void Replacing_an_image_that_only_placeholders_show_requests_a_redraw()
+    {
+        var (buffer, parser, _) = Create();
+        Transmit(parser, 42);
+        VirtualPlacement(parser, 42, 1, 1);
+        parser.Process($"\x1b[38;5;42m{Cell(0, 0)}\x1b[39m");
+        int redraws = 0;
+        buffer.OnInvalidate += () => redraws++;
+        Transmit(parser, 42);
+        Assert.True(redraws > 0);
+    }
+
+    [Fact]
+    public void Wake_ups_for_an_animation_shown_only_by_placeholders_follow_the_visible_cells()
+    {
+        var (buffer, parser, _) = Create(rows: 4);
+        long now = 1000;
+        buffer.KittyAnimationClock = () => now;
+        parser.Process(Command("a=T,U=1,f=32,s=1,v=1,i=42,c=1,r=1", Pixel));
+        parser.Process(Command("a=f,i=42,f=32,s=1,v=1,z=100", "AP8A/w=="));
+        parser.Process(Command("a=a,i=42,s=3"));
+        buffer.AdvanceKittyAnimations(now, out long? hidden, firstVisibleLine: 0);
+        Assert.Null(hidden);                                // nothing prints it yet
+        parser.Process($"\x1b[38;5;42m{Cell(0, 0)}\x1b[39m");
+        buffer.AdvanceKittyAnimations(now, out long? shown, firstVisibleLine: 0);
+        Assert.NotNull(shown);
+        buffer.AdvanceKittyAnimations(now, out long? scrolledAway, firstVisibleLine: 100);
+        Assert.Null(scrolledAway);
+        parser.Process("\x1b[2J");
+        buffer.AdvanceKittyAnimations(now, out long? erased, firstVisibleLine: 0);
+        Assert.Null(erased);
+    }
+
+    [Fact]
+    public void A_palette_background_is_carried_to_the_renderer_by_index()
+    {
+        var (buffer, parser, _) = Create();
+        Transmit(parser, 42);
+        VirtualPlacement(parser, 42, 2, 1);
+        parser.Process($"\x1b[38;5;42m\x1b[48;5;196m{Cell(0, 0)}\x1b[48;5;197m{Cell(0, 1)}\x1b[0m");
+        List<RenderImageSnapshot> runs = Runs(buffer);
+        Assert.Equal(new short?[] { 196, 197 }, runs.Select(run => run.TileBackgroundIndex));
+        Assert.All(runs, run => Assert.Null(run.TileBackground));
+    }
+
+    [Fact]
+    public void An_overline_does_not_cost_the_placeholder_its_underline_colour()
+    {
+        var (buffer, parser, _) = Create();
+        Transmit(parser, 42);
+        VirtualPlacement(parser, 42, 1, 1, placement: 1);
+        VirtualPlacement(parser, 42, 2, 1, placement: 2);
+        parser.Process($"\x1b[53m\x1b[58;5;1m\x1b[38;5;42m{Cell(0, 0)}\x1b[0m");
+        Assert.Equal(1, Assert.Single(Runs(buffer)).GridColumns);   // placement 1, not the newest
+    }
 }

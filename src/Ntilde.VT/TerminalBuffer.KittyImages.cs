@@ -47,12 +47,15 @@ public partial class TerminalBuffer
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         int placementsBefore = _images.Count;
+        bool droppedVirtual = false;
         try
         {
             if (!TryAdmitImageHandle(handle)) return null;
             KittyImageAsset? old = id == 0 ? null : FindKittyImage(id, 0);
             if (id == 0 && number != 0) id = AllocateKittyImageId();
             List<KittyImageAsset> victims = KittyQuotaVictims(old, (long)pixelWidth * pixelHeight * 4);
+            // Placeholder tiles are not placements: replacing or evicting an image that has virtual placements still changes the frame.
+            droppedVirtual = (old?.VirtualPlacements.Count > 0) || victims.Exists(victim => victim.VirtualPlacements.Count > 0);
             if (old is not null) ReleaseKittySources(old);
             foreach (KittyImageAsset victim in victims) ReleaseKittySources(victim);
             ImageSource? source = sent is null ? null : ImageSources.Retain(sent.Bytes, sent.InflationCost);
@@ -66,7 +69,7 @@ public partial class TerminalBuffer
         }
         finally
         {
-            bool removedPlacements = _images.Count < placementsBefore;
+            bool removedPlacements = _images.Count < placementsBefore || droppedVirtual;
             ExitWriteLockIfNeeded(Lock, lockTaken);
             if (removedPlacements) Invalidate();
         }
@@ -122,6 +125,8 @@ public partial class TerminalBuffer
             image.KittyPlacementId = placementId == 0 ? null : placementId;
             if (placementId != 0)
             {
+                // The same placement id names one placement: a virtual one is replaced by a real one.
+                DeleteKittyVirtualPlacements(asset, placementId);
                 for (int i = _images.Count - 1; i >= 0; i--)
                 {
                     TerminalImage old = _images[i];

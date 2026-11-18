@@ -145,8 +145,9 @@ namespace Ntilde.VT
         private CellUnderline? UnderlineForGrapheme(ReadOnlySpan<char> grapheme)
         {
             CellUnderline? decoration = UnderlineForWrite;
-            if (decoration is not null || !KittyPlaceholders.IsPlaceholder(grapheme)) return decoration;
-            return _currentUnderline is { HasColor: true } ? _currentUnderline : null;
+            if (!KittyPlaceholders.IsPlaceholder(grapheme)) return decoration;
+            // The pen's entry already carries an overline when one is set, so it replaces a colourless overline-only entry too.
+            return _currentUnderline is { HasColor: true } ? _currentUnderline : decoration;
         }
 
         public bool IsBlink { get => _isBlink; set { _isBlink = value; _isStyleDirty = true; } }
