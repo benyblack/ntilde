@@ -10,14 +10,15 @@ daemon, the App's pane as one of its clients). The case is `extensions.kitty-gra
 |---|---|---|---|---|
 | `extensions.kitty-graphics.animation` | inconclusive by design | inconclusive by design | **supported** (`ntilde-kitty-animation-persistent-compose-effect-v1`) | none (no stock collector ran in this run) |
 
-All 10 stages of the two compose cases passed (run `744414ca`, App commit `8fed8e5f`, scripts commit `786faf96`), with sixteen validity controls held: the nine of the direct-tab publication, the four persistent-lineage controls of
+All 10 stages of the two compose cases passed (run `ab2afb75`, App commit `8fed8e5f`, scripts commit `ebe82081`), with sixteen validity controls held: the nine of the direct-tab publication, the four persistent-lineage controls of
 [#1025](2026-11-17-kitty-animation-persistent-qualification.md) and three composition controls (one App process throughout, the same worker under the same daemon, the three refusals answered with exactly the named codes).
 The pinned callbacks are replayed from the retained bundle and stay inconclusive; the divergence is recorded as `pinned-inconclusive-by-design`.
 
 ## What the composed panes showed
 
-- **Replace** (`compose-replace-blend.replace`): after `a=c,r=3,c=2,C=1` frame 2 shows frame 3's pixels (blue, where it had been green).
-- **Blend** (`compose-replace-blend.blend`): a half-transparent green PNG frame built on no base (so it keeps its alpha), blended by default (`a=c,r=4,c=1`) onto the opaque red root, shows the protocol's blend of the two; the root, a composition *destination*, was
+- **Replace** (`compose-replace-blend.replace`): a half-transparent green PNG frame 4 (built on no base, so it keeps its alpha) replaces the opaque blue frame 3 with `a=c,r=4,c=3,C=1`; the pane shows the source's pixels, alpha included, over the terminal background (a
+  blend would have shown green over blue, so a terminal that ignores `C=1` cannot pass this stage).
+- **Blend** (`compose-replace-blend.blend`): the same frame, blended by default (`a=c,r=4,c=1`) onto the opaque red root, shows the protocol's blend of the two; the root, a composition *destination*, was
   read back from its retained source, as the persistent policy requires (no decoder).
 - **Refusals change nothing** (`compose-refused`): a missing source frame answered `ENOENT`, a rectangle wider than the image `EINVAL`, one frame onto itself with overlapping rectangles `EINVAL`, in that order and nothing else; the displayed frame stayed the root, and frame 2,
   selected afterwards, was still its own green.
@@ -33,9 +34,10 @@ because the classifier names one uniform color per capture: rectangle offsets an
 
 ## Retained evidence
 
-`2026-11-18-kitty-animation-compose/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy and the generated `summary.json` and `report.json`. The published run is `744414caccad5b6868bab0f353b24c67`. This was the first
-collection of the suite and it passed on the first run, so there are no superseded attempts. `kitty-animation-compose-publication.test.mjs` rederives the receipt binding, settings, measured sources, lineage and the whole carrier report from its journals and refuses
-a downgraded, stripped, relaunched or foreign run.
+`2026-11-18-kitty-animation-compose/` holds the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy and the generated `summary.json` and `report.json`. The published run is `ab2afb750fc19020975ea13a31c2c808`. One earlier attempt is retained under `superseded-attempts/` (`attempts.json` records its scripts commit, outcome, reason and the SHA-256 and size of each retained file): a complete 10/10 run on the
+first version of the suite, superseded because review found that its replace stage copied an opaque frame onto an opaque one (a terminal that ignored `C=1` would have passed it) and that the qualification did not bind every observation to the launch proof's App process; the
+fixes edit measured files, so the suite's replace stage was changed and re-measured. `kitty-animation-compose-publication.test.mjs` rederives the receipt binding, settings, measured sources, lineage and the whole carrier report from its journals refuses
+a downgraded, stripped, relaunched or foreign run (a foreign App pid included), and re-checks every retained attempt file.
 
 Fresh measurement and assembly, into a new publication directory of your own (the assembler refuses one that already holds a publication, and the revisions must be the measured constants of `kitty-animation-compose-qualification.mjs`). Set the variables first:
 

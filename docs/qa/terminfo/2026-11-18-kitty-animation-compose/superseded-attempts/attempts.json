@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "note": "Development attempts of #1027 step 4 in order. Only the retained files are kept; none of the failures produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-WgMfV0",
+      "runId": "744414caccad5b6868bab0f353b24c67",
+      "scripts": "786faf96",
+      "collection": "persistent-compose scope",
+      "outcome": "10/10 passed",
+      "reason": "A complete run (10/10, source policy v68), published first. Review then found that its replace stage copied an opaque frame onto an opaque one, so a terminal that ignored C=1 and blended would have passed it, and that the qualification did not bind every observation to the launch proof's App process. The fixes edit measured files (the suite's commands and appearances), so it is superseded by a fresh run in which the replacement source is half-transparent.",
+      "files": [
+        {
+          "file": "owned-WgMfV0/animation-observations.json",
+          "sha256": "fb0ef747b3e7eabcbe1dfc1db9d3518ed7041ab64fde762e62f8d674cae4daf2",
+          "bytes": 471159
+        },
+        {
+          "file": "owned-WgMfV0/persistent-animation-receipt.json",
+          "sha256": "42cf08f0c4649f27b7498873a01c5bd3d832596d8944df739ab66b04a353dc8e",
+          "bytes": 969
+        },
+        {
+          "file": "owned-WgMfV0/ownership-proof.json",
+          "sha256": "89af4e8064f840e54200f6d4df8e2a9274e25a43b4fc590aa9f583d32331061a",
+          "bytes": 58199
+        }
+      ]
+    }
+  ]
+}

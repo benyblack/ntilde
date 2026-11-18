@@ -89,7 +89,7 @@ test('one App process, one worker and one daemon observed every stage of the liv
 
 test('what the composed panes show: a replacement, a blend of a half-transparent frame onto the root, and refusals that change nothing', () => {
     const report = retained(), stage = id => report.observations.find(value => value.featureId === id);
-    for (const [id, frame] of [[replaceBlend + '.replace', 'third'], [replaceBlend + '.blend', 'overRoot'], [refused + '.refuse', 'root'], [refused + '.intact', 'second']]) {
+    for (const [id, frame] of [[replaceBlend + '.replace', 'overBackground'], [replaceBlend + '.blend', 'overRoot'], [refused + '.refuse', 'root'], [refused + '.intact', 'second']]) {
         const value = stage(id);
         assert.equal(value.result, 'passed'); assert.equal(value.classification.frameId, frame); assert.equal(value.timing.clock, 'static'); assert.ok(value.reply.passed);
     }
@@ -130,4 +130,21 @@ test('a downgraded, stripped, relaunched or foreign compose run is refused', () 
         receipt.animationEvidence.sha256 = hash(readFileSync(join(context.copy, 'animation-observations.json')));
         context.write('persistent-animation-receipt.json', receipt);
     }, /re-derive/);
+});
+
+test('every development attempt is retained with its real outcome, none is the published run, and each retained file matches its recorded digest', () => {
+    const attempts = JSON.parse(read('superseded-attempts/attempts.json')), published = JSON.parse(read('summary.json')).ownedRunId;
+    assert.equal(attempts.schemaVersion, 1);
+    assert.equal(attempts.attempts.length, 1);
+    assert.equal(new Set(attempts.attempts.map(item => item.runId)).size, attempts.attempts.length, 'every retained attempt is a distinct run');
+    for (const item of attempts.attempts) {
+        assert.notEqual(item.runId, published);
+        assert.ok(item.reason.length > 20 && item.scripts.length > 0 && item.files.length >= 2, item.attempt);
+        for (const file of item.files) {
+            // Retained text is LF in git; a Windows checkout may add CR, so hash and size the LF form.
+            const bytes = Buffer.from(read(join('superseded-attempts', file.file)).toString('latin1').replaceAll('\r\n', '\n'), 'latin1');
+            assert.equal(hash(bytes), file.sha256, file.file);
+            assert.equal(bytes.length, file.bytes, file.file);
+        }
+    }
 });
