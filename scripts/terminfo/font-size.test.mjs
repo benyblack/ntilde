@@ -7,7 +7,18 @@ import { syntheticFontSizeEvidence } from './fixtures/font-size-evidence.mjs';
 import { buildFontSizeReport } from './font-size-grading.mjs';
 import { fontSizeGeometry, fontSizeMatches } from './font-size-contracts.mjs';
 import { snapshotHash } from './agent-observer.mjs';
+import { legacyPrefixSource, routedPrefixSource } from './fixtures/private-clipboard-receipt.mjs';
 const build = e => buildFontSizeReport(e.frames, e.run, e.runId, e.adapter);
+
+test('synthetic frozen scopes exclude new font imports on LF and CRLF without broadening historical source maps', () => {
+    const source = "import { retained } from './kept.mjs';\nimport { collectFontSize } from './font-size-collector.mjs';\n"
+        + "import { checkFontSizeEvidence } from './terminfo/font-size-receipt.mjs';\n";
+    for (const project of [legacyPrefixSource, routedPrefixSource]) {
+        for (const text of [source, source.replaceAll('\n', '\r\n')]) {
+            assert.equal(project(Buffer.from(text)).toString(), "import { retained } from './kept.mjs';\n");
+        }
+    }
+});
 
 test('two exact integer-point queries qualify from raw replies, independent font size and unchanged window geometry', () => {
     assert.deepEqual(build(syntheticFontSizeEvidence()).cases.map(c => [c.conclusion.outcome, c.effectContract.outcome]),

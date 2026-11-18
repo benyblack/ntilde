@@ -53,6 +53,12 @@ test('cell-size lifecycle requests reach the untranslated owner observation disp
     for (const kind of ['csz-startx', 'csz-read\n', 'csz-finish-extra', 'csz-apply']) assert.equal(untranslatedCellKind(kind), false, kind);
 });
 
+test('font-size lifecycle requests reach the authenticated owner observation dispatcher', () => {
+    for (const kind of ['fnt-start', 'fnt-bind', 'fnt-read', 'fnt-finish']) assert.equal(untranslatedCellKind(kind), true, kind);
+    for (const kind of ['fnt-startx', 'fnt-read\n', 'fnt-finish-extra', 'fnt-apply', 'fntx-read']) assert.equal(untranslatedCellKind(kind), false, kind);
+    assert.match(source, /if \(prefix === fontSizePrefix\)/);
+});
+
 test('OSC22 lifecycle requests reach the authenticated owner observation dispatcher', () => {
     for (const kind of ['ptr-start', 'ptr-bind', 'ptr-read', 'ptr-finish']) assert.equal(untranslatedCellKind(kind), true, kind);
     for (const kind of ['ptr-startx', 'ptr-read\n', 'ptr-finish-extra', 'ptr-apply', 'ptrx-read']) assert.equal(untranslatedCellKind(kind), false, kind);
