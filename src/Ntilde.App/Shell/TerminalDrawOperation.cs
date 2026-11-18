@@ -1401,7 +1401,7 @@ namespace Ntilde.Shell
             // A double-size line is the same row drawn through a transform: every x doubles about the grid origin, and a
             // double-height half also doubles y and shows its half through the row's own band. Everything below, the
             // span clip included, is then in the row's own column space.
-            bool lineSizeScaled = BeginLineSizeTransform(canvas, snapshot.LineSize, snapshot.Cols, rowTopYDip, snappedCellHeight);
+            bool lineSizeScaled = BeginLineSizeTransform(canvas, snapshot.LineSize, snapshot.BufferCols > 0 ? snapshot.BufferCols : snapshot.Cols, rowTopYDip, snappedCellHeight);
             bool glyphAtlasWasSuppressed = _suppressGlyphAtlas;
             _suppressGlyphAtlas |= lineSizeScaled;
 

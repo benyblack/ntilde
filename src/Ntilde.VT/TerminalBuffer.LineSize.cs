@@ -105,7 +105,7 @@ public partial class TerminalBuffer
         TerminalRow row = _viewport[viewportRow];
         int from = ColumnsForLineSize(row.LineSize, Cols);
         if (from >= Cols) return;
-        if (from > 0 && row.Cells[from].IsWideContinuation) from--;
+        if (from > 0 && row.Cells[from].IsWideContinuation && row.Cells[from - 1].IsWide) from--;
         int abs = TextSizingAbsoluteRow(viewportRow);
         EraseTextSizingRange(from, Cols, abs, abs + 1);
         TerminalCell blank = ThemeBlankCell();

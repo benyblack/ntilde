@@ -172,6 +172,37 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Making_a_line_double_keeps_a_character_that_replaced_the_first_half_of_a_wide_glyph()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"abcd\u4f60{Esc}[1;5HX\r{Dwl}");
+        Assert.Equal("abcdX", Lines(buffer)[0]);
+    }
+
+    [Theory]
+    [InlineData("\u001b[?J")]
+    [InlineData("\u001b[?1J")]
+    [InlineData("\u001b[?2J")]
+    public void Selective_erase_in_display_keeps_line_attributes_with_nothing_protected(string decsed)
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Dwl}a\r\n{Dwl}b\r\n{Dwl}c{Esc}[2;1H{decsed}");
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer));
+    }
+
+    [Fact]
+    public void A_row_snapshot_carries_the_page_width_its_half_is_measured_against()
+    {
+        // A resize in flight: the page is already 12 columns, the view still asks for 20.
+        var (buffer, parser) = Create(cols: 20);
+        parser.Process(Dwl + "MMMMMMMMMM");
+        buffer.Resize(12, 4);
+        using var snapshot = buffer.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportRows = 4, ViewportCols = 20, ScrollOffset = 0 }, out _);
+        Assert.Equal(20, snapshot.RowsData.Array![0].Cols);
+        Assert.Equal(12, snapshot.RowsData.Array[0].BufferCols);
+    }
+
+    [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
         var (buffer, parser) = Create();

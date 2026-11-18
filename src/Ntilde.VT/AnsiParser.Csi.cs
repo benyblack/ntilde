@@ -729,19 +729,21 @@ namespace Ntilde.VT
 
         /// <summary>
         /// ED and unprotected DECSED erase the screen as <paramref name="displayMode"/> says.
-        /// Only ordinary ED can erase scrollback.
+        /// Only ordinary ED can erase scrollback, and only ordinary ED returns the lines it erases to single width:
+        /// DECSED erases characters and leaves line attributes alone, whether or not anything is protected.
         /// </summary>
         private void EraseInDisplay(int displayMode, bool allowHistoryErase)
         {
+            bool resetLineSizes = allowHistoryErase;
             if (displayMode == 0) // Erase from cursor to end of screen
             {
                 // A line ED erases completely returns to single width; the cursor line is one only from its first column.
-                if (_buffer.CursorCol == 0) _buffer.ResetLineSize(_buffer.CursorRow);
+                if (resetLineSizes && _buffer.CursorCol == 0) _buffer.ResetLineSize(_buffer.CursorRow);
                 _buffer.EraseLineToEnd(); // Clear rest of current line
                                           // Clear all lines below cursor
                 for (int r = _buffer.CursorRow + 1; r < _buffer.Rows; r++)
                 {
-                    _buffer.EraseLineAll(r, resetLineSize: true);
+                    _buffer.EraseLineAll(r, resetLineSize: resetLineSizes);
                 }
             }
             else if (displayMode == 1) // Erase from start of screen to cursor
@@ -749,13 +751,13 @@ namespace Ntilde.VT
                 // Clear all lines above cursor
                 for (int r = 0; r < _buffer.CursorRow; r++)
                 {
-                    _buffer.EraseLineAll(r, resetLineSize: true);
+                    _buffer.EraseLineAll(r, resetLineSize: resetLineSizes);
                 }
                 _buffer.EraseLineFromStart(); // Clear start of current line
             }
             else if (displayMode == 2) // Erase entire screen (scrollback is preserved)
             {
-                _buffer.ClearScreen(resetCursor: false);
+                _buffer.ClearScreen(resetCursor: false, keepLineSizes: !resetLineSizes);
                 _verticalOffset = 0; // Reset offset on clear screen
             }
             else if (displayMode == 3 && allowHistoryErase) // Erase saved lines (scrollback only, xterm ED 3)

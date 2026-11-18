@@ -481,7 +481,8 @@ namespace Ntilde.VT
                         Cells = cells,
                         ContainsBlink = containsBlink,
                         RowId = row.Id,
-                        LineSize = row.LineSize
+                        LineSize = row.LineSize,
+                        BufferCols = Cols
                     };
                     rowId = rowSnapshot.RowId;
                     rowRevision = rowSnapshot.Revision;
@@ -502,7 +503,8 @@ namespace Ntilde.VT
                         Cells = cells,
                         ContainsBlink = containsBlink,
                         RowId = absRowId,
-                        LineSize = _scrollback.GetLineSize(absRow)
+                        LineSize = _scrollback.GetLineSize(absRow),
+                        BufferCols = Cols
                     };
                     rowId = rowSnapshot.RowId;
                     rowRevision = rowSnapshot.Revision;
@@ -608,7 +610,8 @@ namespace Ntilde.VT
                         Cells = cells,
                         ContainsBlink = containsBlink,
                         RowId = row.Id,
-                        LineSize = row.LineSize
+                        LineSize = row.LineSize,
+                        BufferCols = Cols
                     };
                 }
                 else if (!_isAltScreen && absRow < _scrollback.Count)
@@ -624,7 +627,8 @@ namespace Ntilde.VT
                         Cells = cells,
                         ContainsBlink = containsBlink,
                         RowId = PagedRowId_NoLock(absRow),
-                        LineSize = _scrollback.GetLineSize(absRow)
+                        LineSize = _scrollback.GetLineSize(absRow),
+                        BufferCols = Cols
                     };
                 }
                 else

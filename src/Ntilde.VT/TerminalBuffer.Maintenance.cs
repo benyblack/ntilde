@@ -232,12 +232,13 @@ namespace Ntilde.VT
         /// <summary>
         /// Erases the visible screen only (ED 2 semantics). Scrollback history is preserved.
         /// </summary>
-        public void ClearScreen(bool resetCursor = false)
+        /// <param name="keepLineSizes">DECSED 2 erases characters, not line attributes: double-size lines stay double.</param>
+        public void ClearScreen(bool resetCursor = false, bool keepLineSizes = false)
         {
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
-                ClearScreenInternal(resetCursor);
+                ClearScreenInternal(resetCursor, keepLineSizes);
             }
             finally
             {
@@ -289,7 +290,7 @@ namespace Ntilde.VT
             Invalidate();
         }
 
-        private void ClearScreenInternal(bool resetCursor)
+        private void ClearScreenInternal(bool resetCursor, bool keepLineSizes = false)
         {
             EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(0), TextSizingAbsoluteRow(Rows));
             RetireImagesOverVisibleScreen();
@@ -302,7 +303,7 @@ namespace Ntilde.VT
             for (int i = 0; i < Rows; i++)
             {
                 ClearRowInternal(i);
-                _viewport[i].LineSize = LineSize.SingleWidth;
+                if (!keepLineSizes) _viewport[i].LineSize = LineSize.SingleWidth;
             }
 
             if (resetCursor)
