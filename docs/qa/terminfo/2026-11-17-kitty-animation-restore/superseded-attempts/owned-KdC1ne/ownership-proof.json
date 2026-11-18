@@ -1,0 +1,1446 @@
+{
+  "proofs": [
+    {
+      "privateClipboard": {
+        "policy": "private-app-storage-parent-transactions-v1",
+        "appBirth": "Wed Nov 18 12:46:58 2026",
+        "workerBirth": "Wed Nov 18 12:46:59 2026",
+        "outputDevice": {
+          "dev": "1018044615",
+          "rdev": "268435457",
+          "ino": "139639"
+        },
+        "originalTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600",
+        "restoredTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600",
+        "restoredAt": "2026-11-18T12:47:37.074Z"
+      },
+      "app": {
+        "pid": 72209,
+        "ppid": 72195,
+        "uid": 501,
+        "tty": "??",
+        "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+      },
+      "worker": {
+        "pid": 72225,
+        "ppid": 72212,
+        "uid": 501,
+        "tty": "ttys001",
+        "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+      },
+      "tty": "/dev/ttys001",
+      "at": "2026-11-18T12:46:59.769Z",
+      "kittyAnimation": {
+        "policy": "owned-kitty-animation-paired-raw-render-restore-v1",
+        "actions": [
+          {
+            "index": 0,
+            "kind": "kan-bind",
+            "caseId": null,
+            "stageId": null,
+            "imageId": null,
+            "commandHex": "1b631b5d31313b233130313031301b5c1b5b3f31303439681b5b34383b323b31363b31363b31366d1b5b324a1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "11bd5b7ccb03d40bb5a626acb36ae135ed38b1759b9c01e810590be947c114a6",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72209,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 72209,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:00.001Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 1,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-playing",
+            "stageId": "blank",
+            "imageId": 3449534991,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72209,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 72209,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:00.136Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 2,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-playing",
+            "stageId": "build",
+            "imageId": 3449534991,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d542c663d33322c733d31362c763d31362c743d642c693d333434393533343939312c703d312c633d342c723d322c433d313b2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f773d3d1b5c1b5f47613d662c663d33322c733d31362c763d31362c743d642c693d333434393533343939312c7a3d353030303b415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f773d3d1b5c1b5f47613d662c663d33322c733d31362c763d31362c743d642c693d333434393533343939312c7a3d353030303b4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f773d3d1b5c1b5f47613d612c693d333434393533343939312c723d312c7a3d353030301b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "4f34615ba78e0e0ccd0a056fa3bbf49fb5b05d1cb1a621edb2d0af523bdd76e1",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72209,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 72209,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:00.263Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 3,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-playing",
+            "stageId": "start",
+            "imageId": 3449534991,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d612c693d333434393533343939312c733d331b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "bda86247685cffc712e3f9dca59658202ae03eb1604b70ff5f66f120e5832b5f",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72209,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 72209,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:00.405Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 4,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-playing",
+            "stageId": "reattach",
+            "imageId": 3449534991,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:05.569Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 5,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-playing",
+            "stageId": "third",
+            "imageId": 3449534991,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:12.753Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 6,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-playing",
+            "stageId": "loop",
+            "imageId": 3449534991,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:17.861Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 7,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-playing",
+            "stageId": "clear",
+            "imageId": 3449534991,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d642c643d492c693d333434393533343939311b5c1b5b324a1b5b481b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "b61d17c4dc896adca1b6f3ee6f1d18ec978c4139291f4ac0c53578acabb2e1b1",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:17.980Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 8,
+            "kind": "kan-restore",
+            "caseId": "kitty.animation.restore-playing",
+            "stageId": null,
+            "imageId": 3449534991,
+            "commandHex": "1b631b5d31313b233130313031301b5c1b5b3f31303439681b5b34383b323b31363b31363b31366d1b5b324a1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "11bd5b7ccb03d40bb5a626acb36ae135ed38b1759b9c01e810590be947c114a6",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:18.099Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 9,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": "blank",
+            "imageId": 404141332,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:18.205Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 10,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": "build",
+            "imageId": 404141332,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d542c663d33322c733d31362c763d31362c743d642c693d3430343134313333322c703d312c633d342c723d322c433d313b2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f773d3d1b5c1b5f47613d662c663d33322c733d31362c763d31362c743d642c693d3430343134313333322c7a3d353030303b415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f773d3d1b5c1b5f47613d662c663d33322c733d31362c763d31362c743d642c693d3430343134313333322c7a3d353030303b4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f773d3d1b5c1b5f47613d612c693d3430343134313333322c723d312c7a3d353030301b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "692ed5914c60be4c048b52412fb1909936e94c54912174cc78f99b6410c481d2",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:18.315Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 11,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": "start",
+            "imageId": 404141332,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d612c693d3430343134313333322c733d331b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "57446462a7498c2c09c87400edce12f2f37dd9a541db2bc10d807819ffa36246",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:18.422Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 12,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": "second",
+            "imageId": 404141332,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:24.567Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 13,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": "stop",
+            "imageId": 404141332,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d612c693d3430343134313333322c733d311b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "a504f38758ac8ffd29e3965501f6f20ad11d132b38890e9b6516f4b9e9566ee2",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72368,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:24.666Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72209,
+                "to": 72368,
+                "appBirth": "Wed Nov 18 12:47:04 2026",
+                "startedAt": "2026-11-18T12:47:04.436Z",
+                "at": "2026-11-18T12:47:05.551Z"
+              }
+            }
+          },
+          {
+            "index": 14,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": "reattach",
+            "imageId": 404141332,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72723,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:25.906Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72368,
+                "to": 72723,
+                "appBirth": "Wed Nov 18 12:47:24 2026",
+                "startedAt": "2026-11-18T12:47:24.780Z",
+                "at": "2026-11-18T12:47:25.886Z"
+              }
+            }
+          },
+          {
+            "index": 15,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": "hold",
+            "imageId": 404141332,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72723,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:32.175Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72368,
+                "to": 72723,
+                "appBirth": "Wed Nov 18 12:47:24 2026",
+                "startedAt": "2026-11-18T12:47:24.780Z",
+                "at": "2026-11-18T12:47:25.886Z"
+              }
+            }
+          },
+          {
+            "index": 16,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": "clear",
+            "imageId": 404141332,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d642c643d492c693d3430343134313333321b5c1b5b324a1b5b481b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "1d0becab0aaf65008e02bd571f2fcf4e35ed532c6e14804371acc365628563d1",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72723,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:32.281Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72368,
+                "to": 72723,
+                "appBirth": "Wed Nov 18 12:47:24 2026",
+                "startedAt": "2026-11-18T12:47:24.780Z",
+                "at": "2026-11-18T12:47:25.886Z"
+              }
+            }
+          },
+          {
+            "index": 17,
+            "kind": "kan-restore",
+            "caseId": "kitty.animation.restore-stopped",
+            "stageId": null,
+            "imageId": 404141332,
+            "commandHex": "1b631b5d31313b233130313031301b5c1b5b3f31303439681b5b34383b323b31363b31363b31366d1b5b324a1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "11bd5b7ccb03d40bb5a626acb36ae135ed38b1759b9c01e810590be947c114a6",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72723,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:32.375Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72368,
+                "to": 72723,
+                "appBirth": "Wed Nov 18 12:47:24 2026",
+                "startedAt": "2026-11-18T12:47:24.780Z",
+                "at": "2026-11-18T12:47:25.886Z"
+              }
+            }
+          },
+          {
+            "index": 18,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": "blank",
+            "imageId": 1343991853,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72723,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:32.469Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72368,
+                "to": 72723,
+                "appBirth": "Wed Nov 18 12:47:24 2026",
+                "startedAt": "2026-11-18T12:47:24.780Z",
+                "at": "2026-11-18T12:47:25.886Z"
+              }
+            }
+          },
+          {
+            "index": 19,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": "build",
+            "imageId": 1343991853,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d542c663d33322c733d31362c763d31362c743d642c693d313334333939313835332c703d312c633d342c723d322c433d313b2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f773d3d1b5c1b5f47613d662c663d3130302c743d642c693d313334333939313835332c633d312c7a3d353030303b6956424f5277304b47676f414141414e535568455567414141424141414141514341594141414166382f39684141414147456c4551565234326d4e672b4d2f51514245654e57445567464544686f7342414f6b58667841492b6748634141414141456c46546b5375516d43431b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "86f366fc142ad5ee5bf3eb3dfb27c45f8ad110f3c55d7e0ebe3c84e64ae348a2",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72723,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:32.567Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72368,
+                "to": 72723,
+                "appBirth": "Wed Nov 18 12:47:24 2026",
+                "startedAt": "2026-11-18T12:47:24.780Z",
+                "at": "2026-11-18T12:47:25.886Z"
+              }
+            }
+          },
+          {
+            "index": 20,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": "show",
+            "imageId": 1343991853,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d612c693d313334333939313835332c633d321b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "9a7651bd93dabcd2db201a876efe08918110b92339c37735942547bd2432da7d",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72723,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:32.665Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72368,
+                "to": 72723,
+                "appBirth": "Wed Nov 18 12:47:24 2026",
+                "startedAt": "2026-11-18T12:47:24.780Z",
+                "at": "2026-11-18T12:47:25.886Z"
+              }
+            }
+          },
+          {
+            "index": 21,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": "edit",
+            "imageId": 1343991853,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d662c663d33322c733d31362c763d31362c743d642c693d313334333939313835332c723d313b4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f773d3d1b5c1b5f47613d612c693d313334333939313835332c633d311b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "8f377f70ed86fa27f16d7e25846557e980feb97a16d9e17abcdc7e2f352f0573",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72723,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:32.755Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72368,
+                "to": 72723,
+                "appBirth": "Wed Nov 18 12:47:24 2026",
+                "startedAt": "2026-11-18T12:47:24.780Z",
+                "at": "2026-11-18T12:47:25.886Z"
+              }
+            }
+          },
+          {
+            "index": 22,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": "reattach",
+            "imageId": 1343991853,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "46a70b81da9c7d02496d328b3b46890b80a8423861a6eccaf587e307ae827a59",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72920,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:34.084Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72723,
+                "to": 72920,
+                "appBirth": "Wed Nov 18 12:47:32 2026",
+                "startedAt": "2026-11-18T12:47:32.856Z",
+                "at": "2026-11-18T12:47:34.070Z"
+              }
+            }
+          },
+          {
+            "index": 23,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": "again",
+            "imageId": 1343991853,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d612c693d313334333939313835332c633d321b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "9a7651bd93dabcd2db201a876efe08918110b92339c37735942547bd2432da7d",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72920,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:34.217Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72723,
+                "to": 72920,
+                "appBirth": "Wed Nov 18 12:47:32 2026",
+                "startedAt": "2026-11-18T12:47:32.856Z",
+                "at": "2026-11-18T12:47:34.070Z"
+              }
+            }
+          },
+          {
+            "index": 24,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": "compose",
+            "imageId": 1343991853,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d662c663d3130302c743d642c693d313334333939313835332c633d312c7a3d353030303b6956424f5277304b47676f414141414e535568455567414141424141414141514341594141414166382f39684141414147556c4551565234326d50347a38445151416c6d47445667314942524134614c4151446f4a6e385158564578454141414141424a52553545726b4a6767673d3d1b5c1b5f47613d612c693d313334333939313835332c633d331b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "547edac199d1554e78af9641e3afa15f8c6743b436ddcffd96bba80e7134502b",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72920,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:34.323Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72723,
+                "to": 72920,
+                "appBirth": "Wed Nov 18 12:47:32 2026",
+                "startedAt": "2026-11-18T12:47:32.856Z",
+                "at": "2026-11-18T12:47:34.070Z"
+              }
+            }
+          },
+          {
+            "index": 25,
+            "kind": "kan-read",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": "clear",
+            "imageId": 1343991853,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c1b5f47613d642c643d492c693d313334333939313835331b5c1b5b324a1b5b481b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "387b1ccc2384e59473b222595120904b5f2e404acd06376b82b20e8a4ca17699",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72920,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:34.425Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72723,
+                "to": 72920,
+                "appBirth": "Wed Nov 18 12:47:32 2026",
+                "startedAt": "2026-11-18T12:47:32.856Z",
+                "at": "2026-11-18T12:47:34.070Z"
+              }
+            }
+          },
+          {
+            "index": 26,
+            "kind": "kan-restore",
+            "caseId": "kitty.animation.restore-frames",
+            "stageId": null,
+            "imageId": 1343991853,
+            "commandHex": "1b631b5d31313b233130313031301b5c1b5b3f31303439681b5b34383b323b31363b31363b31366d1b5b324a1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f62376238303363333031393631623831343336376666366332306265343563371b5b353b34481b5b3f32356c",
+            "commandSha256": "11bd5b7ccb03d40bb5a626acb36ae135ed38b1759b9c01e810590be947c114a6",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72920,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:34.521Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72723,
+                "to": 72920,
+                "appBirth": "Wed Nov 18 12:47:32 2026",
+                "startedAt": "2026-11-18T12:47:32.856Z",
+                "at": "2026-11-18T12:47:34.070Z"
+              }
+            }
+          },
+          {
+            "index": 27,
+            "kind": "kan-finish",
+            "caseId": null,
+            "stageId": null,
+            "imageId": null,
+            "commandHex": "1b631b5b3f323568",
+            "commandSha256": "711991c94b47de633f6a332b03c83c22a514aa7bc1cfded0e7fecaf8f115a56b",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 72920,
+                "ppid": 72195,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "worker": {
+                "pid": 72225,
+                "ppid": 72212,
+                "uid": 501,
+                "tty": "ttys001",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 72212,
+                "ppid": 1,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+              },
+              "tty": "/dev/ttys001",
+              "at": "2026-11-18T12:47:34.618Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              },
+              "relaunch": {
+                "from": 72723,
+                "to": 72920,
+                "appBirth": "Wed Nov 18 12:47:32 2026",
+                "startedAt": "2026-11-18T12:47:32.856Z",
+                "at": "2026-11-18T12:47:34.070Z"
+              }
+            }
+          }
+        ],
+        "paneId": "1375f575-debf-4500-8f03-5809d8d10a69",
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "seal": {
+          "failed": false,
+          "disposed": true,
+          "attempts": 28,
+          "lastAttempt": {
+            "hex": "1b5d31313b7267623a303030302f303030302f303030301b5c1b5b3f353b3224791b5b3f36363b3224791b5b3f393b3224791b5b3f313030303b3224791b5b3f313030323b3224791b5b3f313030333b3224791b5b3f313030363b3224791b5b3f30751b5b3f36323634313b3024791b5b3f34353831363b302479",
+            "nonces": [
+              62641,
+              45816
+            ],
+            "fenceRequested": true,
+            "completed": true,
+            "error": null
+          },
+          "ownership": {
+            "app": {
+              "pid": 72920,
+              "ppid": 72195,
+              "uid": 501,
+              "tty": "??",
+              "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+            },
+            "worker": {
+              "pid": 72225,
+              "ppid": 72212,
+              "uid": 501,
+              "tty": "ttys001",
+              "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+            },
+            "daemon": {
+              "pid": 72212,
+              "ppid": 1,
+              "uid": 501,
+              "tty": "??",
+              "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+            },
+            "tty": "/dev/ttys001",
+            "at": "2026-11-18T12:47:34.709Z",
+            "terminalOutput": {
+              "tool": "/bin/stty",
+              "outputProcessing": false,
+              "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+            },
+            "relaunch": {
+              "from": 72723,
+              "to": 72920,
+              "appBirth": "Wed Nov 18 12:47:32 2026",
+              "startedAt": "2026-11-18T12:47:32.856Z",
+              "at": "2026-11-18T12:47:34.070Z"
+            }
+          }
+        }
+      },
+      "relaunches": [
+        {
+          "from": 72209,
+          "to": 72368,
+          "appBirth": "Wed Nov 18 12:47:04 2026",
+          "startedAt": "2026-11-18T12:47:04.436Z",
+          "at": "2026-11-18T12:47:05.551Z"
+        },
+        {
+          "from": 72368,
+          "to": 72723,
+          "appBirth": "Wed Nov 18 12:47:24 2026",
+          "startedAt": "2026-11-18T12:47:24.780Z",
+          "at": "2026-11-18T12:47:25.886Z"
+        },
+        {
+          "from": 72723,
+          "to": 72920,
+          "appBirth": "Wed Nov 18 12:47:32 2026",
+          "startedAt": "2026-11-18T12:47:32.856Z",
+          "at": "2026-11-18T12:47:34.070Z"
+        }
+      ],
+      "terminalOutput": {
+        "tool": "/bin/stty",
+        "outputProcessing": false,
+        "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;",
+        "verifiedAt": "2026-11-18T12:46:59.805Z"
+      }
+    }
+  ],
+  "completed": true,
+  "collectionScope": {
+    "id": "owned-kitty-animation-persistent-restore-v1",
+    "persistence": "KeepOnClose",
+    "suites": [
+      "kitty-animation-restore"
+    ],
+    "suiteVersion": 3,
+    "deadlineMs": 600000
+  },
+  "persistentDaemon": {
+    "identity": {
+      "pid": 72212,
+      "uid": 501,
+      "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde"
+    },
+    "appData": "/Users/behnam/.ntilde-qa/nt-sPbjHr/appdata",
+    "command": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-persistent-restore-1030/artifacts/sidecar-kpr/Ntilde mux serve",
+    "birth": "Wed Nov 18 12:46:58 2026",
+    "appBirth": "Wed Nov 18 12:46:58 2026",
+    "descriptor": {
+      "pid": 72212,
+      "processName": "Ntilde",
+      "endpoint": "/Users/behnam/.ntilde-qa/nt-sPbjHr/appdata/mux/mux.sock"
+    }
+  },
+  "cleanedUpAt": "2026-11-18T12:47:37.455Z",
+  "sourceSnapshot": {
+    "policy": "readonly-owned-source-graph-v68",
+    "root": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-PYHeD4",
+    "removedAt": "2026-11-18T12:47:37.511Z"
+  }
+}

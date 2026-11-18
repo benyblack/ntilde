@@ -133,7 +133,7 @@
       "scripts": "601cd051",
       "collection": "persistent-restore scope",
       "outcome": "22/22 passed",
-      "reason": "A complete run (22/22, source policy v68) on the merged tree, published first. Review then found that the PNG-derived frame 2 was never read back after a relaunch, that a timeline read and the stopped hold did not rule out a restarted or resumed playhead, that the relaunch timing used a record the validated frame did not carry, and that a relaunch request was not tied to the next declared stage; the fixes edit measured files, so it is superseded by a fresh run of the 23-stage suite.",
+      "reason": "A complete run (22/22, source policy v68) on the merged tree, published first. Review then found that the PNG-derived frame 2 was never read back after a relaunch, that a timeline read and the stopped hold did not rule out a restarted or resumed playhead, that the relaunch timing used a record the validated frame did not carry, and that a relaunch request was not tied to the next declared stage; the fixes edit measured files, so it is superseded by a fresh run of the 23-stage suite. Its retained report scope says the App was \"quit\"; the runner terminated it with SIGTERM and a graceful quit was not measured.",
       "files": [
         {
           "file": "owned-AK2q6J/animation-observations.json",
@@ -199,6 +199,31 @@
           "file": "owned-0tb9EH/ownership-proof.json",
           "sha256": "0117ac29ae70c9f22e538b7ff0b334370645de539451967ca2848538bbbf0cb7",
           "bytes": 106336
+        }
+      ]
+    },
+    {
+      "attempt": "owned-KdC1ne",
+      "runId": "b7b803c301961b814367ff6c20be45c7",
+      "scripts": "c0d1c2f9",
+      "collection": "persistent-restore scope",
+      "outcome": "23/23 passed",
+      "reason": "A complete run of the 23-stage plan (source policy v68) after the relaunch answer was split out, published first. A third review found that the relaunch record did not say how the App ended (a kill escalated to SIGKILL would have passed as a SIGTERM restore), that the first read after a relaunch of a stopped animation did not rule out a playhead restarted from the root, and that the restore verifier did not check relaunch ordering; the fixes edit measured files, so it is superseded by a fresh run.",
+      "files": [
+        {
+          "file": "owned-KdC1ne/animation-observations.json",
+          "sha256": "f634b5995a0cb98769f0aded72abfdddb18dfe4e17fb828cac794025a17d81b1",
+          "bytes": 924819
+        },
+        {
+          "file": "owned-KdC1ne/persistent-animation-receipt.json",
+          "sha256": "441ab820ca5561e4d60ec03e2fabfc5061b9d3b27cbd0bfeba6ba4231deaf4f7",
+          "bytes": 969
+        },
+        {
+          "file": "owned-KdC1ne/ownership-proof.json",
+          "sha256": "cc8930a9e7e79f183f3c79a03e50f93dc49d67ac2a88a142def48422bcdc6f5c",
+          "bytes": 106313
         }
       ]
     }
