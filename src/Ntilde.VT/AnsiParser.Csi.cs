@@ -455,8 +455,9 @@ namespace Ntilde.VT
                     if (intermediates.SequenceEqual("#")) HandleXtermSgrStack(csi);
                     else EraseRectangularArea(csi, selective: true);
                     break;
-                case 'x': // DECSACE (CSI Ps * x), DECFRA (only the exact $ x identity); bare CSI x (DECREQTPARM) stays unhandled
+                case 'x': // DECSACE (CSI Ps * x), DECFRA (only the exact $ x identity), DECREQTPARM (only bare CSI Ps x)
                     if (intermediates.SequenceEqual("*")) SelectAttributeChangeExtent(csi);
+                    else if (bare) ReportTerminalParameters(csi);
                     else FillRectangularArea(csi);
                     break;
                 case 'y': // DECRQCRA - Request Checksum of Rectangular Area (only the exact * y identity, behind its gate)
@@ -577,7 +578,7 @@ namespace Ntilde.VT
                         // ?62;4;22c (VT220 + Sixel + ANSI)
                         // vttest checks these. 
                         // Let's stick to ?62;4;22c as it worked for XTerm.
-                        OnResponse?.Invoke("\x1b[?62;4;22c");
+                        OnResponse?.Invoke(PrimaryDeviceAttributesReply);
                     }
                     break;
                 case 'n': // DSR - Device Status Report
