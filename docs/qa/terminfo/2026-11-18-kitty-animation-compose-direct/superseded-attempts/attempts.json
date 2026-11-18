@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "note": "Development attempts of the ordinary-tab composition measurement (#1027) in order. Only the retained files are kept; none produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-Btkaj2",
+      "runId": "19977e3ab0cff3eff56b610247301767",
+      "scripts": "441db725",
+      "collection": "direct-compose scope",
+      "outcome": "no evidence (receipt not completed; 10/10 stages had passed)",
+      "reason": "The first ordinary-tab collection. All ten stages passed on the real desktop (the retained report), but the runner then failed to finish the receipt (\"Cannot access 'context' before initialization\": the receipt completion read the run's scope before it had read the run's context), so the run produced no receipt and no evidence. The runner was fixed and the suite collected again.",
+      "files": [
+        {
+          "file": "owned-Btkaj2/failure.json",
+          "sha256": "7ce947217940be8777b5a50e2c606aad0966c28fded4faffbc33adedf84c57c9",
+          "bytes": 99
+        },
+        {
+          "file": "owned-Btkaj2/animation-observations.json",
+          "sha256": "a677ba169d74b230ffdbca3613e610a0aa667dd0a2ebd8c8ce9870c248483942",
+          "bytes": 463587
+        },
+        {
+          "file": "owned-Btkaj2/ownership-proof.json",
+          "sha256": "b3ba8d74ac45168200a70987b888c881f8d11f66d55d8328eaf6f471c8704b48",
+          "bytes": 53123
+        }
+      ]
+    }
+  ]
+}

@@ -880,7 +880,8 @@ collection is not claimed for persistent tabs (the ownership proof is extended, 
 
 The [2026-11-18 persistent composition qualification](terminfo/2026-11-18-kitty-animation-compose-qualification.md)
 (#1027) measures `a=c` frame composition in a live persistent tab with `--scope persistent-compose` (suite version 4, whole-frame compositions and refused ones; 10/10 stages,
-effect supported, pinned callbacks inconclusive by design, no stock run and no Core, stock or common-harness change; an ordinary tab and partial rectangles are covered by unit tests only).
+effect supported, pinned callbacks inconclusive by design, no stock run and no Core, stock or common-harness change; partial rectangles are covered by unit tests only). The
+[ordinary-tab measurement](terminfo/2026-11-18-kitty-animation-compose-direct-qualification.md) runs the same suite with `--scope direct-compose` (no daemon, the root read back through the host decoder): 10/10, effect supported.
 
 The [2026-11-17 persistent restore qualification](terminfo/2026-11-17-kitty-animation-restore-qualification.md)
 (#1030) measures that restore: `--scope persistent-restore` terminates the App with SIGTERM while the daemon and shell keep running, starts it again on the same private root, and reads the reattached pane

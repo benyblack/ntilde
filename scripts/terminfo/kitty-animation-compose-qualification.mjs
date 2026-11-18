@@ -19,8 +19,8 @@ export { pinnedBundleArchive, kittyAnimationQualificationIds, upstreamBundleSha2
 export const measuredAppRevision = '8fed8e5ff6a73d8a0888fa21fb88ccf86c040cac';
 export const measuredScriptsRevision = 'ebe820811b9cf8df36c04fb819600e21e96cd625';
 // The ordinary-tab publication was measured on its own build and tree.
-export const directMeasuredAppRevision = '0000000000000000000000000000000000000000';
-export const directMeasuredScriptsRevision = '0000000000000000000000000000000000000000';
+export const directMeasuredAppRevision = '91b111e03dfbfba2a24bfcac85f6e05ede291182';
+export const directMeasuredScriptsRevision = '86783304548db5a7d55d9624254f88545131f055';
 
 const version = 4;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');

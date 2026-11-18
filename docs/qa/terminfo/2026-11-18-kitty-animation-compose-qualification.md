@@ -27,7 +27,7 @@ Every stage is a static frame chosen by an explicit command, so no elapsed-time 
 
 ## Limits
 
-One desktop (macOS), one App build, one 16x16 image. The measured tab is a **persistent** one (policy 4): an ordinary (non-persistent) tab, where the root is read back through the decoder, is covered by unit tests only. Only **whole-frame** compositions are observed,
+One desktop (macOS), one App build, one 16x16 image. The measured tab is a **persistent** one (policy 4): an ordinary (non-persistent) tab, where the root is read back through the decoder, is measured in its own publication ([ordinary-tab note](2026-11-18-kitty-animation-compose-direct-qualification.md)). Only **whole-frame** compositions are observed,
 because the classifier names one uniform color per capture: rectangle offsets and sizes smaller than the image are pinned by `KittyAnimationTests` and the persistent parity tests, not here. A composition whose source or destination is a PNG-encoded root is not measured
 (the root image is raw RGBA, `f=32`; only the added frame is PNG), nor a second client, remote persistent sessions, other platforms, or a restart or reattach after composing. A persistent session created before policy 4 shipped keeps refusing `a=c`
 (measured by nothing here; unit tests cover it). No stock grade, Core score or common-harness comparison changes.
