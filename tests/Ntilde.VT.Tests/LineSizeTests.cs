@@ -220,6 +220,26 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Erasing_the_screen_drops_a_wrap_pending_at_a_double_lines_last_column()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Dwl}abcde{Esc}[2JX");
+        Assert.Equal(new[] { "     X", "", "", "" }, Lines(buffer));
+    }
+
+    [Fact]
+    public void A_page_narrower_than_a_double_lines_text_cuts_it_at_the_page_width()
+    {
+        // Recorded decision: a double-size line is a fixed row, not reflowed, so this is the one resize that loses text.
+        var (buffer, parser) = Create();
+        parser.Process(Dwl + "abcde\r\nplain text");
+        buffer.Resize(4, 4);
+        buffer.Resize(10, 4);
+        Assert.Contains("abcd", Lines(buffer));
+        Assert.Contains(LineSize.DoubleWidth, AllSizes(buffer));
+    }
+
+    [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
         var (buffer, parser) = Create();

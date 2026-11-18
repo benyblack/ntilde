@@ -300,6 +300,7 @@ namespace Ntilde.VT
             // If we replace all row objects (new IDs), Yazi's next frame skips unchanged rows,
             // leaving blank row objects on screen instead of re-drawn content.
             // Every line is erased completely, so each returns to single width (ED 2 on a VT100).
+            if (!keepLineSizes && CursorRowLastColumnNoLock < Cols - 1) ReleasePendingWrapOnWiderRowNoLock();
             for (int i = 0; i < Rows; i++)
             {
                 ClearRowInternal(i);
