@@ -63,21 +63,39 @@ public partial class TerminalBuffer
         var assets = new Dictionary<uint, KittyImageAsset?>();
         for (int absRow = Math.Max(0, absDisplayStart); absRow < absEnd; absRow++)
         {
-            TerminalRow? row = GetRowAbsolute(absRow);
-            if (row is null) continue;
-            AppendPlaceholderRuns(images, assets, row, absRow);
+            // Scrollback is paged, so its cells and side tables are read through the page store rather than as a row object.
+            ReadOnlySpan<TerminalCell> cells;
+            Storage.SmallMap<string>? texts;
+            Storage.SmallMap<CellUnderline>? underlines;
+            if (!_isAltScreen && absRow >= 0 && absRow < _scrollback.Count)
+            {
+                cells = _scrollback.GetRow(absRow);
+                texts = _scrollback.GetExtendedTextMap(absRow);
+                underlines = _scrollback.GetUnderlineMap(absRow);
+            }
+            else
+            {
+                TerminalRow? row = GetRowAbsolute(absRow);
+                if (row is null) continue;
+                cells = row.Cells;
+                texts = row.GetExtendedTextMap();
+                underlines = row.GetUnderlineMap();
+            }
+            AppendPlaceholderRuns(images, assets, cells, texts, underlines, absRow);
         }
     }
 
-    private void AppendPlaceholderRuns(List<RenderImageSnapshot> images, Dictionary<uint, KittyImageAsset?> assets, TerminalRow row, int absRow)
+    private void AppendPlaceholderRuns(List<RenderImageSnapshot> images, Dictionary<uint, KittyImageAsset?> assets,
+        ReadOnlySpan<TerminalCell> cells, Storage.SmallMap<string>? texts, Storage.SmallMap<CellUnderline>? underlines, int absRow)
     {
         PlaceholderRun? run = null;
         var previous = default(KittyPlaceholders.Previous);
-        int columns = Math.Min(Cols, row.Cells.Length);
+        int columns = Math.Min(Cols, cells.Length);
         for (int col = 0; col < columns; col++)
         {
-            TerminalCell cell = row.Cells[col];
-            string? text = cell.HasExtendedText ? row.GetExtendedText(col) : null;
+            TerminalCell cell = cells[col];
+            string? text = null;
+            if (cell.HasExtendedText) texts?.TryGet(col, out text);
             if (!KittyPlaceholders.IsPlaceholder(text) || cell.IsDefaultForeground || cell.IsHidden)
             {
                 FlushPlaceholderRun(images, ref run, absRow);
@@ -85,7 +103,7 @@ public partial class TerminalBuffer
                 continue;
             }
             uint foreground = KittyPlaceholders.ColorNumber(cell.IsPaletteForeground, cell.Fg, cell.Fg);
-            KittyPlaceholders.Cell resolved = KittyPlaceholders.Resolve(text!, foreground, UnderlineNumber(row.GetUnderline(col)), previous, out previous);
+            KittyPlaceholders.Cell resolved = KittyPlaceholders.Resolve(text!, foreground, UnderlineNumber(underlines is not null && underlines.TryGet(col, out CellUnderline? underline) ? underline : null), previous, out previous);
             if (!TryFindVirtualPlacement(assets, resolved, out KittyImageAsset? asset, out KittyVirtualPlacement placement)
                 || resolved.Column >= placement.Columns || resolved.Row >= placement.Rows)
             {

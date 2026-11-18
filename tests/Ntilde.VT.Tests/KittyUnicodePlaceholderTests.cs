@@ -396,4 +396,39 @@ public sealed class KittyUnicodePlaceholderTests
         parser.Process($"\x1b[53m\x1b[58;5;1m\x1b[38;5;42m{Cell(0, 0)}\x1b[0m");
         Assert.Equal(1, Assert.Single(Runs(buffer)).GridColumns);   // placement 1, not the newest
     }
+
+    [Fact]
+    public void A_placeholder_scrolled_into_history_still_shows_its_image_with_its_underline_colour()
+    {
+        var (buffer, parser, _) = Create(rows: 2);
+        Transmit(parser, 42);
+        VirtualPlacement(parser, 42, 1, 1, placement: 1);
+        VirtualPlacement(parser, 42, 2, 1, placement: 2);
+        parser.Process($"\x1b[38;5;42m\x1b[58;5;1m{Cell(0, 0)}\x1b[0m\r\n\r\n");
+        Assert.True(buffer.TotalLines > buffer.Rows);
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            List<RenderImageSnapshot> history = buffer.GetVisibleImagesSnapshot(0, buffer.Rows).Where(image => image.GridColumns > 0).ToList();
+            RenderImageSnapshot run = Assert.Single(history);
+            Assert.Equal((0, 1), (run.CellY, run.GridColumns));   // placement 1 by its underline colour, read from the page
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void A_placeholder_cell_is_drawn_without_a_glyph_whether_or_not_it_has_an_image()
+    {
+        var (buffer, parser, _) = Create(rows: 2);
+        // One placeholder scrolled into history and one in the viewport, neither with an image behind it.
+        parser.Process($"\x1b[38;5;42m{Cell(0, 0)}\x1b[0m\r\n\r\n\x1b[38;5;42m{Cell(0, 0)}\x1b[0m");
+        foreach (int scrollOffset in new[] { 0, 1 })
+        {
+            using TerminalRenderSnapshot snapshot = buffer.CaptureRenderSnapshot(
+                new RenderSnapshotRequest { ViewportRows = 2, ViewportCols = 80, ScrollOffset = scrollOffset, Isolated = true }, out _);
+            RenderCellSnapshot cell = snapshot.RowsData.Array[scrollOffset == 0 ? 1 : 0].Cells[0];
+            Assert.Null(cell.Text);
+            Assert.Equal(' ', cell.Character);
+        }
+    }
 }

@@ -1062,14 +1062,15 @@ namespace Ntilde.VT
                 {
                     var cell = sourceCells[c];
                     containsBlink |= cell.IsBlink && !cell.IsHidden;
+                    string? graphemeText = null;
+                    if (cell.HasExtendedText) extendedText?.TryGet(c, out graphemeText);
+                    // A Unicode placeholder draws no glyph of its own: its image, if any, is added by AppendPlaceholderImages.
+                    bool placeholder = KittyPlaceholders.IsPlaceholder(graphemeText);
                     rebuiltCells[c] = new RenderCellSnapshot
                     {
-                        Character = cell.Character,
+                        Character = placeholder ? ' ' : cell.Character,
                         TextSizing = ReadSizingMap(sizing, c),
-                        Text = cell.HasExtendedText && extendedText != null
-                               && extendedText.TryGet(c, out string? graphemeText)
-                            ? graphemeText
-                            : null,
+                        Text = placeholder ? null : graphemeText,
                         Foreground = cell.Foreground,
                         Background = cell.Background,
                         IsInverse = cell.IsInverse,
