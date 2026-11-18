@@ -352,15 +352,21 @@ test('current effect totals preserve the separate unsupported and measured-other
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
     assert.equal(totals.uniqueBenchmarkIds, totals.effectSupportedIds + totals.effectUnsupportedIds + totals.effectOtherIds);
     assert.equal(totals.suiteClaims, stored.suites.reduce((count, suite) => count + suite.caseCount, 0));
-    assert.equal(totals.effectSupportedIds, 144);
-    assert.equal(totals.pinnedSupportedIds, 94);
-    assert.equal(totals.pinnedAndEffectSupportedIds, 94);
+    for (const id of ['extensions.osc7770-font-size', 'extensions.osc7777-font-window-size']) {
+        const font = row(stored, id);
+        assert.equal(font.pinned.best, 'supported');
+        assert.equal(font.effect.verdict, 'supported');
+    }
+    assert.equal(row(stored, 'extensions.osc710-font-normal'), undefined);
+    assert.equal(totals.effectSupportedIds, 146);
+    assert.equal(totals.pinnedSupportedIds, 96);
+    assert.equal(totals.pinnedAndEffectSupportedIds, 96);
     assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 50);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 143);
-    assert.equal(totals.pinnedSupportedOfStockInconclusive, 93);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 145);
+    assert.equal(totals.pinnedSupportedOfStockInconclusive, 95);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 25, effectMeasuredUnsupported: 2, effectMeasuredOther: 1, effectNotMeasured: 22, notPinnedSupported: 75 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 23, effectMeasuredUnsupported: 2, effectMeasuredOther: 1, effectNotMeasured: 20, notPinnedSupported: 73 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -457,7 +463,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc720-scroll-up`, `extensions\.sixel`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 2 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 22 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 20 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
