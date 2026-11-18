@@ -351,6 +351,14 @@ namespace Ntilde.VT
                                 {
                                     _cursorCol++;
                                     if (_cursorCol > Cols) _cursorCol = Cols;
+                                    // On a double-size row the glyph now fills the row's last column: the cursor waits
+                                    // there to wrap, as it would had the glyph arrived wide in one piece.
+                                    int doubleRowLast = CursorRowLastColumnNoLock;
+                                    if (doubleRowLast < Cols - 1 && _cursorCol > doubleRowLast)
+                                    {
+                                        _cursorCol = doubleRowLast;
+                                        _isPendingWrap = Modes.IsAutoWrapMode;
+                                    }
                                 }
                             }
                         }

@@ -256,6 +256,23 @@ public sealed class LineSizeTests
         Assert.Equal((1, 4), (buffer.CursorRow, buffer.CursorCol));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_glyph_widened_at_the_half_by_a_later_variation_selector_wraps_the_same_in_one_chunk_or_two(bool split)
+    {
+        var (buffer, parser) = Create();
+        if (split)
+        {
+            parser.Process(Dwl + "abc\u2764");
+            parser.Process("\uFE0FX");
+        }
+        else parser.Process(Dwl + "abc\u2764\uFE0FX");
+        Assert.Equal("X", Lines(buffer)[1]);
+        Assert.StartsWith("abc", Lines(buffer)[0]);
+        Assert.DoesNotContain("X", Lines(buffer)[0]);
+    }
+
     [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
