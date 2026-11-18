@@ -1,4 +1,5 @@
 // Versioned probe contract for the iTerm2 feature-reporting qualification batch: extensions.osc1337-capabilities (OSC 1337 ; RequestCapabilities). This is not a publication or a measurement.
+// The batch's first integrated graph is v70 (renumbered from v69 after the font-query batch merged first); its receipt schema is 77 and its query policy is v7.
 //
 // Pinned terminfo.dev@4.0.0 definition (bundle SHA-256 aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6), read from the bundle, never inferred from the name. It is a query-only probe
 // registered through oscSimpleQueryProbe, so both of its paths can replay over the journaled raw bytes of their own fenced exchange:
