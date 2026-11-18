@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "9dc173f6e1ef20f2268f9e71aa827c6202cd347afe48c6def165877d303aabd9",
+  "matrixSha256": "46b3babe027b4d78c0a1f719479be5e6a1c0223666ce475049b9c199bb81be34",
   "summary": {
     "totalRows": 141,
     "supportedCount": 67,
@@ -3712,7 +3712,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
-      "knownDeviations": "Read-only integer typographic point size from the actual presenting direct view, including interface zoom. Replies mirror BEL/ST. Fractional/unavailable sizes stay silent; no mutation or native glyph claim.",
+      "knownDeviations": "Read-only integer typographic point size from the actual presenting direct view, including interface zoom. Replies mirror BEL/ST; only eight ULPs of conversion roundoff may normalize. Fractional/unavailable sizes stay silent; no mutation or native glyph claim.",
       "sourceLine": 235
     },
     {
@@ -3741,7 +3741,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
-      "knownDeviations": "Read-only integer typographic point size from the actual presenting direct view, including interface zoom. Replies mirror BEL/ST. Fractional/unavailable sizes stay silent; no mutation or native glyph claim.",
+      "knownDeviations": "Read-only integer typographic point size from the actual presenting direct view, including interface zoom. Replies mirror BEL/ST; only eight ULPs of conversion roundoff may normalize. Fractional/unavailable sizes stay silent; no mutation or native glyph claim.",
       "sourceLine": 236
     },
     {

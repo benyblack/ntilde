@@ -34,6 +34,30 @@ public sealed class OscFontSizeQueryTests
     }
 
     [Fact]
+    public void Combined_display_scaling_and_zoom_allow_only_binary_conversion_roundoff()
+    {
+        var replies = new List<string>();
+        var parser = new AnsiParser(new TerminalBuffer(40, 10)) { OnResponse = replies.Add };
+        // A real host conversion:20DIP,140% UI zoom,150% backing scale.
+        double effective = 1.4 * 1.5;
+        double points = 20 * (effective / 1.5) * 72 / 96;
+        foreach (double value in new[] { points, Math.BitDecrement(21), Math.BitIncrement(21) })
+        {
+            parser.CellSizeReports = new(8, 18, 1.5, 12) { FontSizePoints = value };
+            parser.Process("\x1b]7770;?\a\x1b]7777;?\a");
+        }
+        Assert.Equal(6, replies.Count);
+        Assert.All(replies, reply => Assert.Contains(";21\a", reply));
+        replies.Clear();
+        foreach (double value in new[] { 21.000001, 20.999999, 21.5 })
+        {
+            parser.CellSizeReports = new(8, 18, 1.5, 12) { FontSizePoints = value };
+            parser.Process("\x1b]7770;?\a\x1b]7777;?\a");
+        }
+        Assert.Empty(replies);
+    }
+
+    [Fact]
     public void Missing_invalid_or_fractional_points_are_not_rounded_or_guessed()
     {
         var replies = new List<string>();

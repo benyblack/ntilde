@@ -17,10 +17,9 @@ public partial class AnsiParser
     {
         if (osc is "7770;?" or "7777;?")
         {
-            // Mintty reports an unsigned integer point size. Do not round a fractional
-            // host size into a false restorable value, or fabricate headless defaults.
-            if (CellSizeReports is { IsValid: true, FontSizePoints: double points }
-                && double.IsFinite(points) && points >= 1 && points <= 512 && double.IsInteger(points))
+            // Only conversion roundoff (at most eight binary64 ULPs) may be
+            // normalized. Meaningfully fractional sizes and absent hosts stay silent.
+            if (CellSizeReports is { IsValid: true } host && TryIntegerFontPoints(host.FontSizePoints, out int points))
             {
                 string code = osc[..4];
                 OnResponse?.Invoke(string.Create(CultureInfo.InvariantCulture, $"\x1b]{code};{points:0}{terminator}"));
@@ -42,6 +41,21 @@ public partial class AnsiParser
             OnResponse?.Invoke(string.Create(CultureInfo.InvariantCulture,
                 $"\x1b]776;{Pixels(metrics.WidthPoints)};{Pixels(metrics.HeightPoints)};{Pixels(metrics.FontAscentPoints)}{terminator}"));
         }
+        return true;
+    }
+
+    private static bool TryIntegerFontPoints(double? value, out int points)
+    {
+        points = 0;
+        if (value is not double size || !double.IsFinite(size)) return false;
+        double nearest = Math.Round(size, MidpointRounding.AwayFromZero);
+        if (nearest < 1 || nearest > 512) return false;
+        // The host conversion multiplies/divides DIP, effective/backing scales
+        // and 72/96. Eight ULPs bounds its accumulated binary64 representation
+        // error; it is not a decimal rounding tolerance or a half-point policy.
+        double ulp = Math.BitIncrement(nearest) - nearest;
+        if (Math.Abs(size - nearest) > 8 * ulp) return false;
+        points = (int)nearest;
         return true;
     }
 }

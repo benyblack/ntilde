@@ -22,20 +22,31 @@ export const fontSizeContracts = Object.freeze(fontSizeIds.map((caseId, index) =
     ] };
 }));
 
+// Independent binary64 conversion-error bound: eight ULPs at the nearest
+// positive integer, not rounding of meaningful fractional point sizes.
+export function fontSizeIntegerPoints(geometry) {
+    const points = geometry.fontSizeDip * geometry.renderScaling / geometry.backingScale * 0.75;
+    const nearest = Math.round(points);
+    const ulp = 2 ** (Math.floor(Math.log2(nearest)) - 52);
+    if (!Number.isFinite(points) || nearest < 1 || nearest > 512 || Math.abs(points - nearest) > 8 * ulp) {
+        throw new Error('Font query contract requires an integer point size within conversion roundoff.');
+    }
+    return nearest;
+}
+
 export function fontSizeGeometry(value, rows, cols) {
     const geometry = cellSizeGeometry(value, rows, cols);
     for (const key of ['fontSizeDip', 'windowWidthDip', 'windowHeightDip']) {
         if (!Number.isFinite(value?.[key]) || value[key] <= 0 || value[key] > 32768) throw new Error('Missing or invalid observed font/window geometry.');
         geometry[key] = value[key];
     }
-    const points = geometry.fontSizeDip * geometry.renderScaling / geometry.backingScale * 0.75;
-    if (!Number.isInteger(points) || points < 1 || points > 512) throw new Error('Font query contract requires an exact integer point size.');
+    fontSizeIntegerPoints(geometry);
     return geometry;
 }
 
 export function fontSizeMatches(exchange, replies, geometry) {
     if (exchange.protocol === 'csi' || exchange.protocol === 'silence') return cellSizeMatches(exchange, replies, geometry);
-    const points = geometry.fontSizeDip * geometry.renderScaling / geometry.backingScale * 0.75;
+    const points = fontSizeIntegerPoints(geometry);
     return replies.length === 1 && replies[0] === osc(`${exchange.protocol};${points}`, exchange.terminator);
 }
 

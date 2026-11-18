@@ -20,8 +20,12 @@ implements positive point-size queries only. The request terminator is mirrored.
 The direct App supplies one atomic host snapshot. Font size in typographic points
 is `view.FontSize × effectiveRenderScaling / backingScale × 72/96`, distinguishing
 Avalonia DIPs, interface zoom and physical pixel density. VT does no UI access.
-Missing, invalid, fractional or out-of-range (1–512 points) values stay silent;
-they are never rounded into an inaccurate integer. Default 14 DIP at unity zoom
+Missing, invalid, meaningfully fractional or out-of-range (1–512 points) values
+stay silent. Only binary64 conversion roundoff within eight ULPs at the nearest
+integer is normalized. This bounds the host arithmetic (multiplication/division
+of DIP, scales and 72/96), rather than rounding a genuine fractional size. For
+example, 20 DIP at140% UI zoom on a150% display can calculate as
+20.999999999999996 instead of21 points. Default 14 DIP at unity zoom
 is 10.5 points and therefore unavailable for this bounded query policy. Exact
 integer size does not enable mutation: bare, reset, absolute and relative setter
 forms remain ignored. Mux and replay/headless hosts without these authoritative

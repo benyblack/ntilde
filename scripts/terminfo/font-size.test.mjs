@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { syntheticFontSizeEvidence } from './fixtures/font-size-evidence.mjs';
 import { buildFontSizeReport } from './font-size-grading.mjs';
-import { fontSizeGeometry, fontSizeMatches } from './font-size-contracts.mjs';
+import { fontSizeGeometry, fontSizeMatches, fontSizeIntegerPoints } from './font-size-contracts.mjs';
 import { snapshotHash } from './agent-observer.mjs';
 import { legacyPrefixSource, routedPrefixSource } from './fixtures/private-clipboard-receipt.mjs';
 const build = e => buildFontSizeReport(e.frames, e.run, e.runId, e.adapter);
@@ -50,6 +50,8 @@ test('oracle separates typographic points, logical DIPs, interface zoom and phys
     const geometry = { ...syntheticFontSizeEvidence().frames[0].geometry, renderScaling: 3, backingScale: 2 };
     assert.equal(fontSizeMatches({ protocol: '7770', terminator: '\x07' }, ['\x1b]7770;18\x07'], fontSizeGeometry(geometry, geometry.viewRows, geometry.viewCols)), true);
     assert.equal(fontSizeMatches({ protocol: '7770', terminator: '\x07' }, ['\x1b]7770;48\x07'], geometry), false);
+    assert.equal(fontSizeIntegerPoints({ fontSizeDip: 20, renderScaling: 1.4 * 1.5, backingScale: 1.5 }), 21);
+    assert.throws(() => fontSizeIntegerPoints({ fontSizeDip: 28.000001, renderScaling: 1.5, backingScale: 1.5 }));
 });
 
 const da = '\x1b[?62;4;22c';

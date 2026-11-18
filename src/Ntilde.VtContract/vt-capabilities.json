@@ -515,7 +515,7 @@
       "key": "OSC:7770:?",
       "mnemonic": "Mintty 7770 font query",
       "support": "partial",
-      "description": "Read-only exact integer typographic point size query from presenting direct-host metrics; no fractional rounding, font/window mutation or headless defaults.",
+      "description": "Read-only integer typographic point size query from presenting direct-host metrics, allowing only eight ULPs of binary conversion roundoff; no meaningful fractional rounding, font/window mutation or headless defaults.",
       "matrixFeature": "Mintty 7770 font query",
       "evidencePath": "tests/Ntilde.VT.Tests/OscFontSizeQueryTests.cs",
       "contractCase": "font-size-7770"
@@ -524,7 +524,7 @@
       "key": "OSC:7777:?",
       "mnemonic": "Mintty 7777 font query",
       "support": "partial",
-      "description": "Read-only exact integer typographic point size query from presenting direct-host metrics; no fractional rounding, font/window mutation or headless defaults.",
+      "description": "Read-only integer typographic point size query from presenting direct-host metrics, allowing only eight ULPs of binary conversion roundoff; no meaningful fractional rounding, font/window mutation or headless defaults.",
       "matrixFeature": "Mintty 7777 font query",
       "evidencePath": "tests/Ntilde.VT.Tests/OscFontSizeQueryTests.cs",
       "contractCase": "font-size-7777"
