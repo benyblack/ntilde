@@ -296,7 +296,7 @@ invariant changes.
   and fixed at spawn; the daemon, GUI panes and the text client all configure
   their parsers with `PersistentImagePolicy.Apply`, so they place every image
   alike; a feature that changes placement, such as iTerm2's multipart form
-  (policy 2) or Kitty animation frames (policy 3, #1017: retained packed in the image-source budget and read by the VT-owned `PngPixelReader`, never a host decoder), takes a new version rather than changing an old one's. Mux owns admission (`ImagePolicyAdmission`) and refuses, never
+  (policy 2), Kitty animation frames (policy 3, #1017: retained packed in the image-source budget and read by the VT-owned `PngPixelReader`, never a host decoder) or Kitty frame composition (`a=c`, policy 4, #1027: a composed frame replaces its destination, so snapshots carry nothing new), takes a new version rather than changing an old one's. Mux owns admission (`ImagePolicyAdmission`) and refuses, never
   downgrades, a peer or attach that does not match.
 - **Kitty image assets own handles; placements borrow them.** VT separates transmit,
   transmit/display and retained placement, including uint ids, terminal-allocated

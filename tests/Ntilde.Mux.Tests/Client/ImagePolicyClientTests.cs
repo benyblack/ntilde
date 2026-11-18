@@ -86,7 +86,7 @@ public sealed class ImagePolicyClientTests
     [Fact]
     public async Task A_snapshot_with_animation_is_refused_for_a_session_that_predates_it_and_accepted_under_policy_three()
     {
-        foreach ((int policy, bool accepted) in new[] { (PersistentImagePolicy.MultipartImagesVersion, false), (PersistentImagePolicy.AnimationImagesVersion, true) })
+        foreach ((int policy, bool accepted) in new[] { (PersistentImagePolicy.MultipartImagesVersion, false), (PersistentImagePolicy.AnimationImagesVersion, true), (PersistentImagePolicy.CompositionImagesVersion, true) })
         {
             using var fake = FakeMuxServerEnd.Create();
             Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, Ct);

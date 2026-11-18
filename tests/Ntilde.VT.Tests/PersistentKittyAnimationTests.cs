@@ -147,10 +147,102 @@ public sealed class PersistentKittyAnimationTests
         Assert.EndsWith(";ERR\x1b\\", side.Replies[2], StringComparison.Ordinal);
         Assert.False(PersistentImagePolicy.AllowsAnimation(PersistentImagePolicy.MultipartImagesVersion));
         Assert.True(PersistentImagePolicy.AllowsAnimation(PersistentImagePolicy.AnimationImagesVersion));
-        Assert.Equal(PersistentImagePolicy.AnimationImagesVersion, PersistentImagePolicy.EnabledVersion);
+        Assert.Equal(PersistentImagePolicy.CompositionImagesVersion, PersistentImagePolicy.EnabledVersion);
         var current = new Side(decoder: null);
         current.Send(Kitty("a=q,i=31,e=f,s=1,v=1,t=d,f=24", "AAAA"));
         Assert.EndsWith(";OK\x1b\\", current.Replies[0], StringComparison.Ordinal);
+    }
+
+    /// <summary>The persistent policy that carries <c>a=c</c> (#1027); the traffic below needs it, the older tests keep policy three on purpose.</summary>
+    private const int Composing = PersistentImagePolicy.CompositionImagesVersion;
+
+    /// <summary>The animation traffic plus compositions: a PNG frame's pixels onto the edited root, the root onto a later frame, a frame onto itself, then a frame built on the result.</summary>
+    private static string ComposeTraffic() =>
+        Traffic()
+        + Kitty("a=c,i=1,r=3,c=1,w=1,X=1,x=0")                                    // frame 3 (half-white PNG over the root's right pixel) onto the edited root's left pixel
+        + Kitty("a=c,i=1,r=1,c=2,w=1,X=0,x=1,C=1")                                // the composed root's left pixel replaces frame 2's right pixel
+        + Kitty("a=c,i=1,r=4,c=4,w=1,X=0,x=1")                                    // a frame onto itself, the rectangles side by side
+        + Kitty("a=f,f=32,s=1,v=1,i=1,x=0,c=2,z=60", Solid(3, 3, 3, 255, 1));     // built on the composed frame 2
+
+    [Fact]
+    public void A_policy_three_session_still_refuses_composition_and_a_policy_four_one_composes_and_advertises_it()
+    {
+        var three = new Side(decoder: null, policy: PersistentImagePolicy.AnimationImagesVersion);
+        three.Send(Traffic());
+        three.Replies.Clear();
+        three.Send(Kitty("a=c,i=1,r=2,c=1,w=1"));
+        Assert.Contains(";ENOTSUP:", Assert.Single(three.Replies));
+        three.Send(Kitty("a=q,i=31,e=c,s=1,v=1,t=d,f=24", "AAAA"));
+        Assert.EndsWith(";ERR\x1b\\", three.Replies[^1], StringComparison.Ordinal);                                  // animation is advertised, composition is not
+        three.Send(Kitty("a=q,i=31,e=f,s=1,v=1,t=d,f=24", "AAAA"));
+        Assert.EndsWith(";OK\x1b\\", three.Replies[^1], StringComparison.Ordinal);
+        Assert.False(PersistentImagePolicy.AllowsComposition(PersistentImagePolicy.AnimationImagesVersion));
+        Assert.True(PersistentImagePolicy.AllowsComposition(Composing));
+        var four = new Side(decoder: null, policy: Composing);
+        four.Send(Kitty("a=q,i=31,e=c,s=1,v=1,t=d,f=24", "AAAA"));
+        Assert.EndsWith(";OK\x1b\\", four.Replies[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_daemon_without_a_decoder_and_a_client_with_one_compose_alike_from_retained_sources()
+    {
+        var daemon = new Side(decoder: null, policy: Composing);
+        var decoder = new ClientDecoder();
+        var client = new Side(decoder, policy: Composing);
+        daemon.Send(ComposeTraffic());
+        client.Send(ComposeTraffic());
+
+        Assert.All(daemon.Replies, reply => Assert.EndsWith(";OK\x1b\\", reply, StringComparison.Ordinal));
+        Assert.Equal(daemon.Replies, client.Replies);
+        Assert.Equal(11, daemon.Replies.Count);
+        Assert.Equal(0, decoder.ReadBacks);
+        Assert.Equal(5, daemon.Animation().Frames.Count);                                                          // compositions replace frames, only the last build added one
+        Assert.Equal(daemon.Animation().Frames.Select(f => (f.GapMs, f.Charge)), client.Animation().Frames.Select(f => (f.GapMs, f.Charge)));
+        Assert.Equal(daemon.Asset().PixelCharge, client.Asset().PixelCharge);
+        Assert.Equal(Json(daemon), Json(client));
+        byte[] Frame(Side side, int index) => KittyFrameCodec.TryDecode(side.Animation().Frames[index].Source!.Data!, 2, out byte[] rgba) ? rgba : throw new Xunit.Sdk.XunitException("unpackable");
+        // Frame 3's right pixel (half-white over the original blue root, ~(128,128,255), now opaque) replaces the edited root's left pixel, which that pixel then carries onto frame 2's right pixel.
+        byte[] root = Frame(daemon, 0), second = Frame(daemon, 1);
+        Assert.InRange(root[0], 127, 129); Assert.InRange(root[1], 127, 129); Assert.Equal(255, root[2]); Assert.Equal(255, root[3]);
+        Assert.Equal(new byte[] { 9, 8, 7, 255 }, root[4..8]);                                                       // the root's right pixel keeps its edit
+        Assert.Equal(new byte[] { 0, 255, 0, 255 }, second[..4]);
+        Assert.Equal(root[..4], second[4..8]);
+        Assert.Equal(Frame(client, 1), second);
+    }
+
+    [Fact]
+    public void An_evicted_source_makes_a_composition_unavailable_alike_on_every_side()
+    {
+        var daemon = new Side(decoder: null, policy: Composing, budget: new ImageSourceBudget(maxSources: 3));
+        var client = new Side(new ClientDecoder(), policy: Composing, budget: new ImageSourceBudget(maxSources: 3));
+        daemon.Send(Traffic());
+        client.Send(Traffic());
+        TerminalKittyAnimationState animation = Assert.Single(daemon.Buffer.ExportState(int.MaxValue).KittyImages!).Animation!;
+        Assert.Contains(animation.Frames, frame => frame.Data.Length == 0);
+        daemon.Replies.Clear(); client.Replies.Clear();
+        string composes = string.Concat(Enumerable.Range(1, animation.Frames.Count).Select(n => Kitty($"a=c,i=1,r={n},c={n % animation.Frames.Count + 1},w=1")));
+        daemon.Send(composes);
+        client.Send(composes);
+        Assert.Equal(daemon.Replies, client.Replies);
+        Assert.Contains(daemon.Replies, reply => reply.Contains(";ENOTSUP:", StringComparison.Ordinal));               // an evicted source or destination is unavailable on both
+        Assert.Equal(Json(daemon), Json(client));
+    }
+
+    [Fact]
+    public void A_snapshot_carries_composed_frames_and_a_restore_goes_on_composing_like_the_original()
+    {
+        var source = new Side(decoder: null, policy: Composing);
+        source.Send(ComposeTraffic());
+        Side restored = Restore(Export(source), new ClientDecoder(), now: 0);
+        PersistentImagePolicy.Apply(restored.Parser, Composing);
+        Assert.Equal(Json(source), Json(restored));
+        source.Replies.Clear(); restored.Replies.Clear();
+        string more = Kitty("a=c,i=1,r=5,c=3,w=1,X=0,x=1,C=1") + Kitty("a=c,i=1,r=2,c=1,x=1,w=1");
+        source.Send(more);
+        restored.Send(more);
+        Assert.Equal(source.Replies, restored.Replies);
+        Assert.All(restored.Replies, reply => Assert.EndsWith(";OK\x1b\\", reply, StringComparison.Ordinal));
+        Assert.Equal(Json(source), Json(restored));
     }
 
     private static TerminalStateSnapshot Export(Side side)

@@ -94,9 +94,21 @@ a frame is raw `f=24`/`f=32` or a container (`f=100`, PNG): a container frame's 
 anything is decoded) and the host decoder reads the decoded pixels back through `IImageDecoder.TryReadPixels` (a decoder without it, or no decoder, answers
 ENOTSUP). The root frame keeps no pixels of its own: `c=1` reads them back from the root's decoded handle when a frame is built on it, and `r=1` replaces the root with
 the edited pixels (the new root keeps its RGBA, charged 4 bytes per pixel since its decoded pixels were already the asset's, and its gap); where the root cannot be read back
-(an undecoded root, or a decoder without `TryReadPixels`) `c=1`/`r=1` answer ENOTSUP. An absent `f` and `a=c` composition return ENOTSUP, and `a=q,e=c` answers ERR. The root frame's gap is 0 by the
+(an undecoded root, or a decoder without `TryReadPixels`) `c=1`/`r=1` answer ENOTSUP. An absent `f` returns ENOTSUP. The root frame's gap is 0 by the
 protocol; the playhead shows it for the 40 ms default (an implementation policy, not a protocol
 statement). Frames are released with their image (replace, hard delete, reset).
+
+**Frame composition, `a=c` (#1027).** `a=c,i=,r=<source frame>,c=<destination frame>` composes a rectangle of one frame onto another, the way the protocol
+specifies (`w`,`h` size, default the whole image; `X`,`Y` source offset; `x`,`y` destination offset; `C=1` replaces pixels, alpha included, instead of the default alpha blend).
+The result **replaces the destination frame in place** (the root included, which then counts as edited), so the frame count, the destination's gap and the playhead position do not
+change, and it is charged exactly as an `a=f` edit of that frame: a replacement releases the pixels it replaces, but the first composition into an unedited root adds that root's kept RGBA
+(4 bytes per pixel, as the first `r=1` edit does), and in a persistent session the replacement's packed source (`KittyFrameCodec`) can be longer or shorter than the one it replaces. Validation order: an unknown image or a missing
+frame (an absent, zero or too-large `r`/`c`) is `ENOENT`; an invalid control or `C` is `EINVAL`; a source or destination rectangle that leaves the image, or one frame composed onto
+itself with overlapping rectangles, is `EINVAL`; quota pressure is `ENOSPC`, decided before any pixel is read; pixels that cannot be read (an evicted source, or a root without a
+decoder in an ordinary tab) are `ENOTSUP`. `a=q,e=c` answers OK. A persistent session needs persistent image policy 4 (`PersistentImagePolicy.CompositionImagesVersion`,
+`RetainedComposition`): under policy 3 `a=c` answers `ENOTSUP` and `a=q,e=c` answers `ERR`, because a peer that predates composition would keep a different frame, so the
+policy is fixed at spawn like the others: a persistent session created before an update keeps the policy it was spawned with (3) and keeps answering `ENOTSUP` to `a=c` until it is closed and a
+new one is started, while ordinary tabs compose at once. A composed frame is an ordinary frame, so snapshots carry nothing new and a policy-3 snapshot restores under policy 4.
 
 **Persistent sessions (#1017).** Where images are retained for snapshots (`RetainImageSources`) animation needs persistent image policy 3
 (`PersistentImagePolicy.AnimationImagesVersion`, `RetainedAnimation`); under policy 1 or 2 `a=f` and `a=a` answer `ENOTSUP` and `a=q,e=f`/`e=a` answer `ERR`, as before, because a
@@ -109,7 +121,7 @@ side) as an entry of that budget. Snapshots therefore stay inside one mux frame,
 carried without pixels, and an edited root's pixels are its own packed source (the image's original bytes are not used in their place). A snapshot carries each frame (gap, packed pixels,
 whether the root was edited), the playback state (state, current and displayed frame, loops left, whether it is parked) and the time the current frame had been up, from which the restoring
 side resumes its own clock; a restore charges every frame exactly as the source did (8 bytes per pixel, 4 for an edited root), validates the packings and indices without inflating them,
-and decodes the frames when a decoder exists (the displayed placement stays undecoded until then). A snapshot with frames is refused by a session whose policy is below 3.
+and decodes the frames when a decoder exists (the displayed placement stays undecoded until then). A snapshot with frames is refused by a session whose policy is below 3 (composition, policy 4, adds no snapshot content).
 A live persistent tab (policy 3, the pane a client of the multiplexer daemon) is measured on the desktop by the owned animation suite ([#1025](2026-11-17-kitty-animation-persistent-qualification.md));
 restoring a tab from a snapshot after the App is killed and started again is measured the same way ([#1030](2026-11-17-kitty-animation-restore-qualification.md)).
 
