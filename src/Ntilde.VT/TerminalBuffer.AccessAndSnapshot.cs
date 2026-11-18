@@ -1067,6 +1067,7 @@ namespace Ntilde.VT
                     });
                 }
             }
+            AppendPlaceholderImages(list, absDisplayStart, absEnd);
             return list;
         }
 

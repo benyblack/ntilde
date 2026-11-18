@@ -196,10 +196,11 @@ public class InlineImageEndToEndTests
     }
 
     /// <summary>
-    /// The byte-exact inline frame shape zenbu-labs/terminal-browser's kitty.rs emits:
-    /// a=T,f=32,o=z (raw RGBA, zlib), s/v pixel dims, U=1/c=/r= cell placement, q=2 quiet,
+    /// The inline frame shape zenbu-labs/terminal-browser's kitty.rs emits:
+    /// a=T,f=32,o=z (raw RGBA, zlib), s/v pixel dims, c=/r= cell placement, q=2 quiet,
     /// base64-chunked via m=. Streamed under forced ConPTY filtering with native graphics
-    /// allowed - the configuration the Windows port needs.
+    /// allowed - the configuration the Windows port needs. Its U=1 is left out: it asks for a
+    /// virtual placement shown by Unicode placeholder cells (#989), not for a placement at the cursor.
     /// </summary>
     [Fact]
     public void TerminalBrowserInlineFrame_ZlibRawRgba_PlacesDecodedBitmapInBuffer()
@@ -219,10 +220,10 @@ public class InlineImageEndToEndTests
         string firstChunk = base64.Substring(0, base64.Length / 2);
         string secondChunk = base64.Substring(base64.Length / 2);
 
-        parser.Process("\x1b_Ga=T,f=32,o=z,s=4,v=2,t=d,i=7,U=1,c=4,r=2,q=2,m=1;" + firstChunk + "\x1b\\");
+        parser.Process("\x1b_Ga=T,f=32,o=z,s=4,v=2,t=d,i=7,c=4,r=2,q=2,m=1;" + firstChunk + "\x1b\\");
         Assert.Empty(buffer.Images); // m=1: still accumulating
 
-        parser.Process("\x1b_Ga=T,f=32,o=z,s=4,v=2,t=d,i=7,U=1,c=4,r=2,q=2,m=0;" + secondChunk + "\x1b\\");
+        parser.Process("\x1b_Ga=T,f=32,o=z,s=4,v=2,t=d,i=7,c=4,r=2,q=2,m=0;" + secondChunk + "\x1b\\");
 
         buffer.Lock.EnterReadLock();
         try
@@ -231,7 +232,7 @@ public class InlineImageEndToEndTests
             var bitmap = Assert.IsType<SKBitmap>(image.ImageHandle);
             Assert.Equal(4, bitmap.Width);
             Assert.Equal(2, bitmap.Height);
-            // U=1,c=4,r=2 placement is explicit cells.
+            // c=4,r=2 placement is explicit cells.
             Assert.Equal(4, image.CellWidth);
             Assert.Equal(2, image.CellHeight);
             // Swizzle sanity: first pixel decodes back to the source RGB.
@@ -391,7 +392,7 @@ public class InlineImageEndToEndTests
 
         // t=f: the payload is base64 of the file path, not of the pixels.
         string pathBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(@"C:\temp\terminal-browser-1.rgba"));
-        parser.Process("\x1b_Ga=T,f=32,s=4,v=2,t=f,i=7,U=1,c=4,r=2,q=2,m=0;" + pathBase64 + "\x1b\\");
+        parser.Process("\x1b_Ga=T,f=32,s=4,v=2,t=f,i=7,c=4,r=2,q=2,m=0;" + pathBase64 + "\x1b\\");
 
         Assert.Equal(@"C:\temp\terminal-browser-1.rgba", requestedPath);
         buffer.Lock.EnterReadLock();
@@ -423,7 +424,7 @@ public class InlineImageEndToEndTests
         };
 
         string pathBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(@"C:\temp\frame.rgba"));
-        parser.Process("\x1b_Ga=T,f=32,s=4,v=2,t=f,i=7,U=1,q=2,m=0;" + pathBase64 + "\x1b\\");
+        parser.Process("\x1b_Ga=T,f=32,s=4,v=2,t=f,i=7,q=2,m=0;" + pathBase64 + "\x1b\\");
 
         Assert.Empty(buffer.Images);
     }
@@ -441,7 +442,7 @@ public class InlineImageEndToEndTests
         };
 
         string pathBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("/dev/shm/px-123-q"));
-        parser.Process("\x1b_Ga=T,f=32,s=4,v=2,t=s,i=7,U=1,q=2,m=0;" + pathBase64 + "\x1b\\");
+        parser.Process("\x1b_Ga=T,f=32,s=4,v=2,t=s,i=7,q=2,m=0;" + pathBase64 + "\x1b\\");
 
         Assert.Empty(buffer.Images);
     }

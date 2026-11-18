@@ -208,5 +208,19 @@ namespace Ntilde.VT
         public int ClipTopRows { get; init; }
         public int ClipBottomRows { get; init; }
         public int ClipRightColumns { get; init; }
+        /// <summary>
+        /// For a Unicode placeholder run (<see cref="GridColumns"/> &gt; 0): the grid column of the run's first
+        /// cell. The bitmap is fitted into the whole <see cref="GridColumns"/> x <see cref="GridRows"/> grid and
+        /// this run shows its part of it.
+        /// </summary>
+        public int GridColumn { get; init; }
+        /// <summary>For a placeholder run: the grid row the run shows.</summary>
+        public int GridRow { get; init; }
+        /// <summary>The virtual placement's width in cells; 0 for an ordinary placement.</summary>
+        public int GridColumns { get; init; }
+        /// <summary>The virtual placement's height in cells.</summary>
+        public int GridRows { get; init; }
+        /// <summary>A placeholder run's own background colour, shown through transparent pixels; null for the theme's.</summary>
+        public TermColor? TileBackground { get; init; }
     }
 }

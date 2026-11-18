@@ -840,6 +840,9 @@ namespace Ntilde.Shell
 
                             canvas.Save();
                             canvas.ClipRect(new SKRect(paddingLeft, 0, (float)Bounds.Width, (float)Bounds.Height));
+                            // A Unicode placeholder run shows its part of a bitmap fitted into a larger grid: only its own cells may be painted.
+                            bool isPlaceholderRun = img.GridColumns > 0;
+                            if (isPlaceholderRun) canvas.ClipRect(rect);
                             if (img.ClipTopRows > 0 || img.ClipBottomRows > 0 || img.ClipRightColumns > 0)
                             {
                                 canvas.ClipRect(new SKRect(x,
@@ -849,7 +852,11 @@ namespace Ntilde.Shell
                             }
                             // Clear image target region first so transparent/semi-transparent
                             // image pixels do not reveal previously drawn text layers.
-                            canvas.DrawRect(rect, imageBgPaint);
+                            // A placeholder run keeps its own cells' background colour instead, shown through transparent pixels.
+                            using var runBgPaint = isPlaceholderRun && img.TileBackground is { } runBg
+                                ? new SKPaint { Color = new SKColor(runBg.R, runBg.G, runBg.B, runBg.A), Style = SKPaintStyle.Fill, IsAntialias = false }
+                                : null;
+                            canvas.DrawRect(rect, runBgPaint ?? imageBgPaint);
                             IncrementRectDrawCall();
                             SKBitmap? bitmap = img.ImageHandle as SKBitmap;
                             if (img.ImageHandle is DeferredSixelImage deferred)
@@ -864,7 +871,9 @@ namespace Ntilde.Shell
                             }
                             if (bitmap is { } bmp)
                             {
-                                SKRect destination = img.PreserveAspectRatio ? FitImageWithin(rect, bmp.Width, bmp.Height) : rect;
+                                SKRect destination = isPlaceholderRun
+                                    ? FitImageWithin(PlaceholderGrid(img, visualY, colEdges, rowEdges, paddingLeft, paddingTop), bmp.Width, bmp.Height)
+                                    : img.PreserveAspectRatio ? FitImageWithin(rect, bmp.Width, bmp.Height) : rect;
                                 canvas.DrawBitmap(bmp, destination, imagePaint);
                                 if (imageFacts is { Complete: true })
                                     imageFacts.Placements[imageIndex] = imageFacts.Placements[imageIndex] with
@@ -2164,6 +2173,21 @@ namespace Ntilde.Shell
                 buffer[i] = FromDevicePx(originPx + (i * deviceCellSize));
             }
             return buffer;
+        }
+
+        /// <summary>
+        /// The whole grid of a Unicode placeholder run's virtual placement, which may reach past the run, past the visible rows and past the
+        /// first column: the run only paints its own cells, but the bitmap is fitted into the grid they are part of.
+        /// </summary>
+        private SKRect PlaceholderGrid(in RenderImageSnapshot run, int visualY, float[] colEdges, float[] rowEdges, float paddingLeft, float paddingTop)
+        {
+            int firstColumn = run.CellX - run.GridColumn;
+            int firstRow = visualY - run.GridRow;
+            return new SKRect(
+                GetColEdge(colEdges, firstColumn, paddingLeft),
+                GetRowEdge(rowEdges, firstRow, paddingTop),
+                GetColEdge(colEdges, firstColumn + run.GridColumns, paddingLeft),
+                GetRowEdge(rowEdges, firstRow + run.GridRows, paddingTop));
         }
 
         private float GetColEdge(float[] colEdges, int colIndex, float paddingLeft)

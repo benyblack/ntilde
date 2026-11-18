@@ -171,6 +171,8 @@ namespace Ntilde.VT
             {
                 return action switch
                 {
+                    "p" or "T" when RequestsVirtualPlacement() && RetainImageSources && !RetainedPlaceholders =>
+                        "ENOTSUP:Unicode placeholders are not supported where images are retained for snapshots without policy 5",
                     "t" or "T" => TransmitKittyImage(identity, action == "T", out id),
                     "p" => DisplayStoredKittyImage(identity, out id),
                     "f" or "a" when RetainImageSources && !RetainedAnimation => "ENOTSUP:Animation is not supported where images are retained for snapshots without policy 3",
@@ -239,10 +241,28 @@ namespace Ntilde.VT
             // policy 4, so a probe (e=f, e=a, e=c) must not advertise what the session would answer ENOTSUP.
             bool probesComposition = _kittyPendingParams.TryGetValue("e", out string? probedAction)
                 && ((RetainImageSources && !RetainedAnimation && probedAction is "f" or "a" or "c") || (RetainImageSources && !RetainedComposition && probedAction == "c"));
-            string status = !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) || !transportSupported || probesComposition
+            bool probesPlaceholders = RequestsVirtualPlacement() && RetainImageSources && !RetainedPlaceholders;
+            string status = !AllowNonSixelImages || IsNativeKittyBlocked(isTunneled) || !transportSupported || probesComposition || probesPlaceholders
                 ? "ERR"
                 : "OK";
-            OnResponse?.Invoke($"\x1b_Gi={id};{status}\x1b\\");
+            OnResponse?.Invoke($"\x1b_Gi={id}{PlaceholderFeatureEcho(status)};{status}\x1b\\");
+        }
+
+        /// <summary>Whether the command asks for a virtual placement: <c>U=1</c>, which only <c>a=p</c> and <c>a=T</c> read.</summary>
+        private bool RequestsVirtualPlacement() => _kittyPendingParams.TryGetValue("U", out string? flag) && flag == "1";
+
+        /// <summary>
+        /// The keys a feature query (<c>e=T</c> or <c>e=p</c> with <c>U=1</c>) is answered with when the placeholder support it asks about is
+        /// there: the action, the cursor policy if it was asked for, and <c>U=1</c> itself, which is how a client detects Unicode placeholders.
+        /// Nothing is echoed for any other probe, or for an error.
+        /// </summary>
+        private string PlaceholderFeatureEcho(string status)
+        {
+            if (status != "OK" || !RequestsVirtualPlacement()
+                || !_kittyPendingParams.TryGetValue("e", out string? probed) || probed is not ("T" or "p"))
+                return "";
+            string keepCursor = _kittyPendingParams.TryGetValue("C", out string? cursor) && cursor == "1" ? ",C=1" : "";
+            return $",e={probed}{keepCursor},U=1";
         }
 
         /// <summary>
@@ -446,6 +466,13 @@ namespace Ntilde.VT
         private void PlaceKittyImage(KittyImageAsset asset, uint placementId)
         {
             (int width, int height) = KittyImageCells(asset.PixelWidth, asset.PixelHeight);
+            if (RequestsVirtualPlacement())
+            {
+                // A virtual placement is the grid Unicode placeholder cells fit the image into. It draws nothing and
+                // leaves the cursor alone: the image appears where the client prints placeholders.
+                _buffer.StoreKittyVirtualPlacement(asset, placementId, width, height);
+                return;
+            }
             var image = new TerminalImage(asset.Handle, _buffer.CursorCol, ImageAnchorRow(), width, height);
             _buffer.PlaceKittyImage(asset, image, placementId);
             bool keepCursor = _kittyPendingParams.TryGetValue("C", out var cFlag) && cFlag == "1";
