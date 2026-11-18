@@ -460,4 +460,22 @@ public sealed class KittyUnicodePlaceholderTests
         Assert.Equal("ready", rows[0]);
         Assert.Equal("", rows[1]);
     }
+
+    [Fact]
+    public void Exporting_a_placeholder_whose_underline_is_off_keeps_the_colour_but_not_the_style()
+    {
+        var (source, parser, _) = Create(rows: 2);
+        parser.Process($"\x1b[4:3m\x1b[24m\x1b[58;5;1m{Cell(0, 0)}");
+        string ansi = Ntilde.VT.Export.TerminalExporter.ExportToAnsi(source);
+        Assert.Contains("58:5:1", ansi, StringComparison.Ordinal);
+        Assert.DoesNotContain("4:3", ansi, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Text_inside_a_sized_block_survives_a_preview_even_when_it_starts_with_the_placeholder_character()
+    {
+        var (buffer, parser, _) = Create(rows: 3);
+        parser.Process($"\x1b]66;s=2;{Placeholder}ABC\a");
+        Assert.Contains("ABC", Ntilde.VT.Export.TerminalExporter.GetVisibleRowTexts(buffer)[0], StringComparison.Ordinal);
+    }
 }

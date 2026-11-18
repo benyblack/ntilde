@@ -133,7 +133,8 @@ namespace Ntilde.VT.Export
 
                 string text = buffer.GetGrapheme(c, row);
                 // A Unicode placeholder draws no glyph, so it is no text in a preview either (#989).
-                if (KittyPlaceholders.IsPlaceholder(text)) text = " ";
+                // (Text inside an OSC 66 block is the block's own, not a placeholder cell.)
+                if (KittyPlaceholders.IsPlaceholder(text) && buffer.GetTextSizingAbsolute(c, absRow) is null) text = " ";
                 rowSb.Append(text);
                 if (!string.IsNullOrWhiteSpace(text) && text != "\0")
                 {
@@ -348,7 +349,8 @@ namespace Ntilde.VT.Export
 
             if ((cell.IsUnderline || keepsUnderlineColor) && underline is not null && (needsReset || underline != lastUnderline))
             {
-                AnsiCellWriter.AppendUnderlineSgr(sb, underline);
+                // An underline that is off keeps only its colour: writing its style too would switch the underline on.
+                AnsiCellWriter.AppendUnderlineSgr(sb, cell.IsUnderline ? underline : underline with { Style = UnderlineStyle.Single });
             }
         }
     }
