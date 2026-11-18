@@ -69,7 +69,7 @@ pinned verdict.
 ## Identities
 
 App 0.14.0 (operator supplied) built from `fd9b0ab99023…` (arm64 Release, executable SHA-256 `f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8`); measured scripts `fd9b0ab99023…`;
-source policy `readonly-owned-source-graph-v67`; query policy `owned-exact-query-paired-raw-state-v7`; initial settings include `AllowOsc52ClipboardWrite: true` (the `Cw` gate), `AllowTitleReport: on`
+source policy `readonly-owned-source-graph-v69`; query policy `owned-exact-query-paired-raw-state-v7`; initial settings include `AllowOsc52ClipboardWrite: true` (the `Cw` gate), `AllowTitleReport: on`
 for the title-report suites and `AllowRectangleChecksumReport: on`; receipt schema 74; owned run `fd80abff940550734e8f78adee6967a7`; collected 2026-11-17T18:26Z on macOS. The build is not
 binary-to-source attestation. Predecessor suites ran in the same full run and their receipt suffixes rederive from the retained bytes.
 
