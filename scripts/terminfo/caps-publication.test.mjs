@@ -11,7 +11,7 @@ import { buildCapsGradingReport } from './caps-grading.mjs';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-const publication = { directory: '2026-11-17-osc1337-capabilities', manifestHash: '9f0aa9849233ae9f84dce53c8c72aecbb45d542bc68feac04b087f372f8900d6', revision: measuredScriptsRevision, schema: 76, policy: 69 };
+const publication = { directory: '2026-11-17-osc1337-capabilities', manifestHash: '9f0aa9849233ae9f84dce53c8c72aecbb45d542bc68feac04b087f372f8900d6', revision: measuredScriptsRevision, schema: 77, policy: 70 };
 
 test(`${publication.directory} independently rederives the complete receipt and published projection`, () => {
     const dir = fileURLToPath(new URL(`../../docs/qa/terminfo/${publication.directory}/`, import.meta.url));

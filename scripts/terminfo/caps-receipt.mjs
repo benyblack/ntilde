@@ -13,8 +13,8 @@ import { buildCapsGradingReport } from './caps-grading.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'caps-observations.json', run: 'caps-run.json', journal: 'caps-snapshots.jsonl', adapter: 'collector-caps.mjs' });
-/** The first source policy whose worker always runs this suite (the parent's plumbing sets the real number). This suite has no scoped-collection fork era: it was born on the integrated v69 graph. */
-export const capsFirstPolicy = 69;
+/** The first source policy whose worker always runs this suite (the parent's plumbing sets the real number). This suite has no scoped-collection fork era: it was born on the integrated v70 graph. */
+export const capsFirstPolicy = 70;
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const fail = message => { throw new Error(message); };
