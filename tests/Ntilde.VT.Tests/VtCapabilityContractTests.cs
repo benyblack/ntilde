@@ -117,7 +117,8 @@ public sealed class VtCapabilityContractTests
             ["urxvt-cell-size"] = () => AssertOscCellSize("\x1b]776;?\a", "\x1b]776;16;36;26\a"),
             ["iterm2-capabilities"] = () => AssertOscCapabilities("\x1b]1337;RequestCapabilities\a", "\x1b]1337;Capabilities=T3LrMSc7UTs3BFGsGoSyHNoP\x1b\\", "\x1b]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\x1b\\"),
             ["font-size-7770"] = () => AssertOscCellSize("\x1b]7770;?\a", "\x1b]7770;12\a"),
-            ["font-size-7777"] = () => AssertOscCellSize("\x1b]7777;?\x1b\\", "\x1b]7777;12\x1b\\"),        };
+            ["font-size-7777"] = () => AssertOscCellSize("\x1b]7777;?\x1b\\", "\x1b]7777;12\x1b\\"),
+        };
 
     [Theory]
     [InlineData("OSC:7770:?", "font-size-7770")]
@@ -204,7 +205,8 @@ public sealed class VtCapabilityContractTests
             ["urxvt-cell-size"] = "\x1b]776;?\x1b\\A",
             ["iterm2-capabilities"] = "\x1b]1337;RequestCapabilities\aA",
             ["font-size-7770"] = "\x1b]7770;?\aA",
-            ["font-size-7777"] = "\x1b]7777;?\x1b\\A",        };
+            ["font-size-7777"] = "\x1b]7777;?\x1b\\A",
+        };
 
     /// <summary>Pins the advertised partial text contract without claiming image-plane erasure or protected-cell support.</summary>
     [Fact]
