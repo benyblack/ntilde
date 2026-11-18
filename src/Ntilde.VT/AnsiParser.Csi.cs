@@ -742,7 +742,7 @@ namespace Ntilde.VT
                 bool wholeCursorLine = resetLineSizes && _buffer.CursorCol == 0;
                 _buffer.EraseLineToEnd(); // Clear rest of current line
                 if (wholeCursorLine) _buffer.ResetLineSize(_buffer.CursorRow);
-                                          // Clear all lines below cursor
+                // Clear all lines below cursor
                 for (int r = _buffer.CursorRow + 1; r < _buffer.Rows; r++)
                 {
                     _buffer.EraseLineAll(r, resetLineSize: resetLineSizes);
