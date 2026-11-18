@@ -1219,7 +1219,7 @@ namespace Ntilde.VT
             {
                 if (charsets.Length != 4) throw StateTransferValidation.Reject(what, "saved charset count must be four");
                 foreach (int charset in charsets)
-                    StateTransferValidation.RequireInRange(charset, 0, 1, $"{what} charset");
+                    StateTransferValidation.RequireInRange(charset, 0, 2, $"{what} charset"); // AnsiParser.Charset ordinals
                 StateTransferValidation.RequireInRange(present.Gl, 0, 3, $"{what} GL slot");
             }
         }
