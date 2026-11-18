@@ -240,6 +240,15 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Erase_below_from_a_pending_wrap_at_the_first_column_erases_the_whole_line()
+    {
+        var (buffer, parser) = Create(cols: 3);
+        parser.Process($"{Dwl}A{Esc}[J");
+        Assert.Equal("", Lines(buffer)[0]);
+        Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
+    }
+
+    [Fact]
     public void Returning_to_single_width_drops_a_wrap_pending_at_the_old_last_column()
     {
         var (buffer, parser) = Create();

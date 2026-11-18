@@ -738,8 +738,10 @@ namespace Ntilde.VT
             if (displayMode == 0) // Erase from cursor to end of screen
             {
                 // A line ED erases completely returns to single width; the cursor line is one only from its first column.
-                if (resetLineSizes && _buffer.CursorCol == 0) _buffer.ResetLineSize(_buffer.CursorRow);
+                // Erased first: the reset can move a cursor that was waiting to wrap at the line's old last column.
+                bool wholeCursorLine = resetLineSizes && _buffer.CursorCol == 0;
                 _buffer.EraseLineToEnd(); // Clear rest of current line
+                if (wholeCursorLine) _buffer.ResetLineSize(_buffer.CursorRow);
                                           // Clear all lines below cursor
                 for (int r = _buffer.CursorRow + 1; r < _buffer.Rows; r++)
                 {
