@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedV71SourceFiles, capturedV72SourceFiles, capturedV73SourceFiles, capturedV74SourceFiles, capturedV75SourceFiles,
+import { capturedCellSizeForkV70Files, capturedV70SourceFiles, capturedV71SourceFiles, capturedV72SourceFiles, capturedV73SourceFiles, capturedV74SourceFiles, capturedV75SourceFiles, capturedV76SourceFiles,
     capturedOsc5ForkV63Files, capturedOsc5ForkV64Files, ownedSourceFiles,
     isCellSizePolicy63, isKittyAnimationPolicy63, isOsc5Policy63 } from './owned-sources.mjs';
 import { retainedInventory } from './metadata-receipt.mjs';
