@@ -21,6 +21,8 @@ public partial class AnsiParser
     /// <summary>The validated controls of one <c>a=c</c> command: 1-based frame numbers, the source rectangle and the destination offset it lands on.</summary>
     private readonly record struct KittyComposeRequest(int Source, int Destination, KittyFrameRect SourceRect, int DestX, int DestY, bool Overwrite);
 
+    private const string ImageNotFoundStatus = "ENOENT:Image not found";
+
     private static bool Refuse(out string error, string message)
     {
         error = message;
@@ -36,15 +38,16 @@ public partial class AnsiParser
     {
         id = identity.Id;
         KittyImageAsset? asset = _buffer.FindKittyImage(identity.Id, identity.Number);
-        if (asset is null) return "ENOENT:Image not found";
+        if (asset is null) return ImageNotFoundStatus;
         id = asset.Id;
         if (!TryReadKittyComposeRequest(asset, out KittyComposeRequest request, out string error)) return error;
         int destinationIndex = request.Destination - 1;
         long charge = KittyFrameCharge(asset, (uint)request.Destination);
         KittyFrameStoreResult room = _buffer.CheckKittyFrameRoom(asset, destinationIndex, charge);
         if (room != KittyFrameStoreResult.Stored) return KittyFrameStatus(room);
-        byte[]? source = _buffer.ReadKittyFramePixels(asset, request.Source - 1, ImageDecoder, PersistentFrames);
         byte[]? canvas = _buffer.ReadKittyFramePixels(asset, destinationIndex, ImageDecoder, PersistentFrames);
+        // One frame onto itself reads its pixels once: the rectangles are disjoint, so no write can change a pixel that is still to be read.
+        byte[]? source = request.Source == request.Destination ? canvas : _buffer.ReadKittyFramePixels(asset, request.Source - 1, ImageDecoder, PersistentFrames);
         if (source is null || canvas is null) return "ENOTSUP:Frame pixels are unavailable";
         KittyFrameCompositor.DrawFrameRect(canvas, source, asset.PixelWidth, request.SourceRect, request.DestX, request.DestY, request.Overwrite);
         return StoreKittyFrame(asset, new KittyFrameRequest(4, 32, default, 0, (uint)request.Destination, 0, 0, request.Overwrite), canvas);
@@ -74,7 +77,7 @@ public partial class AnsiParser
     {
         id = identity.Id;
         KittyImageAsset? asset = _buffer.FindKittyImage(identity.Id, identity.Number);
-        if (asset is null) return "ENOENT:Image not found";
+        if (asset is null) return ImageNotFoundStatus;
         id = asset.Id;
         if (!TryReadKittyFrameRequest(asset, out KittyFrameRequest request, out string error)) return error;
         // A frame the quotas will refuse is refused before its payload is inflated, composed or decoded: a rejected upload costs no canvas and no bitmap.
@@ -234,7 +237,7 @@ public partial class AnsiParser
     private static string KittyFrameStatus(KittyFrameStoreResult result) => result switch
     {
         KittyFrameStoreResult.Stored => "OK",
-        KittyFrameStoreResult.ImageGone => "ENOENT:Image not found",
+        KittyFrameStoreResult.ImageGone => ImageNotFoundStatus,
         KittyFrameStoreResult.TooManyFrames => "ENOSPC:Too many animation frames",
         KittyFrameStoreResult.NoSpace => "ENOSPC:Animation frame storage exceeded",
         _ => "EINVAL:Frame could not be stored"
@@ -252,7 +255,7 @@ public partial class AnsiParser
     {
         id = identity.Id;
         KittyImageAsset? asset = _buffer.FindKittyImage(identity.Id, identity.Number);
-        if (asset is null) return "ENOENT:Image not found";
+        if (asset is null) return ImageNotFoundStatus;
         id = asset.Id;
         KittyAnimationState? state = null;
         if (_kittyPendingParams.TryGetValue("s", out string? stateText))

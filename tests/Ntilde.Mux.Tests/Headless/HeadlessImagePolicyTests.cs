@@ -173,6 +173,8 @@ public sealed class HeadlessImagePolicyTests
             await mux.FlushAsync();
             await TestWait.UntilAsync(() => fake.SentInput.Count >= 4, "the replies reached the child writer");
             Assert.Contains("ENOTSUP", fake.SentInput.ToArray()[2], StringComparison.Ordinal);
+            // Frame 2 stayed green|green there, while the policy-four daemon (and so every client of it) holds the composed blue|green: the compose took effect only where the policy carries it.
+            Assert.NotEqual(daemon, Frames(mux.Buffer));
         }
     }
 

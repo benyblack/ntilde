@@ -1089,13 +1089,43 @@ public sealed class KittyAnimationTests
         var h = new Harness();
         h.Send("a=f,i=1,f=32,s=2,v=1,z=77", Solid(0, 255, 0, 255));
         h.Replies.Clear();
-        byte[] root = h.FramePixels(0).Rgba, second = h.FramePixels(1).Rgba;
+        byte[] root = (byte[])h.FramePixels(0).Rgba.Clone(), second = (byte[])h.FramePixels(1).Rgba.Clone();   // copies: a regression that mutates a frame in place must not mutate the expectation
         h.Send(controls);
         string reply = h.Reply();
         Assert.Contains(";" + code + ":", reply);
         Assert.StartsWith("\x1b_Gi=" + (controls.Contains("i=2") ? "2" : "1") + ";", reply, StringComparison.Ordinal);
         Assert.Equal(2, h.Buffer.FindKittyImage(1, 0)!.Animation!.Frames.Count);
         Assert.Equal(root, h.FramePixels(0).Rgba); Assert.Equal(second, h.FramePixels(1).Rgba);
+    }
+
+    [Fact]
+    public void Composing_onto_the_current_frame_leaves_the_playhead_where_it_was()
+    {
+        var h = ThreeFrames();                                                    // gaps: root 50 ms, frame 2 100 ms, frame 3 200 ms
+        h.Now = 1000;
+        h.Send("a=a,i=1,s=3"); h.Replies.Clear();
+        Assert.False(h.Advance(1030));                                            // 30 ms into the root
+        h.Send("a=c,i=1,r=2,c=1,C=1");                                            // the current frame's pixels are replaced, its gap is not
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(0, Index(h));
+        Assert.Same(h.FramePixels(0), h.Shown);                                   // the placement shows the composed pixels at once
+        Assert.False(h.Advance(1049));
+        Assert.True(h.Advance(1050));                                             // the root still ends 50 ms after it began, not 50 ms after the composition
+        Assert.Equal(1, Index(h));
+    }
+
+    [Fact]
+    public void Composing_onto_the_current_frame_of_a_stopped_animation_does_not_move_its_frame_start()
+    {
+        var h = ThreeFrames();
+        h.Now = 1000;
+        h.Send("a=a,i=1,s=3"); h.Send("a=a,i=1,s=1"); h.Replies.Clear();
+        KittyAnimation animation = h.Buffer.FindKittyImage(1, 0)!.Animation!;
+        long start = animation.FrameStartMs;
+        h.Now = 60_000;                                                           // long after the frame's gap ran out: it is stopped, so nothing advanced
+        h.Send("a=c,i=1,r=2,c=1,C=1");
+        Assert.Equal("\x1b_Gi=1;OK\x1b\\", h.Reply());
+        Assert.Equal(start, animation.FrameStartMs);
     }
 
     [Fact]
