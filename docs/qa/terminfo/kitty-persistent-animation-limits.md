@@ -6,7 +6,7 @@ The issue's own scope makes the first step a cost/benefit note, not an implement
 | Limit | Decision | Why |
 |---|---|---|
 | 1. Only PNG sources can be a base or a container frame in a persistent session | **Do not lift** | The Kitty protocol defines `f=100` as PNG, so no conformant client sends another container; a decoder-independent JPEG/WebP/GIF reader is a large parser surface and cannot agree pixel-for-pixel with the host decoder that draws the root |
-| 2. Large or noisy animations lose the oldest frames' pixels when the shared source budget evicts them | **Do not change the budget** | For frames that do not pack, the source budget and the existing per-screen pixel quota allow the same number of frames (within about one), so a bigger budget would add almost no capacity; the budget binds earlier only when other retained images share it (or, independently, past 512 sources), and it cannot grow much without breaking the rule that a snapshot fits one mux frame |
+| 2. Large or noisy animations lose the oldest frames' pixels when the shared source budget evicts them | **Do not change the budget** | For frames that do not pack, the source budget and the existing per-screen pixel quota allow the same number of frames (within about one), so a bigger budget would add almost no capacity; the budget binds earlier when other retained images share it, at some sizes by one frame with nothing else retained (512x512), and independently past 512 sources, and it cannot grow much without breaking the rule that a snapshot fits one mux frame |
 
 ## Limit 1: non-PNG roots and containers
 
@@ -52,7 +52,7 @@ shows all 31 accepted while the budget evicts the oldest source, the root's, wit
 **What this means.**
 
 - Frames that pack (flat colours, sprites on a plain background, most synthetic animations) use far less of the budget than they are charged against the quota, so the budget does not bind.
-- For frames that do not pack the budget and the quota bind at the same point or within about a frame of each other (the budget first at some sizes, as at 512x512), in an ordinary tab as much as in a persistent session: a larger source budget would add at most that frame, since the quota would then refuse the next.
+- For frames that do not pack the budget and the quota bind at the same point or within about a frame of each other (the budget first at some sizes, as at 512x512). The pixel quota applies to ordinary tabs and persistent sessions alike; the source budget applies only to persistent frames (an ordinary tab keeps each frame's RGBA canvas directly and never evicts a frame's pixels). A larger source budget would add at most that frame, since the quota would then refuse the next.
 - The budget binds earlier when other images share it (the last column): an animation of full-size noisy frames displayed beside several large images can lose its oldest frames' pixels. That is the case the issue names.
 - **The source count is a second, independent way to lose frames.** The budget keeps at most 512 sources, one per image and per frame, whatever their size: nine 16x16 animations of 64 frames each ask for 576 and lose the oldest 64 while using about a hundredth of the bytes and of the quota
   (`Many_small_animations_lose_their_oldest_sources_to_the_source_count_long_before_any_byte_or_quota_limit`). No pixel budget, dedicated or larger, changes that; only the count does.
@@ -63,10 +63,10 @@ shows all 31 accepted while the budget evicts the oldest source, the root's, wit
   (`MuxProtocol.MaxFrameBytes`, 64 MiB), with the retained sources a large part of it: the budget cannot grow much beyond today's 32 MiB without a chunked snapshot, which is a mux protocol change of its own.
 - **A better codec** (a real compressor) would shrink noisy frames only by what they truly compress, which for noise is nothing, and the codec is deliberately not a runtime compressor so that every peer charges the same bytes for the same frame.
 
-**Benefit of lifting: small and unobserved.** The failure needs one of the combinations above (a noisy near-quota animation beside other retained images, or more than 512 sources in the session) and degrades gracefully: the image stays on screen, the animation plays, and only the oldest frames come back blank after a reattach. No issue in the repository reports an animation that hits it (the limit was accepted to keep every peer in agreement, not in response to a failure), and no measured session did.
+**Benefit of lifting: small and unobserved.** The failure needs one of the combinations above (a noisy near-quota animation beside other retained images, a noisy animation at a size where the budget binds a frame before the quota, such as 512x512, or more than 512 sources in the session) and degrades gracefully: the image stays on screen, the animation plays, and only the oldest frames come back blank after a reattach. No issue in the repository reports an animation that hits it (the limit was accepted to keep every peer in agreement, not in response to a failure), and no measured session did.
 
 **Recommendation.** Leave the budget, the count and the policy as they are. If a report appears, prefer the smallest change that fits it: for many small frames, raise the source count; for large noisy frames beside other images, protect the animation's frames from eviction by other images' bytes, or refuse the frame that would not fit (`ENOSPC`, as the quota does) instead of evicting an older one. Each changes what a session accounts or evicts, so each is a persistent policy-version change.
-Measure the animation's real size first; a persistent animation near the quota is also an ordinary tab's animation near the quota, and the quota is the limit users would meet first.
+Measure the animation's real size first; an animation near the pixel quota is refused with `ENOSPC` in an ordinary tab too, and at most sizes the quota is the limit users would meet first (the budget, by at most a frame, at some).
 
 ## What would change this
 

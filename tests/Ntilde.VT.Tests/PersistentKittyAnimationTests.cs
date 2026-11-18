@@ -373,7 +373,8 @@ public sealed class PersistentKittyAnimationTests
 
     /// <summary>
     /// The measured premise of the #1026 decision: for frames that do not pack (noise costs 4.008 bytes per pixel) the 32 MiB image-source budget and the 64 MiB per-screen
-    /// pixel quota (8 bytes per frame pixel) allow the same number of frames, so the budget never refuses or evicts before the quota refuses, unless other retained images share it.
+    /// pixel quota (8 bytes per frame pixel) allow the same number of frames to within about one, so the budget usually neither refuses nor evicts before the quota refuses (unless other
+    /// retained images share it, or the sources outnumber 512, or the size is one of the few where the budget is a frame tighter: see the 512x512 test).
     /// At 640x480 both allow 26 frames beside the root: the 27th is refused by the quota and every one of the 26 still has its pixels.
     /// </summary>
     [Fact]
