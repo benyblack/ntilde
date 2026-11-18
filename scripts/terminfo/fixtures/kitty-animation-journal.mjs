@@ -54,12 +54,17 @@ function plannedTiming(stage, startedAt, clock) {
     // App is back about 2.5 seconds later; otherwise right after the previous read.
     const begin = stage?.relaunch && stage.relaunchAtMs !== undefined && startedAt !== undefined ? startedAt + stage.relaunchAtMs : undefined;
     const actionAt = begin === undefined ? clock + (stage?.waitMs ?? 100) : begin + 2500;
+    // A relaunch read follows right after the App is back (the measured captures began well under a second after it), so a later hold stays within the same cycle.
+    if (stage?.relaunch && begin === undefined) return { actionAt, readAt: actionAt + 50, span: [actionAt + 100, actionAt + 500] };
     return { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
 }
 
+/** Only the restore suite (version 3) runs in a persistent tab; versions 1 and 2 stay on the direct-worker path. */
+const restoreVersion = 3;
+
 /** The ownership proof at a moment: a direct run names the App; a persistent one also names the daemon the worker hangs from and the last relaunch. */
 function ownershipStamp(base, { appPid, daemonRecord, relaunchInfo, version }, at) {
-    const persistent = version !== currentAnimationVersion;
+    const persistent = version === restoreVersion;
     return { ...structuredClone(base), app: { ...structuredClone(base.app), pid: appPid },
         ...(persistent ? { worker: { ...structuredClone(base.worker), ppid: daemonRecord.pid }, daemon: structuredClone(daemonRecord) } : {}),
         ...(relaunchInfo ? { relaunch: structuredClone(relaunchInfo) } : {}), at: iso(at) };
@@ -100,7 +105,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
     mkdirSync(join(output, animationPixelPrefix)); mkdirSync(join(output, 'animation-inputs'));
     for (const input of animationInputs(version)) writeFileSync(join(output, input.file), input.bytes);
     const baseOwnership = imageOwnership(initial.rows, initial.cols, runId);
-    // A restore run (version 3) lives in a persistent tab: the worker is the multiplexer daemon's child, and every relaunch stage brings a new App process (and pane).
+    // A restore run (the restore version) lives in a persistent tab: the worker is the multiplexer daemon's child, and every relaunch stage brings a new App process (and pane).
     const firstApp = baseOwnership.app.pid, daemonRecord = { pid: 700, ppid: firstApp, uid: baseOwnership.app.uid, tty: '??', executable: baseOwnership.app.executable, ...daemon };
     let appPid = baseOwnership.app.pid, currentPane = paneId, relaunchInfo;
     const stamp = at => ownershipStamp(baseOwnership, { appPid, daemonRecord, relaunchInfo, version }, at);

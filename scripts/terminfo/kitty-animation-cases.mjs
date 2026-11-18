@@ -3,7 +3,7 @@ import { animationFrameInput, animationPngInput } from './kitty-animation-inputs
 
 /**
  * Suite versions: 1 is the three-case suite that retained runs still carry (#988); 2 adds PNG and root-frame composition (#1015) and is what full collections produce;
- * 3 (#1030) is the restore suite: the same animation state is read again after the App is quit and started again on the same persistent session, so it only runs in the
+ * 3 (#1030) is the restore suite: the same animation state is read again after the App is terminated with SIGTERM and started again on the same persistent session, so it only runs in the
  * persistent-restore collection (a direct tab has nothing to reattach to).
  */
 export const animationSuiteIds = Object.freeze({ 1: 'ntilde-owned-kitty-animation-v1', 2: 'ntilde-owned-kitty-animation-v2', 3: 'ntilde-owned-kitty-animation-restore-v1' });
@@ -22,7 +22,7 @@ export const animationAppliedMarginMs = 250;
 // expect: the ordered correlated replies the stage's command produces ('placed' is the a=T reply, which echoes its placement id; a=d success is silent).
 // relaunchAtMs: where in the running timeline the relaunch begins (the App is back about 2-3 s later, inside the second frame's window, so a playhead the new App restarted would
 // show different frames from a restored one at the later reads).
-// relaunch: the parent quits the App and starts it again on the same private root before this stage is admitted; the stage reads what the reattached pane shows.
+// relaunch: the parent terminates the App (SIGTERM) and starts it again on the same private root before this stage is admitted; the stage reads what the reattached pane shows.
 // appearance 'timeline' (a relaunch stage whose frame depends on when the App came back): the frame the independent timeline gives for the capture span.
 // clock: 'static' (no running animation expected to move), 'running' (elapsed time since a=a s=3 selects the frame),
 // 'frozen' (stopped on the frame that was showing; it must outlast a hold the model says would have advanced it).
@@ -51,7 +51,7 @@ const compositionCase = Object.freeze({ id: 'kitty.animation.png-and-root-frames
     stage('show', 'overRoot', { reply: 'show', expect: replies('ok') }),
     stage('edit', 'third', { reply: 'edit', expect: replies('ok', 'ok') }),
     stage('compose', 'overEdit', { reply: 'compose', expect: replies('ok', 'ok') }), clear]) });
-// The restore cases (#1030). Each reads, after a relaunch, state that only a restored snapshot can carry: a running playhead, a stopped one, and edited frames.
+// The restore cases (#1030). Each reads, after a relaunch, state that only a restored snapshot can carry: a running playhead, a stopped one, and edited and PNG-derived frames.
 const reattach = (appearance, extra = {}) => stage('reattach', appearance, { relaunch: true, ...extra });
 const restoreCases = Object.freeze([
     Object.freeze({ id: 'kitty.animation.restore-playing', stages: Object.freeze([stage('blank', 'absent'), build,
@@ -70,6 +70,8 @@ const restoreCases = Object.freeze([
         stage('show', 'overRoot', { reply: 'show', expect: replies('ok') }),
         stage('edit', 'third', { reply: 'edit', expect: replies('ok', 'ok') }),
         reattach('third'),
+        // The PNG-derived frame 2 is selected again after the relaunch without uploading it: its pixels, not only its slot, came back from the snapshot.
+        stage('again', 'overRoot', { reply: 'show', expect: replies('ok') }),
         stage('compose', 'overEdit', { reply: 'compose', expect: replies('ok', 'ok') }), clear]) }),
 ]);
 export const animationCasesByVersion = Object.freeze({ 1: timedCases, 2: Object.freeze([...timedCases, compositionCase]), 3: restoreCases });
@@ -87,6 +89,7 @@ const compositionCaseId = 'kitty.animation.png-and-root-frames', restoreFramesCa
 const compositionCommands = Object.freeze({
     build: (imageId, root) => root + apc(`a=f,f=100,t=d,i=${imageId},c=1,z=${animationHoldMs};` + pngData('overRoot')),
     show: imageId => apc(`a=a,i=${imageId},c=2`),
+    again: imageId => apc(`a=a,i=${imageId},c=2`),
     edit: imageId => apc(`a=f,${frameControls},i=${imageId},r=1;` + frameData('third')) + apc(`a=a,i=${imageId},c=1`),
     compose: imageId => apc(`a=f,f=100,t=d,i=${imageId},c=1,z=${animationHoldMs};` + pngData('overEdit')) + apc(`a=a,i=${imageId},c=3`),
 });

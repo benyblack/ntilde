@@ -1,5 +1,5 @@
 // Qualification of the Kitty animation restore suite (ntilde-owned-kitty-animation-restore-v1) collected in a persistent (mux-backed, KeepOnClose) tab whose App
-// is quit and started again on the same persistent session between stages (#1030). The carrier report is the authority for every stage; this projection adds the exact
+// is terminated with SIGTERM and started again on the same persistent session between stages (#1030). The carrier report is the authority for every stage; this projection adds the exact
 // pinned-probe replay, one separately identified effect contract for the restore, and explicit validity controls over the lineage (App processes, multiplexer daemon,
 // worker). The run has no stock collector, so there is no stock grade, and the pinned verdict, the effect verdict and any other result never merge.
 import { createHash } from 'node:crypto';
@@ -33,7 +33,7 @@ const suiteId = animationSuiteIds[version], policy = ownedAnimationPolicies[vers
 export const restoreEffectContract = Object.freeze({
     id: 'ntilde-kitty-animation-persistent-restore-effect-v1', version: 1,
     carrierCases: Object.freeze(animationCasesByVersion[version].map(item => item.id)),
-    statement: 'In a persistent tab, after the App is quit and started again on the same persistent session (the daemon and the shell keep running), the pane shows the animation state that '
+    statement: 'In a persistent tab, after the App is terminated with SIGTERM and started again on the same persistent session (the daemon and the shell keep running), the pane shows the animation state that '
         + 'was in effect, read by paired offscreen captures against the App\'s wall clock: a running animation shows the frame its original start time gives (the root, then the third frame at about 12.5 s, '
         + 'the root again at about 17.5 s), not one restarted from the moment the App came back; an animation stopped on its second frame stays on it past a hold that would have advanced it; and '
         + 'edited frames survive: the root edited by a=f,r=1 still shows its edit, and a half-transparent PNG frame built over it afterwards shows the protocol\'s blend of the edited pixels. '
@@ -50,6 +50,13 @@ function checkRelaunches(proof, frames) {
         check(item.from === previous && Number.isSafeInteger(item.to) && item.to > 1 && item.to !== item.from && Date.parse(item.at) >= previousAt && Date.parse(item.appBirth + ' UTC') >= Date.parse(first.privateClipboard.appBirth + ' UTC'),
             'the relaunch chain is not one ordered chain of App processes');
         previous = item.to; previousAt = Date.parse(item.at);
+    }
+    // Each relaunch finished before the first observation under its new App process, and every one before cleanup.
+    const cleanedUpAt = Date.parse(proof.cleanedUpAt);
+    for (const item of chain) {
+        const firstFrame = frames.find(frame => frame.ownership.app.pid === item.to);
+        check(Date.parse(item.startedAt) <= Date.parse(item.at) && Date.parse(item.at) <= Date.parse(firstFrame?.ownership.at) && Date.parse(item.at) <= cleanedUpAt,
+            'a relaunch is not dated inside the run: it must finish before its new App was first observed and before cleanup');
     }
     const allowed = [first.app.pid, ...chain.map(item => item.to)];
     check(frames.every(frame => allowed.includes(frame.ownership.app.pid)), 'a frame was observed under an App process the proof does not record');
@@ -100,7 +107,7 @@ export function restoreControls({ proof, frames }) {
     const chain = proof.proofs[0].relaunches, daemon = proof.persistentDaemon;
     return [
         ['three-relaunches-one-chain', chain.length === relaunchCount && chain.every((item, index) => item.from === (index ? chain[index - 1].to : proof.proofs[0].app.pid)),
-            'the App was quit and started again three times, each new process starting from the previous one'],
+            'the App was terminated with SIGTERM and started again three times, each new process starting from the previous one'],
         ['same-session-reattached', frames.every(frame => frame.ownership.worker.pid === proof.proofs[0].worker.pid && frame.ownership.daemon.pid === daemon.identity.pid),
             'every observation, before and after each relaunch, saw the same worker under the same multiplexer daemon: no new shell was spawned'],
         ['restored-pane-matches-bound-state', frames.filter(frame => frame.stageId === 'reattach').every(frame => frame.sha256 === frame.afterSha256),

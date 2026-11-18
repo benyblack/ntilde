@@ -149,9 +149,20 @@ test('after a relaunch the daemon is compared with the App that first started it
 
 test('only a relaunch request may take longer than five seconds to be answered', { skip: process.platform === 'win32' ? 'Requires Unix sockets' : false }, async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ntilde-owner-relaunch-'));
-    const server = createServer(socket => socket.once('data', chunk => setTimeout(() => socket.end(JSON.stringify({ ok: true, kind: JSON.parse(chunk.toString()).kind }) + '\n'), 5400)));
-    await new Promise(resolve => server.listen(join(dir, 's.sock'), resolve));
+    // A stream may deliver a request in several chunks: answer only once its first line is complete.
+    const server = createServer(socket => {
+        let buffer = '';
+        socket.on('data', chunk => {
+            buffer += chunk;
+            if (!buffer.includes('\n')) return;
+            socket.removeAllListeners('data');
+            const { kind } = JSON.parse(buffer.slice(0, buffer.indexOf('\n')));
+            setTimeout(() => socket.end(JSON.stringify({ ok: true, kind }) + '\n'), 5400);
+        });
+    });
     try {
+        // Listening is part of the guarded setup: a bind failure rejects here and still removes the directory.
+        await new Promise((resolve, reject) => { server.once('error', reject); server.listen(join(dir, 's.sock'), resolve); });
         const config = { socket: join(dir, 's.sock'), token: 't', runId };
         const slow = await requestOwner(config, 'kan-relaunch');
         assert.equal(slow.kind, 'kan-relaunch');

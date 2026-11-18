@@ -202,7 +202,7 @@ function preservedOwnerCode(kind, code) {
         && ['paneMetadataUnavailable', 'metadataGeometryUnavailable'].includes(code);
 }
 
-/** A relaunch (#1030) quits the App and waits for a new one to reattach the pane: it alone may take longer than the five-second owner answer. */
+/** A relaunch (#1030) terminates the App (SIGTERM) and waits for a new one to reattach the pane: it alone may take longer than the five-second owner answer. */
 const relaunchKind = 'kan-relaunch', relaunchTimeoutMs = 90000;
 export function requestOwner(config, kind, extra = {}) {
     return new Promise((resolve, reject) => {

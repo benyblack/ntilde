@@ -95,7 +95,7 @@ export function validityControls(report, receipt, context, observationBytes, { s
         ['receipt-binds-animation-report', binding?.runId === context.runId && binding.suiteId === suiteId && binding.sha256 === sha(observationBytes) && receipt.fixtureRemoved === true,
             'the complete receipt binds this exact report and records fixture removal'],
         ['carrier-policy', report.suiteId === suiteId && report.policy === policy && context.ownedAnimationPolicy === policy && report.runId === context.runId,
-            'the retained report is the paired raw render policy v2 animation report of this run'],
+            policy === kittyAnimationCarrierPolicy ? 'the retained report is the paired raw render policy v2 animation report of this run' : `the retained report is the ${policy} animation report of this run`],
         ['raw-reader-healthy', report.seal.failed === false && report.seal.disposed === true && report.seal.attempts === report.actions.length,
             'the exclusive raw reader sealed without failure over every admitted write'],
         ['state-restored', report.initialSnapshot === 0 && report.restoredSnapshot === report.actions.length && report.snapshots.length === report.actions.length + 1,

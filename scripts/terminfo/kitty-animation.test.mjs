@@ -233,7 +233,7 @@ function withRestore(options, action) {
 
 test('the restore suite plans one relaunch per case, each read as an empty command, and its plan fits the capture budget', () => {
     assert.deepEqual(animationCasesByVersion[3].map(item => item.id), [playing, stopped, frames3]);
-    assert.equal(animationSuites[3].plan.length, 27); assert.ok((animationSuites[3].plan.length + 1) * 2 <= 64);
+    assert.equal(animationSuites[3].plan.length, 28); assert.ok((animationSuites[3].plan.length + 1) * 2 <= 64);
     assert.equal(animationInputs(3).length, 5);
     for (const caseId of [playing, stopped, frames3]) {
         assert.equal(animationSuites[3].relaunches({ kind: 'read', caseId, stageId: 'reattach' }), true);
@@ -248,12 +248,12 @@ test('the restore suite plans one relaunch per case, each read as an empty comma
 test('a faithful restore run grades every stage passed across three App processes', () => {
     withRestore({}, ({ build, frames }) => {
         const report = build();
-        assert.equal(report.suiteId, 'ntilde-owned-kitty-animation-restore-v1'); assert.equal(report.observations.length, 22);
+        assert.equal(report.suiteId, 'ntilde-owned-kitty-animation-restore-v1'); assert.equal(report.observations.length, 23);
         assert.ok(report.observations.every(item => item.result === 'passed'), JSON.stringify(report.observations.filter(item => item.result !== 'passed').map(item => [item.featureId, item.inconclusiveReason])));
         assert.deepEqual(report.caseResults.map(item => item.result), ['passed', 'passed', 'passed']);
         assert.equal(new Set(frames.map(frame => frame.ownership.app.pid)).size, 4, 'the initial App and one new App per relaunch');
         assert.deepEqual([...new Set(frames.map(frame => frame.ownership.daemon.ppid))], [frames[0].ownership.app.pid, 1], 'the daemon is its first App\'s child until that App is gone, then init\'s');
-        assert.match(report.scope, /quit and started again on the same persistent session/);
+        assert.match(report.scope, /terminated with SIGTERM \(not a graceful quit\) and started again on the same persistent session/);
     });
 });
 
@@ -293,6 +293,26 @@ test('a restored playhead that restarts, a stopped animation that resumes and lo
     });
 });
 
+test('the PNG-derived frame is selected again after the relaunch without being uploaded: its pixels must come back from the snapshot', () => {
+    assert.deepEqual(animationCasesByVersion[3].find(item => item.id === frames3).stages.map(stage => stage.id), ['blank', 'build', 'show', 'edit', 'reattach', 'again', 'compose', 'clear']);
+    assert.equal(animationCommand(frames3, 'again', { imageId: 9 }, 3), '\x1b_Ga=a,i=9,c=2\x1b\\');
+    assert.equal(restoreOf(frames3, 'again').appearance, 'overRoot');
+    // Frame 2 comes back as the wrong pixels (its slot survived, its content did not): the later checks alone would not notice.
+    withRestore({ paint: (entry, appearance) => entry.caseId === frames3 && entry.stageId === 'again' ? 'root' : appearance }, ({ build }) => {
+        const value = results(build());
+        assert.equal(value[frames3 + '.again'], 'failed'); assert.equal(value[frames3 + '.reattach'], 'passed'); assert.equal(value[frames3 + '.compose'], 'inconclusive');
+    });
+});
+
+test('the relaunch record the timing uses is the validated frame\'s, and the admitted action must carry the very same one', () => {
+    const refuses = mutate => withRestore({}, ({ build, frames, actions }) => { mutate(frames, actions); assert.throws(() => build(frames, actions)); });
+    const reattach = items => items.find(value => value.stageId === 'reattach' && value.caseId === stopped);
+    refuses((frames, actions) => { const action = reattach(actions); action.ownership.relaunch = { ...action.ownership.relaunch, startedAt: action.ownership.relaunch.at, at: action.ownership.relaunch.startedAt }; });
+    refuses((frames, actions) => { delete reattach(actions).ownership.relaunch; });
+    // A record that begins after it ended is no window at all.
+    refuses(frames => { const frame = reattach(frames); frame.ownership.relaunch = { ...frame.ownership.relaunch, startedAt: new Date(Date.parse(frame.ownership.relaunch.at) + 500).toISOString() }; });
+});
+
 test('only a declared relaunch stage may change the App process, and the worker, daemon and PTY must stay exactly the same', () => {
     const refuses = (mutate, options = {}) => withRestore(options, ({ build, frames, actions }) => { mutate(frames, actions); assert.throws(() => build(frames, actions)); });
     // Another App process at a stage that is not a relaunch.
@@ -300,7 +320,11 @@ test('only a declared relaunch stage may change the App process, and the worker,
     // The relaunched App sees another daemon, another worker parent or another PTY.
     const afterRelaunch = frames => frames.filter(value => value.stageId === 'reattach' && value.caseId === playing);
     refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.daemon = { ...frame.ownership.daemon, pid: 701 }; frame.ownership.worker = { ...frame.ownership.worker, ppid: 701 }; });
-    refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.worker = { ...frame.ownership.worker, pid: 4242 }; });
+    // The worker changes in the frame and in its admitted action alike, so only the epoch check (not the action-versus-frame comparison) can refuse it.
+    refuses((frames, actions) => {
+        const [frame] = afterRelaunch(frames), action = actions.find(value => value.caseId === playing && value.stageId === 'reattach');
+        frame.ownership.worker = { ...frame.ownership.worker, pid: 4242 }; action.ownership.worker = { ...action.ownership.worker, pid: 4242 };
+    });
     refuses(frames => { const [frame] = afterRelaunch(frames); frame.ownership.app = { ...frame.ownership.app, uid: 9999 }; });
     refuses(frames => { const [frame] = afterRelaunch(frames); delete frame.ownership.daemon; });
     // The parent's relaunch record must link the previous App process to this one, in order.
@@ -318,8 +342,10 @@ test('a read that a restarted playhead would also pass cannot stand for a restor
     const early = (entry, plan) => entry.caseId === playing && entry.stageId === 'reattach' ? { ...plan, actionAt: plan.actionAt - 3900, readAt: plan.readAt - 3900, span: plan.span.map(value => value - 3900) } : plan;
     withRestore({ timing: early }, ({ build }) => {
         const report = build(), third = report.observations.find(item => item.featureId === playing + '.third');
-        assert.equal(third.result, 'inconclusive'); assert.match(third.inconclusiveReason, /restarted by the relaunch could show the third frame/);
-        assert.equal(report.observations.find(item => item.featureId === playing + '.reattach').result, 'passed');
+        assert.equal(third.result, 'inconclusive'); assert.equal(third.timing.valid, false); assert.match(third.timing.reason, /restarted by the relaunch could show the third frame/);
+        // The reattach read itself cannot tell the two apart either: the original timeline and a playhead restarted at 2.6 s show the same frame there.
+        const reattach = report.observations.find(item => item.featureId === playing + '.reattach');
+        assert.equal(reattach.result, 'inconclusive'); assert.match(reattach.inconclusiveReason, /restarted by the relaunch could show the \w+ frame here as well/);
         assert.equal(report.caseResults.find(item => item.caseId === playing).result, 'inconclusive');
     });
     // A relaunch that takes about three seconds separates them: a restart then shows the second frame at 12.5 s, the restored playhead the third.

@@ -222,12 +222,25 @@ test('the common-core driver acquires before creating output and persists every 
 
 test('a relaunch in flight can neither start a new App after the run stopped nor outlive the cleanup that targets the old one', () => {
     const runner = readFileSync(real('../terminfo-owned-runner.mjs'), 'utf8');
-    const at = text => { const index = runner.indexOf(text); assert.ok(index > 0, text); return index; };
+    // Every fragment must exist before any offsets are compared: a missing one (indexOf -1) would sort before everything and pass an ordering that no longer holds.
+    const at = (text, within = runner) => { const index = within.indexOf(text); assert.ok(index >= 0, 'missing: ' + text); return index; };
     const relaunch = runner.slice(at('async function relaunchPersistentApp'), at('/** Start the disposable App and wait'));
-    assert.ok(relaunch.indexOf('await terminateLaunchedApp(previous)') < relaunch.indexOf('if (run.stopping) throw') && relaunch.indexOf('if (run.stopping) throw') < relaunch.indexOf('startPersistentApp(run)'),
-        'the run must still be live after the old App is gone and before the new one starts');
+    const [terminated, stopping, started] = ['await terminateLaunchedApp(previous)', 'if (run.stopping) throw', 'startPersistentApp(run)'].map(text => at(text, relaunch));
+    assert.ok(terminated < stopping && stopping < started, 'the run must still be live after the old App is gone and before the new one starts');
     const settle = runner.slice(at('async function runPersistentAnimation'));
-    assert.ok(settle.indexOf('run.stopping = true') < settle.indexOf('await run.relaunchInFlight') && settle.indexOf('await run.relaunchInFlight') < settle.indexOf('cleanupOwnedRun('),
-        'cleanup waits for a relaunch in flight, after the run is marked stopping');
+    const [marked, awaited, cleaned] = ['run.stopping = true', 'await run.relaunchInFlight', 'cleanupOwnedRun('].map(text => at(text, settle));
+    assert.ok(marked < awaited && awaited < cleaned, 'cleanup waits for a relaunch in flight, after the run is marked stopping');
     assert.ok(runner.includes('reject: error => { run.stopping = true; rejectDone(error); }'), 'a failed or interrupted run is marked stopping');
+});
+
+test('the App is terminated only for the next declared relaunch stage, a failed relaunch fails the run, and a cancelled run stops waiting for the pane', () => {
+    const runner = readFileSync(real('../terminfo-owned-runner.mjs'), 'utf8');
+    const at = (text, within = runner) => { const index = within.indexOf(text); assert.ok(index >= 0, 'missing: ' + text); return index; };
+    const answer = runner.slice(at("if (request.kind === 'kan-relaunch') {"), at("if (request.kind.startsWith('kan-')) {"));
+    const [admitted, started, rejected] = ['admitRelaunch(run, request)', 'relaunchPersistentApp(run)', 'run.reject(error)'].map(text => at(text, answer));
+    assert.ok(admitted < started && started < rejected, 'a relaunch is admitted before the App is touched, and its failure rejects the run');
+    const admit = runner.slice(at('function admitRelaunch'), at('/** Answer one lineage-proved owner request'));
+    for (const text of ['run.stopping || run.outgoing', 'suite.plan.filter(suite.relaunches)[run.relaunches.length]', 'request.caseId !== expected.caseId', 'request.stageId !== expected.stageId']) at(text, admit);
+    const wait = runner.slice(at('async function waitForReattachedPane'), at('Terminate the App (SIGTERM, not a graceful quit)'));
+    assert.equal(wait.match(/if \(run\.stopping\) throw/g).length, 2, 'cancellation is checked before each poll and after the pending reads');
 });

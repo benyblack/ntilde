@@ -237,7 +237,7 @@ import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
 import { ownedStaticImagePolicy } from './terminfo/static-images.mjs';
 import { OwnedAnimationObserver, animationObserverOf } from './terminfo/kitty-animation-capture.mjs';
 import { animationSuiteId, animationSuiteIds, animationCases, animationCasesByVersion, currentAnimationVersion } from './terminfo/kitty-animation-cases.mjs';
-import { ownedAnimationPolicy, ownedAnimationPolicies, animationPlannedStages } from './terminfo/kitty-animation.mjs';
+import { ownedAnimationPolicy, ownedAnimationPolicies, animationPlannedStages, animationSuites } from './terminfo/kitty-animation.mjs';
 import { OwnedCellObserver, agentRequest, observerEndpoint } from './terminfo/agent-observer.mjs';
 import { buildCellReport } from './terminfo/cells.mjs';
 import { buildSgrReport } from './terminfo/sgr.mjs';
@@ -4473,13 +4473,25 @@ function retainPersistentFirstProof(run, owner, worker, tty, budget) {
         kittyAnimation: { policy: ownedAnimationPolicies[run.version] }, ...(run.version === currentAnimationVersion ? {} : { relaunches: run.relaunches }) });
 }
 
+/**
+ * Whether the worker may have the App terminated now: after the output proof, in the restore collection, while the run is live and no relaunch is in progress, and only
+ * for the next relaunch stage of the plan in order (one admission per stage), so an early, repeated or mislabeled request never takes the App down.
+ */
+function admitRelaunch(run, request) {
+    if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
+    if (run.stopping || run.outgoing) throw new Error('A relaunch is not admissible while the run is stopping or another relaunch is in progress.');
+    const suite = animationSuites[run.version], expected = suite.plan.filter(suite.relaunches)[run.relaunches.length];
+    if (!expected || request.caseId !== expected.caseId || request.stageId !== expected.stageId) throw new Error('The relaunch request does not name the next relaunch stage of the plan.');
+}
+
 /** Answer one lineage-proved owner request of the persistent animation collection. */
 async function answerPersistentRequest(run, request, budget, { owner, worker, daemon }) {
     const [proofs, tty] = [run.proofs, request.tty];
     if (request.kind === 'kan-relaunch') {
-        if (!run.outputModeVerified || run.version === currentAnimationVersion) throw new Error('A relaunch is only valid in the restore collection after the output proof.');
+        admitRelaunch(run, request);
         run.relaunchInFlight = relaunchPersistentApp(run);
-        await run.relaunchInFlight;
+        // A relaunch that fails after the outgoing App exited leaves nothing to finish the run: reject it with the cause instead of waiting for the deadline.
+        try { await run.relaunchInFlight; } catch (error) { run.reject(error); throw error; }
         return {};
     }
     if (request.kind.startsWith('kan-')) {
@@ -4563,12 +4575,14 @@ function startPersistentApp(run) {
 
 /** The App's agent endpoint answers with this run's one local pane: the previous session was reattached or a fresh one spawned (the next lineage proof tells which). */
 async function waitForReattachedPane(run, deadline = Date.now() + 60000) {
+    if (run.stopping) throw new Error('The run stopped while the relaunched App was starting.');
     // The endpoint descriptor still names the previous App until the new one publishes its own, so the lookup itself may throw: that only means "not yet".
     const endpoint = () => observerEndpoint(run.appData, run.app.pid);
     const sessions = await Promise.resolve().then(() => agentRequest(endpoint(), 'listSessions', {}, 2000)).then(value => value.sessions, () => undefined);
     // The pane exists before its session attaches: wait until it shows the restored screen (the label line the carrier bound before the relaunch), so the first read sees the snapshot.
     const restored = sessions?.length === 1 && sessions[0].kind === 'local' && !sessions[0].windowless && sessions[0].profileName === run.profileName
         && await agentRequest(endpoint(), 'readScreen', { paneId: sessions[0].paneId }, 2000).then(screen => screen.lines?.[0] === 'NTILDE_IMG_' + run.runId, () => false);
+    if (run.stopping) throw new Error('The run stopped while the relaunched App was starting.');
     if (restored) return;
     if (Date.now() > deadline) throw new Error('The relaunched App did not show the persistent pane.');
     await new Promise(resolve => setTimeout(resolve, 250));
@@ -4576,7 +4590,7 @@ async function waitForReattachedPane(run, deadline = Date.now() + 60000) {
 }
 
 /**
- * Quit the App and start it again on the same private root while the multiplexer daemon and the worker keep running (`KeepOnClose`). The App
+ * Terminate the App (SIGTERM, not a graceful quit) and start it again on the same private root while the multiplexer daemon and the worker keep running (`KeepOnClose`). The App
  * saves its session after each attach, so a killed App leaves the file the next one restores; the new App's pane reattaches `IfUnattached`.
  */
 async function relaunchPersistentApp(run) {

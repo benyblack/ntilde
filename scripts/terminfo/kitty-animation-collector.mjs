@@ -52,7 +52,7 @@ export async function collectAnimation({ config, owner, fence, detachFence = fal
             const stage = entry.kind === 'read' ? stageOf(entry, version) : null;
             const wait = animationWait(stage, { now: now(), previousEnd, startAdmitted: startAdmitted.get(entry.caseId) ?? null, lastReadMs });
             if (wait > 0) await sleep(wait);
-            // A relaunch stage: the parent quits the App and starts it again on the same persistent session before the stage's command is admitted.
+            // A relaunch stage: the parent terminates the App (SIGTERM) and starts it again on the same persistent session before the stage's command is admitted.
             if (stage?.relaunch) {
                 const begin = stage.relaunchAtMs === undefined ? undefined : startAdmitted.get(entry.caseId);
                 if (begin !== undefined) await sleep(Math.max(0, begin + stage.relaunchAtMs - now()));

@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 import { animationHoldMs } from './kitty-animation-cases.mjs';
+import { framesPossibleAt } from './kitty-animation-oracle.mjs';
+import { buildAnimationReport } from './kitty-animation.mjs';
 import { persistentRestoreScope } from './collection-scope.mjs';
 import { replayPinnedAnimationProbe } from './kitty-animation-qualification.mjs';
 import { measuredAppRevision, measuredScriptsRevision, pinnedBundleArchive, restoreControls, restoreEffectContract, restoreQualification, restoreQualificationSuiteId,
@@ -76,7 +78,7 @@ test('the restore effect result and the pinned divergence stay separate, and no 
     assert.equal(item.stock, undefined); assert.equal(summary.stockCollector, undefined);
     assert.ok(item.effectContract.validity.length >= 17 && item.effectContract.validity.every(value => value.held));
     assert.deepEqual(summary.carrier.caseResults.map(value => [value.caseId, value.result]), [[playing, 'passed'], [stopped, 'passed'], [frames3, 'passed']]);
-    assert.deepEqual(summary.carrier.counts, { passed: 22 });
+    assert.deepEqual(summary.carrier.counts, { passed: 23 });
 });
 
 test('the App was started four times on one session: the same worker and daemon throughout, each relaunch followed by a read of the reattached pane', () => {
@@ -100,13 +102,17 @@ test('what the restored panes show: the running playhead continues from the orig
         assert.ok(seconds(value, 'start') > from + 1 && seconds(value, 'end') < to - 1, `${value.featureId} sits well inside its ${from}-${to} s window`);
     }
     assert.equal(reattach.result, 'passed'); assert.equal(reattach.timing.clock, 'running');
-    // The App came back before the second frame's window ended, so a playhead restarted at that moment could not show the third frame at about 12 s.
-    assert.ok(seconds(reattach, 'end') < seconds(third, 'start') - 5, 'the relaunch finished well before the third-frame read');
+    // Each distinguishing read must differ from what a playhead restarted anywhere in the relaunch window would show there (the bracket's own uncertainty included).
+    for (const value of [reattach, third, loop]) {
+        const { relaunch, capture } = value.timing.facts, restarted = framesPossibleAt(relaunch, capture);
+        assert.ok(relaunch.earliest <= relaunch.latest && relaunch.latest <= capture.start, `${value.featureId}: the relaunch finished before the capture`);
+        assert.ok(!restarted.includes(value.classification.frameId), `${value.featureId} shows ${value.classification.frameId}, which a restarted playhead could show too (${restarted.join('/')})`);
+    }
     const hold = stage(stopped + '.hold'), reattachedStop = stage(stopped + '.reattach'), stop = hold.timing.facts.stop;
     assert.equal(reattachedStop.classification.frameId, 'second'); assert.equal(hold.classification.frameId, 'second');
     assert.ok(hold.timing.facts.capture.start - reattachedStop.timing.facts.capture.end >= animationHoldMs, 'the hold outlasted a full frame gap after the reattach read');
     assert.ok(reattachedStop.timing.facts.capture.start > stop.latest, 'the reattach read followed the stop');
-    for (const [id, frame] of [['reattach', 'third'], ['compose', 'overEdit']]) {
+    for (const [id, frame] of [['reattach', 'third'], ['again', 'overRoot'], ['compose', 'overEdit']]) {
         const value = stage(frames3 + '.' + id);
         assert.equal(value.result, 'passed'); assert.equal(value.classification.frameId, frame); assert.equal(value.timing.clock, 'static');
     }
@@ -131,25 +137,34 @@ test('a downgraded, stripped, unchained or foreign restore run is refused', () =
     refuses(context => rebind(context, 'ownership-proof.json', proof => { delete proof.proofs[0].relaunches; }), /relaunches/);
     refuses(context => rebind(context, 'ownership-proof.json', proof => { delete proof.persistentDaemon; }), /no multiplexer daemon/);
     refuses(context => rebind(context, 'context.json', value => { value.collectionScope = { ...value.collectionScope, suiteVersion: 2 }; }), /declare the persistent restore scope/);
-    refuses(context => rebind(context, 'initial-settings.json', settings => { settings.SessionPersistence = 'Off'; }), /persistent tab|receipt/);
+    // The settings digest and the receipt are re-bound to the changed settings, so only the persistence mode itself can be what the verifier refuses.
+    refuses(context => {
+        rebind(context, 'initial-settings.json', settings => { settings.SessionPersistence = 'Off'; });
+        rebind(context, 'context.json', value => { value.initialSettingsSha256 = hash(readFileSync(join(context.copy, 'initial-settings.json'))); });
+    }, /not configured for a persistent tab/);
+    // A relaunch dated after the run (the receipt re-bound to the proof) is no relaunch of this run.
+    refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].relaunches[2].at = '2099-01-01T00:00:00.000Z'; }), /not dated inside the run/);
     refuses(({ copy }) => rmSync(join(copy, 'source-snapshot.json')), /source-snapshot/);
     refuses(({ copy }) => writeFileSync(join(copy, 'sources', 'worker.mjs'), '// changed\n'), /retained source|differs/);
     refuses(({ json, write }) => { const report = json('animation-observations.json'); report.observations[0].result = 'failed'; write('animation-observations.json', report); }, /receipt does not bind/);
 });
 
 test('a restore claim without a real relaunch is refused by the carrier report itself', () => {
-    withCopy(({ copy, json, write }) => {
-        const frames = readFileSync(join(copy, 'animation-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    withCopy(({ copy, json }) => {
+        const lines = name => readFileSync(join(copy, name), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+        const frames = lines('animation-snapshots.jsonl'), actions = lines('animation-actions.jsonl'), proof = json('ownership-proof.json'), runId = json('context.json').runId;
+        const build = value => buildAnimationReport(value, actions, proof.proofs[0].kittyAnimation.seal, runId, copy, [], 3);
+        // The carrier accepts the retained frames, and refuses the same frames once every one is claimed by the first App process: the epoch check, not a stale digest, is what fails.
+        assert.doesNotThrow(() => build(structuredClone(frames)));
         const first = frames[0].ownership.app;
-        write('animation-snapshots.jsonl', frames.map(frame => JSON.stringify({ ...frame, ownership: { ...frame.ownership, app: first } })).join('\n') + '\n');
-        assert.throws(() => verifyRestoreRun(copy));
+        assert.throws(() => build(frames.map(frame => ({ ...frame, ownership: { ...frame.ownership, app: first } }))));
     });
 });
 
 test('every development attempt of the collection is retained with its real outcome, and none of them is the published run', () => {
     const attempts = JSON.parse(read('superseded-attempts/attempts.json')), published = JSON.parse(read('summary.json')).ownedRunId;
     assert.equal(attempts.schemaVersion, 1);
-    assert.equal(attempts.attempts.length, 5);
+    assert.equal(attempts.attempts.length, 6);
     for (const item of attempts.attempts) {
         assert.notEqual(item.runId, published);
         assert.ok(item.reason.length > 20 && item.scripts.length > 0 && item.files.length >= 2, item.attempt);

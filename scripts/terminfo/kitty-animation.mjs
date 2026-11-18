@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { inputPriorCaptureCap } from './input-plan.mjs';
 import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, currentAnimationVersion, animationAnchor, animationCellEnvelope, animationHoldMs } from './kitty-animation-cases.mjs';
 import { animationFrameInput, animationFrameIds, animationPngIds, animationPngInput } from './kitty-animation-inputs.mjs';
@@ -94,7 +95,7 @@ const scopeTail = 'independently captured raw replies, paired original offscreen
 const scopes = Object.freeze({
     1: 'Three bounded Kitty animation cases; ' + scopeTail,
     2: 'Four bounded Kitty animation cases (a stationary control, playback, stop-freeze, and PNG and root-based frames); ' + scopeTail,
-    3: 'Three bounded Kitty animation restore cases in a persistent tab (a running animation, a stopped one, and PNG and root-edited frames), each read again after the App was quit and started again on the same persistent session; '
+    3: 'Three bounded Kitty animation restore cases in a persistent tab (a running animation, a stopped one, and PNG and root-edited frames), each read again after the App was terminated with SIGTERM (not a graceful quit) and started again on the same persistent session; '
         + 'independently captured raw replies, paired original offscreen PNGs, complete cells/modes and wall-clock capture spans. Elapsed-time claims are bounded to this App build and run: '
         + 'no display-refresh cadence, other platform, frame-rate, second-client, remote-session or stock-grade claim.',
 });
@@ -158,9 +159,11 @@ class AnimationReport extends StaticImageReport {
         this.lastEnd = span.end;
         const caseFacts = this.facts.get(entry.caseId) ?? {};
         // The new App was started, and its pane showed the restored screen, within this window: a playhead it restarted could have begun anywhere in it.
+        // The record is the one the validated frame carries (its epoch change was checked against it); the action must carry the very same one.
         if (stage.relaunch) {
-            const { relaunch } = action.ownership;
-            checkImages(Date.parse(relaunch.startedAt) >= previousEnd && Date.parse(relaunch.at) <= actionTime);
+            const relaunch = this.frames[index].ownership.relaunch;
+            checkImages(isDeepStrictEqual(action.ownership.relaunch, relaunch));
+            checkImages(Date.parse(relaunch.startedAt) >= previousEnd && Date.parse(relaunch.startedAt) <= Date.parse(relaunch.at) && Date.parse(relaunch.at) <= actionTime);
             caseFacts.relaunch = { earliest: Date.parse(relaunch.startedAt), latest: Date.parse(relaunch.at) };
         }
         if (stage.reply === 'build') caseFacts.build = { earliest: actionTime, latest: frameTime };
