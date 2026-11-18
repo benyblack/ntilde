@@ -132,6 +132,8 @@ namespace Ntilde.VT.Export
                 if (cell.IsWideContinuation || buffer.GetTextSizingAbsolute(c, absRow) is { IsAnchor: false }) continue;
 
                 string text = buffer.GetGrapheme(c, row);
+                // A Unicode placeholder draws no glyph, so it is no text in a preview either (#989).
+                if (KittyPlaceholders.IsPlaceholder(text)) text = " ";
                 rowSb.Append(text);
                 if (!string.IsNullOrWhiteSpace(text) && text != "\0")
                 {
@@ -192,7 +194,9 @@ namespace Ntilde.VT.Export
                         CellUnderline? underline = buffer.GetUnderlineAbsolute(c, absRow);
                         if (isFirstCell || StateChanged(lastCell, cell) || underline != lastUnderline)
                         {
-                            AppendSgrSequence(sb, cell, underline, isFirstCell ? TerminalCell.Default : lastCell, lastUnderline);
+                            // A placeholder's SGR 58 colour names its virtual placement even though the cell is not underlined (#989).
+                            bool placeholder = cell.HasExtendedText && KittyPlaceholders.IsPlaceholder(buffer.GetGraphemeAbsolute(c, absRow));
+                            AppendSgrSequence(sb, cell, underline, isFirstCell ? TerminalCell.Default : lastCell, lastUnderline, placeholder);
                             lastCell = cell;
                             lastUnderline = underline;
                             isFirstCell = false;
@@ -210,7 +214,7 @@ namespace Ntilde.VT.Export
                     bool needsEolReset = !lastCell.IsDefaultBackground || !lastCell.IsDefaultForeground ||
                                        lastCell.IsBold || lastCell.IsItalic || lastCell.IsUnderline ||
                                        lastCell.IsInverse || lastCell.IsStrikethrough || lastCell.IsFaint ||
-                                       lastCell.IsHidden || lastCell.IsBlink || lastUnderline?.Overline == true;
+                                       lastCell.IsHidden || lastCell.IsBlink || lastUnderline?.Overline == true || lastUnderline?.HasColor == true;
 
                     if (!isFirstCell && needsEolReset)
                     {
@@ -253,7 +257,7 @@ namespace Ntilde.VT.Export
             return false;
         }
 
-        private static void AppendSgrSequence(StringBuilder sb, TerminalCell cell, CellUnderline? underline, TerminalCell lastCell, CellUnderline? lastUnderline)
+        private static void AppendSgrSequence(StringBuilder sb, TerminalCell cell, CellUnderline? underline, TerminalCell lastCell, CellUnderline? lastUnderline, bool keepsUnderlineColor = false)
         {
             var codes = new List<int>();
 
@@ -342,7 +346,7 @@ namespace Ntilde.VT.Export
                 sb.Append('m');
             }
 
-            if (cell.IsUnderline && underline is not null && (needsReset || underline != lastUnderline))
+            if ((cell.IsUnderline || keepsUnderlineColor) && underline is not null && (needsReset || underline != lastUnderline))
             {
                 AnsiCellWriter.AppendUnderlineSgr(sb, underline);
             }

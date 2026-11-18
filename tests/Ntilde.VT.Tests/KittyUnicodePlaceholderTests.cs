@@ -431,4 +431,33 @@ public sealed class KittyUnicodePlaceholderTests
             Assert.Equal(' ', cell.Character);
         }
     }
+
+    [Fact]
+    public void An_ANSI_export_keeps_the_placement_colour_of_a_placeholder_and_does_not_leak_it()
+    {
+        var (source, parser, _) = Create(rows: 3);
+        parser.Process($"\x1b[38;5;42m\x1b[58;5;1m{Cell(0, 0)}\x1b[0mtail\r\n");
+        string ansi = Ntilde.VT.Export.TerminalExporter.ExportToAnsi(source);
+        Assert.Contains("58:5:1", ansi, StringComparison.Ordinal);
+
+        var (restored, replay, _) = Create(rows: 3);
+        Transmit(replay, 42);
+        VirtualPlacement(replay, 42, 1, 1, placement: 1);
+        VirtualPlacement(replay, 42, 2, 1, placement: 2);
+        replay.Process(ansi);
+        Assert.Equal(1, Assert.Single(Runs(restored)).GridColumns);   // placement 1, not the newest
+        restored.Lock.EnterReadLock();
+        try { Assert.Null(restored.GetRowAbsolute(0)!.GetUnderline(1)); }   // the text after it carries no colour
+        finally { restored.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void A_preview_of_the_screen_text_treats_a_placeholder_as_blank()
+    {
+        var (buffer, parser, _) = Create(rows: 3);
+        parser.Process($"ready\r\n\x1b[38;5;42m{Cell(0, 0)}\x1b[0m");
+        string[] rows = Ntilde.VT.Export.TerminalExporter.GetVisibleRowTexts(buffer);
+        Assert.Equal("ready", rows[0]);
+        Assert.Equal("", rows[1]);
+    }
 }
