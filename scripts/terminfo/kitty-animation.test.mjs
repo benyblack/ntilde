@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { syntheticAnimationJournal, animationEpoch } from './fixtures/kitty-animation-journal.mjs';
 import { buildAnimationReport, animationPlan, animationActionCount, animationPlannedStages, animationReply, parseAnimationReplies, animationInputs, animationSuites, animationVersionOfPolicy, ownedAnimationPolicies } from './kitty-animation.mjs';
-import { animationCases, animationCasesByVersion, animationCommand, animationSuiteIds } from './kitty-animation-cases.mjs';
+import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds } from './kitty-animation-cases.mjs';
 import { inputRunId } from './fixtures/input-journal.mjs';
 
 function withJournal(options, action) {
@@ -24,7 +24,7 @@ test('the plan covers every stage once, bounded by the capture budget', () => {
 });
 
 test('suite v1 stays defined beside v2 so retained v1 evidence still rederives', () => {
-    assert.deepEqual(Object.keys(animationSuiteIds), ['1', '2', '3']); assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[1]), 1);
+    assert.deepEqual(Object.keys(animationSuiteIds), ['1', '2', '3', '4']); assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[1]), 1);
     assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[2]), 2); assert.equal(animationVersionOfPolicy('owned-kitty-animation-paired-raw-render-v3'), null);
     assert.equal(animationVersionOfPolicy(undefined), null);
     // v1 is the three-case suite exactly as #988 retained it: 23 actions, 18 stages, three raw-frame inputs; v2 only adds the PNG and root-frame case and its two PNG inputs.
@@ -355,5 +355,72 @@ test('a read that a restarted playhead would also pass cannot stand for a restor
     withRestore({ paint: (entry, appearance) => entry.caseId === playing && entry.stageId === 'third' ? 'second' : appearance }, ({ build }) => {
         const third = build().observations.find(item => item.featureId === playing + '.third');
         assert.equal(third.result, 'failed'); assert.equal(third.timing.valid, true);
+    });
+});
+
+// The frame-composition suite (version 4, #1027): whole-frame a=c compositions and refused ones, in a persistent tab.
+const replaceBlend = 'kitty.animation.compose-replace-blend', refused = 'kitty.animation.compose-refused';
+function withCompose(options, action) {
+    const output = mkdtempSync(join(tmpdir(), 'nt-kan-compose-'));
+    try {
+        const journal = syntheticAnimationJournal(output, { version: 4, ...options });
+        action({ output, ...journal, build: (frames = journal.frames, actions = journal.actions, seal = journal.seal) => buildAnimationReport(frames, actions, seal, inputRunId, output, [], 4) });
+    } finally { rmSync(output, { recursive: true, force: true }); }
+}
+
+test('the compose suite plans two whole-frame composition cases that no relaunch or elapsed time is part of', () => {
+    assert.deepEqual(animationCasesByVersion[4].map(item => item.id), [replaceBlend, refused]);
+    assert.equal(animationSuites[4].plan.length, 14); assert.ok((animationSuites[4].plan.length + 1) * 2 <= 64);
+    assert.equal(animationSuiteIds[4], 'ntilde-owned-kitty-animation-compose-v1');
+    assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[4]), 4);
+    for (const item of animationCasesByVersion[4]) for (const stage of item.stages) {
+        assert.equal(stage.clock, 'static'); assert.ok(!stage.relaunch); assert.equal(animationSuites[4].relaunches({ kind: 'read', caseId: item.id, stageId: stage.id }), false);
+    }
+    const apcs = (caseId, stageId) => animationCommand(caseId, stageId, { imageId: 9 }, 4).split('\x1b\\').filter(Boolean);
+    assert.deepEqual(apcs(replaceBlend, 'replace'), ['\x1b_Ga=c,i=9,r=3,c=2,C=1', '\x1b_Ga=a,i=9,c=2']);
+    const blend = apcs(replaceBlend, 'blend'); assert.equal(blend.length, 3);
+    assert.match(blend[0], /^\x1b_Ga=f,f=100,t=d,i=9,z=5000;/); assert.equal(blend[1], '\x1b_Ga=c,i=9,r=4,c=1'); assert.equal(blend[2], '\x1b_Ga=a,i=9,c=1');
+    assert.deepEqual(apcs(refused, 'refuse'), ['\x1b_Ga=c,i=9,r=9,c=2', '\x1b_Ga=c,i=9,r=1,c=2,w=17', '\x1b_Ga=c,i=9,r=2,c=2,w=8,X=0,x=4']);
+    assert.deepEqual(apcs(refused, 'intact'), ['\x1b_Ga=a,i=9,c=2']);
+    assert.equal(apcs(refused, 'build').length, 4);                              // both cases share the three-frame build
+    const replies = (caseId, stageId) => animationExpectedReplies(animationCasesByVersion[4].find(item => item.id === caseId).stages.find(stage => stage.id === stageId), 9);
+    assert.deepEqual(replies(refused, 'refuse'), ['\x1b_Gi=9;ENOENT\x1b\\', '\x1b_Gi=9;EINVAL\x1b\\', '\x1b_Gi=9;EINVAL\x1b\\']);
+    assert.deepEqual(replies(replaceBlend, 'blend'), Array(3).fill('\x1b_Gi=9;OK\x1b\\'));
+});
+
+test('a faithful compose run grades every stage passed, and the refusals count only when they are the named error', () => {
+    withCompose({}, ({ build }) => {
+        const report = build();
+        assert.equal(report.suiteId, 'ntilde-owned-kitty-animation-compose-v1'); assert.equal(report.observations.length, 10);
+        assert.ok(report.observations.every(item => item.result === 'passed'), JSON.stringify(report.observations.filter(item => item.result !== 'passed').map(item => [item.featureId, item.inconclusiveReason])));
+        assert.deepEqual(report.caseResults.map(item => item.result), ['passed', 'passed']);
+        const refuse = report.observations.find(item => item.featureId === refused + '.refuse');
+        assert.deepEqual(refuse.reply.statuses, ['ENOENT', 'EINVAL', 'EINVAL']); assert.equal(refuse.reply.passed, true);
+        assert.match(report.scope, /whole-frame compositions only/);
+    });
+    // A terminal that accepts what must be refused (or refuses with the wrong code) fails the stage on its reply.
+    for (const answer of [raw => raw.replaceAll('ENOENT', 'OK').replaceAll('EINVAL', 'OK'), raw => raw.replaceAll('EINVAL', 'ENOENT'), raw => raw.replaceAll('ENOENT', 'ENOTSUP')]) {
+        withCompose({ reply: (entry, raw) => (entry.caseId === refused && entry.stageId === 'refuse' ? answer(raw) : raw) }, ({ build }) => {
+            const refuse = build().observations.find(item => item.featureId === refused + '.refuse');
+            assert.equal(refuse.result, 'failed'); assert.equal(refuse.reply.passed, false);
+        });
+    }
+});
+
+test('a composition that did not take effect, or that changed what it refused, fails on its own pixels', () => {
+    const paintAs = (caseId, stageId, appearance) => (entry, shown) => (entry.caseId === caseId && entry.stageId === stageId ? appearance : shown);
+    withCompose({ paint: paintAs(replaceBlend, 'replace', 'second') }, ({ build }) => {        // frame 2 still green: the replacement never happened
+        const value = results(build());
+        assert.equal(value[replaceBlend + '.replace'], 'failed'); assert.equal(value[replaceBlend + '.blend'], 'inconclusive');
+    });
+    withCompose({ paint: paintAs(replaceBlend, 'blend', 'root') }, ({ build }) => {            // the root stayed red: the blend never happened
+        assert.equal(results(build())[replaceBlend + '.blend'], 'failed');
+    });
+    withCompose({ paint: paintAs(refused, 'intact', 'third') }, ({ build }) => {               // a refused composition replaced frame 2
+        const value = results(build());
+        assert.equal(value[refused + '.intact'], 'failed'); assert.equal(value[refused + '.refuse'], 'passed');
+    });
+    withCompose({ paint: paintAs(refused, 'refuse', 'second') }, ({ build }) => {              // the refusals changed the displayed frame
+        assert.equal(results(build())[refused + '.refuse'], 'failed');
     });
 });

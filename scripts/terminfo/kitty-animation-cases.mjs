@@ -5,8 +5,11 @@ import { animationFrameInput, animationPngInput } from './kitty-animation-inputs
  * Suite versions: 1 is the three-case suite that retained runs still carry (#988); 2 adds PNG and root-frame composition (#1015) and is what full collections produce;
  * 3 (#1030) is the restore suite: the same animation state is read again after the App is terminated with SIGTERM and started again on the same persistent session, so it only runs in the
  * persistent-restore collection (a direct tab has nothing to reattach to).
+ * 4 (#1027) is the frame-composition suite (`a=c`): full-frame compositions and refused ones, only in the persistent-compose collection (persistent image policy 4); full collections stay on 2.
  */
-export const animationSuiteIds = Object.freeze({ 1: 'ntilde-owned-kitty-animation-v1', 2: 'ntilde-owned-kitty-animation-v2', 3: 'ntilde-owned-kitty-animation-restore-v1' });
+export const animationSuiteIds = Object.freeze({ 1: 'ntilde-owned-kitty-animation-v1', 2: 'ntilde-owned-kitty-animation-v2', 3: 'ntilde-owned-kitty-animation-restore-v1', 4: 'ntilde-owned-kitty-animation-compose-v1' });
+/** The one suite version whose stages relaunch the App (#1030); every other version runs without one. */
+export const restoreAnimationVersion = 3;
 export const currentAnimationVersion = 2;
 export const animationSuiteId = animationSuiteIds[currentAnimationVersion];
 export const animationAnchor = Object.freeze({ col: 3, row: 4 });
@@ -74,7 +77,19 @@ const restoreCases = Object.freeze([
         stage('again', 'overRoot', { reply: 'show', expect: replies('ok') }),
         stage('compose', 'overEdit', { reply: 'compose', expect: replies('ok', 'ok') }), clear]) }),
 ]);
-export const animationCasesByVersion = Object.freeze({ 1: timedCases, 2: Object.freeze([...timedCases, compositionCase]), 3: restoreCases });
+// The composition cases (#1027): whole-frame `a=c` compositions only, so every observation is one uniform color the classifier can name. Rectangle offsets and sizes are pinned by unit tests, not here.
+// compose-replace-blend: frame 3 (blue) replaces frame 2 (C=1), then a half-transparent green PNG frame (built on no base, so it keeps its alpha) is blended onto the red root.
+// compose-refused: a missing frame (ENOENT), a rectangle wider than the image (EINVAL) and one frame onto itself with overlapping rectangles (EINVAL) change nothing: frame 2 is still green afterwards.
+const composeReplaceBlendCaseId = 'kitty.animation.compose-replace-blend', composeRefusedCaseId = 'kitty.animation.compose-refused';
+const composeCases = Object.freeze([
+    Object.freeze({ id: composeReplaceBlendCaseId, stages: Object.freeze([stage('blank', 'absent'), build,
+        stage('replace', 'third', { reply: 'replace', expect: replies('ok', 'ok') }),
+        stage('blend', 'overRoot', { reply: 'blend', expect: replies('ok', 'ok', 'ok') }), clear]) }),
+    Object.freeze({ id: composeRefusedCaseId, stages: Object.freeze([stage('blank', 'absent'), build,
+        stage('refuse', 'root', { reply: 'refuse', expect: replies('enoent', 'einval', 'einval') }),
+        stage('intact', 'second', { reply: 'intact', expect: replies('ok') }), clear]) }),
+]);
+export const animationCasesByVersion = Object.freeze({ 1: timedCases, 2: Object.freeze([...timedCases, compositionCase]), 3: restoreCases, 4: composeCases });
 export const animationCases = animationCasesByVersion[currentAnimationVersion];
 
 const uint = value => Number.isSafeInteger(value) && value >= 1 && value <= 0xffffffff;
@@ -94,6 +109,13 @@ const compositionCommands = Object.freeze({
     compose: imageId => apc(`a=f,f=100,t=d,i=${imageId},c=1,z=${animationHoldMs};` + pngData('overEdit')) + apc(`a=a,i=${imageId},c=3`),
 });
 
+const composeCommands = Object.freeze({
+    replace: imageId => apc(`a=c,i=${imageId},r=3,c=2,C=1`) + apc(`a=a,i=${imageId},c=2`),
+    blend: imageId => apc(`a=f,f=100,t=d,i=${imageId},z=${animationHoldMs};` + pngData('overRoot')) + apc(`a=c,i=${imageId},r=4,c=1`) + apc(`a=a,i=${imageId},c=1`),
+    refuse: imageId => apc(`a=c,i=${imageId},r=9,c=2`) + apc(`a=c,i=${imageId},r=1,c=2,w=17`) + apc(`a=c,i=${imageId},r=2,c=2,w=8,X=0,x=4`),
+    intact: imageId => apc(`a=a,i=${imageId},c=2`),
+});
+
 /** Exact bounded bytes; the image id is parent-chosen per case, never guessed from a reply. */
 export function animationCommand(caseId, stageId, { imageId } = {}, version = currentAnimationVersion) {
     const spec = animationCasesByVersion[version].find(item => item.id === caseId);
@@ -104,6 +126,7 @@ export function animationCommand(caseId, stageId, { imageId } = {}, version = cu
     const root = apc(`a=T,${frameControls},i=${imageId},p=1,c=4,r=2,C=1;` + frameData('root'));
     const composition = [compositionCaseId, restoreFramesCaseId].includes(caseId) ? compositionCommands[stageId] : undefined;
     if (composition) return composition(imageId, root);
+    if ([composeReplaceBlendCaseId, composeRefusedCaseId].includes(caseId) && composeCommands[stageId]) return composeCommands[stageId](imageId);
     if (stageId === 'build') {
         const gap = `z=${animationHoldMs}`;
         return root
@@ -120,6 +143,7 @@ export function animationCommand(caseId, stageId, { imageId } = {}, version = cu
 /** The ordered correlated replies one stage's command produces; a=d success is silent. The a=T reply echoes the placement id it was given (p=1). */
 export function animationExpectedReplies(stage, imageId) {
     if (!uint(imageId)) throw new Error('Animation image id must be an explicit positive uint32.');
-    const ok = `\x1b_Gi=${imageId};OK\x1b\\`, placed = `\x1b_Gi=${imageId},p=1;OK\x1b\\`;
-    return stage.expect.map(kind => (kind === 'placed' ? placed : ok));
+    const status = text => `\x1b_Gi=${imageId};${text}\x1b\\`, placed = `\x1b_Gi=${imageId},p=1;OK\x1b\\`;
+    const replies = { ok: status('OK'), placed, enoent: status('ENOENT'), einval: status('EINVAL') };
+    return stage.expect.map(kind => replies[kind]);
 }
