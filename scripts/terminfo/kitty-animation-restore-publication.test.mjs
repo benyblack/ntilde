@@ -164,7 +164,7 @@ test('a restore claim without a real relaunch is refused by the carrier report i
 test('every development attempt of the collection is retained with its real outcome, and none of them is the published run', () => {
     const attempts = JSON.parse(read('superseded-attempts/attempts.json')), published = JSON.parse(read('summary.json')).ownedRunId;
     assert.equal(attempts.schemaVersion, 1);
-    assert.equal(attempts.attempts.length, 7);
+    assert.equal(attempts.attempts.length, 8);
     for (const item of attempts.attempts) {
         assert.notEqual(item.runId, published);
         assert.ok(item.reason.length > 20 && item.scripts.length > 0 && item.files.length >= 2, item.attempt);

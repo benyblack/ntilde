@@ -176,6 +176,31 @@
           "bytes": 106313
         }
       ]
+    },
+    {
+      "attempt": "owned-0tb9EH",
+      "runId": "b36c2616a9ee8880b98b18d167812723",
+      "scripts": "251e0320",
+      "collection": "persistent-restore scope",
+      "outcome": "23/23 passed",
+      "reason": "A complete run of the 23-stage plan (source policy v68) on the relaunch admission fix, published first. A behavior-preserving split of the runner's relaunch answer (to clear a cognitive complexity finding) edits a measured file, so it is superseded by a fresh run.",
+      "files": [
+        {
+          "file": "owned-0tb9EH/animation-observations.json",
+          "sha256": "ba0eb3d6d66f447ce90b6618522c274e1ad8e4fef30885ce43e6e7def15795fb",
+          "bytes": 924854
+        },
+        {
+          "file": "owned-0tb9EH/persistent-animation-receipt.json",
+          "sha256": "004c4784603de1a8576f8ec586715cafbc4c4793700370067fe3234ab8665c63",
+          "bytes": 969
+        },
+        {
+          "file": "owned-0tb9EH/ownership-proof.json",
+          "sha256": "0117ac29ae70c9f22e538b7ff0b334370645de539451967ca2848538bbbf0cb7",
+          "bytes": 106336
+        }
+      ]
     }
   ]
 }
