@@ -30,6 +30,18 @@ test('optional observed geometry survives strict metadata projection without inv
     raw.cellGeometry.backingScale = 4;
     assert.equal(projected.cellGeometry.backingScale, 2);
 });
+test('font/window metadata preserves actual bounded values without inventing historical observations', () => {
+    assert.equal(Object.hasOwn(copyPaneMetadata(wire()), 'fontGeometry'), false);
+    const fontGeometry = { fontSizeDip: 16, windowWidthDip: 1200, windowHeightDip: 800 };
+    const projected = copyPaneMetadata({ ...wire(), fontGeometry });
+    assert.deepEqual(projected.fontGeometry, fontGeometry);
+    fontGeometry.fontSizeDip = 24;
+    assert.equal(projected.fontGeometry.fontSizeDip, 16);
+    for (const invalid of [null, {}, { ...fontGeometry, fontSizeDip: NaN }, { ...fontGeometry, windowWidthDip: 0 },
+        { ...fontGeometry, windowHeightDip: Infinity }, { ...fontGeometry, extra: true }]) {
+        assert.throws(() => copyPaneMetadata({ ...wire(), fontGeometry: invalid }));
+    }
+});
 for (const [name, mutate] of Object.entries({
     missing: value => delete value.backingScale,
     unknown: value => value.extra = true,

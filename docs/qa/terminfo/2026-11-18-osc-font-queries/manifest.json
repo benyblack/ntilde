@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "20768dd95adc04324b37659b5520839a",
+    "receiptSchema": 76,
+    "sourcePolicy": "readonly-owned-source-graph-v69",
+    "appRevision": "cb745f6e92781c4bff5c2d1a46ac821d78430dd8",
+    "scriptsRevision": "22c0c882367f9dc0a4ad2521fea26f22d512cbe4"
+  },
+  "archives": {
+    "failed/attempt-1.zip": "eae939cf70e555eddf7de7d62e237864e308e6e13a6c86eafa312707a9d2a81b",
+    "failed/attempt-2.zip": "21b8beca65d89322eaa6d36d9da8523bad1a279e39db0edca815958e7eea2df5",
+    "owned-run.zip": "289c1088cd58116f6063214656388983cc29c79e6bf84e7fd74413f4b88103aa"
+  },
+  "files": {
+    "attempts.json": "3b9b5fe657f49ee8aed347ec62bb5af08e2e0d982fa11fc383a3788125e973b4",
+    "report.json": "ea3819b095f723b9ad3d788213f037a7bc752dc803bbef052270fc0461c59eeb",
+    "summary.json": "e28265363436ecd505360b10d6b19d6112c55aceb27ea0b5fe8468ad2cf6cceb"
+  }
+}

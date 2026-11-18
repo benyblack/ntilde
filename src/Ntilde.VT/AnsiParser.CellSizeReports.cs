@@ -15,6 +15,17 @@ public partial class AnsiParser
 
     private bool HandleCellSizeReport(string osc, string terminator)
     {
+        if (osc is "7770;?" or "7777;?")
+        {
+            // Only conversion roundoff (at most eight binary64 ULPs) may be
+            // normalized. Meaningfully fractional sizes and absent hosts stay silent.
+            if (CellSizeReports is { IsValid: true } host && TryIntegerFontPoints(host.FontSizePoints, out int points))
+            {
+                string code = osc[..4];
+                OnResponse?.Invoke(string.Create(CultureInfo.InvariantCulture, $"\x1b]{code};{points:0}{terminator}"));
+            }
+            return true;
+        }
         if (osc is not ("1337;ReportCellSize" or "776;?")) return false;
         if (CellSizeReports is not { IsValid: true } metrics) return true;
         if (osc == "1337;ReportCellSize")
@@ -30,6 +41,21 @@ public partial class AnsiParser
             OnResponse?.Invoke(string.Create(CultureInfo.InvariantCulture,
                 $"\x1b]776;{Pixels(metrics.WidthPoints)};{Pixels(metrics.HeightPoints)};{Pixels(metrics.FontAscentPoints)}{terminator}"));
         }
+        return true;
+    }
+
+    private static bool TryIntegerFontPoints(double? value, out int points)
+    {
+        points = 0;
+        if (value is not double size || !double.IsFinite(size)) return false;
+        double nearest = Math.Round(size, MidpointRounding.AwayFromZero);
+        if (nearest < 1 || nearest > 512) return false;
+        // The host conversion multiplies/divides DIP, effective/backing scales
+        // and 72/96. Eight ULPs bounds its accumulated binary64 representation
+        // error; it is not a decimal rounding tolerance or a half-point policy.
+        double ulp = Math.BitIncrement(nearest) - nearest;
+        if (Math.Abs(size - nearest) > 8 * ulp) return false;
+        points = (int)nearest;
         return true;
     }
 }

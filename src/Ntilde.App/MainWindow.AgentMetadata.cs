@@ -48,6 +48,12 @@ public partial class MainWindow
                 ControlCursor = pane.TermView.AppliedPointerCursor,
                 LinkOverride = pane.TermView.PointerShapeOverriddenByLink,
             },
+            FontGeometry = new PaneFontGeometry
+            {
+                FontSizeDip = pane.TermView.FontSize,
+                WindowWidthDip = ClientSize.Width,
+                WindowHeightDip = ClientSize.Height,
+            },
             CellGeometry = new PaneCellGeometry
             {
                 ViewRows = pane.TermView.Rows,

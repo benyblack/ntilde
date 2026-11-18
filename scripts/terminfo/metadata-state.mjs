@@ -101,11 +101,17 @@ function cellGeometry(value, rows, cols) {
 }
 /** Normalize omitted nullable fields, preserving actual hidden-control properties and raw anchors. */
 export function copyPaneMetadata(value) {
-    shape(value, ['paneId', 'displayTitle', 'buffer', 'presentation'], ['oscTitle', 'workingDirectory', 'cellGeometry', 'viewport', 'pointerShape']);
+    shape(value, ['paneId', 'displayTitle', 'buffer', 'presentation'], ['oscTitle', 'workingDirectory', 'cellGeometry', 'fontGeometry', 'viewport', 'pointerShape']);
     check(guid(value.paneId));
     const result = { paneId: value.paneId, oscTitle: nullableText(value.oscTitle), workingDirectory: nullableText(value.workingDirectory),
         displayTitle: text(value.displayTitle), buffer: buffer(value.buffer), presentation: presentation(value.presentation) };
     if (value.cellGeometry !== undefined) result.cellGeometry = cellGeometry(value.cellGeometry, result.buffer.rows, result.buffer.cols);
+    if (value.fontGeometry !== undefined) {
+        const font = value.fontGeometry;
+        shape(font, ['fontSizeDip', 'windowWidthDip', 'windowHeightDip']);
+        for (const key of ['fontSizeDip', 'windowWidthDip', 'windowHeightDip']) check(Number.isFinite(font[key]) && font[key] > 0 && font[key] <= 32768);
+        result.fontGeometry = { fontSizeDip: font.fontSizeDip, windowWidthDip: font.windowWidthDip, windowHeightDip: font.windowHeightDip };
+    }
     if (value.viewport !== undefined) result.viewport = viewport(value.viewport);
     if (value.pointerShape !== undefined) {
         const pointer = value.pointerShape;

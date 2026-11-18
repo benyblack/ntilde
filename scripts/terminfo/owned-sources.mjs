@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v68';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v69';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Frozen forks are selected only by valid own-family source digests and absence of every other family's marker.
 const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
@@ -922,11 +922,22 @@ export const capturedV75SourceFiles = Object.freeze({
     osc22ReceiptSourceSha256: 'osc22-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v75 inventory and manifest environment pin before trusting any captured source. */
+// Font queries add six modules; the v75 graph remains frozen.
+export const capturedV76SourceFiles = Object.freeze({
+    ...capturedV75SourceFiles,
+    fontSizeContractsSourceSha256: 'font-size-contracts.mjs',
+    fontSizeGradingCollectorSourceSha256: 'font-size-grading-collector.mjs',
+    fontSizeCollectorSourceSha256: 'font-size-collector.mjs',
+    fontSizeCaptureSourceSha256: 'font-size-capture.mjs',
+    fontSizeGradingSourceSha256: 'font-size-grading.mjs',
+    fontSizeReceiptSourceSha256: 'font-size-receipt.mjs',
+});
+
+/** Bind the private temporary root, exact v76 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV75SourceFiles)) throw new Error('Invalid current v75 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV76SourceFiles)) throw new Error('Invalid current v76 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);
