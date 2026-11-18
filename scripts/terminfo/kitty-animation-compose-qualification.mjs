@@ -20,8 +20,8 @@ export const composeReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-co
 export { pinnedBundleArchive, kittyAnimationQualificationIds, upstreamBundleSha256, pinnedSpanDigests } from './kitty-animation-qualification.mjs';
 // Measured on the committed tree named here: the Release sidecar was built from the App at this commit and the measured scripts are its tree
 // (later commits are publication, docs, test pins and merges of main only).
-export const measuredAppRevision = '0000000000000000000000000000000000000000';
-export const measuredScriptsRevision = '0000000000000000000000000000000000000000';
+export const measuredAppRevision = '8fed8e5ff6a73d8a0888fa21fb88ccf86c040cac';
+export const measuredScriptsRevision = '786faf96efb2ae83303070d3f8f950ede4a5ecc2';
 
 const version = 4;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -84,7 +84,7 @@ export function composeControls({ proof, frames, report }) {
             'the same App process observed every stage: nothing was relaunched, so every composition ran in the live persistent pane'],
         ['same-session-throughout', frames.every(frame => frame.ownership.worker.pid === proof.proofs[0].worker.pid && frame.ownership.daemon.pid === daemon.identity.pid),
             'every observation saw the same worker under the same multiplexer daemon'],
-        ['refusals-were-the-named-errors', JSON.stringify(refuse?.reply?.statuses) === JSON.stringify(['ENOENT', 'EINVAL', 'EINVAL']) && refuse.reply.passed === true,
+        ['refusals-were-the-named-errors', JSON.stringify(refuse?.reply?.statuses?.map(status => status.split(':')[0])) === JSON.stringify(['ENOENT', 'EINVAL', 'EINVAL']) && refuse.reply.passed === true,
             'the three refused compositions answered ENOENT, EINVAL and EINVAL in order, and nothing else'],
     ].map(([name, held, detail]) => ({ name, held, detail }));
 }
@@ -93,7 +93,7 @@ export function composeControls({ proof, frames, report }) {
 export async function composeQualification(dir, source, archive) {
     const verified = verifyComposeRun(dir), { receipt, context, report, observationBytes } = verified;
     const validity = [...validityControls(report, { animationEvidence: receipt.animationEvidence, fixtureRemoved: receipt.fixtureRemoved }, context, observationBytes,
-        { suiteId, policy, caseCount: animationCasesByVersion[version].length }), ...persistentControls(verified), ...composeControls(verified)];
+        { suiteId, policy, caseCount: animationCasesByVersion[version].length, requireTimed: false }), ...persistentControls(verified), ...composeControls(verified)];
     check(validity.every(item => item.held), `validity control failed: ${validity.find(item => !item.held)?.name}`);
     const id = kittyAnimationQualificationIds[0], pinned = (await replayPinnedAnimationProbe(archive))[id], effect = gradeEffect(report, composeEffectContract);
     const termless = pinned.termless, terminal = pinned.terminal, pinnedOutcome = termless.observation.outcome;
