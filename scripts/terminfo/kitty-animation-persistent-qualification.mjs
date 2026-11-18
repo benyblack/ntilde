@@ -145,6 +145,13 @@ export function verifyPersistentSuiteRun(dir, { scope, receiptSuiteId, version, 
     check(Date.parse(marker.seal.ownership.at) <= Date.parse(proof.cleanedUpAt), 'the seal postdates cleanup');
     if (persistent) checkDaemon(proof, context, frames);
     else check(proof.persistentDaemon === undefined && frames.every(frame => frame.ownership.daemon === undefined && frame.ownership.worker.ppid === frame.ownership.app.pid), 'an ordinary-tab run has a multiplexer daemon in its proof or a worker that is not the App\'s own child');
+    if (!persistent) {
+        // Every observation is bound to the identities the launch proof recorded: the launched executable as the App, and the one worker that is its own child.
+        const sameProcess = (seen, recorded) => ['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => seen[key] === recorded[key]);
+        check(original.app.executable === context.executable && original.worker.ppid === original.app.pid && original.worker.uid === original.app.uid
+            && frames.every(frame => sameProcess(frame.ownership.app, original.app) && sameProcess(frame.ownership.worker, original.worker)),
+        'an ordinary-tab observation is not bound to the launched App and its own child worker');
+    }
     const counts = {};
     for (const item of derived.observations) counts[item.result] = (counts[item.result] ?? 0) + 1;
     check(snapshotHash(counts) === snapshotHash(binding.counts), 'the receipt counts differ from the re-derived stages');

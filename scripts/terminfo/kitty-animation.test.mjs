@@ -399,7 +399,8 @@ test('a faithful compose run grades every stage passed, and the refusals count o
         assert.deepEqual(report.caseResults.map(item => item.result), ['passed', 'passed']);
         const refuse = report.observations.find(item => item.featureId === refused + '.refuse');
         assert.deepEqual(refuse.reply.statuses, ['ENOENT', 'EINVAL', 'EINVAL']); assert.equal(refuse.reply.passed, true);
-        assert.match(report.scope, /whole-frame compositions only/);
+        assert.match(report.scope, /Whole-frame compositions only/);
+        assert.doesNotMatch(report.scope, /in a persistent tab|in an ordinary tab/, 'the carrier report names no kind of tab: the same suite runs in both and the collection scope says which');
     });
     // A terminal that accepts what must be refused (or refuses with the wrong code) fails the stage on its reply.
     for (const answer of [raw => raw.replaceAll('ENOENT', 'OK').replaceAll('EINVAL', 'OK'), raw => raw.replaceAll('EINVAL', 'ENOENT'), raw => raw.replaceAll('ENOENT', 'ENOTSUP')]) {
