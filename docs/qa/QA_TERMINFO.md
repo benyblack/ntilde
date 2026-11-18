@@ -1365,3 +1365,7 @@ The [OSC 3008 batch](terminfo/2026-11-17-osc3008-qualification.md) implements [U
 ### OSC 22 pointer shape (#990)
 
 The [OSC 22 batch](terminfo/2026-11-17-osc22-qualification.md) implements bounded direct-local App setters and measures the requested shape and the actual Avalonia Cursor kind independently. Eight required checks and nine controls held across 15 reads; prepared null/Arrow restoration and complete teardown are receipted (schema75, source policy68, 455 inputs). The exact pinned CPR-only probe remains inconclusive; the separate App effect is supported, with no stock/Core/Modern or native-pointer-image score claim. All three attempts are retained: failed dispatch, the earlier successful App, and the fresh App after the screen-switch hover fix. Stacks/queries/other names, runtime hover/alternate screens, mux/replay and other platforms remain outside this qualification.
+
+### OSC 7770 and OSC 7777 font-size queries (#994)
+
+The [font query qualification](terminfo/2026-11-18-osc-font-queries-qualification.md) measures exact replies for both read-only integer-point queries on the disposable direct-local macOS App. The App returned 10 points with matching BEL and ST framing. Independent font/window readback, two delivery controls per case, unchanged stored state and confirmed restoration support both effects. Both pinned paths and fresh stock support each query. The separate OSC 710 audit records its no-operation pinned probe and unqualified X11 font-description service.

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { adaptFontSizeCollector, fontSizeAdapterId } from './terminfo/font-size-grading-collector.mjs';
+import { fontSizeNonce, fontSizePrefix, fontSizeSuiteId, fontSizeVersion } from './terminfo/font-size-contracts.mjs';
+import { buildFontSizeReport, fontSizeCounts } from './terminfo/font-size-grading.mjs';
+import { FontSizeObserver } from './terminfo/font-size-capture.mjs';
 import { adaptOscTitleCollector, oscTitleAdapterId } from './terminfo/osc-title-grading-collector.mjs';
 import { oscTitleCaseIds, oscTitleContractsVersion, oscTitlePrefix, oscTitleSuiteId } from './terminfo/osc-title-contracts.mjs';
 import { buildOscTitleReport, matchesOscTitleBaseline, oscTitleCounts, oscTitleObserverPlan } from './terminfo/osc-title-grading.mjs';
@@ -64,7 +68,7 @@ import { charEditContractsVersion, charEditSuiteId } from './terminfo/char-edit-
 import { buildCharEditGradingReport } from './terminfo/char-edit-grading.mjs';
 import { adaptEraseDisplayCollector, eraseDisplayAdapterId } from './terminfo/erase-display-grading-collector.mjs';
 import { adaptLineEditCollector, lineEditAdapterId } from './terminfo/line-edit-grading-collector.mjs';
-import { eraseDisplayContractsVersion, eraseDisplaySuiteId } from './terminfo/erase-display-contracts.mjs';
+import { eraseDisplayContractsVersion, eraseDisplayGeometry, eraseDisplaySuiteId } from './terminfo/erase-display-contracts.mjs';
 import { lineEditContractsVersion, lineEditSuiteId } from './terminfo/line-edit-contracts.mjs';
 import { buildEraseDisplayGradingReport } from './terminfo/erase-display-grading.mjs';
 import { buildLineEditGradingReport } from './terminfo/line-edit-grading.mjs';
@@ -257,7 +261,7 @@ import { OwnedHistoryObserver } from './terminfo/history-capture.mjs';
 import { historySuiteId } from './terminfo/history-cases.mjs';
 import { buildHistoryReport } from './terminfo/history.mjs';
 import { completeOwnedReceipt } from './terminfo/receipt.mjs';
-import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode } from './terminfo/terminal-output.mjs';
+import { readOwnedTerminalState, privateClipboardOutputPolicy, readOwnedOutputMode, validateOutputGeometry } from './terminfo/terminal-output.mjs';
 
 import { abortPrivateClipboardWithFacts, privateClipboardFailureFacts, privateClipboardEvidenceJson } from './terminfo/private-clipboard.mjs';
 import { OwnedPrivateClipboardObserver, privateClipboardScreen } from './terminfo/private-clipboard-capture.mjs';
@@ -267,7 +271,7 @@ import { ownedPrivateClipboardPolicy, ownedPrivateClipboardSuiteId } from './ter
 const untranslatedCellPrefixes = new Set([
     'cell', 'sgr', 'grading', 'sgcolors', 'sgrgb', 'sgattr', 'sgpal', 'sgtc', 'sgtf', 'sgus', 'sguc', 'sgur', 'sgsr', 'sgcl', 'erln', 'ched', 'erdi',
     'ptr', 'ledt', 'irm', 'chrs', 'scrl', 'svrs', 'erar', 'atrc', 'curq', 'echh', 'sels', 'rect', 'cole', 'csum', 'lrmm', 'cg', 'tc', 'ce', 'ts', 'sr', 'rw', 'crst', 'selc', 'shi', 'vsc', 'lnk', 'tst', 'ost', 'xgtc', 'osn', 'ntf', 'dvq', 'csz', 'xcs', 'xss', 'xsv', 'kcl', 'scol', 'ocx', 'ovu', 'rgb', 'rendition', 'cursor', 'pixel', 'color', 'erase', 'editing',
-    'history', 'saved', 'metadata',
+    'history', 'saved', 'metadata', 'fnt',
 ]);
 const coreWrapKinds = new Set(['cw-geometry-start', 'cw-narrow', 'cw-start', 'cw-bind', 'cw-read', 'cw-finish', 'cw-restore', 'cw-abort', 'cw-seal']);
 /** The parent-performed focus actions of the OSC 9 suite: exact kinds, answered by the runner rather than by an observer. */
@@ -2219,6 +2223,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     let notifyEvidence;
     let devqEvidence;
     let cellSizeEvidence;
+    let fontSizeEvidence;
     let xcsEvidence;
     let xssEvidence;
     let xsvEvidence;
@@ -2273,6 +2278,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const cellSizeBundle = join(privateTool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-cell-size-${cellSizeBundleSha256}.mjs`);
         writeFileSync(cellSizeBundle, cellSizeSource, { flag: 'wx', mode: 0o600 });
         writeFileSync(join(output, 'collector-cell-size.mjs'), cellSizeSource, { flag: 'wx', mode: 0o600 });
+        const fontSizeSource = adaptFontSizeCollector(readFileSync(bundle));
+        const fontSizeBundleSha256 = hash(fontSizeSource);
+        const fontSizeBundle = join(privateTool, 'node_modules', 'terminfo.dev', 'dist', `ntilde-font-size-${fontSizeBundleSha256}.mjs`);
+        writeFileSync(fontSizeBundle, fontSizeSource, { flag: 'wx', mode: 0o600 });
+        writeFileSync(join(output, 'collector-font-size.mjs'), fontSizeSource, { flag: 'wx', mode: 0o600 });
         const { bundle: gradingBundle, gradingBundleSha256 } = prepareGradingCollector(privateTool, bundle, output);
         const { bundle: sgrColorsBundle, sgrColorsBundleSha256 } = prepareSgrColorsCollector(privateTool, gradingBundle, output);
         const { bundle: sgrRgbBundle, sgrRgbBundleSha256 } = prepareSgrRgbCollector(privateTool, sgrColorsBundle, output);
@@ -2337,7 +2347,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const workerScript = join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs');
         const profileName = `terminfo disposable worker ${runId}`;
         const config = { privateClipboard: true, runId, token, appData, output, executable, bundle, gradingBundle, gradingBundleSha256,
-            cellSizeBundle, cellSizeBundleSha256,
+            cellSizeBundle, cellSizeBundleSha256, fontSizeBundle, fontSizeBundleSha256,
             ...(collectionScope ? { collectionScope } : {}),
             sgrColorsBundle, sgrColorsBundleSha256, sgrRgbBundle, sgrRgbBundleSha256, sgrAttrsBundle, sgrAttrsBundleSha256,
             sgrPaletteBundle, sgrPaletteBundleSha256, sgrTruecolorBundle, sgrTruecolorBundleSha256, sgrUnderlineBundle, sgrUnderlineBundleSha256, sgrUnderlineColorBundle, sgrUnderlineColorBundleSha256, sgrResetBundle, sgrResetBundleSha256, sgrClosureBundle, sgrClosureBundleSha256, eraseLineBundle, eraseLineBundleSha256, charEditBundle, charEditBundleSha256, eraseDisplayBundle, eraseDisplayBundleSha256, lineEditBundle, lineEditBundleSha256, charsetsBundle, charsetsBundleSha256, scrollbackBundle, scrollbackBundleSha256, savedResetBundle, savedResetBundleSha256, eraseAttrsRegionBundle, eraseAttrsRegionBundleSha256, attrRectBundle, attrRectBundleSha256, cursorQualBundle, cursorQualBundleSha256, eraseCharsHistoryBundle, eraseCharsHistoryBundleSha256, selectiveEraseBundle, selectiveEraseBundleSha256, rectEditBundle, rectEditBundleSha256, colEditBundle, colEditBundleSha256, rectChecksumBundle, rectChecksumBundleSha256, lrMarginsBundle, lrMarginsBundleSha256, colorResetBundle, colorResetBundleSha256,
@@ -2349,6 +2359,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
+        settings.FontSize = 40 / 3; // Ten points at unity zoom, within the existing full-grid raster budget.
+        settings.UiScale = 1;
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
@@ -2391,6 +2403,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         let xtgettcapObserver;
         let devqObserver;
         let cellSizeObserver;
+        let fontSizeObserver;
         let xcsObserver;
         let xssObserver;
         let xsvObserver;
@@ -2508,6 +2521,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             notifyAdapterId, notifySuiteId, notifyBundleSha256, notifyContractsVersion,
             devqAdapterId, devqSuiteId, devqBundleSha256, devqContractsVersion,
             cellSizeAdapterId, cellSizeSuiteId, cellSizeBundleSha256, cellSizeContractsVersion: cellSizeVersion,
+            fontSizeAdapterId, fontSizeSuiteId, fontSizeBundleSha256, fontSizeContractsVersion: fontSizeVersion,
             xcsAdapterId, xcsSuiteId, xcsBundleSha256, xcsContractsVersion,
             xssAdapterId, xssSuiteId, xssBundleSha256, xssContractsVersion,
             xsvAdapterId, xsvSuiteId, xsvBundleSha256, xsvContractsVersion,
@@ -3796,9 +3810,23 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 appendFileSync(join(output, 'cell-size-snapshots.jsonl'), JSON.stringify(cellSizeObserver.frames.at(-1)) + '\n');
                 return result;
             }
+            if (prefix === fontSizePrefix) {
+                if (!cellSizeObserver?.restored) throw new Error('Cell-size suite must restore before font-size observations.');
+                fontSizeObserver ??= new FontSizeObserver({ appData, ownerPid: app.pid, profileName,
+                    nonce: `${fontSizeNonce}${runId}`, expectedPaneId: cellObserver.paneId });
+                try {
+                    const result = await fontSizeObserver.handle(request, budget);
+                    appendFileSync(join(output, 'font-size-snapshots.jsonl'), JSON.stringify(fontSizeObserver.frames.at(-1)) + '\n');
+                    return result;
+                } catch (error) {
+                    if (fontSizeObserver.lastAttempt?.error)
+                        appendFileSync(join(output, 'font-size-failed-observations.jsonl'), JSON.stringify(fontSizeObserver.lastAttempt) + '\n');
+                    throw error;
+                }
+            }
             if (prefix === xcsPrefix) {
                 // The xterm color-stack suite runs after the device-query suite; a report read also journals the raw reply list bound to its barrier.
-                if (!cellSizeObserver?.restored) throw new Error('Cell-size suite must restore before xterm color-stack observations.');
+                if (!fontSizeObserver?.restored) throw new Error('Font-size suite must restore before xterm color-stack observations.');
                 xcsObserver ??= new XcsObserver({ appData, ownerPid: app.pid, profileName,
                     nonce: `${xcsNoncePrefix}${runId}`, expectedPaneId: cellObserver.paneId });
                 const result = await xcsObserver.handle(request, budget);
@@ -4005,11 +4033,27 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()),
                 workerBirth: processBirth(worker.pid, budget()), outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(), resize: { policy: ownedResizePolicy, actions: [] }, asciiReflow: { policy: ownedAsciiReflowPolicy, actions: [] }, saved: { policy: ownedSavedPolicy }, metadata: { policy: ownedMetadataPolicy }, input: { policy: ownedInputPolicy, actions: [] }, staticImages: { policy: ownedStaticImagePolicy, actions: [] }, kittyAnimation: { policy: ownedAnimationPolicy, actions: [] }, queries: { policy: ownedQueryPolicy, actions: [] } });
         };
-        /** Bind one kernel-observed output-mode proof to the already verified worker. */
-        const attestOutputMode = (request, budget) => {
-            if (outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
+        /** Prepare the fixed collection grid before baseline snapshots, using only the proved private pane. */
+        const attestOutputMode = async (request, budget, worker) => {
+            const proof = proofs[0];
+            if (outputModeVerified || !proof || proof.fontFixtureGeometry) throw new Error('Unexpected private PTY output proof.');
+            const reader = new OwnedCellObserver({ appData, ownerPid: app.pid, profileName, nonce: config.cellNonce });
+            const { rows, cols } = eraseDisplayGeometry;
+            const before = await reader.session(budget);
+            proof.fontFixtureGeometry = { before: { paneId: before.paneId, rows: before.rows, cols: before.cols }, target: { rows, cols } };
+            if (before.rows !== rows || before.cols !== cols) {
+                const action = await resizeOwnedPane({ app, appData, executable, runId, paneId: before.paneId,
+                    uid: worker.uid, workerPid: worker.pid, tty: request.tty }, rows, cols, budget);
+                proof.fontFixtureGeometry.resize = action;
+                if (action.app?.exact !== true || action.app.layoutSettled !== true || action.app.rows !== rows || action.app.cols !== cols)
+                    throw new Error('Font fixture could not prepare the required 40×140 grid.');
+            }
+            reader.paneId = before.paneId;
+            const after = await reader.session(budget);
+            if (after.rows !== rows || after.cols !== cols) throw new Error('Prepared font fixture grid differs from the contract.');
             const mode = readOwnedOutputMode(request.tty, budget());
-            proofs[0].terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
+            validateOutputGeometry(mode.description, rows, cols);
+            proof.terminalOutput = { ...mode, verifiedAt: new Date().toISOString() };
             outputModeVerified = true;
         };
         const observeImageRequest = (request, budget, owner, worker, observe = observeImages) => {
@@ -4048,12 +4092,12 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             return null;
         };
         /** Handle proof/done/failure only after lineage verification; done additionally requires close and exact termios. */
-        const controlOwnedWorker = (request, queryTimeout, owner, worker) => {
+        const controlOwnedWorker = async (request, queryTimeout, owner, worker) => {
             if (request.kind === 'prove') {
                 // Retain the measured proof, never the capability token.
                 retainFirstProof(owner, worker, request.tty, queryTimeout);
             } else if (request.kind === 'raw-output') {
-                attestOutputMode(request, queryTimeout);
+                await attestOutputMode(request, queryTimeout, worker);
             } else if (request.kind === 'done') {
                 if (isOsc633Scope(collectionScope) && (osc9State !== undefined || notifyState !== undefined)) throw new Error('Omitted notification suites ran in the scoped collection.');
                 requireInputCompletion(inputState);
@@ -4104,7 +4148,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                     workerIdentity ??= worker;
                     const observation = await routeOwnedObservation(request, queryTimeout, owner, worker);
                     if (observation) { socket.end(JSON.stringify(observation) + '\n'); return; }
-                    socket.end(JSON.stringify(controlOwnedWorker(request, queryTimeout, owner, worker)) + '\n');
+                    socket.end(JSON.stringify(await controlOwnedWorker(request, queryTimeout, owner, worker)) + '\n');
                 } catch (error) {
                     if (authenticated && privateClipboardState?.observer) {
                         rejectDone(error);
@@ -4257,6 +4301,17 @@ The collector extension and its digest are recorded; this is not stock CLI data.
                 adapterBundleSha256: cellSizeBundleSha256, contractsVersion: cellSizeVersion,
                 counts: cellSizeCounts(cellSizeReport), provisionalUntil: 'cell-receipt.json' };
             summary.cellSizeEvidence = cellSizeEvidence;
+            const fontSizeRunBytes = readFileSync(join(output, 'font-size-run.json'));
+            const fontSizeFrames = readFileSync(join(output, 'font-size-snapshots.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+            const fontSizeAdapter = { id: fontSizeAdapterId, bundleSha256: fontSizeBundleSha256, upstreamBundleSha256 };
+            const fontSizeReport = buildFontSizeReport(fontSizeFrames, JSON.parse(fontSizeRunBytes), runId, fontSizeAdapter,
+                { replayModule: await import(pathToFileURL(fontSizeBundle).href) });
+            writeJson(join(output, 'font-size-observations.json'), fontSizeReport);
+            fontSizeEvidence = { runId, suiteId: fontSizeSuiteId, file: 'font-size-observations.json',
+                sha256: hash(readFileSync(join(output, 'font-size-observations.json'))), runFile: 'font-size-run.json', runSha256: hash(fontSizeRunBytes),
+                adapterBundleSha256: fontSizeBundleSha256, contractsVersion: fontSizeVersion,
+                counts: fontSizeCounts(fontSizeReport), provisionalUntil: 'cell-receipt.json' };
+            summary.fontSizeEvidence = fontSizeEvidence;
             xcsEvidence = await retainXcsEvidence(output, runId, xcsBundle, upstreamBundleSha256);
             xssEvidence = await retainXssEvidence(output, runId, xssBundle, upstreamBundleSha256);
             xsvEvidence = await retainXsvEvidence(output, runId, xsvBundle, upstreamBundleSha256);
@@ -4403,7 +4458,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const proof = JSON.parse(readFileSync(proofPath));
         proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
         writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, cellSizeEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, osc5Evidence, osc3008Evidence, osc720Evidence, osc22Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
+        completeOwnedReceipt(output, scratch, { ...cellEvidence, sgrEvidence, gradingEvidence, sgrColorsEvidence, sgrRgbEvidence, sgrAttrsEvidence, sgrPaletteEvidence, sgrTruecolorEvidence, truecolorFindingEvidence, sgrUnderlineEvidence, sgrUnderlineColorEvidence, underlineResolvedEvidence, sgrResetEvidence, sgrClosureEvidence, eraseLineEvidence, charEditEvidence, eraseDisplayEvidence, lineEditEvidence, charsetsEvidence, scrollbackEvidence, savedResetEvidence, eraseAttrsRegionEvidence, attrRectEvidence, cursorQualEvidence, eraseCharsHistoryEvidence, selectiveEraseEvidence, rectEditEvidence, colEditEvidence, rectChecksumEvidence, lrMarginsEvidence, colorResetEvidence, coreGapsEvidence, routedInputEvidence, textCursorEvidence, osc133Evidence, osc633Evidence, osc78Evidence, coreEraseEvidence, tabStopsEvidence, coreWrapEvidence, sgrRasterEvidence, reverseWideEvidence, titleStackEvidence, oscTitleEvidence, selectionColorsEvidence, insertReplaceEvidence, xtgettcapEvidence, modifyOtherKeysEvidence, osc9Evidence, notifyEvidence, devqEvidence, cellSizeEvidence, fontSizeEvidence, xcsEvidence, xssEvidence, xsvEvidence, mexEvidence, pxmEvidence, kclEvidence, osc5Evidence, osc3008Evidence, osc720Evidence, osc22Evidence, rgbEvidence, renditionEvidence, cursorEvidence, pixelEvidence, colorEvidence, eraseEvidence, editingEvidence, historyEvidence, resizeEvidence, reflowEvidence, savedEvidence, metadataEvidence, inputEvidence, staticImageEvidence, animationEvidence, queryEvidence, privateClipboardEvidence });
     }
     catch (error) { retainPreparationFailure(output, error); throw error; }
 }

@@ -76,6 +76,7 @@ code.set(new URL('xtgettcap-collector.mjs', root).href, log + `export async func
 code.set(new URL('notify-collector.mjs', root).href, log + `export async function collectNotify() { record('Notify'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
 code.set(new URL('devq-collector.mjs', root).href, log + `export async function collectDevqGrading() { record('Devq'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('cell-size-collector.mjs', root).href, log + `export async function collectCellSize() { record('CellSize'); return { schemaVersion: 1, cases: [] }; }`);
+code.set(new URL('font-size-collector.mjs', root).href, log + `export async function collectFontSize() { record('FontSize'); return { schemaVersion: 1, cases: [] }; }`);
 code.set(new URL('xcs-collector.mjs', root).href, log + `export async function collectXcsGrading() { record('Xcs'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('xss-collector.mjs', root).href, log + `export async function collectXssGrading() { record('Xss'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('kcl-collector.mjs', root).href, log + `export async function collectKclGrading() { record('Kcl'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);

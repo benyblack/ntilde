@@ -20,6 +20,9 @@ public sealed record PaneMetadataResult
     [JsonPropertyName("presentation")] public required PanePresentationMetadata Presentation { get; init; }
     [JsonPropertyName("cellGeometry"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PaneCellGeometry? CellGeometry { get; init; }
+    /// <summary>Actual configured view font and window client size, not glyph appearance.</summary>
+    [JsonPropertyName("fontGeometry"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PaneFontGeometry? FontGeometry { get; init; }
     /// <summary>App request and actual Avalonia Cursor property; not the native pointer image.</summary>
     [JsonPropertyName("pointerShape"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PanePointerShape? PointerShape { get; init; }
