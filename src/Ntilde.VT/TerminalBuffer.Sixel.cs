@@ -70,6 +70,7 @@ public partial class TerminalBuffer
         // Publish ownership before budget eviction can prune another placement
         // sharing the same opaque decoded handle.
         _images.Add(image);
+        PlaceImageOnItsRowNoLock(image);
         if (image.SixelSource is { } source)
         {
             SixelSources.Commit(source);
@@ -167,7 +168,7 @@ public partial class TerminalBuffer
     private void RetireCoveredSixelImages(TerminalImage current)
     {
         // Compared in single-width columns: an image on a double-size row is drawn twice as wide.
-        (int left, int right) = ImagePageColumnsNoLock(current);
+        (int left, int right) = ImagePageColumns(current);
         int top = current.CellY + current.ClipTopRows;
         int bottom = current.CellY + current.CellHeight - current.ClipBottomRows;
         if (right <= left || bottom <= top) return;
@@ -177,7 +178,7 @@ public partial class TerminalBuffer
         {
             TerminalImage old = _images[i];
             if (!old.IsSixelImage || ReferenceEquals(old, current) || old.IsAltScreenImage != current.IsAltScreenImage) continue;
-            (int oldLeft, int oldRight) = ImagePageColumnsNoLock(old);
+            (int oldLeft, int oldRight) = ImagePageColumns(old);
             if (oldLeft >= left && oldRight <= right &&
                 old.CellY + old.ClipTopRows >= top && old.CellY + old.CellHeight - old.ClipBottomRows <= bottom)
             {

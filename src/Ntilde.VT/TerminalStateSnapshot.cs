@@ -260,6 +260,9 @@ namespace Ntilde.VT
     /// <summary>A placement of a retained Kitty image, in the same coordinates as SIXEL placements.</summary>
     public sealed class TerminalKittyPlacementState
     {
+        /// <summary>The placement's line attribute (<see cref="TerminalImage.LineSize"/>); absent for single width and on older snapshots.</summary>
+        [JsonPropertyName("ls"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int LineSize { get; set; }
         /// <summary>Index into <see cref="TerminalStateSnapshot.KittyImages"/>.</summary>
         [JsonPropertyName("image")] public int Image { get; set; }
         /// <summary>Kitty <c>p=</c>; 0 when the placement has none.</summary>
@@ -283,6 +286,9 @@ namespace Ntilde.VT
     /// <summary>A retained iTerm2 inline image and its placement.</summary>
     public sealed class TerminalITermImageState
     {
+        /// <summary>The placement's line attribute (<see cref="TerminalImage.LineSize"/>); absent for single width and on older snapshots.</summary>
+        [JsonPropertyName("ls"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int LineSize { get; set; }
         /// <summary>The bytes as sent; empty when the source budget evicted them (the placement still holds its cells).</summary>
         [JsonPropertyName("data")] public byte[] Data { get; set; } = [];
         /// <summary>Position in the source budget's eviction order (oldest first); absent when unknown.</summary>
@@ -311,6 +317,9 @@ namespace Ntilde.VT
 
     public sealed class TerminalSixelImageState
     {
+        /// <summary>The placement's line attribute (<see cref="TerminalImage.LineSize"/>); absent for single width and on older snapshots.</summary>
+        [JsonPropertyName("ls"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int LineSize { get; set; }
         /// <summary>Absent legacy placements retain whole-cell sizing. Native imports remain disabled.</summary>
         [JsonPropertyName("native_raster"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public SixelRasterIntent? NativeRaster { get; set; }

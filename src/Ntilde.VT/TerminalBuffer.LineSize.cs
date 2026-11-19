@@ -144,30 +144,28 @@ public partial class TerminalBuffer
         row.LineSize = size;
     }
 
+    /// <summary>A newly placed image takes the line attribute of the row it is placed on (see <see cref="TerminalImage.LineSize"/>).</summary>
+    private void PlaceImageOnItsRowNoLock(TerminalImage image) => image.LineSize = GetLineSizeAbsolute(image.CellY);
+
     /// <summary>
-    /// The line attribute of the row an image is anchored on: its columns are that row's columns. Read off the row
-    /// while it exists; once the row is gone (scrolled off the alternate screen, trimmed from history) or belongs to
-    /// the screen not showing, the attribute it last had.
+    /// After the line attribute of visible rows changed: the images of the showing screen whose origin is on one of
+    /// the rows [<paramref name="firstRow"/>, <paramref name="endRow"/>) take that row's attribute.
     /// </summary>
-    private LineSize ImageLineSizeNoLock(TerminalImage image)
+    private void ImagesTakeRowLineSizesNoLock(int firstRow, int endRow)
     {
-        bool anchorRowExists = image.IsAltScreenImage == _isAltScreen && image.CellY >= 0
-            && image.CellY < (_isAltScreen ? Rows : _scrollback.Count + Rows);
-        return anchorRowExists ? GetLineSizeAbsolute(image.CellY) : image.AnchorLineSize;
-    }
-
-    /// <summary>Records <see cref="ImageLineSizeNoLock"/> on the image. Called before anything moves the image or switches the screen.</summary>
-    private void RememberImageLineSizeNoLock(TerminalImage image) => image.AnchorLineSize = ImageLineSizeNoLock(image);
-
-    private void RememberImageLineSizesNoLock()
-    {
-        foreach (TerminalImage image in _images) RememberImageLineSizeNoLock(image);
+        if (_images.Count == 0) return;
+        int top = _isAltScreen ? 0 : _scrollback.Count;
+        foreach (TerminalImage image in _images)
+        {
+            int row = image.CellY - top;
+            if (image.IsAltScreenImage == _isAltScreen && row >= firstRow && row < endRow) image.LineSize = _viewport[row].LineSize;
+        }
     }
 
     /// <summary>An image's left and right edge in single-width columns, the unit two images on rows of different attributes share.</summary>
-    private (int Left, int Right) ImagePageColumnsNoLock(TerminalImage image)
+    private static (int Left, int Right) ImagePageColumns(TerminalImage image)
     {
-        int scale = ImageLineSizeNoLock(image) == LineSize.SingleWidth ? 1 : 2;
+        int scale = image.LineSize == LineSize.SingleWidth ? 1 : 2;
         return (image.CellX * scale, (image.CellX + image.CellWidth - image.ClipRightColumns) * scale);
     }
 
@@ -175,6 +173,7 @@ public partial class TerminalBuffer
     {
         if (viewportRow < 0 || viewportRow >= Rows || _viewport[viewportRow].LineSize == LineSize.SingleWidth) return;
         ChangeLineSizeNoLock(_viewport[viewportRow], LineSize.SingleWidth);
+        ImagesTakeRowLineSizesNoLock(viewportRow, viewportRow + 1);
         if (viewportRow == _cursorRow) ReleasePendingWrapOnWiderRowNoLock();
     }
 
@@ -195,6 +194,7 @@ public partial class TerminalBuffer
             if (row.LineSize == size) return;
             bool wasSingle = row.LineSize == LineSize.SingleWidth;
             ChangeLineSizeNoLock(row, size);
+            ImagesTakeRowLineSizesNoLock(_cursorRow, _cursorRow + 1);
             if (size == LineSize.SingleWidth) ReleasePendingWrapOnWiderRowNoLock();
             else
             {

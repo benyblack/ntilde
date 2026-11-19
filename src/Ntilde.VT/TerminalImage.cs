@@ -11,10 +11,11 @@ namespace Ntilde.VT
         public int CellHeight { get; }
         public int ZIndex { get; set; }
         /// <summary>
-        /// The line attribute last read off the row the image is anchored on. The buffer reads the row itself while it
-        /// exists; this is what remains once that row has scrolled out of the page or out of history.
+        /// The line attribute of the row the image was placed on: its columns are that row's columns, two cells wide
+        /// each on a double-size row. The image keeps it wherever scrolling, a resize or a state transfer takes it,
+        /// also once that row is gone; DECSWL, DECDWL and DECDHL on the row at its origin change it.
         /// </summary>
-        internal LineSize AnchorLineSize { get; set; }
+        public LineSize LineSize { get; internal set; }
 
         public bool IsSixelImage { get; internal set; }
         /// <summary>Creation-time reservation facts; null for generic/legacy/transferred placements.</summary>

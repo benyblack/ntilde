@@ -38,8 +38,6 @@ namespace Ntilde.VT
             try
             {
                 if (newCols == Cols && newRows == Rows) return;
-                // A resize moves images with their text and may drop the rows they are anchored on.
-                RememberImageLineSizesNoLock();
 
                 PrepareTextSizingResize(newCols, newRows);
                 int oldCols = Cols;

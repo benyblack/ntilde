@@ -126,6 +126,7 @@ public partial class TerminalBuffer
             ClipTop = geometry.ClipTop,
             ClipBottom = geometry.ClipBottom,
             ClipRight = geometry.ClipRight,
+            LineSize = (int)image.LineSize,
             PreserveAspectRatio = image.PreserveAspectRatio,
             Order = order,
         });
@@ -149,6 +150,7 @@ public partial class TerminalBuffer
             ClipTop = geometry.ClipTop,
             ClipBottom = geometry.ClipBottom,
             ClipRight = geometry.ClipRight,
+            LineSize = (int)image.LineSize,
             PreserveAspectRatio = image.PreserveAspectRatio,
             Order = order,
         });
@@ -505,7 +507,8 @@ public partial class TerminalBuffer
         // iTerm2 images exist only as placements: one that does not survive (its rows were in history
         // this buffer could not keep) is left out before its bytes are charged, so it evicts nothing.
         TerminalImage?[] itermImages = itermStates.Select(state => ImportedPlacement(new UndecodedImage(state.PixelWidth, state.PixelHeight),
-            new PlacementGeometry(state.X, state.Y, state.Width, state.Height, state.Alt, state.ClipTop, state.ClipBottom, state.ClipRight),
+            new PlacementGeometry(state.X, state.Y, state.Width, state.Height, state.Alt, state.ClipTop, state.ClipBottom, state.ClipRight,
+                ImportedLineSize(state.LineSize)),
             expiredRows)).ToArray();
         (ImageSource[] kittySources, ImageSource?[] itermSources, ImageSource?[][] frameSources) = RetainImportedSources(kittyStates, itermStates, itermImages);
         List<KittyImageAsset> assets = ImportKittyAssets(kittyStates, kittySources, frameSources);
@@ -636,7 +639,7 @@ public partial class TerminalBuffer
         {
             KittyImageAsset asset = assets[state.Image];
             var geometry = new PlacementGeometry(state.X, state.Y, state.Width, state.Height, asset.IsAltScreen,
-                state.ClipTop, state.ClipBottom, state.ClipRight);
+                state.ClipTop, state.ClipBottom, state.ClipRight, ImportedLineSize(state.LineSize));
             if (ImportedPlacement(asset.Handle, geometry, expiredRows) is not { } image) continue;
             image.KittyImageId = asset.Id;
             image.KittyAsset = asset;
@@ -678,7 +681,11 @@ public partial class TerminalBuffer
     }
 
     /// <summary>A placement's cell rectangle, screen and clipping as a snapshot carries it.</summary>
-    private readonly record struct PlacementGeometry(int X, int Y, int Width, int Height, bool Alt, int ClipTop, int ClipBottom, int ClipRight);
+    private readonly record struct PlacementGeometry(int X, int Y, int Width, int Height, bool Alt, int ClipTop, int ClipBottom, int ClipRight,
+        LineSize LineSize = LineSize.SingleWidth);
+
+    /// <summary>A snapshot's line attribute for a placement; anything it cannot name is single width.</summary>
+    private static LineSize ImportedLineSize(int value) => value is >= 1 and <= 3 ? (LineSize)value : LineSize.SingleWidth;
 
     /// <summary>
     /// A transferred placement; null when nothing of it is left. Unlike SIXEL, it keeps a position past
@@ -705,6 +712,7 @@ public partial class TerminalBuffer
             Math.Clamp(geometry.Y, 1 - geometry.Height, lastRow + MaxImportedOffscreenCells), geometry.Width, geometry.Height)
         {
             IsAltScreenImage = geometry.Alt,
+            LineSize = geometry.LineSize,
             ClipTopRows = top,
             ClipBottomRows = bottom,
             ClipRightColumns = right,

@@ -43,7 +43,7 @@ namespace Ntilde.VT
                 // though both live in the same list.
                 image.IsAltScreenImage = _isAltScreen;
                 _images.Add(image);
-                RememberImageLineSizeNoLock(image);
+                PlaceImageOnItsRowNoLock(image);
             }
             finally
             {
@@ -75,6 +75,7 @@ namespace Ntilde.VT
                 // Publish the replacement before releasing older placements, including
                 // when a host decoder reuses the same opaque handle.
                 _images.Add(image);
+                PlaceImageOnItsRowNoLock(image);
                 for (int i = _images.Count - 2; i >= 0; i--)
                 {
                     if (_images[i].KittyImageId == kittyId && _images[i].IsAltScreenImage == _isAltScreen)
@@ -259,8 +260,6 @@ namespace Ntilde.VT
             try
             {
                 int clearedRows = _scrollback.Count;
-                // While the alternate screen shows, main-screen images keep what they recorded when it was entered.
-                RememberImageLineSizesNoLock();
                 _scrollback.Clear();
 
                 // Main-screen image CellY is absolute (scrollback + viewport), so removing
@@ -366,6 +365,7 @@ namespace Ntilde.VT
                     }
                     row.ClearProtection(); // the filled E cells are fresh characters, never protected ones
                     row.LineSize = LineSize.SingleWidth; // DECALN returns every line to single width (DEC STD 070)
+                    ImagesTakeRowLineSizesNoLock(r, r + 1);
                     row.TouchRevision();
                 }
 

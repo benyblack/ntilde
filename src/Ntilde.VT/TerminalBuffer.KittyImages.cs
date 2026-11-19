@@ -144,6 +144,7 @@ public partial class TerminalBuffer
                 _images.RemoveAt(index);
             }
             _images.Add(image);
+            PlaceImageOnItsRowNoLock(image);
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();

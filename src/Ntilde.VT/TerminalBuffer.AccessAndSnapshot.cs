@@ -591,7 +591,11 @@ namespace Ntilde.VT
             {
                 if (rowIndex < 0 || rowIndex >= Rows) return;
                 ClearRowInternal(rowIndex);
-                if (resetLineSize) _viewport[rowIndex].LineSize = LineSize.SingleWidth;
+                if (resetLineSize)
+                {
+                    _viewport[rowIndex].LineSize = LineSize.SingleWidth;
+                    ImagesTakeRowLineSizesNoLock(rowIndex, rowIndex + 1);
+                }
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             OnInvalidate?.Invoke();
@@ -696,7 +700,6 @@ namespace Ntilde.VT
                     // If image starts in or below the insertion point, shift it down
                     if (img.IsSticky && img.CellY >= absTop && img.CellY <= absBottom)
                     {
-                        RememberImageLineSizeNoLock(img);
                         img.CellY += n;
                         if (ClipSixelImage(img, absTop, absBottom) || img.CellY > absBottom)
                         {
@@ -779,7 +782,6 @@ namespace Ntilde.VT
                         else
                         {
                             // Image is below the deleted range, shift it UP
-                            RememberImageLineSizeNoLock(img);
                             img.CellY -= n;
                             if (ClipSixelImage(img, absTop, absBottom))
                             {
@@ -856,7 +858,6 @@ namespace Ntilde.VT
                     }
                 }
 
-                RememberImageLineSizesNoLock();
                 _isAltScreen = true;
 
                 // The prompt that emitted 133;B is not on the screen the user is looking at any
@@ -922,7 +923,6 @@ namespace Ntilde.VT
                 if (clearAltBeforeExit) ClearAltScreenNoLock();
                 SaveActiveScreenStateNoLock();
                 _altScreen = _viewport;    // Save current viewport as alt screen
-                RememberImageLineSizesNoLock();
                 _isAltScreen = false;
 
                 // Kitty keyboard protocol: swap back to the main screen's flag stack.
@@ -1086,7 +1086,7 @@ namespace Ntilde.VT
                         CellY = img.CellY,
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
-                        LineSize = ImageLineSizeNoLock(img),
+                        LineSize = img.LineSize,
                         ImageHandle = img.ImageHandle,
                         PreserveAspectRatio = img.KittyImageId.HasValue || img.PreserveAspectRatio,
                         Source = img.SixelSource ?? (img.ImageHandle as IDeferredSixelImage)?.Source,

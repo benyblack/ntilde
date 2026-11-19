@@ -58,6 +58,7 @@ public partial class TerminalBuffer
                 // on the screen that is not showing too, or it would bring double-size lines back under the margins.
                 if (CursorRowLastColumnNoLock < Cols - 1) ReleasePendingWrapOnWiderRowNoLock();
                 ResetLineSizesNoLock(_viewport);
+                ImagesTakeRowLineSizesNoLock(0, Rows);
                 ResetLineSizesNoLock(_mainScreen);
                 ResetLineSizesNoLock(_altScreen);
             }
