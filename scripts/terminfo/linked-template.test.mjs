@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { appendFileSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -13,7 +13,8 @@ function read(root, base = '') {
         ? Object.entries(read(root, `${base}${entry.name}/`)) : [[base + entry.name, readFileSync(join(root, base, entry.name), 'utf8')]]));
 }
 /** A template of `content`, and `use(action)` giving each action its own directory of it as the receipt fixture does.
- * Linked on every platform by default here, so the link path is tested where the fixture itself would copy. */
+ * Linked on every platform by default here, so the link path is tested where the fixture itself would copy. A file system
+ * with whole-second modification times is copied to all the same (`links.linking` is false), and the tests then expect copies. */
 function harness(action, options = { link: true }) {
     const root = mkdtempSync(join(tmpdir(), 'nt-linked-template-test-'));
     mkdirSync(join(root, 'nested/deep'), { recursive: true });
@@ -25,12 +26,12 @@ function harness(action, options = { link: true }) {
         try { release = links.materialize(output); return inner(output); }
         finally { try { release(); } finally { rmSync(output, { recursive: true, force: true }); } }
     };
-    try { return action(use, root); } finally { links.remove(); rmSync(root, { recursive: true, force: true }); }
+    try { return action(use, root, links); } finally { links.remove(); rmSync(root, { recursive: true, force: true }); }
 }
 
-test('a use receives the whole template, as links and not as copies', () => harness(use => use(output => {
+test('a use receives the whole template, as links wherever the file system can tell a write from its times', () => harness((use, root, links) => use(output => {
     assert.deepEqual(read(output), content);
-    for (const path of Object.keys(content)) assert.ok(lstatSync(join(output, path)).nlink > 1, `${path} is a link`);
+    for (const path of Object.keys(content)) assert.equal(lstatSync(join(output, path)).nlink > 1, links.linking, `${path} is ${links.linking ? 'a link' : 'a copy'}`);
 })));
 
 for (const [name, write, expected] of [
@@ -39,7 +40,7 @@ for (const [name, write, expected] of [
     ['appended to', path => appendFileSync(path, 'more'), '{"a":1}\nmore'],
     ['truncated', path => truncateSync(path, 3), '{"a'],
 ]) {
-    test(`a file ${name} in place is that use's own and is pristine again for the next use and in the template`, () => harness((use, root) => {
+    test(`a file ${name} in place is that use's own and is pristine again for the next use and in the template`, () => harness((use, root, links) => {
         use(output => {
             write(join(output, 'a.json'));
             assert.equal(readFileSync(join(output, 'a.json'), 'utf8'), expected, 'the use reads its own write');
@@ -47,10 +48,34 @@ for (const [name, write, expected] of [
         assert.deepEqual(read(root), content, 'the template is repaired when the use ends');
         use(output => {
             assert.deepEqual(read(output), content);
-            assert.ok(lstatSync(join(output, 'a.json')).nlink > 1, 'the repaired file is linked again');
+            assert.equal(lstatSync(join(output, 'a.json')).nlink > 1, links.linking, 'the repaired file is linked again');
         });
     }));
 }
+
+test('a mode changed through a use is the template\'s original mode again for the next use', () => harness((use, root) => {
+    const original = lstatSync(join(root, 'a.json')).mode;
+    use(output => {
+        chmodSync(join(output, 'a.json'), 0o444);
+        assert.notEqual(lstatSync(join(output, 'a.json')).mode, original);
+    });
+    assert.equal(lstatSync(join(root, 'a.json')).mode, original, 'the template is repaired when the use ends');
+    use(output => {
+        assert.equal(lstatSync(join(output, 'a.json')).mode, original);
+        writeFileSync(join(output, 'a.json'), 'still writable');
+    });
+    assert.deepEqual(read(root), content);
+}));
+
+test('after a repair that failed, no later use is handed the unrepaired template', () => harness((use, root, links) => {
+    // Removing the pristine copy mid-use makes the repair of the written file throw.
+    assert.throws(() => use(output => { writeFileSync(join(output, 'a.json'), 'never repaired'); links.remove(); }));
+    // The template may still hold that write, so the next use must not link it. With the pristine copy gone its copy fails;
+    // what matters is that it is not given 'never repaired' as though it were the template.
+    let seen = null;
+    assert.throws(() => use(output => { seen = read(output); }));
+    assert.equal(seen, null);
+}));
 
 test('an in-place write in a nested directory is repaired too', () => harness((use, root) => {
     use(output => writeFileSync(join(output, 'nested/deep/d.txt'), 'changed'));
@@ -107,8 +132,6 @@ test('the receipt fixture gives each test pristine files after a test that wrote
     let before;
     await privateClipboardReceiptFixture(f => {
         before = { raw: readFileSync(join(f.output, 'raw.json')), proof: readFileSync(join(f.output, 'ownership-proof.json')) };
-        // macOS copies (a copy-on-write clone there); every other platform links.
-        assert.equal(lstatSync(join(f.output, 'raw.json')).nlink > 1, process.platform !== 'darwin');
         writeFileSync(join(f.output, 'raw.json'), '{}');
         appendFileSync(join(f.output, 'ownership-proof.json'), ' ');
     });

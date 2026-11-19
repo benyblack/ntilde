@@ -7,7 +7,7 @@
 //
 // A hard link costs no data, but a test that writes a file in place writes the template's bytes too. So the template
 // is kept honest, not trusted: a second, never-linked copy holds the pristine bytes, and after every use each template
-// file whose size or modification time moved is replaced from it. The test that wrote saw exactly its own write, and
+// file whose size, modification time or mode moved is replaced from it. The test that wrote saw exactly its own write, and
 // the next test starts from the pristine bytes again. Removing, replacing or adding files in a private directory never
 // reaches the template at all.
 //
@@ -28,14 +28,15 @@ function entriesOf(root, base = '') {
 }
 
 const stat = path => lstatSync(path, { bigint: true });
-/** What an in-place write cannot leave unchanged on a file system with sub-second times. */
-const signature = path => { const value = stat(path); return `${value.size}:${value.mtimeNs}`; };
+/** What a write or a mode change through a link cannot leave unchanged on a file system with sub-second times. Not the
+ * change time: making a link moves it, so every use would look like a write. */
+const signature = path => { const value = stat(path); return `${value.size}:${value.mtimeNs}:${value.mode}`; };
 
 /**
  * Wrap the finished template directory `root`. `materialize(output)` fills the existing empty directory `output` with
  * the template and returns the function that must be called when its user is done (before or after `output` is removed).
  * `remove()` deletes the pristine copy; the caller owns `root`. `link: false` always copies; the default links
- * everywhere but macOS.
+ * everywhere but macOS. `linking` says whether this template links at all.
  */
 export function linkedTemplate(root, { link = process.platform !== 'darwin' } = {}) {
     const pristine = mkdtempSync(join(dirname(root), 'nt-template-pristine-'));
@@ -80,8 +81,12 @@ export function linkedTemplate(root, { link = process.platform !== 'darwin' } = 
             open = false;
             throw error;
         }
-        return () => { try { repair(); } finally { open = false; } };
+        // `open` is cleared only by a repair that finished: after one that threw, some template files may still hold a
+        // test's bytes, so every later use copies from the pristine directory instead of linking them.
+        return () => { repair(); open = false; };
     }
 
-    return { materialize, remove: () => rmSync(pristine, { recursive: true, force: true }) };
+    return { materialize, remove: () => rmSync(pristine, { recursive: true, force: true }),
+        /** Whether a use that finds no other open is linked rather than copied. */
+        linking: link && subSecond };
 }
