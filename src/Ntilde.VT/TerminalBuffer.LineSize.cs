@@ -170,12 +170,18 @@ public partial class TerminalBuffer
 
     /// <summary>
     /// DECLRMM returns every row of both screens to single width: so does every image whose origin is on one of those
-    /// rows, on the screen that is not showing too. An image whose origin is in history keeps its attribute, as its row does.
+    /// rows, on the screen that is not showing too. An image whose origin is in history keeps its attribute, as its
+    /// row does, and so does one whose origin is on no row at all (below a screen that was made shorter).
     /// </summary>
     private void ImagesOnScreenRowsBecomeSingleWidthNoLock()
     {
         foreach (TerminalImage image in _images)
-            if (image.CellY >= (image.IsAltScreenImage ? 0 : _scrollback.Count)) image.LineSize = LineSize.SingleWidth;
+        {
+            bool showing = image.IsAltScreenImage == _isAltScreen;
+            int row = image.CellY - (image.IsAltScreenImage ? 0 : _scrollback.Count);
+            int rows = showing ? Rows : (image.IsAltScreenImage ? _altScreen : _mainScreen)?.Length ?? 0;
+            if (row >= 0 && row < rows) image.LineSize = LineSize.SingleWidth;
+        }
     }
 
     /// <summary>An image's left and right edge in single-width columns, the unit two images on rows of different attributes share.</summary>

@@ -904,6 +904,35 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Deleting_characters_moves_an_image_of_another_line_attribute_by_page_columns()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 6);
+        parser.Process($"{Esc}[2;1H{Dwl}a");
+        buffer.AddImage(new TerminalImage(new object(), 4, 1, 1, 3));
+        // A scrolling region brings the double-width image (page column 8) onto single-width row 0.
+        parser.Process($"{Esc}[2;5r{Esc}[S");
+        Assert.Equal((4, 0, LineSize.DoubleWidth), (buffer.Images[0].CellX, buffer.Images[0].CellY, buffer.Images[0].LineSize));
+        // Right of the image's own column number, but left of where it is drawn: the image moves.
+        parser.Process($"{Esc}[1;7H{Esc}[2P");
+        Assert.Equal(3, buffer.Images[0].CellX);
+        // Right of where it is drawn: it stays.
+        parser.Process($"{Esc}[1;9H{Esc}[2P");
+        Assert.Equal(3, buffer.Images[0].CellX);
+    }
+
+    [Fact]
+    public void DECLRMM_leaves_an_image_below_a_shortened_screen_as_it_is()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 6);
+        parser.Process($"{Esc}[?1049h{Esc}[6;1H{Dwl}");
+        buffer.AddImage(new TerminalImage(new object(), 2, 5, 1, 1));
+        buffer.Resize(12, 4);
+        Assert.Equal(5, Assert.Single(buffer.Images).CellY);
+        parser.Process($"{Esc}[?69h");
+        Assert.Equal(LineSize.DoubleWidth, buffer.Images[0].LineSize);
+    }
+
+    [Fact]
     public void An_image_keeps_its_line_attribute_when_a_scrolling_region_takes_its_row()
     {
         var (buffer, parser) = Create(cols: 12, rows: 6);

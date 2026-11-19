@@ -875,9 +875,16 @@ namespace Ntilde.VT
                 // Only the active screen's images move (see ScrollUpInternal).
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
-                if (img.IsSticky && img.CellY == absY && img.CellX >= _cursorCol && img.CellX < edge)
+                // Compared and moved in page columns: a scrolling region can bring an image onto a row of another line
+                // attribute, where a column of the image and a column of the row are not the same width. On its own row
+                // the two scales are equal and this is the plain column arithmetic; otherwise the image lands on the
+                // nearest of its own columns at or left of where the deletion puts it.
+                int rowScale = row.LineSize == LineSize.SingleWidth ? 1 : 2;
+                int imageScale = img.LineSize == LineSize.SingleWidth ? 1 : 2;
+                int pageX = img.CellX * imageScale;
+                if (img.IsSticky && img.CellY == absY && pageX >= _cursorCol * rowScale && pageX < edge * rowScale)
                 {
-                    img.CellX -= count;
+                    img.CellX = (int)Math.Floor((pageX - (count * rowScale)) / (double)imageScale);
                     if (img.CellX < _cursorCol)
                     {
                         // If it shifted but still starts before cursor? 
