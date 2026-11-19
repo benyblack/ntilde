@@ -634,13 +634,18 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// </summary>
     internal void DeliverFile(long seq, string path, byte[]? data)
     {
-        if (Interlocked.Read(ref _expectedOffset) < 0) return;
+        long expected = Interlocked.Read(ref _expectedOffset);
+        if (expected < 0) return;
+        // The frame precedes the output frame at the next expected offset, and only that one: an entry for any other offset is not from a daemon this client can follow, and accepting
+        // it would let a peer park file bytes for offsets that never arrive.
+        if (seq != expected)
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Session {Id}: file transfer at stream offset {seq}, expected {expected}.");
         lock (_fileGate)
         {
             // A daemon stages at most this much for one chunk (HeadlessTerminalSession); more is not a daemon this client can follow.
             long bytes = data?.Length ?? 0;
-            foreach ((long entrySeq, _, byte[]? entry) in _files) if (entrySeq == seq) bytes += entry?.Length ?? 0;
-            if (_files.Count(entry => entry.Seq == seq) >= MuxFrames.MaxFileTransfersPerChunk || bytes > MuxFrames.MaxFileTransferBytes)
+            foreach ((_, _, byte[]? entry) in _files) bytes += entry?.Length ?? 0;
+            if (_files.Count >= MuxFrames.MaxFileTransfersPerChunk || bytes > MuxFrames.MaxFileTransferBytes)
                 throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Session {Id}: more file transfers at stream offset {seq} than a daemon forwards for one chunk.");
             _files.Add((seq, path, data));
         }

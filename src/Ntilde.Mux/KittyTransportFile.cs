@@ -38,7 +38,10 @@ public static class KittyTransportFile
             // Casing follows the platform's filesystem rules: ignore-case is only correct where the filesystem itself is case-insensitive - on Unix, /TMP/frame.rgba
             // is a different directory from /tmp/frame.rgba, and accepting it as "under temp" would let a case-variant path escape the confinement boundary.
             StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-            string? root = Canonicalize(Path.GetFullPath(Path.GetTempPath())), real = Canonicalize(Path.GetFullPath(path));
+            // Refused before the file system is touched at all: on Windows a UNC or device path would start network or device operations on the parser's thread just to be probed.
+            string full = Path.GetFullPath(path), temp = Path.GetFullPath(Path.GetTempPath());
+            if (IsNetworkOrDevicePath(full) || !full.StartsWith(temp, comparison)) return null;
+            string? root = Canonicalize(temp), real = Canonicalize(full);
             if (root is null || real is null) return null;
             string prefix = Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar;
             if (!real.StartsWith(prefix, comparison)) return null;
@@ -53,9 +56,11 @@ public static class KittyTransportFile
     private static byte[]? ReadRegular(string real, long maxBytes)
     {
         using FileStream? stream = OpenRegular(real);
-        // Re-checked on the OPENED handle: the file can grow between a size probe and the open, and the allocation below trusts the length blindly.
-        if (stream is null || !stream.CanSeek || stream.Length > maxBytes) return null;
-        var bytes = new byte[stream.Length];
+        if (stream is null || !stream.CanSeek) return null;
+        // Taken ONCE, from the OPENED handle, and used for the check, the allocation and the read: the file can grow at any moment, and a second query could allocate past the cap.
+        long length = stream.Length;
+        if (length > maxBytes) return null;
+        var bytes = new byte[length];
         int read = 0;
         while (read < bytes.Length)
         {
@@ -130,6 +135,7 @@ public static class KittyTransportFile
 
             if (++hops > MaxLinkHops) return null;
             string next = Path.GetFullPath(Path.IsPathRooted(target) ? target : Path.Combine(parent, target));
+            if (IsNetworkOrDevicePath(next)) return null; // a link must not send the walk to a share or a device
             // Resolve the link's target from the start, then whatever followed the link on the original path.
             root = Path.GetPathRoot(next) ?? string.Empty;
             resolved.Clear();
@@ -138,6 +144,9 @@ public static class KittyTransportFile
 
         return Join(root, resolved);
     }
+
+    /// <summary>A Windows UNC share or device namespace path (<c>\\host\share</c>, <c>\\.\COM1</c>, <c>\\?\...</c>); never a path on a Unix filesystem.</summary>
+    private static bool IsNetworkOrDevicePath(string full) => OperatingSystem.IsWindows() && full.StartsWith(@"\\", StringComparison.Ordinal);
 
     private static string[] Split(string path) => path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
 

@@ -155,7 +155,7 @@ public sealed class ImagePolicyClientTests
     public async Task A_file_the_daemon_read_answers_only_the_command_in_the_output_frame_that_follows_it()
     {
         // #887: a client never opens a file. The daemon's FileTransfer frame precedes the output frame that names the file; while the client parses that output, the parser's reader
-        // takes the first unclaimed entry for the path it was asked about, and an entry nobody claimed (or one for another offset) never reaches a later chunk.
+        // takes the first unclaimed entry for the path it was asked about, and an entry nobody claimed never reaches a later chunk.
         using var fake = FakeMuxServerEnd.Create();
         Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, Ct);
         MuxRequest hello = await fake.ReadRequestAsync();
@@ -172,7 +172,7 @@ public sealed class ImagePolicyClientTests
                 "one" => string.Join(",", Read("/tmp/b"), Read("/tmp/a"), Read("/tmp/a"), Read("/tmp/c")),   // an unavailable read, a file, the same file again (consumed), a path nobody sent
                 "two" => "no read",                                                                           // its entry is dropped unclaimed
                 "thr" => Read("/tmp/a"),                                                                      // so the next chunk finds nothing
-                "fou" => Read("/tmp/a"),                                                                      // an entry for another offset is stale
+                "fou" => Read("/tmp/a"),                                                                      // never sent at all
                 _ => string.Join(",", Read("/tmp/a"), Read("/tmp/a")),                                        // two entries for one path are taken in order
             };
         };
@@ -190,7 +190,6 @@ public sealed class ImagePolicyClientTests
         Send(0, "one", ("/tmp/b", null), ("/tmp/a", [1, 2]));
         Send(3, "two", ("/tmp/a", [3]));
         Send(6, "thr");
-        fake.Raw.Send(MuxFrames.FileTransfer(id, 100, "/tmp/a", [5], hasData: true));
         Send(9, "fou");
         Send(12, "fiv", ("/tmp/a", [7]), ("/tmp/a", [8]));
         await TestWait.UntilAsync(() => reads.Count == 5, "every output frame was parsed");
@@ -204,8 +203,10 @@ public sealed class ImagePolicyClientTests
         // A daemon forwards at most MaxFileTransfersPerChunk entries (and MaxFileTransferBytes) for one chunk: a client that is sent more is not following a daemon it understands.
         for (int i = 0; i < MuxFrames.MaxFileTransfersPerChunk; i++) session.DeliverFile(15, "/tmp/many", [1]);
         Assert.Throws<MuxProtocolException>(() => session.DeliverFile(15, "/tmp/many", [1]));
-        session.DeliverFile(16, "/tmp/other-chunk", [1]);                                   // another offset has its own budget
-        Assert.Throws<MuxProtocolException>(() => session.DeliverFile(16, "/tmp/big", new byte[MuxFrames.MaxFileTransferBytes]));
+        // The budget is the whole pending collection, and a transfer is only for the next expected offset: a peer cannot park file bytes at offsets that never arrive.
+        Assert.Throws<MuxProtocolException>(() => session.DeliverFile(16, "/tmp/other-chunk", [1]));
+        Assert.Throws<MuxProtocolException>(() => session.DeliverFile(100, "/tmp/a", [1]));
+        Assert.Throws<MuxProtocolException>(() => session.DeliverFile(14, "/tmp/a", [1]));
     }
 
     /// <summary>The packed form of one opaque pixel, written out so the test needs no VT internals (a literal of one pixel).</summary>
