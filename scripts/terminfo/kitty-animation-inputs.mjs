@@ -44,6 +44,34 @@ export function placeholderHalvesInput() {
     if (hash(bytes) !== placeholderInputPin) throw new Error('Placeholder image input pin mismatch.');
     return { inputId: 'halves', ...animationImageSize, bytes, sha256: placeholderInputPin };
 }
+// The placeholder grid suite (#989, the cases the first suite left unmeasured) shows one image through a 4 x 2 grid of cells: 16x16 raw RGBA in four 8x8 quadrants, so that every cell of the grid has a uniform interior colour that
+// tells the tile it shows (rows and columns) apart. Generated from its colors and pinned by SHA-256, independently of the App.
+export const placeholderQuadrantColors = Object.freeze({ r: Object.freeze([255, 0, 0, 255]), g: Object.freeze([0, 255, 0, 255]), b: Object.freeze([0, 0, 255, 255]), y: Object.freeze([255, 255, 0, 255]) });
+/** The quadrant (row, column) of the image each color letter fills. */
+export const placeholderQuadrantOf = Object.freeze({ r: Object.freeze([0, 0]), g: Object.freeze([0, 1]), b: Object.freeze([1, 0]), y: Object.freeze([1, 1]) });
+const quadrantLetters = [['r', 'g'], ['b', 'y']];
+const quadrantBytes = () => Buffer.concat(Array.from({ length: animationImageSize.width * animationImageSize.height }, (_, index) => {
+    const x = index % animationImageSize.width, y = Math.floor(index / animationImageSize.width), half = animationImageSize.width / 2;
+    return Buffer.from(placeholderQuadrantColors[quadrantLetters[y < half ? 0 : 1][x < half ? 0 : 1]]);
+}));
+export const placeholderQuadrantInputPin = hash(quadrantBytes());
+/** Fresh raw RGBA bytes (f=32, s=16, v=16) of the four-quadrant image with their pin. */
+export function placeholderQuadrantsInput() {
+    const bytes = quadrantBytes();
+    if (hash(bytes) !== placeholderQuadrantInputPin) throw new Error('Placeholder quadrant input pin mismatch.');
+    return { inputId: 'quadrants', ...animationImageSize, bytes, sha256: placeholderQuadrantInputPin };
+}
+/**
+ * What the 4 x 2 grid of cells must show: one string per screen row of cells, one letter per cell (r, g, b, y: the quadrant color of the tile it shows; '.': nothing), rows joined by '/'.
+ */
+export const placeholderGridAppearances = Object.freeze({
+    absent: '..../....',
+    full: 'rrgg/bbyy',
+    rowsSwapped: 'bbyy/rrgg',
+    lowerTilesOnTopRow: 'bbyy/....',
+    upperRowOnly: 'rrgg/....',
+});
+
 /** What the two cells of the placeholder row must show: the color of the tile each one is expected to paint, or 'absent' for nothing. */
 export const placeholderAppearances = Object.freeze({
     absent: Object.freeze(['absent', 'absent']),

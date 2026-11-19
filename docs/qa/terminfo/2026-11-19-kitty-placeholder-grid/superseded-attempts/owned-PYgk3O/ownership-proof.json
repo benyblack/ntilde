@@ -1,0 +1,848 @@
+{
+  "proofs": [
+    {
+      "privateClipboard": {
+        "policy": "private-app-storage-parent-transactions-v1",
+        "appBirth": "Thu Nov 19 16:10:45 2026",
+        "workerBirth": "Thu Nov 19 16:10:45 2026",
+        "outputDevice": {
+          "dev": "1018044615",
+          "rdev": "268435470",
+          "ino": "149067"
+        },
+        "originalTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600",
+        "restoredTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600",
+        "restoredAt": "2026-11-19T16:10:51.284Z"
+      },
+      "app": {
+        "pid": 65822,
+        "ppid": 65818,
+        "uid": 501,
+        "tty": "??",
+        "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+      },
+      "worker": {
+        "pid": 65842,
+        "ppid": 65834,
+        "uid": 501,
+        "tty": "ttys014",
+        "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+      },
+      "tty": "/dev/ttys014",
+      "at": "2026-11-19T16:10:46.348Z",
+      "kittyAnimation": {
+        "policy": "owned-kitty-placeholders-paired-raw-render-grid-v1",
+        "actions": [
+          {
+            "index": 0,
+            "kind": "kan-bind",
+            "caseId": null,
+            "stageId": null,
+            "imageId": null,
+            "commandHex": "1b631b5d31313b233130313031301b5c1b5b3f31303439681b5b34383b323b31363b31363b31366d1b5b324a1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "a0a031cdaccafe61f15ca830d0023bdfb9f5285b667acda5466da0b64b1a3b52",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:46.639Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 1,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.rows",
+            "stageId": "blank",
+            "imageId": 608426,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "2b772caef6ae0a79a59495bac360ce02bd975fe390c245329c7eba87ca4b1038",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:46.864Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 2,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.rows",
+            "stageId": "build",
+            "imageId": 608426,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5f47613d742c663d33322c733d31362c763d31362c743d642c693d3630383432363b2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f3841415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f41502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f3841415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f41502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f3841415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f4150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f4150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f4150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f773d3d1b5c1b5f47613d702c553d312c693d3630383432362c703d312c633d342c723d321b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "08a0fc5e2785c677864e18d9f599d6282946fd7301c39170458fbb160177bceb",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:47.113Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 3,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.rows",
+            "stageId": "grid",
+            "imageId": 608426,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b324a1b5b353b34481b5b33383b323b393b37323b3137306d1b5b35383b353b316df48ebbaecc85cc85f48ebbaecc85cc8df48ebbaecc85cc8ef48ebbaecc85cc901b5b33396d1b5b35396d1b5b363b34481b5b33383b323b393b37323b3137306d1b5b35383b353b316df48ebbaecc8dcc85f48ebbaecc8dcc8df48ebbaecc8dcc8ef48ebbaecc8dcc901b5b33396d1b5b35396d1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "0b4853e4fe85030b836bc57b45f7678370777c912068e146d949fca45abdf4b6",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:47.307Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 4,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.rows",
+            "stageId": "rows-swapped",
+            "imageId": 608426,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b324a1b5b353b34481b5b33383b323b393b37323b3137306d1b5b35383b353b316df48ebbaecc8dcc85f48ebbaecc8dcc8df48ebbaecc8dcc8ef48ebbaecc8dcc901b5b33396d1b5b35396d1b5b363b34481b5b33383b323b393b37323b3137306d1b5b35383b353b316df48ebbaecc85cc85f48ebbaecc85cc8df48ebbaecc85cc8ef48ebbaecc85cc901b5b33396d1b5b35396d1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "09e1fffe22b6bfc435e0837e9a69fd844a39af5a9cc6043dad4e9415cddbf5b0",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:47.467Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 5,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.rows",
+            "stageId": "lower-tiles-on-top",
+            "imageId": 608426,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b324a1b5b353b34481b5b33383b323b393b37323b3137306d1b5b35383b353b316df48ebbaecc8dcc85f48ebbaecc8dcc8df48ebbaecc8dcc8ef48ebbaecc8dcc901b5b33396d1b5b35396d1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "1eeabdd3f071e15c972e9853791508212f798690313ef191cc5e7591ad43303b",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:47.590Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 6,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.rows",
+            "stageId": "inherit-rows",
+            "imageId": 608426,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b324a1b5b353b34481b5b33383b323b393b37323b3137306d1b5b35383b353b316df48ebbaecc85cc85f48ebbaef48ebbaef48ebbae1b5b33396d1b5b35396d1b5b363b34481b5b33383b323b393b37323b3137306d1b5b35383b353b316df48ebbaecc8dcc85f48ebbaef48ebbaef48ebbae1b5b33396d1b5b35396d1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "5bb6b17d86df98d7a63a3b228002f8cb9546199ac9c3b9347d57eefd421adb76",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:47.730Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 7,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.rows",
+            "stageId": "clear",
+            "imageId": 608426,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5f47613d642c643d492c693d3630383432361b5c1b5b324a1b5b481b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "8766297935692b1fb5198f0a87490f8f626cd0f2d524a693e5f291fe9234e989",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:47.853Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 8,
+            "kind": "kan-restore",
+            "caseId": "kitty.placeholders.rows",
+            "stageId": null,
+            "imageId": 608426,
+            "commandHex": "1b631b5d31313b233130313031301b5c1b5b3f31303439681b5b34383b323b31363b31363b31366d1b5b324a1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "a0a031cdaccafe61f15ca830d0023bdfb9f5285b667acda5466da0b64b1a3b52",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:47.957Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 9,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.scroll",
+            "stageId": "blank",
+            "imageId": 6489082,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "2b772caef6ae0a79a59495bac360ce02bd975fe390c245329c7eba87ca4b1038",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:48.080Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 10,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.scroll",
+            "stageId": "build",
+            "imageId": 6489082,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5f47613d742c663d33322c733d31362c763d31362c743d642c693d363438393038323b2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f3841415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f41502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f3841415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f41502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f3841415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f415038412f77442f4150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f4150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f4150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f2f2f2f41502f2f2f77442f2f2f38412f773d3d1b5c1b5f47613d702c553d312c693d363438393038322c703d312c633d342c723d321b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "01084b93df06bc3b6970074fa154445c22e15f024c8b12657c745c1d52dba1eb",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:48.201Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 11,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.scroll",
+            "stageId": "shown",
+            "imageId": 6489082,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b324a1b5b353b34481b5b33383b323b39393b333b3235306d1b5b35383b353b316df48ebbaecc85cc85f48ebbaecc85cc8df48ebbaecc85cc8ef48ebbaecc85cc901b5b33396d1b5b35396d1b5b363b34481b5b33383b323b39393b333b3235306d1b5b35383b353b316df48ebbaecc8dcc85f48ebbaecc8dcc8df48ebbaecc8dcc8ef48ebbaecc8dcc901b5b33396d1b5b35396d1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "e60fa2ec3fd6bbe5307db0c83175a4ca81669dba27f1e9fce653b53baa73f120",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:48.556Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 12,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.scroll",
+            "stageId": "scrolled",
+            "imageId": 6489082,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b324a1b5b353b34481b5b33383b323b39393b333b3235306d1b5b35383b353b316df48ebbaecc85cc85f48ebbaecc85cc8df48ebbaecc85cc8ef48ebbaecc85cc901b5b33396d1b5b35396d1b5b363b34481b5b33383b323b39393b333b3235306d1b5b35383b353b316df48ebbaecc8dcc85f48ebbaecc8dcc8df48ebbaecc8dcc8ef48ebbaecc8dcc901b5b33396d1b5b35396d1b5b531b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "099c98699cc0155a997108e23951cd365b0935992ee01b86154230d5721c9713",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:48.897Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 13,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.scroll",
+            "stageId": "erase-lower",
+            "imageId": 6489082,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b324a1b5b353b34481b5b33383b323b39393b333b3235306d1b5b35383b353b316df48ebbaecc85cc85f48ebbaecc85cc8df48ebbaecc85cc8ef48ebbaecc85cc901b5b33396d1b5b35396d1b5b363b34481b5b33383b323b39393b333b3235306d1b5b35383b353b316df48ebbaecc8dcc85f48ebbaecc8dcc8df48ebbaecc8dcc8ef48ebbaecc8dcc901b5b33396d1b5b35396d1b5b363b31481b5b324b1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "78c81b9bf634a2199e81f11def386dcd5ff2c6ff005c9b8168eb6dbc5b6c0e39",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:49.209Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 14,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.scroll",
+            "stageId": "insert-line",
+            "imageId": 6489082,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5b324a1b5b353b34481b5b33383b323b39393b333b3235306d1b5b35383b353b316df48ebbaecc85cc85f48ebbaecc85cc8df48ebbaecc85cc8ef48ebbaecc85cc901b5b33396d1b5b35396d1b5b363b34481b5b33383b323b39393b333b3235306d1b5b35383b353b316df48ebbaecc8dcc85f48ebbaecc8dcc8df48ebbaecc8dcc8ef48ebbaecc8dcc901b5b33396d1b5b35396d1b5b353b31481b5b4c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "2677a370f860230fa9bd46b9e789ffebc7d1147469442bb78f1da57cec5123de",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:49.432Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 15,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.scroll",
+            "stageId": "clear",
+            "imageId": 6489082,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c1b5f47613d642c643d492c693d363438393038321b5c1b5b324a1b5b481b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "26fc06f9ed7e0a50304eab13bda799c7f05470d93adf22af15d8219a304e7b61",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:49.614Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 16,
+            "kind": "kan-restore",
+            "caseId": "kitty.placeholders.scroll",
+            "stageId": null,
+            "imageId": 6489082,
+            "commandHex": "1b631b5d31313b233130313031301b5c1b5b3f31303439681b5b34383b323b31363b31363b31366d1b5b324a1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f33366433653834623331346539326331643566376539346332663965343363311b5b353b34481b5b3f32356c",
+            "commandSha256": "a0a031cdaccafe61f15ca830d0023bdfb9f5285b667acda5466da0b64b1a3b52",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:49.771Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 17,
+            "kind": "kan-finish",
+            "caseId": null,
+            "stageId": null,
+            "imageId": null,
+            "commandHex": "1b631b5b3f323568",
+            "commandSha256": "711991c94b47de633f6a332b03c83c22a514aa7bc1cfded0e7fecaf8f115a56b",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 65822,
+                "ppid": 65818,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "worker": {
+                "pid": 65842,
+                "ppid": 65834,
+                "uid": 501,
+                "tty": "ttys014",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "daemon": {
+                "pid": 65834,
+                "ppid": 65822,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+              },
+              "tty": "/dev/ttys014",
+              "at": "2026-11-19T16:10:49.892Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          }
+        ],
+        "paneId": "c00899e1-2551-4de2-9c47-1f6e791ba428",
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "seal": {
+          "failed": false,
+          "disposed": true,
+          "attempts": 18,
+          "lastAttempt": {
+            "hex": "1b5d31313b7267623a303030302f303030302f303030301b5c1b5b3f353b3224791b5b3f36363b3224791b5b3f393b3224791b5b3f313030303b3224791b5b3f313030323b3224791b5b3f313030333b3224791b5b3f313030363b3224791b5b3f30751b5b3f34313930383b3024791b5b3f33343731373b302479",
+            "nonces": [
+              41908,
+              34717
+            ],
+            "fenceRequested": true,
+            "completed": true,
+            "error": null
+          },
+          "ownership": {
+            "app": {
+              "pid": 65822,
+              "ppid": 65818,
+              "uid": 501,
+              "tty": "??",
+              "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+            },
+            "worker": {
+              "pid": 65842,
+              "ppid": 65834,
+              "uid": 501,
+              "tty": "ttys014",
+              "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+            },
+            "daemon": {
+              "pid": 65834,
+              "ppid": 65822,
+              "uid": 501,
+              "tty": "??",
+              "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+            },
+            "tty": "/dev/ttys014",
+            "at": "2026-11-19T16:10:49.996Z",
+            "terminalOutput": {
+              "tool": "/bin/stty",
+              "outputProcessing": false,
+              "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+            }
+          }
+        }
+      },
+      "terminalOutput": {
+        "tool": "/bin/stty",
+        "outputProcessing": false,
+        "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;",
+        "verifiedAt": "2026-11-19T16:10:46.400Z"
+      }
+    }
+  ],
+  "completed": true,
+  "collectionScope": {
+    "id": "owned-kitty-placeholder-grid-persistent-v1",
+    "persistence": "KeepOnClose",
+    "suites": [
+      "kitty-placeholder-grid"
+    ],
+    "suiteVersion": 6,
+    "deadlineMs": 300000
+  },
+  "persistentDaemon": {
+    "identity": {
+      "pid": 65834,
+      "uid": 501,
+      "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
+    },
+    "appData": "/Users/behnam/.ntilde-qa/nt-TV79u2/appdata",
+    "command": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde mux serve",
+    "birth": "Thu Nov 19 16:10:45 2026",
+    "appBirth": "Thu Nov 19 16:10:45 2026",
+    "descriptor": {
+      "pid": 65834,
+      "processName": "Ntilde",
+      "endpoint": "/Users/behnam/.ntilde-qa/nt-TV79u2/appdata/mux/mux.sock"
+    }
+  },
+  "cleanedUpAt": "2026-11-19T16:10:51.711Z",
+  "sourceSnapshot": {
+    "policy": "readonly-owned-source-graph-v70",
+    "root": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-F1rNqV",
+    "removedAt": "2026-11-19T16:10:51.760Z"
+  }
+}

@@ -140,6 +140,19 @@ test('the animation-only scopes are exact, distinct, and only the compose suite 
     assert.equal(isAnimationOnlyScope(undefined), false);
 });
 
+test('the placeholder grid scopes are exact, distinct from the earlier placeholder ones, and one runs in each kind of tab', async () => {
+    const { directPlaceholderGridScope, persistentPlaceholderGridScope, directPlaceholdersScope, persistentPlaceholdersScope, isAnimationOnlyScope, isDirectPlaceholderGridScope, isPersistentPlaceholderGridScope, isPersistentAnimationScope, isDirectPlaceholdersScope } = await import('./collection-scope.mjs');
+    assert.equal(directPlaceholderGridScope.persistence, 'Off'); assert.equal(persistentPlaceholderGridScope.persistence, 'KeepOnClose');
+    assert.equal(directPlaceholderGridScope.suiteVersion, 6); assert.equal(persistentPlaceholderGridScope.suiteVersion, 6);
+    assert.equal(new Set([directPlaceholderGridScope.id, persistentPlaceholderGridScope.id, directPlaceholdersScope.id, persistentPlaceholdersScope.id]).size, 4);
+    for (const scope of [directPlaceholderGridScope, persistentPlaceholderGridScope]) assert.equal(isAnimationOnlyScope(scope), true, scope.id);
+    assert.equal(isPersistentAnimationScope(persistentPlaceholderGridScope), true); assert.equal(isPersistentAnimationScope(directPlaceholderGridScope), false);
+    assert.equal(isDirectPlaceholderGridScope(directPlaceholderGridScope), true); assert.equal(isDirectPlaceholderGridScope(directPlaceholdersScope), false); assert.equal(isDirectPlaceholdersScope(directPlaceholderGridScope), false);
+    assert.equal(isPersistentPlaceholderGridScope(persistentPlaceholderGridScope), true); assert.equal(isPersistentPlaceholderGridScope(persistentPlaceholdersScope), false);
+    assert.equal(isAnimationOnlyScope({ ...directPlaceholderGridScope, suiteVersion: 5 }), false);
+    assert.equal(isAnimationOnlyScope({ ...directPlaceholderGridScope, persistence: 'KeepOnClose' }), false);
+});
+
 test('the placeholder scopes are exact, distinct, and one runs in each kind of tab', async () => {
     const scopes = await import('./collection-scope.mjs');
     const { directPlaceholdersScope, persistentPlaceholdersScope, directComposeScope, persistentComposeScope, isAnimationOnlyScope, isDirectPlaceholdersScope, isPersistentPlaceholdersScope, isPersistentAnimationScope } = scopes;

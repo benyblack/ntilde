@@ -164,7 +164,7 @@ id) before restoring any; a session whose policy is below 5 refuses a snapshot t
 The tiles themselves are never carried: they follow from the cells, which snapshots already carry. Not covered: a
 palette background colour is not resolved through the theme (the theme background shows through instead), an image
 that does not match its grid's aspect is not centred, relative placements (`P=`, `Q=`). The owned desktop measurement
-([2026-11-19 qualification](2026-11-19-kitty-placeholders-qualification.md)) saw the tiles, the mark-chosen tile, inheritance and the cells that must paint nothing in an ordinary and a persistent tab. Tests: `KittyUnicodePlaceholderTests` (cells, inheritance, selection, deletion, replies, policy), `PersistentKittyPlaceholderTests`
+([2026-11-19 qualification](2026-11-19-kitty-placeholders-qualification.md)) saw the tiles, the mark-chosen tile, inheritance and the cells that must paint nothing in an ordinary and a persistent tab; a [second measurement](2026-11-19-kitty-placeholder-grid-qualification.md) added a 4 x 2 grid, the inheritance of a nonzero row, and tiles that scroll, shrink and grow with their text. Tests: `KittyUnicodePlaceholderTests` (cells, inheritance, selection, deletion, replies, policy), `PersistentKittyPlaceholderTests`
 (daemon and client alike, snapshot round trip, validation), the mux admission, client and headless image-policy tests and
 `KittyUnicodePlaceholderRenderTests` (painted pixels). The pinned
 `extensions.kitty-graphics.unicode-placeholders` callbacks cannot return supported or unsupported.

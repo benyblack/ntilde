@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "note": "Development attempts of the ordinary-tab placeholder grid measurement (#989) in order. Only the retained files are kept; none produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-1kNsra",
+      "runId": "9741bd695c30d3f7fb02875d9ebffc5e",
+      "scripts": "b5e6cec9",
+      "collection": "direct-placeholder-grid scope",
+      "outcome": "no evidence (4 of 14 stages had been read)",
+      "reason": "The first ordinary-tab collection. The rows case was being read (four stages in) when the worker reported 'Unexpected input outside the generated-event capture': bytes reached the terminal's input outside a capture window (the cause is not retained; nothing in the suite sends input). The run produced no evidence and the same suite was collected again on the same sidecar.",
+      "files": [
+        {
+          "file": "owned-1kNsra/failure.json",
+          "sha256": "5ba2d6df9aab3d5ee0450e99ce8664837ddef55e42247d16860b928e0d8dd17c",
+          "bytes": 107
+        },
+        {
+          "file": "owned-1kNsra/animation-raw-failure.json",
+          "sha256": "2ebeab7f9a112410b8fe004898960d4439743985381d7a46f2a889542a6069a5",
+          "bytes": 490
+        },
+        {
+          "file": "owned-1kNsra/ownership-proof.json",
+          "sha256": "2c67580536dee6ed41aa0a1a002eb3f86e0aac7afe523cbdb44e085cb013a86b",
+          "bytes": 16766
+        }
+      ]
+    },
+    {
+      "attempt": "owned-5HmvBc",
+      "runId": "2eb5378474182f92b0406d7904e0fb2c",
+      "scripts": "b5e6cec9",
+      "collection": "direct-placeholder-grid scope",
+      "outcome": "no evidence (12 of 14 stages had been read; the scrolled stage was refused)",
+      "reason": "The second ordinary-tab collection. The whole rows case passed, then the scrolled stage of the scroll case was refused by the carrier: the cell grid showed the placeholder cells on rows 3 and 4 as expected, but the line the scroll brought in at the bottom held the default cell (default foreground and background) where the expected screen had the blank cell with the active background. Terminals differ here (background color erase) and the suite does not measure it, so the carrier now accepts either fill for the two stages that expose a line (a scrolled-in line and an inserted one), and nothing else; the suite was collected again.",
+      "files": [
+        {
+          "file": "owned-5HmvBc/failure.json",
+          "sha256": "ae93773a57912e6faf38de011cd717f8a26a8e4578dc2b83473bd7a9e13ff80e",
+          "bytes": 104
+        },
+        {
+          "file": "owned-5HmvBc/animation-failed-observation.json",
+          "sha256": "3ac08680e8a97217fa27ca893d17ce5629b4b5a7eaeef54d96e1f49ddf420cfa",
+          "bytes": 29314
+        },
+        {
+          "file": "owned-5HmvBc/ownership-proof.json",
+          "sha256": "08ed7dc02825f3de7df1c14a05a7a06f365b3cb7a4ffff3665db133f84547a04",
+          "bytes": 38102
+        }
+      ]
+    },
+    {
+      "attempt": "owned-M4iO8H",
+      "runId": "abfec2ab0f17cc6c7adaf0b32337f67e",
+      "scripts": "7ada2aab",
+      "collection": "direct-placeholder-grid scope",
+      "outcome": "14/14 passed (superseded by review)",
+      "reason": "A complete run (14/14), published first. Review then found that the grid oracle read a painted cell only inside its sampled rectangle, so a tile could have passed by painting just that rectangle (the retained pixels also satisfy the stricter reading); the fix edits a measured file (the oracle: the part of each tile that every placement of the square covers must be painted too), so the run is superseded by a fresh one.",
+      "files": [
+        {
+          "file": "owned-M4iO8H/animation-observations.json",
+          "sha256": "9c44e0b7ff3e385ad9bf847716bedf47061aede1027f08f954f5a201885d3dc7",
+          "bytes": 635571
+        },
+        {
+          "file": "owned-M4iO8H/ownership-proof.json",
+          "sha256": "219b8d39a709fc25fec57da754eeb974a6a9c8a5e8be563947e5bfa2d5e4120b",
+          "bytes": 51858
+        },
+        {
+          "file": "owned-M4iO8H/persistent-animation-receipt.json",
+          "sha256": "a0bb2c2588cd856632aa4e9fd43f947bee3cbfd8d9b2168f5933a33c36057e7e",
+          "bytes": 950
+        }
+      ]
+    },
+    {
+      "attempt": "owned-5z2xJ7",
+      "runId": "bf0ffaafbfd8e82d8807875e09b072b6",
+      "scripts": "499bdffd",
+      "collection": "direct-placeholder-grid scope",
+      "outcome": "14/14 passed (superseded by a code-style change)",
+      "reason": "A complete run (14/14) on the oracle with the stricter coverage reading. Sonar then asked for two nested ternaries of the oracle to be written as statements; that edits a measured file (no change of behaviour: the unit tests and the retained pixels grade the same), so the run is superseded by a fresh one.",
+      "files": [
+        {
+          "file": "owned-5z2xJ7/animation-observations.json",
+          "sha256": "8fa90bf4890fa1176ce23032247bba9ac4931a9310f030bd2241b9c45d78e51f",
+          "bytes": 635615
+        },
+        {
+          "file": "owned-5z2xJ7/ownership-proof.json",
+          "sha256": "3b23991b738698786da4372e36e5ffd7cd5e4ad9d0982ab3cd16243ccd4fab11",
+          "bytes": 51902
+        },
+        {
+          "file": "owned-5z2xJ7/persistent-animation-receipt.json",
+          "sha256": "97c1c0ff5cc7773f80500e338be90efa0e37203b735b956a5c1a12a8d7c94df1",
+          "bytes": 950
+        }
+      ]
+    }
+  ]
+}

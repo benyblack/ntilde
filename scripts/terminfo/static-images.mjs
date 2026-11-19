@@ -201,9 +201,9 @@ export class StaticImageReport {
         checkImages(frame.index === index && frame.kind === this.suite.prefix + entry.kind && frame.paneId === this.paneId
             && frame.caseId === (entry.caseId ?? null) && frame.stageId === (entry.stageId ?? null));
         for (const screen of [frame.screen, frame.afterScreen]) screenSnapshot(screen, false, true, true, true, true);
-        const expectedScreen = ['start', 'finish'].includes(entry.kind) ? this.initial : (this.suite.screenAfter?.(entry, this.states.get(entry.caseId), this.bound) ?? this.bound);
+        const expectedScreens = ['start', 'finish'].includes(entry.kind) ? [this.initial] : [this.suite.screenAfter?.(entry, this.states.get(entry.caseId), this.bound) ?? this.bound].flat();
         checkImages(frame.sha256 === snapshotHash(frame.screen) && frame.afterSha256 === snapshotHash(frame.afterScreen)
-            && snapshotHash(frame.screen) === snapshotHash(expectedScreen) && snapshotHash(frame.afterScreen) === snapshotHash(expectedScreen));
+            && expectedScreens.some(expected => snapshotHash(frame.screen) === snapshotHash(expected) && snapshotHash(frame.afterScreen) === snapshotHash(expected)));
     }
     readPixels(frame, index, entry) {
         checkImages(frame.pixels?.length === 2);

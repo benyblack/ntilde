@@ -179,6 +179,8 @@
     "scripts/terminfo/kitty-animation-publication.test.mjs": 120.5,
     "scripts/terminfo/kitty-animation-restore-publication.test.mjs": 77.4,
     "scripts/terminfo/kitty-animation.test.mjs": 56.6,
+    "scripts/terminfo/kitty-placeholder-grid-publication.test.mjs": 46.0,
+    "scripts/terminfo/kitty-placeholder-grid.test.mjs": 4.0,
     "scripts/terminfo/kitty-placeholders-publication.test.mjs": 32.0,
     "scripts/terminfo/kitty-placeholders.test.mjs": 4.0,
     "scripts/terminfo/line-edit-contracts.test.mjs": 18.6,

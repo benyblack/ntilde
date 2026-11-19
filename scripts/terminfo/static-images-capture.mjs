@@ -117,7 +117,8 @@ export class OwnedStaticImageObserver {
     acceptPair(pair, entry) {
         if (entry.kind !== 'read') checkImages(pair.pixels.every(value => value.imageDetails.totalPlacements === 0));
         if (this.phase !== 'start') {
-            checkImages(snapshotHash(pair.screen) === snapshotHash(entry.kind === 'finish' ? this.baseline : (this.suite.screenAfter?.(entry, this.states.get(entry.caseId), this.bound) ?? this.bound)));
+            const expected = entry.kind === 'finish' ? [this.baseline] : [this.suite.screenAfter?.(entry, this.states.get(entry.caseId), this.bound) ?? this.bound].flat();
+            checkImages(expected.some(screen => snapshotHash(pair.screen) === snapshotHash(screen)));
             if (entry.kind === 'finish') checkImages(pair.pixels[0].sha256 === this.frames[0].pixels[0].sha256
                 && snapshotHash(pair.pixels[0].renderDetails) === snapshotHash(this.initialDetails));
             return;

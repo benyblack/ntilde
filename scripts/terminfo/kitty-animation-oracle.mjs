@@ -1,6 +1,6 @@
 // Pure bounded comparisons and the independent playback timeline; no rendering, I/O or ownership inference.
 import { staticImageEnvelope } from './static-images-oracle.mjs';
-import { animationBackground, animationFrameIds, animationAppearanceIds, animationAppearanceColor, animationComposedIds, placeholderAppearances, placeholderColors } from './kitty-animation-inputs.mjs';
+import { animationBackground, animationFrameIds, animationAppearanceIds, animationAppearanceColor, animationComposedIds, placeholderAppearances, placeholderColors, placeholderGridAppearances, placeholderQuadrantColors, placeholderQuadrantOf } from './kitty-animation-inputs.mjs';
 import { animationHoldCycle, animationHoldMs } from './kitty-animation-cases.mjs';
 
 const invalid = () => new Error('Invalid animation comparison.');
@@ -24,6 +24,10 @@ function contentBounds(image, envelope) {
     }
     return right < left ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
 }
+const regionHasNo = (image, rect, color) => {
+    for (let y = rect.y; y < rect.y + rect.height; y++) for (let x = rect.x; x < rect.x + rect.width; x++) if (same(pixelAt(image, x, y), color)) return false;
+    return true;
+};
 const regionUniform = (image, rect) => {
     const first = pixelAt(image, rect.x, rect.y);
     for (let y = rect.y; y < rect.y + rect.height; y++) for (let x = rect.x; x < rect.x + rect.width; x++) if (!same(pixelAt(image, x, y), first)) return null;
@@ -107,6 +111,63 @@ export function inspectPlaceholderPixels({ baseline, observed, grid, anchor, cel
     return { scope: 'bounded placeholder-tile pixel comparison only; no ownership, freshness, timing or stock grade',
         controls, assertions: [assertion], classification: { kind, frameId: null, tiles: shown.map(item => item.color), geometryOk: shown.every(item => item.geometryOk) && aligned },
         measurement: { envelope, contentBounds: union, cells: shown.map((item, index) => ({ rect: rects[index], color: item.color, bounds: item.bounds })) } };
+}
+
+/**
+ * The placeholder grid suite's reading (#989): a grid of cells, one letter per cell (see placeholderGridAppearances). The 16x16 source, in four colored quadrants, fits the grid undistorted as a square whose side is the grid's shorter
+ * side, and each quadrant is a square of half that side. A cell shows the tile of the grid the marks name: the tile's row is the image's quadrant row (a cell is as tall as half the square, give or take the slack, so tile row 0 lies in the
+ * upper quadrants and tile row 1 in the lower ones) and its column is the cell's own (the grid suite never swaps columns). Where the square sits in the grid is the App's own policy and is not asserted, so a painted cell is sampled only
+ * where its quadrant is under every placement of the square (the grid's slack along each axis), one pixel clear of the quadrant's edge, translated into the cell from the tile's own place: that sample must be one exact color.
+ * The part of the tile that every placement of the square covers (clear of the square's outer pixel) must also be painted throughout (no pixel of the controlled background in it), so a tile cannot pass by painting only its sample.
+ * A cell that shows nothing must be the controlled background throughout.
+ */
+export function inspectPlaceholderGridPixels({ baseline, observed, grid, anchor, cells, appearance }) {
+    validateImage(baseline); validateImage(observed);
+    if (baseline.width !== observed.width || baseline.height !== observed.height || !Object.hasOwn(placeholderGridAppearances, appearance)) throw invalid();
+    const envelope = staticImageEnvelope(observed, grid, anchor, cells), expected = placeholderGridAppearances[appearance].split('/');
+    if (expected.length !== cells.rows || expected.some(row => row.length !== cells.cols)) throw invalid();
+    const cw = grid.cellWidthPx, ch = grid.cellHeightPx, side = Math.min(cells.cols * cw, cells.rows * ch), half = Math.floor(side / 2);
+    const slackX = cells.cols * cw - side, slackY = cells.rows * ch - side;
+    if (ch < half || ch > half + slackY + 1) throw invalid(); // a cell this far from half the square would put a tile row across two quadrants
+    // The part of one quadrant (grid-relative pixels) that every placement of the square keeps, a pixel clear of the quadrant's edges.
+    const safe = ([row, column]) => ({ x0: slackX + column * half + 1, x1: (column + 1) * half - 1, y0: slackY + row * half + 1, y1: (row + 1) * half - 1 });
+    // What every placement of the square covers, clear of its outer pixel (grid-relative pixels).
+    const covered = { x0: slackX + 1, x1: side - 1, y0: slackY + 1, y1: side - 1 };
+    const shown = expected.map((line, row) => [...line].map((letter, column) => {
+        const rect = { x: envelope.x + column * cw, y: envelope.y + row * ch, width: cw, height: ch };
+        if (letter === '.') return { expected: 'absent', color: contentBounds(observed, rect) === null ? 'absent' : 'mixed', rect, sample: null };
+        const quadrant = placeholderQuadrantOf[letter], q = safe(quadrant), tileRow = quadrant[0];
+        // The safe part of the quadrant, in grid pixels, is where the tile sits in the grid (its row from the quadrant, its column the cell's own); the cell shows the tile at the cell's own place.
+        const sample = { x: rect.x + Math.max(0, q.x0 - column * cw), y: rect.y + Math.max(0, q.y0 - tileRow * ch) };
+        sample.width = rect.x + Math.min(cw, q.x1 - column * cw) - sample.x; sample.height = rect.y + Math.min(ch, q.y1 - tileRow * ch) - sample.y;
+        if (sample.width <= 0 || sample.height <= 0) throw invalid();
+        const color = regionUniform(observed, sample);
+        const name = color ? Object.keys(placeholderQuadrantColors).find(id => same(placeholderQuadrantColors[id], color)) : undefined;
+        // The same tile's covered part, in the cell: nothing in it may still be the background.
+        const cover = { x: rect.x + Math.max(0, covered.x0 - column * cw), y: rect.y + Math.max(0, covered.y0 - tileRow * ch) };
+        cover.width = rect.x + Math.min(cw, covered.x1 - column * cw) - cover.x; cover.height = rect.y + Math.min(ch, covered.y1 - tileRow * ch) - cover.y;
+        const complete = cover.width > 0 && cover.height > 0 && regionHasNo(observed, cover, animationBackground);
+        return { expected: letter, color: name !== undefined && complete ? name : 'mixed', rect, sample };
+    }));
+    const flat = shown.flat();
+    const baselineBlank = contentBounds(baseline, envelope) === null;
+    let outsideUnchanged = true;
+    for (let y = 0; y < baseline.height && outsideUnchanged; y++)
+        for (let x = 0; x < baseline.width; x++) if (!inside(envelope, x, y) && !same(pixelAt(baseline, x, y), pixelAt(observed, x, y))) { outsideUnchanged = false; break; }
+    const controls = [check('reference target is independently blank with the known background', baselineBlank),
+        check('all non-target capture pixels remain unchanged', outsideUnchanged)];
+    const assertion = check(`the grid of placeholder cells shows ${expected.join('/')}, each painted cell the exact color of its quadrant`, flat.every(item => item.color === item.expected));
+    let kind = 'tiles';
+    if (flat.some(item => item.color === 'mixed')) kind = 'mixed';
+    if (flat.every(item => item.expected === 'absent' && item.color === 'absent')) kind = 'background';
+    /** One letter per cell: the color it showed, '.' for nothing and '?' for anything else. */
+    const letterOf = item => {
+        if (item.color === 'absent') return '.';
+        return item.color === 'mixed' ? '?' : item.color;
+    };
+    return { scope: 'bounded placeholder-grid pixel comparison only; no ownership, freshness, timing or stock grade',
+        controls, assertions: [assertion], classification: { kind, frameId: null, cells: shown.map(line => line.map(letterOf).join('')).join('/'), geometryOk: true },
+        measurement: { envelope, contentBounds: null, cells: flat.map(item => ({ rect: item.rect, sample: item.sample, expected: item.expected, color: item.color })) } };
 }
 
 const cycleMs = animationHoldCycle.length * animationHoldMs;

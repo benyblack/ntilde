@@ -74,6 +74,11 @@ const variants = Object.freeze({
  */
 export function verifyPlaceholdersRun(dir, kind = 'persistent') {
     const { scope, receiptSuiteId, noun } = variants[kind];
+    return verifyPlaceholderSuiteRun(dir, { scope, receiptSuiteId, noun, version, suiteId, policy });
+}
+
+/** The same verification for any suite of the placeholder family (the grid suite uses it too): the suite's own version, ids and policy, and the collection scope and receipt of the kind of tab. */
+export function verifyPlaceholderSuiteRun(dir, { scope, receiptSuiteId, noun, version, suiteId, policy }) {
     const recorded = JSON.parse(readFileSync(join(dir, 'context.json')));
     check(recorded.sourceSnapshotPolicy === placeholdersSourcePolicy && requiredSources.every(key => /^[a-f\d]{64}$/.test(recorded[key] ?? '')),
         `the run was not measured under source policy ${placeholdersSourcePolicy} with the placeholder suite's sources captured`);

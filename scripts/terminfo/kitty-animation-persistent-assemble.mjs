@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Assemble a persistent-tab Kitty animation publication from a finished owned run: the live tab (#1025), the restore after a relaunch (#1030) or frame composition (#1027).
-// Usage: node scripts/terminfo/kitty-animation-persistent-assemble.mjs <live|restore|compose|compose-direct|placeholders|placeholders-direct> <artifacts/terminfo/owned-RUN> <docs/qa/terminfo/PUBLICATION> <pinned-bundle.mjs.gz> <app-revision> <scripts-revision>
+// Usage: node scripts/terminfo/kitty-animation-persistent-assemble.mjs <live|restore|compose|compose-direct|placeholders|placeholders-direct|placeholder-grid|placeholder-grid-direct> <artifacts/terminfo/owned-RUN> <docs/qa/terminfo/PUBLICATION> <pinned-bundle.mjs.gz> <app-revision> <scripts-revision>
 // The raw run is archived byte-for-byte (sorted, deflate 9); the summary and report are projected from the extracted archive, so what is
 // published is exactly what the publication test re-derives. Everything is built and verified in a staging directory and only then copied to the
 // destination, which must not already hold a publication; the scripts revision must be the commit whose measured files the run's digests name.
@@ -16,17 +16,19 @@ import * as live from './kitty-animation-persistent-qualification.mjs';
 import * as restore from './kitty-animation-restore-qualification.mjs';
 import * as compose from './kitty-animation-compose-qualification.mjs';
 import * as placeholders from './kitty-placeholders-qualification.mjs';
+import * as grid from './kitty-placeholder-grid-qualification.mjs';
 
 // Absolute executables (override with NTILDE_TERMINFO_GIT_EXECUTABLE / PYTHON): no PATH lookup decides what runs.
 const gitExecutable = process.env.NTILDE_TERMINFO_GIT_EXECUTABLE ?? '/usr/bin/git';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const [kind, runArgument, publicationArgument, bundleArgument, appRevision, scriptsRevision] = process.argv.slice(2);
 const qualifiers = { live: [live, live.persistentAnimationQualification], restore: [restore, restore.restoreQualification], compose: [compose, compose.composeQualification], 'compose-direct': [compose, (dir, source, archive) => compose.composeQualification(dir, source, archive, 'direct'), compose.directMeasuredAppRevision, compose.directMeasuredScriptsRevision],
-    placeholders: [placeholders, placeholders.placeholdersQualification], 'placeholders-direct': [placeholders, (dir, source, archive) => placeholders.placeholdersQualification(dir, source, archive, 'direct'), placeholders.directMeasuredAppRevision, placeholders.directMeasuredScriptsRevision] };
+    placeholders: [placeholders, placeholders.placeholdersQualification], 'placeholders-direct': [placeholders, (dir, source, archive) => placeholders.placeholdersQualification(dir, source, archive, 'direct'), placeholders.directMeasuredAppRevision, placeholders.directMeasuredScriptsRevision],
+    'placeholder-grid': [grid, grid.placeholderGridQualification], 'placeholder-grid-direct': [grid, (dir, source, archive) => grid.placeholderGridQualification(dir, source, archive, 'direct'), grid.directMeasuredAppRevision, grid.directMeasuredScriptsRevision] };
 const [{ measuredAppRevision: appConstant, measuredScriptsRevision: scriptsConstant, pinnedBundleArchive }, qualify, directApp, directScripts] = qualifiers[kind] ?? qualifiers.live;
 const measuredAppRevision = directApp ?? appConstant, measuredScriptsRevision = directScripts ?? scriptsConstant;
 if (!Object.hasOwn(qualifiers, kind) || !runArgument || !publicationArgument || !bundleArgument || !/^[a-f\d]{40}$/.test(appRevision ?? '') || !/^[a-f\d]{40}$/.test(scriptsRevision ?? '')) {
-    throw new Error('Usage: kitty-animation-persistent-assemble.mjs <live|restore|compose|compose-direct|placeholders|placeholders-direct> <owned run> <publication directory> <pinned bundle .gz> <40-hex app revision> <40-hex scripts revision>');
+    throw new Error('Usage: kitty-animation-persistent-assemble.mjs <live|restore|compose|compose-direct|placeholders|placeholders-direct|placeholder-grid|placeholder-grid-direct> <owned run> <publication directory> <pinned bundle .gz> <40-hex app revision> <40-hex scripts revision>');
 }
 if (appRevision !== measuredAppRevision || scriptsRevision !== measuredScriptsRevision) throw new Error('The revisions differ from the measured constants of the qualification module; update them first.');
 const run = resolve(runArgument), publication = resolve(publicationArgument);
