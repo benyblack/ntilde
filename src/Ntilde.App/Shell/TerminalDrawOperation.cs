@@ -874,6 +874,11 @@ namespace Ntilde.Shell
                             {
                                 SKRect fitArea = isPlaceholderRun ? PlaceholderGrid(img, visualY, colEdges, rowEdges, paddingLeft, paddingTop) : rect;
                                 SKRect destination = isPlaceholderRun || img.PreserveAspectRatio ? FitImageWithin(fitArea, bmp.Width, bmp.Height) : rect;
+                                // Every run of a placement fits the bitmap into the same single-width grid, so the runs
+                                // sample it alike; a run on a double-size row then shows its part twice as wide.
+                                if (isPlaceholderRun && img.LineSize != LineSize.SingleWidth)
+                                    destination = new SKRect(LineSizeX(destination.Left, img.LineSize), destination.Top,
+                                        LineSizeX(destination.Right, img.LineSize), destination.Bottom);
                                 canvas.DrawBitmap(bmp, destination, imagePaint);
                                 if (imageFacts is { Complete: true })
                                     imageFacts.Placements[imageIndex] = imageFacts.Placements[imageIndex] with
@@ -2217,9 +2222,9 @@ namespace Ntilde.Shell
             int firstColumn = run.CellX - run.GridColumn;
             int firstRow = visualY - run.GridRow;
             return new SKRect(
-                LineSizeX(GetColEdge(colEdges, firstColumn, paddingLeft), run.LineSize),
+                GetColEdge(colEdges, firstColumn, paddingLeft),
                 GetRowEdge(rowEdges, firstRow, paddingTop),
-                LineSizeX(GetColEdge(colEdges, firstColumn + run.GridColumns, paddingLeft), run.LineSize),
+                GetColEdge(colEdges, firstColumn + run.GridColumns, paddingLeft),
                 GetRowEdge(rowEdges, firstRow + run.GridRows, paddingTop));
         }
 

@@ -60,6 +60,34 @@ public sealed class KittyUnicodePlaceholderRenderTests
     }
 
     [Fact]
+    public void On_a_double_width_line_the_image_covers_the_doubled_placeholder_cells()
+    {
+        var buffer = new TerminalBuffer(20, 10);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false)
+        { ImageDecoder = new SkiaImageDecoder(), CellWidth = 8, CellHeight = 16 };
+        var retired = new List<object>();
+        try
+        {
+            SKColor background = CapturePixel(buffer, 56, 36);
+            parser.Process(Command("a=t,f=32,s=2,v=2,i=42", Quadrants));
+            parser.Process(Command("a=p,U=1,i=42,c=2,r=1"));
+            // Cells 3 and 4 of a double-width row are sixteen pixels wide each and start at x 4 + 48: x 52-84.
+            parser.Process($"\x1b[3;1H\x1b#6\x1b[3;4H\x1b[38;5;42m{Placeholder}{Mark(0)}{Mark(0)}{Placeholder}{Mark(0)}{Mark(1)}\x1b[39m");
+            Assert.Equal(SKColors.Red, CapturePixel(buffer, 56, 36));
+            Assert.Equal(SKColors.Lime, CapturePixel(buffer, 76, 36));
+            Assert.Equal(SKColors.Blue, CapturePixel(buffer, 56, 44));
+            Assert.Equal(SKColors.Yellow, CapturePixel(buffer, 76, 44));
+            Assert.Equal(background, CapturePixel(buffer, 46, 36));
+            Assert.Equal(background, CapturePixel(buffer, 90, 36));
+        }
+        finally
+        {
+            buffer.ClearImages(); buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+            foreach (IDisposable handle in retired.Distinct(ReferenceEqualityComparer.Instance)) handle.Dispose();
+        }
+    }
+
+    [Fact]
     public void A_cell_showing_the_second_column_paints_that_half_of_the_image_wherever_it_is_printed()
     {
         var buffer = new TerminalBuffer(20, 10);
