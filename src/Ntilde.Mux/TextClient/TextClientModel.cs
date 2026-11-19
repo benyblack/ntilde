@@ -23,6 +23,8 @@ public sealed class TextClientModel : IDisposable
         };
         // Kitty and iTerm2 images reserve the same cells as in the daemon and every window, and show no pixels (#838).
         PersistentImagePolicy.Apply(Parser, session.RequiredImagePolicy);
+        // A t=f command takes what the daemon read for it (#887); the text client never opens a file.
+        if (PersistentImagePolicy.AllowsFileTransport(session.RequiredImagePolicy)) Parser.ReadFileBytes = session.ReadTransportFile;
         Parser.OnResponse = static _ => { };
         session.SnapshotReceived += OnSnapshot;
         session.OnOutputReceived += OnOutput;

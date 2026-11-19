@@ -59,8 +59,10 @@ when you reattach. A few differences:
   Ntilde shows only Sixel until it ends. New tabs get all three. In a session started by the
   version before plain `imgcat` worked, or one shared with that version's multiplexer, run
   `imgcat -l`.
-- **Kitty file transfer** (`t=f`) is not available in persistent panes. Programs fall back to
-  sending the image itself.
+- **Kitty file transfer** (`t=f`) works in persistent panes started by this version: the multiplexer
+  reads the file (only from the temp directory, up to 64 MB) and every window shows the same image.
+  In a session started by an earlier version it is not available, and programs fall back to sending the
+  image itself.
 - **`AllowNativeKittyGraphics`** does not apply there: persistent panes always accept Kitty graphics.
 
 ## Fonts, ligatures and text

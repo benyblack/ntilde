@@ -545,9 +545,9 @@ place every image alike; native Kitty APC is trusted under it, since a per-windo
 setting cannot apply to a shared stream. Policy 2 adds iTerm2's multipart form
 (`MultipartFile`/`FilePart`/`FileEnd`), which policy-1 peers ignore; a policy-1
 session therefore ignores it on every side (`AllowITerm2Multipart`). Policy 3 (#1017) adds Kitty animation: frames are kept packed in the shared
-image-source budget, read without any decoder (`PngPixelReader`) so the daemon and every client decide alike, and carried in snapshots with the playhead (`a=c` frame composition is policy 4, #1027; a composed frame is an ordinary frame, so snapshots are unchanged; Unicode placeholders, `U=1`, are policy 5, #989, and snapshots carry each image's virtual placements); below policy 3 animation
+image-source budget, read without any decoder (`PngPixelReader`) so the daemon and every client decide alike, and carried in snapshots with the playhead (`a=c` frame composition is policy 4, #1027; a composed frame is an ordinary frame, so snapshots are unchanged; Unicode placeholders, `U=1`, are policy 5, #989, and snapshots carry each image's virtual placements; Kitty file transport, `t=f`, is policy 6, #887: the daemon reads the file under the direct pane's confinement and forwards the bytes in a `FileTransfer` frame ahead of the output frame that names it, so every client places the same image); below policy 3 animation
 is refused (`ENOTSUP`, probes `ERR`), because a peer that predates frames could not restore a snapshot that carries them. `readScreen` leaves Kitty and iTerm2 images
-out of its reply, and Kitty `t=f` stays unavailable in persistent panes. Visible
+out of its reply, and Kitty `t=f` is unavailable in persistent panes below policy 6. Visible
 consequences: a valid header with a corrupt body reserves its cells and gets `OK`,
 and a format the probe cannot size is refused even where Skia could decode it.
 

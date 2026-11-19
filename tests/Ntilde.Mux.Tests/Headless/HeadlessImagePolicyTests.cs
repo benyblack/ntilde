@@ -178,6 +178,128 @@ public sealed class HeadlessImagePolicyTests
         }
     }
 
+    private static string Utf8Base64(string text) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(text));
+
+    [Fact]
+    public async Task Every_client_of_a_policy_six_session_places_the_image_of_a_file_the_daemon_read_and_a_policy_five_one_refuses_t_f()
+    {
+        // #887: the daemon reads the file; every client is told what it read and places the same image from the same bytes, whether it was attached throughout, joined in the middle of the
+        // command, or attached afterwards (from the snapshot), and a file the daemon refuses is refused for everyone.
+        string temp = Path.Combine(Path.GetTempPath(), "ntilde-tf-" + Guid.NewGuid().ToString("N") + ".png");
+        File.WriteAllBytes(temp, Convert.FromBase64String(TestImages.PngBase64(30, 40)));
+        try
+        {
+            using var host = new MuxTestHost();
+            var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+            MuxClient first = await host.ConnectClientAsync(options);
+            int policy = PersistentImagePolicy.FileTransportImagesVersion;
+            Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = policy }, Ct);
+            ClientPaneModel firstPane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: policy);
+
+            // The command is split across two chunks: its first half arrives before the second pane attaches, the rest (where the daemon reads the file) after it.
+            string command = Kitty("a=T,i=1,t=f,f=100", Utf8Base64(temp));
+            int split = command.Length - 7;
+            host.Fake(id).Emit("start " + command[..split]);
+            await host.SettleAsync(id, first);
+            MuxClient second = await host.ConnectClientAsync(options);
+            ClientPaneModel secondPane = await MuxTestHost.AttachPaneAsync(second, id, imagePolicy: policy);
+            string outside = OperatingSystem.IsWindows() ? @"C:\Windows\win.ini" : "/etc/hosts";
+            host.Fake(id).Emit(command[split..] + "\r\n" + Kitty("a=T,i=2,t=f,f=100", Utf8Base64(outside)) + Kitty("a=q,i=31,t=f,s=1,v=1,a=q", "AAAA") + "tail");
+            await host.SettleAsync(id, first, second);
+
+            string[] replies = host.Fake(id).SentInput.ToArray();
+            Assert.Contains("\x1b_Gi=1;OK\x1b\\", replies);                                               // the file was read and placed
+            Assert.Contains(replies, reply => reply.StartsWith("\x1b_Gi=2;EINVAL:", StringComparison.Ordinal));   // a path outside temp is refused
+            Assert.Contains("\x1b_Gi=31;OK\x1b\\", replies);                                              // the probe for t=f is answered OK
+            Assert.Single(host.Mux(id).Buffer.Images);
+            host.AssertPaneMatchesMux(id, firstPane, "attached throughout");
+            host.AssertPaneMatchesMux(id, secondPane, "attached in the middle of the command");
+
+            // A later client and the text client get the image from the snapshot alone.
+            MuxClient third = await host.ConnectClientAsync(options);
+            ClientPaneModel thirdPane = await MuxTestHost.AttachPaneAsync(third, id, imagePolicy: policy);
+            MuxClient text = await host.ConnectClientAsync(options);
+            MuxClientSession textSession = text.OpenSession(id, requiredImagePolicy: policy);
+            using var model = new TextClientModel(textSession);
+            await textSession.AttachAsync(10_000, MuxTestHost.DefaultPresentation, Ct);
+            await host.SettleAsync(id, third, text);
+            host.AssertPaneMatchesMux(id, thirdPane, "reattached");
+            Assert.Single(thirdPane.Buffer.Images);
+            TerminalStateAssert.AssertEquivalent("[text client]", host.Mux(id).Buffer, host.Mux(id).Parser, model.Buffer, model.Parser);
+
+            // A policy-5 session still has no reader: the probe answers ERR and the transmit is refused, so programs fall back to t=d.
+            (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession(PersistentImagePolicy.PlaceholderImagesVersion, conPtyFiltering: false);
+            using (mux)
+            {
+                fake.Emit(Kitty("a=q,i=31,t=f,s=1,v=1,a=q", "AAAA") + Kitty("a=T,i=1,t=f,f=100", Utf8Base64(temp)));
+                await mux.FlushAsync();
+                await TestWait.UntilAsync(() => fake.SentInput.Count >= 2, "the replies reached the child writer");
+                string[] refused = fake.SentInput.ToArray();
+                Assert.Equal("\x1b_Gi=31;ERR\x1b\\", refused[0]);
+                Assert.StartsWith("\x1b_Gi=1;EINVAL:", refused[1], StringComparison.Ordinal);
+                Assert.Empty(mux.Buffer.Images);
+            }
+        }
+        finally { File.Delete(temp); }
+    }
+
+    [Fact]
+    public async Task A_policy_six_session_bounds_what_one_chunk_stages_and_an_overlong_path_neither_faults_it_nor_reaches_a_client()
+    {
+        string temp = Path.Combine(Path.GetTempPath(), "ntilde-tf-" + Guid.NewGuid().ToString("N") + ".png");
+        File.WriteAllBytes(temp, Convert.FromBase64String(TestImages.PngBase64(8, 8)));
+        try
+        {
+            using var host = new MuxTestHost();
+            var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+            MuxClient first = await host.ConnectClientAsync(options);
+            int policy = PersistentImagePolicy.FileTransportImagesVersion;
+            Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = policy }, Ct);
+            ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: policy);
+
+            // An overlong path (past what a frame carries) is refused like any unreadable one, with a client attached, and the session goes on.
+            string overlong = "/tmp/" + new string('a', MuxFrames.MaxFileTransferPathBytes + 10);
+            // More reads in one chunk than a daemon stages: the first MaxFileTransfersPerChunk are read, the rest are unavailable for everyone.
+            int total = MuxFrames.MaxFileTransfersPerChunk + 5;
+            host.Fake(id).Emit(Kitty("a=T,i=500,t=f,f=100", Utf8Base64(overlong)) + string.Concat(Enumerable.Range(1, total).Select(n => Kitty($"a=T,i={n},t=f,f=100", Utf8Base64(temp)))) + "tail");
+            await host.SettleAsync(id, first);
+
+            string[] replies = host.Fake(id).SentInput.ToArray();
+            Assert.StartsWith("\x1b_Gi=500;EINVAL:", replies[0], StringComparison.Ordinal);
+            Assert.Equal(MuxFrames.MaxFileTransfersPerChunk, replies.Count(reply => reply.EndsWith(";OK\x1b\\", StringComparison.Ordinal)));
+            Assert.Equal(5, replies.Count(reply => reply.Contains(";EINVAL:", StringComparison.Ordinal)) - 1);
+            Assert.Equal(MuxFrames.MaxFileTransfersPerChunk, host.Mux(id).Buffer.Images.Count);
+            host.AssertPaneMatchesMux(id, pane, "the client placed exactly what the daemon did");
+            host.Fake(id).Emit("still alive");
+            await host.SettleAsync(id, first);
+            host.AssertPaneMatchesMux(id, pane, "the session was not faulted");
+        }
+        finally { File.Delete(temp); }
+    }
+
+    [Fact]
+    public void One_chunk_cannot_stage_more_file_bytes_than_a_frame_carries()
+    {
+        string a = Path.Combine(Path.GetTempPath(), "ntilde-tf-" + Guid.NewGuid().ToString("N") + "-a.bin"), b = a.Replace("-a.bin", "-b.bin", StringComparison.Ordinal);
+        try
+        {
+            long each = (MuxFrames.MaxFileTransferBytes / 2) + 1024; // two of them do not fit one frame's worth
+            foreach (string file in new[] { a, b })
+            {
+                using var stream = new FileStream(file, FileMode.Create);
+                stream.SetLength(each);
+            }
+
+            (HeadlessTerminalSession mux, _) = NewSession(PersistentImagePolicy.FileTransportImagesVersion, conPtyFiltering: false);
+            using (mux)
+            {
+                Assert.Equal(each, mux.ReadTransportFile(a)!.Length);
+                Assert.Null(mux.ReadTransportFile(b));                                      // what is left of the chunk's room is smaller than this file
+            }
+        }
+        finally { File.Delete(a); File.Delete(b); }
+    }
+
     private const string Placeholder = "\U0010EEEE";
     private static readonly string[] Marks = ["\u0305", "\u030D"]; // kitty's first two row/column diacritics: numbers 0 and 1
     private static string Mark(int number) => Marks[number];

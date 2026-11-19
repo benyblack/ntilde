@@ -6,7 +6,7 @@ Decision (2026-11-06): **support** Kitty graphics and iTerm2 inline images in pe
 ## Status (2026-11-06)
 
 Delivered: PR 2 (#881), PR 3 (#882), PR 4 (#884) and PR 5, the coverage update and the manual check
-(`docs/qa/terminfo/2026-11-06-persistent-images-check.md`). PR 6 (`t=f`) is not done. Where the
+(`docs/qa/terminfo/2026-11-06-persistent-images-check.md`). PR 6 (`t=f`) was delivered later as persistent image policy 6, see [the t=f design](2026-11-19-persistent-kitty-file-transport-design.md) (#887). Where the
 delivered work differs from the design below:
 
 - **`readScreen` carries no Kitty or iTerm2 images**, rather than the newest that fit. Its readers
