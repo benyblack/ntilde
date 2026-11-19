@@ -20,12 +20,13 @@ public sealed class PersistentKittyPlaceholderTests
 
     private sealed class Side
     {
-        internal readonly TerminalBuffer Buffer = new(40, 20) { ImageSources = new ImageSourceBudget() };
+        internal readonly TerminalBuffer Buffer;
         internal readonly AnsiParser Parser;
         internal readonly List<string> Replies = [];
 
-        internal Side(int policy = PersistentImagePolicy.PlaceholderImagesVersion, IImageDecoder? decoder = null)
+        internal Side(int policy = PersistentImagePolicy.PlaceholderImagesVersion, IImageDecoder? decoder = null, ImageSourceBudget? budget = null)
         {
+            Buffer = new TerminalBuffer(40, 20) { ImageSources = budget ?? new ImageSourceBudget() };
             Parser = new AnsiParser(Buffer, forceConPtyFiltering: false) { ImageDecoder = decoder, CellWidth = 8, CellHeight = 16 };
             PersistentImagePolicy.Apply(Parser, policy);
             Parser.OnResponse = Replies.Add;
@@ -181,6 +182,19 @@ public sealed class PersistentKittyPlaceholderTests
         var target = new Side();
         Assert.Throws<InvalidOperationException>(() => TerminalStateTransfer.Restore(target.Buffer, target.Parser, snapshot));
         Assert.Empty(target.Buffer.FindKittyImage(42, 0)?.VirtualPlacements ?? []);
+    }
+
+    [Fact]
+    public void An_image_whose_bytes_the_source_budget_evicted_still_carries_its_virtual_placements()
+    {
+        var source = new Side(budget: new ImageSourceBudget(maxSources: 1));
+        source.Send(Traffic() + Command("a=t,f=32,s=1,v=1,i=43", Pixel) + Command("a=p,U=1,i=43,p=3,c=1,r=1"));
+        List<TerminalKittyImageState> images = source.Buffer.ExportState(int.MaxValue).KittyImages!;
+        Assert.Equal(2, images.Count);
+        Assert.Contains(images, image => image.Data.Length == 0);                                                  // one image lost its bytes...
+        Assert.All(images, image => Assert.Single(image.VirtualPlacements!));                                       // ...and neither lost its grid
+        Side restored = Restore(Export(source));
+        Assert.Equal(Json(source.Buffer), Json(restored.Buffer));
     }
 
     [Fact]
