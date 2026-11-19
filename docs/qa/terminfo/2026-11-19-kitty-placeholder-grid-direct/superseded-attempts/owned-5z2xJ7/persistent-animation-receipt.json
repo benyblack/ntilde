@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-kitty-placeholder-grid-direct-receipt-v1",
+  "runId": "bf0ffaafbfd8e82d8807875e09b072b6",
+  "collectionScope": {
+    "id": "owned-kitty-placeholder-grid-direct-v1",
+    "persistence": "Off",
+    "suites": [
+      "kitty-placeholder-grid"
+    ],
+    "suiteVersion": 6,
+    "deadlineMs": 300000
+  },
+  "animationEvidence": {
+    "runId": "bf0ffaafbfd8e82d8807875e09b072b6",
+    "suiteId": "ntilde-owned-kitty-placeholders-grid-v1",
+    "file": "animation-observations.json",
+    "sha256": "8fa90bf4890fa1176ce23032247bba9ac4931a9310f030bd2241b9c45d78e51f",
+    "counts": {
+      "passed": 14
+    },
+    "provisionalUntil": "cell-receipt.json"
+  },
+  "ownershipProofSha256": "3b23991b738698786da4372e36e5ffd7cd5e4ad9d0982ab3cd16243ccd4fab11",
+  "contextSha256": "035a96fb629d2d6b431f03fd69f7f9fe12f15d7947f3b73a6b6e8f8c00e2efe9",
+  "fixtureRemoved": true,
+  "completedAt": "2026-11-19T16:09:20.251Z"
+}
