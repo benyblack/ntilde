@@ -216,6 +216,29 @@ public class PaneCapabilityGatingTests
         session.Verify(x => x.SendInput(Moq.It.IsAny<string>()), Moq.Times.Never);
     }
 
+    [AvaloniaFact]
+    public void S8c1t_cursor_report_uses_the_nonblocking_sink_without_a_text_retry()
+    {
+        var session = new Moq.Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        session.SetupGet(x => x.ShellCommand).Returns("fake-shell");
+        var replies = session.As<ITerminalDeviceReplySink>();
+        using var pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(pane);
+        pane.SessionFactory = new RecordingSessionFactory(session.Object);
+        pane.CreateAndWireParser();
+        pane.InitializeSessionCore("fake-shell", string.Empty, profile: null, cols: 80, rows: 24);
+        Assert.Same(session.Object, pane.Session);
+        byte[] expected = [0x9b, .. "1;1R"u8];
+
+        pane.Parser!.Process("\u001b G\u001b[6n");
+
+        replies.Verify(x => x.TrySendDeviceReply("\u001b[1;1R",
+            Moq.It.Is<ReadOnlyMemory<byte>>(bytes => bytes.ToArray().SequenceEqual(expected))), Moq.Times.Once);
+        replies.Verify(x => x.TrySendDeviceReply(Moq.It.IsAny<string>()), Moq.Times.Never);
+        session.Verify(x => x.SendInput(Moq.It.IsAny<string>()), Moq.Times.Never);
+    }
+
     /// <summary>
     /// The default - every session in the app today - still gets the reply, or DA1 goes
     /// unanswered and TUIs stall on their capability probe.

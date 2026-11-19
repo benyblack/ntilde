@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 
 namespace Ntilde.VT.Tests;
@@ -31,9 +32,11 @@ public sealed class C1WidthSwitchTests
         targetBuffer.ImportState(sourceBuffer.ExportState(0));
         var target = new AnsiParser(targetBuffer, forceConPtyFiltering: false);
         target.ImportState(JsonSerializer.Deserialize<AnsiParserState>(JsonSerializer.Serialize(source.ExportState()))!);
-        target.Process("GB");
+        var replies = WireReplies(target);
+        target.Process("GB\u001b[6n");
 
         Assert.Equal("AB", Text(targetBuffer));
+        Assert.Equal(new byte[] { 0x9b, (byte)'1', (byte)';', (byte)'3', (byte)'R' }, Assert.Single(replies));
     }
 
     [Theory]
@@ -56,16 +59,57 @@ public sealed class C1WidthSwitchTests
     }
 
     [Fact]
-    public void Width_switches_leave_cursor_position_replies_in_the_existing_seven_bit_format()
+    public void Cursor_reports_follow_the_selected_width_and_full_reset_restores_seven_bit()
     {
         var buffer = new TerminalBuffer(40, 2);
-        var replies = new List<string>();
-        var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { OnResponse = replies.Add };
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        var replies = WireReplies(parser);
 
-        parser.Process("\u001b G\u001b[6n\u001b F\u001b[6n");
+        parser.Process("\u001b[6n\u001b G\u001b[6n\u001b F\u001b[6n\u001b G\u001bc\u001b[6n");
 
-        Assert.Equal(new[] { "\u001b[1;1R", "\u001b[1;1R" }, replies);
+        byte[] sevenBit = "\u001b[1;1R"u8.ToArray();
+        byte[] eightBit = [0x9b, .. "1;1R"u8];
+        Assert.Equal(new[] { sevenBit, eightBit, sevenBit, sevenBit }, replies);
         Assert.Equal(string.Empty, Text(buffer));
+    }
+
+    [Fact]
+    public void Active_width_and_extra_intermediate_survive_a_serialized_snapshot()
+    {
+        var source = new AnsiParser(new TerminalBuffer(40, 2), forceConPtyFiltering: false);
+        source.Process("\u001b G\u001b  ");
+        var target = new AnsiParser(new TerminalBuffer(40, 2), forceConPtyFiltering: false);
+        target.ImportState(JsonSerializer.Deserialize<AnsiParserState>(JsonSerializer.Serialize(source.ExportState()))!);
+        var replies = WireReplies(target);
+
+        // The extra space invalidates S7C1T, but the next exact spelling switches back.
+        target.Process("F\u001b[6n\u001b F\u001b[6n");
+
+        Assert.Equal((byte[])[0x9b, .. "1;1R"u8], replies[0]);
+        Assert.Equal("\u001b[1;1R"u8.ToArray(), replies[1]);
+    }
+
+    [Fact]
+    public void String_replies_use_raw_c1_framing_with_utf8_payload()
+    {
+        var parser = new AnsiParser(new TerminalBuffer(40, 2), forceConPtyFiltering: false)
+        {
+            AllowTitleReport = true,
+        };
+        var replies = WireReplies(parser);
+
+        parser.Process("\u001b G\u001b]2;λ\a\u001b[21t\u001bP$qm\u001b\\");
+
+        Assert.Collection(replies,
+            osc => Assert.Equal((byte[])[0x9d, .. "lλ"u8, 0x9c], osc),
+            dcs => Assert.Equal((byte[])[0x90, .. "1$r0m"u8, 0x9c], dcs));
+    }
+
+    private static List<byte[]> WireReplies(AnsiParser parser)
+    {
+        var replies = new List<byte[]>();
+        parser.OnResponse = reply => replies.Add(parser.Encode8BitReply(reply) ?? Encoding.UTF8.GetBytes(reply));
+        return replies;
     }
 
     private static string Text(TerminalBuffer buffer)

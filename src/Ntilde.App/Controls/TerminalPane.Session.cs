@@ -780,9 +780,14 @@ namespace Ntilde.Controls
             // either way - it only invalidates a local heuristic and writes nothing to the child.
             if (!SessionAnswersDeviceQueries(Session))
             {
-                Parser!.OnResponse += response =>
+                var parser = Parser!;
+                parser.OnResponse += response =>
                 {
-                    if (Session is ITerminalDeviceReplySink replies) replies.TrySendDeviceReply(response);
+                    if (Session is ITerminalDeviceReplySink replies)
+                    {
+                        if (parser.Encode8BitReply(response) is { } wireBytes) replies.TrySendDeviceReply(response, wireBytes);
+                        else replies.TrySendDeviceReply(response);
+                    }
                     else Session?.SendInput(response);
                 };
             }

@@ -95,6 +95,8 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
         _inner is ITerminalByteInput { SupportsByteInput: true } bytes && bytes.TrySendInputBytes(input);
     public bool TrySendDeviceReply(string response) =>
         _inner is ITerminalDeviceReplySink replies && replies.TrySendDeviceReply(response);
+    public bool TrySendDeviceReply(string response, ReadOnlyMemory<byte> wireBytes) =>
+        _inner is ITerminalDeviceReplySink replies && replies.TrySendDeviceReply(response, wireBytes);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
     public void UseHostRecordingBoundary() => (_inner as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
     public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)

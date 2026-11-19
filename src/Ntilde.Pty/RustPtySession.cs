@@ -1364,26 +1364,26 @@ namespace Ntilde.Pty
             catch (InvalidOperationException) { return false; }
         }
 
-        public bool TrySendDeviceReply(string response)
-        {
-            if (_handle.IsClosed || _handle.IsInvalid || !TryEnqueueDeviceReply(_inputQueue, _deviceReplyGate, response)) return false;
-            return true;
-        }
+        public bool TrySendDeviceReply(string response) => TrySendDeviceReply(response, default);
 
-        internal static bool TryEnqueueDeviceReply(BlockingCollection<byte[]> queue, object gate, string response)
+        public bool TrySendDeviceReply(string response, ReadOnlyMemory<byte> wireBytes) =>
+            !_handle.IsClosed && !_handle.IsInvalid && TryEnqueueDeviceReply(_inputQueue, _deviceReplyGate, response, wireBytes);
+
+        internal static bool TryEnqueueDeviceReply(
+            BlockingCollection<byte[]> queue, object gate, string response, ReadOnlyMemory<byte> wireBytes = default)
         {
             // Device output must not fill the queue that UI keyboard/paste input uses. The
             // single writer still preserves ordering, but replies stop at 3/4 capacity.
             // Serialize reply producers (parser and host preference notifications) around the
             // watermark check. The consumer never takes this gate and can remain blocked in native I/O.
-            if (response.Length > 65536) return false;
+            if ((wireBytes.IsEmpty ? response.Length : wireBytes.Length) > 65536) return false;
             lock (gate)
             {
                 try
                 {
                     int reserve = Math.Max(1, queue.BoundedCapacity / 4);
                     if (queue.Count >= queue.BoundedCapacity - reserve) return false;
-                    return queue.TryAdd(Encoding.UTF8.GetBytes(response));
+                    return queue.TryAdd(wireBytes.IsEmpty ? Encoding.UTF8.GetBytes(response) : wireBytes.ToArray());
                 }
                 catch (InvalidOperationException) { return false; } // completed/disposed during shutdown
             }
