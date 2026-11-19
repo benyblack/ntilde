@@ -144,6 +144,20 @@ test('a wrong color, a cell that should be blank, a stray pixel and a blank cell
     assert.equal(inspect(stray, 'upperRowOnly').classification.cells, 'rrgg/?...');
 });
 
+test('a tile cannot pass by painting only the region that is sampled', () => {
+    // Only the sampled rectangles painted (the retained 9x19 geometry's: x 1..7, y 3..16 above, 2..15 below in cell terms): every sampled pixel is right, the rest of each tile is still the background.
+    const sparse = blank();
+    for (const [row, column, letter] of [[0, 0, 'r'], [0, 1, 'r'], [0, 2, 'g'], [0, 3, 'g'], [1, 0, 'b'], [1, 1, 'b'], [1, 2, 'y'], [1, 3, 'y']]) {
+        for (let y = row === 0 ? 3 : 2; y < (row === 0 ? 17 : 16); y++) for (let x = 1; x < 8; x++) {
+            sparse.pixels.set(placeholderQuadrantColors[letter], ((gridY + row * 19 + y) * sparse.width + gridX + column * 9 + x) * 4);
+        }
+    }
+    const result = inspect(sparse, 'full');
+    assert.equal(all(result.assertions), false); assert.equal(result.classification.cells, '????/????');
+    // A fully painted tile at the same geometry still passes.
+    assert.ok(all(inspect(drawImage('rrgg/bbyy'), 'full').assertions));
+});
+
 test('the controls catch a dirty baseline or changes outside the target, and the reading follows an anchor shift', () => {
     const bleeding = drawImage('rrgg/bbyy'); bleeding.pixels.set([255, 255, 255, 255], 0);
     assert.equal(inspect(bleeding, 'full').controls[1].passed, false);

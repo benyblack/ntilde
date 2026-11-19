@@ -24,6 +24,10 @@ function contentBounds(image, envelope) {
     }
     return right < left ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
 }
+const regionHasNo = (image, rect, color) => {
+    for (let y = rect.y; y < rect.y + rect.height; y++) for (let x = rect.x; x < rect.x + rect.width; x++) if (same(pixelAt(image, x, y), color)) return false;
+    return true;
+};
 const regionUniform = (image, rect) => {
     const first = pixelAt(image, rect.x, rect.y);
     for (let y = rect.y; y < rect.y + rect.height; y++) for (let x = rect.x; x < rect.x + rect.width; x++) if (!same(pixelAt(image, x, y), first)) return null;
@@ -114,6 +118,7 @@ export function inspectPlaceholderPixels({ baseline, observed, grid, anchor, cel
  * side, and each quadrant is a square of half that side. A cell shows the tile of the grid the marks name: the tile's row is the image's quadrant row (a cell is as tall as half the square, give or take the slack, so tile row 0 lies in the
  * upper quadrants and tile row 1 in the lower ones) and its column is the cell's own (the grid suite never swaps columns). Where the square sits in the grid is the App's own policy and is not asserted, so a painted cell is sampled only
  * where its quadrant is under every placement of the square (the grid's slack along each axis), one pixel clear of the quadrant's edge, translated into the cell from the tile's own place: that sample must be one exact color.
+ * The part of the tile that every placement of the square covers (clear of the square's outer pixel) must also be painted throughout (no pixel of the controlled background in it), so a tile cannot pass by painting only its sample.
  * A cell that shows nothing must be the controlled background throughout.
  */
 export function inspectPlaceholderGridPixels({ baseline, observed, grid, anchor, cells, appearance }) {
@@ -126,6 +131,8 @@ export function inspectPlaceholderGridPixels({ baseline, observed, grid, anchor,
     if (ch < half || ch > half + slackY + 1) throw invalid(); // a cell this far from half the square would put a tile row across two quadrants
     // The part of one quadrant (grid-relative pixels) that every placement of the square keeps, a pixel clear of the quadrant's edges.
     const safe = ([row, column]) => ({ x0: slackX + column * half + 1, x1: (column + 1) * half - 1, y0: slackY + row * half + 1, y1: (row + 1) * half - 1 });
+    // What every placement of the square covers, clear of its outer pixel (grid-relative pixels).
+    const covered = { x0: slackX + 1, x1: side - 1, y0: slackY + 1, y1: side - 1 };
     const shown = expected.map((line, row) => [...line].map((letter, column) => {
         const rect = { x: envelope.x + column * cw, y: envelope.y + row * ch, width: cw, height: ch };
         if (letter === '.') return { expected: 'absent', color: contentBounds(observed, rect) === null ? 'absent' : 'mixed', rect, sample: null };
@@ -136,7 +143,11 @@ export function inspectPlaceholderGridPixels({ baseline, observed, grid, anchor,
         if (sample.width <= 0 || sample.height <= 0) throw invalid();
         const color = regionUniform(observed, sample);
         const name = color ? Object.keys(placeholderQuadrantColors).find(id => same(placeholderQuadrantColors[id], color)) : undefined;
-        return { expected: letter, color: name ?? 'mixed', rect, sample };
+        // The same tile's covered part, in the cell: nothing in it may still be the background.
+        const cover = { x: rect.x + Math.max(0, covered.x0 - column * cw), y: rect.y + Math.max(0, covered.y0 - tileRow * ch) };
+        cover.width = rect.x + Math.min(cw, covered.x1 - column * cw) - cover.x; cover.height = rect.y + Math.min(ch, covered.y1 - tileRow * ch) - cover.y;
+        const complete = cover.width > 0 && cover.height > 0 && regionHasNo(observed, cover, animationBackground);
+        return { expected: letter, color: name !== undefined && complete ? name : 'mixed', rect, sample };
     }));
     const flat = shown.flat();
     const baselineBlank = contentBounds(baseline, envelope) === null;
