@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "e1363606decb2ab02414dc95654eade1692fdd24e2637bf91d57501d6f455429",
+  "matrixSha256": "887b5c9fd48c0687f407e9efb4569f5b206ae117998c2c6138d2f56621aad0ad",
   "summary": {
     "totalRows": 150,
     "supportedCount": 72,
@@ -2612,7 +2612,7 @@
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
       "feature": "LNM (New Line Mode)",
       "status": "\u2705 Supported",
-      "specOrNotes": "When set, line feed also returns to the left margin and the legacy Return key sends CR LF; when reset, Return sends CR",
+      "specOrNotes": "When set, line feed also returns to the left margin and the legacy Return key sends CR LF. CSI 20 l and RIS restore CR",
       "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/DecrqmTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/LegacyKeyboardModeRoutingTests.cs\u0060",
       "evidenceKinds": [
         "unit"

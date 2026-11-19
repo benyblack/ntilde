@@ -28,7 +28,10 @@ public sealed class LegacyKeyboardModeRoutingTests
         parser.Process("\u001b[20l");
         Assert.True(view.HandleKeyDownCore(Key.Enter, KeyModifiers.None, PhysicalKey.Enter));
 
-        Assert.Equal(new[] { "\r", "\r\n", "\r" }, sent);
+        parser.Process("\u001b[20h\u001bc");
+        Assert.True(view.HandleKeyDownCore(Key.Enter, KeyModifiers.None, PhysicalKey.Enter));
+
+        Assert.Equal(new[] { "\r", "\r\n", "\r", "\r" }, sent);
     }
 
     [Theory]
