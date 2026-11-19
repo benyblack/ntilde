@@ -3,6 +3,22 @@
 User-facing changes, newest release first. This file starts with 0.12.0: the notes for earlier
 releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
+## Unreleased
+
+- **Kitty Unicode placeholders work in persistent sessions**, and survive a reattach. A session
+  started by an earlier version keeps refusing them until it ends, so open a new tab.
+- **Kitty file transfer (`t=f`) works in persistent sessions.** A program can name an image file
+  instead of sending its data. The file is read on the host where the session runs, under the same
+  limits as in an ordinary tab. A session started by an earlier version keeps refusing it.
+- **Double-size lines re-wrap when the pane's width changes** (DECDWL, DECDHL). A double-size line
+  wraps at half the new width, and widening the pane joins it again. Before this, a pane narrower
+  than the line's text cut it for good. The two halves of a double-height line stay together.
+- **An image on a double-size line is drawn where the text puts it**, twice as wide like the rest
+  of the line. It was drawn at the single-width position of its column, over the text before it.
+- **macOS: Ctrl+V reaches terminal programs** (it sends `0x16`), so Vim's visual-block mode and
+  the shell's quoted insert work. Cmd+V still pastes.
+- Reverse Index (`ESC M`) fills the row it exposes with the current background color.
+
 ## 0.14.0
 
 0.14.0 shows Kitty and iTerm2 images in persistent sessions, makes plain `imgcat` work, shows
