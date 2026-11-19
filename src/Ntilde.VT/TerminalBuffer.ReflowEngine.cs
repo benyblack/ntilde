@@ -38,6 +38,11 @@ namespace Ntilde.VT
             // the old last column means "after that character", which is an ordinary column once the row is wider.
             // A wrap that was pending stays pending at a filled row's end whatever DECAWM says now; a new one needs DECAWM.
             private bool _cursorOnDoubleLine;
+            // The character a combining mark would attach to, when it was on a double-size line: where it is now
+            // (a viewport row, or column -1 once it has left the screen).
+            private bool _lastCharOnDoubleLine;
+            private int _lastCharRow;
+            private int _lastCharCol = -1;
             private readonly bool _cursorPendingWrap;
             private readonly Func<string, int> _getGraphemeWidth;
 
@@ -87,6 +92,11 @@ namespace Ntilde.VT
                 target._scrollback = _scrollback;
                 target._cursorRow = _cursorRow;
                 target._cursorCol = _cursorCol;
+                if (_lastCharOnDoubleLine)
+                {
+                    target._lastCharRow = _lastCharRow;
+                    target._lastCharCol = _lastCharCol;
+                }
                 if (_cursorOnDoubleLine && !_isAltScreen) target._isPendingWrap = _cursorWaitsAtDoubleRowEnd && (_cursorPendingWrap || target.Modes.IsAutoWrapMode);
                 if (target.CommandStartMark == _observedCommandStartMark)
                 {
@@ -521,7 +531,10 @@ namespace Ntilde.VT
                     // so every top half stays directly above its bottom half.
                     var doubleStreams = new[] { new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>(), new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>() };
                     var doubleChunks = new[] { new List<(int Start, int Take)>(), new List<(int Start, int Take)>() };
-                    // What sits on the line and has to be found again: 0 cursor, 1 and 2 the saved cursors, 3 and 4 the shell marks, 5 an image.
+                    // What sits on the line and has to be found again: 0 cursor, 1 and 2 the saved cursors, 3 and 4 the shell marks,
+                    // 5 an image, 6 the character a combining mark attaches to.
+                    int newLastCharPhysRow = -1;
+                    int newLastCharPhysCol = -1;
                     var doubleTracked = new List<(int Kind, int Stream, int Offset, TerminalImage? Image)>();
                     int doubleStartPhys = -1;
                     int doubleRowCount = 0;
@@ -577,30 +590,34 @@ namespace Ntilde.VT
                         else
                         {
                             len = 0;
-                            for (int scan = 0; scan < shown; scan++)
+                            for (int scan = 0; scan < row.Cells.Length; scan++)
                             {
                                 var cell = row.Cells[scan];
-                                if ((cell.Character != ' ' && cell.Character != '\0') || !cell.IsDefaultBackground || cell.HasExtendedText
-                                    || cell.IsWideContinuation || cell.IsUnderline || cell.IsInverse || cell.IsStrikethrough
-                                    || row.GetHyperlink(scan) != null || row.GetUnderline(scan) != null || row.IsProtected(scan))
+                                bool text = (cell.Character != ' ' && cell.Character != '\0') || cell.HasExtendedText || cell.IsWideContinuation;
+                                // Past the half only text counts: a row resized before double-size lines re-wrapped
+                                // can still hold some there, while a background or a style there was never shown.
+                                if (text || (scan < shown && (!cell.IsDefaultBackground || cell.IsUnderline || cell.IsInverse || cell.IsStrikethrough
+                                    || row.GetHyperlink(scan) != null || row.GetUnderline(scan) != null || row.IsProtected(scan))))
                                 {
                                     len = scan + 1;
                                 }
                             }
                             // Typed spaces at the end are text: the row's authored extent says how far they go.
-                            len = Math.Max(len, row.WrittenColumns);
+                            len = Math.Max(len, Math.Min(row.WrittenColumns, shown));
                             // Blank cells up to the cursor, a saved cursor or a shell mark are kept, so each stays on its column.
                             if (phys == absCursorPhysicalIdx) len = Math.Max(len, DoubleLineOffset(_cursorCol, _cursorPendingWrap, lastCol));
                             if (phys == absMainSavedIdx) len = Math.Max(len, DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol));
                             if (phys == absAltSavedIdx) len = Math.Max(len, DoubleLineOffset(_savedCursors.Alt.Col, _savedCursors.Alt.IsPendingWrap, lastCol));
                             if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark csPad) len = Math.Max(len, Math.Min(csPad.Column, lastCol + 1));
                             if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark osPad) len = Math.Max(len, Math.Min(osPad.Column, lastCol + 1));
-                            len = Math.Min(len, shown);
+                            len = Math.Min(len, row.Cells.Length);
                         }
 
                         if (phys == absCursorPhysicalIdx) doubleTracked.Add((0, stream, start + Math.Min(DoubleLineOffset(_cursorCol, _cursorPendingWrap, lastCol), len), null));
                         if (phys == absMainSavedIdx) doubleTracked.Add((1, stream, start + Math.Min(DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol), len), null));
                         if (phys == absAltSavedIdx) doubleTracked.Add((2, stream, start + Math.Min(DoubleLineOffset(_savedCursors.Alt.Col, _savedCursors.Alt.IsPendingWrap, lastCol), len), null));
+                        if (!_isAltScreen && _source._lastCharCol >= 0 && phys == oldScrollbackCount + _source._lastCharRow)
+                            doubleTracked.Add((6, stream, start + Math.Min(_source._lastCharCol, Math.Max(0, len - 1)), null));
                         if (phys < splitPhysIndex) doubleHistoryRows++;
                         if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark cs) doubleTracked.Add((3, stream, start + Math.Min(cs.Column, len), null));
                         if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark os) doubleTracked.Add((4, stream, start + Math.Min(os.Column, len), null));
@@ -694,7 +711,8 @@ namespace Ntilde.VT
                                 // line, rather than moved onto the character before it.
                                 case 3: if (!pastLastColumn) { newCommandStartPhysRow = flowRow; newCommandStartPhysCol = col; } break;
                                 case 4: if (!pastLastColumn) { newOutputStartPhysRow = flowRow; newOutputStartPhysCol = col; } break;
-                                default: imagePlacements.Add((image!, flowRow, Math.Min(col, newCols - 1))); break;
+                                case 5: imagePlacements.Add((image!, flowRow, Math.Min(col, newCols - 1))); break;
+                                default: newLastCharPhysRow = flowRow; newLastCharPhysCol = col; break;
                             }
                         }
 
@@ -1210,6 +1228,13 @@ namespace Ntilde.VT
                     {
                         _cursorRow = newRows - 1;
                         _cursorCol = 0;
+                    }
+
+                    if (newLastCharPhysRow != -1)
+                    {
+                        _lastCharOnDoubleLine = true;
+                        _lastCharRow = Math.Max(0, newLastCharPhysRow - sbCount);
+                        _lastCharCol = newLastCharPhysRow >= sbCount ? newLastCharPhysCol : -1;
                     }
 
                     // 8. Reposition Images

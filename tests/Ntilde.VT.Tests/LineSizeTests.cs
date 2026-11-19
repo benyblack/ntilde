@@ -498,6 +498,38 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_combining_mark_after_a_re_wrap_still_attaches_to_the_last_character()
+    {
+        var (buffer, parser) = Create(rows: 8);
+        parser.Process(Dwl + "abcd");
+        buffer.Resize(4, 8);
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("c", buffer.GetGraphemeAbsolute(0, 1));
+            Assert.Equal("d\u0301", buffer.GetGraphemeAbsolute(1, 1));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void Text_a_row_still_holds_past_its_half_is_re_wrapped_not_dropped()
+    {
+        // A row resized before double-size lines re-wrapped: its text runs past the half of the narrower page.
+        var (source, sourceParser) = Create(cols: 6, rows: 4);
+        sourceParser.Process("abcde");
+        var state = source.ExportState(100);
+        state.Parser = sourceParser.ExportState();
+        state.Main.RowLineSizes = new[] { (int)LineSize.DoubleWidth, 0, 0, 0 };
+        var (buffer, parser) = Create(cols: 6, rows: 4);
+        TerminalStateTransfer.Restore(buffer, parser, state);
+        buffer.Resize(10, 4);
+        Assert.Equal("abcde", Lines(buffer)[0]);
+        Assert.Equal(LineSize.DoubleWidth, buffer.GetLineSize(0));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);
