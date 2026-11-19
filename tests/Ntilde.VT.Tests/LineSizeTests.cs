@@ -453,6 +453,41 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_wrap_pending_from_one_re_wrap_becomes_an_ordinary_column_in_the_next()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "abcd");
+        buffer.Resize(4, 6);
+        buffer.Resize(10, 6);
+        Assert.False(buffer.IsPendingWrap);
+        Assert.Equal(4, buffer.CursorCol);
+        parser.Process("\bX");
+        Assert.Equal("abcX", Lines(buffer)[0]);
+    }
+
+    [Fact]
+    public void A_double_height_line_across_the_top_of_the_screen_keeps_its_bottom_half_on_the_screen()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 2);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef\r\n");
+        buffer.Resize(14, 2);
+        Assert.Equal(new[] { "abcdef", "" }, Lines(buffer));
+        Assert.Equal(1, buffer.CursorRow);
+        Assert.Equal(new[] { LineSize.DoubleHeightTop, LineSize.DoubleHeightBottom, LineSize.SingleWidth }, AllSizes(buffer));
+    }
+
+    [Fact]
+    public void Typed_spaces_survive_a_width_change_after_an_insert_on_the_double_line()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 8);
+        parser.Process($"{Dwl}abc      {Esc}[1;1H{Esc}[@{Esc}[3;1H");
+        buffer.Resize(22, 8);
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth }, Sizes(buffer).Take(4));
+        Assert.Equal(" ab", Lines(buffer)[0]);
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);
