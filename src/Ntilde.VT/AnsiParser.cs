@@ -737,6 +737,7 @@ namespace Ntilde.VT
                                 else if (c == ' ')
                                 {
                                     _escapeSpacePending = true;
+                                    _lastGraphicChar = null;
                                 }
                                 else if (c == '#')
                                 {
