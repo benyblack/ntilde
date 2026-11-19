@@ -116,6 +116,18 @@ namespace Ntilde.Tests.Input
         }
 
         [AvaloniaFact]
+        public void HandleKeyDownCore_MacControlV_SendsSyn()
+        {
+            var (view, session) = CreateView();
+            view.UseMacOSClipboardChords = true;
+
+            Assert.True(view.HandleKeyDownCore(Key.V, KeyModifiers.Control));
+
+            session.Verify(x => x.SendInput("\x16"), Times.Once);
+            session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Once);
+        }
+
+        [AvaloniaFact]
         public void HandleKeyDownCore_AltGrChord_IsLeftForTextInput()
         {
             var (view, session) = CreateView();
