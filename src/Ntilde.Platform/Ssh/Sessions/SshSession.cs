@@ -92,8 +92,10 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITermina
     public void SendInput(string input) => _inner.SendInput(input);
     public bool TryScheduleOutput(Action action) => _inner.TryScheduleOutput(action);
     public bool SupportsByteInput => _inner.SupportsByteInput;
+    public bool SupportsRawC1Replies => _inner.SupportsRawC1Replies;
     public bool TrySendInputBytes(ReadOnlyMemory<byte> input) => _inner.TrySendInputBytes(input);
     public bool TrySendDeviceReply(string response) => _inner.TrySendDeviceReply(response);
+    public bool TrySendDeviceReply(string response, ReadOnlyMemory<byte> wireBytes) => _inner.TrySendDeviceReply(response, wireBytes);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
     public void UseHostRecordingBoundary() => _inner.UseHostRecordingBoundary();
     public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler) => _inner.SubscribeRecordingOutput(handler);

@@ -334,6 +334,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     }
 
     public bool SupportsByteInput => true;
+    public bool SupportsRawC1Replies => true;
 
     public bool TrySendInputBytes(ReadOnlyMemory<byte> input)
     {
@@ -341,11 +342,14 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         return _interop.TryWriteInput(_sessionHandle, input.Span);
     }
 
-    public bool TrySendDeviceReply(string response)
+    public bool TrySendDeviceReply(string response) => TrySendDeviceReply(response, default);
+
+    public bool TrySendDeviceReply(string response, ReadOnlyMemory<byte> wireBytes)
     {
-        if (_sessionHandle is null || _sessionHandle.IsInvalid || _sessionHandle.IsClosed || response.Length > 64 * 1024) return false;
-        if (!_interop.TryWriteDeviceReply(_sessionHandle, Encoding.UTF8.GetBytes(response))) return false;
-        return true;
+        if (_sessionHandle is null || _sessionHandle.IsInvalid || _sessionHandle.IsClosed
+            || (wireBytes.IsEmpty ? response.Length : wireBytes.Length) > 64 * 1024) return false;
+        return _interop.TryWriteDeviceReply(_sessionHandle,
+            wireBytes.IsEmpty ? Encoding.UTF8.GetBytes(response) : wireBytes.Span);
     }
 
     public void Resize(int cols, int rows)

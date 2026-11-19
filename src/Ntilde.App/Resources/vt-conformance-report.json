@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "5ce679d6eb5046bc9e8f835377764cbd929b8d2973df46fb13586ae62099b854",
+  "matrixSha256": "b4d9438fd6da1bb88534e9dc182fe9c13d3dea3a5cf0dffd50177749a04c50a7",
   "summary": {
     "totalRows": 153,
     "supportedCount": 73,
@@ -197,12 +197,16 @@
       "section": "1) Input parsing \u0026 state machine",
       "feature": "S7C1T / S8C1T (ESC SP F / ESC SP G)",
       "status": "\u26A0 Partial",
-      "specOrNotes": "Consumes both control-width switches without writing cells",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/C1WidthSwitchTests.cs\u0060",
+      "specOrNotes": "Selects seven-bit or eight-bit C1 framing for parser replies",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/C1WidthSwitchTests.cs\u0060 \u00B7 Integration: \u0060tests/Ntilde.Mux.Tests/Client/ByteInputTransportTests.cs\u0060",
       "evidenceKinds": [
         "unit"
       ],
       "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.Mux.Tests/Client/ByteInputTransportTests.cs",
+          "exists": true
+        },
         {
           "path": "tests/Ntilde.VT.Tests/C1WidthSwitchTests.cs",
           "exists": true
@@ -210,8 +214,8 @@
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
-      "ownership": "\u0060src/Ntilde.VT/AnsiParser.cs\u0060",
-      "knownDeviations": "Replies use the existing seven-bit C1 encoding after either switch. Chunking and parser snapshots preserve a pending space intermediate.",
+      "ownership": "\u0060src/Ntilde.VT/AnsiParser.cs\u0060, \u0060src/Ntilde.VT/AnsiParser.Replies.cs\u0060",
+      "knownDeviations": "Direct and persistent sessions use raw C1 framing after S8C1T when the child transport supports it. Windows ConPTY and text-only transports keep seven-bit framing, as do startup, RIS and S7C1T. Snapshots carry the selected width and any pending space intermediate. Keyboard input and host-generated replies are outside this coverage.",
       "sourceLine": 64
     },
     {

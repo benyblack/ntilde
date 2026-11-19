@@ -42,6 +42,12 @@ namespace Ntilde.VT
         [JsonPropertyName("esc_space"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool EscapeSpacePending { get; set; }
 
+        [JsonPropertyName("esc_space_extra"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool EscapeSpaceHasExtraIntermediate { get; set; }
+
+        [JsonPropertyName("send_8bit_c1"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Send8BitControls { get; set; }
+
         /// <summary>The live CSI parameter/intermediate run, empty when not inside a CSI.</summary>
         [JsonPropertyName("csi")] public string CsiParams { get; set; } = string.Empty;
 
@@ -134,7 +140,8 @@ namespace Ntilde.VT
         public string ToDebugString()
         {
             var sb = new StringBuilder();
-            sb.Append("state=").Append(State).Append(" esc_space=").Append(EscapeSpacePending);
+            sb.Append("state=").Append(State).Append(" esc_space=").Append(EscapeSpacePending)
+                .Append(" esc_space_extra=").Append(EscapeSpaceHasExtraIntermediate).Append(" send_8bit_c1=").Append(Send8BitControls);
             sb.Append(" csi=").Append(CsiParams).Append(" trunc=").Append(CsiTruncated);
             sb.Append(" osc=").Append(OscBuffer);
             sb.Append(" apc=").Append(ApcBuffer);

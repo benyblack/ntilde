@@ -19,6 +19,10 @@ namespace Ntilde.Pty
     public interface ITerminalByteInput
     {
         bool SupportsByteInput { get; }
+
+        /// <summary>Whether the child transport accepts standalone C1 bytes in device replies.</summary>
+        bool SupportsRawC1Replies => false;
+
         bool TrySendInputBytes(ReadOnlyMemory<byte> input);
     }
 
@@ -26,6 +30,9 @@ namespace Ntilde.Pty
     public interface ITerminalDeviceReplySink
     {
         bool TrySendDeviceReply(string response);
+
+        /// <summary>Write pre-encoded bytes when supplied, using the text reply on a text-only sink.</summary>
+        bool TrySendDeviceReply(string response, ReadOnlyMemory<byte> wireBytes) => TrySendDeviceReply(response);
     }
 
     /// <summary>Session lifetime: identity, resize, process state.</summary>

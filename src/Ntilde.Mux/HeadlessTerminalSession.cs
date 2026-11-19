@@ -187,7 +187,14 @@ public sealed class HeadlessTerminalSession : IDisposable
             options.SelectionFg, options.SelectionBg, options.AnsiPalette);
         (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
         (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(cellWidth, cellHeight);
-        _parser.OnResponse = text => { EnqueueInput(text); }; // through the writer too: the parse thread must never block on stdin
+        // Keep replies ordered with keyboard input on the writer so parsing never blocks on stdin.
+        _parser.OnResponse = text =>
+        {
+            if (_session is ITerminalByteInput { SupportsRawC1Replies: true } && _parser.Encode8BitReply(text) is { } bytes)
+                EnqueueInput(new QueuedInput(null, bytes));
+            else
+                EnqueueInput(text);
+        };
         _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);
         _parser.OnTitleChanged = title =>
         {
