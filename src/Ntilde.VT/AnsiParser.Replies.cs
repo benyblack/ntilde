@@ -22,12 +22,18 @@ public partial class AnsiParser
         };
         if (introducer == 0) return null;
 
-        bool hasSt = introducer != 0x9b && reply.AsSpan(2).EndsWith("\x1b\\", StringComparison.Ordinal);
-        ReadOnlySpan<char> payload = reply.AsSpan(2, reply.Length - 2 - (hasSt ? 2 : 0));
-        var bytes = new byte[1 + Encoding.UTF8.GetByteCount(payload) + (hasSt ? 1 : 0)];
+        ReadOnlySpan<char> body = reply.AsSpan(2);
+        int stLength = introducer == 0x9b ? 0 : body switch
+        {
+            [.., '\u009c'] => 1,
+            [.., '\x1b', '\\'] => 2,
+            _ => 0,
+        };
+        ReadOnlySpan<char> payload = body[..(body.Length - stLength)];
+        var bytes = new byte[1 + Encoding.UTF8.GetByteCount(payload) + (stLength > 0 ? 1 : 0)];
         bytes[0] = introducer;
         Encoding.UTF8.GetBytes(payload, bytes.AsSpan(1));
-        if (hasSt) bytes[^1] = 0x9c;
+        if (stLength > 0) bytes[^1] = 0x9c;
         return bytes;
     }
 }

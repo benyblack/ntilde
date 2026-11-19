@@ -187,9 +187,8 @@ namespace Ntilde.VT
         /// Terminal-to-host replies (DA, DSR, DECRPM, OSC color answers, ...), in seven-bit
         /// control notation. Byte-capable hosts use <see cref="Encode8BitReply"/> at the wire boundary.
         ///
-        /// SECURITY: whatever is passed here is written verbatim to the child process's stdin -
-        /// the App layer wires this straight to <c>Session.SendInput</c>, i.e. the pty / ssh
-        /// channel, with no sanitization in between. A reply therefore MUST NEVER contain
+        /// SECURITY: the host writes these replies to the child process's stdin through the
+        /// PTY or SSH channel with no further sanitization. A reply therefore MUST NEVER contain
         /// untrusted bytes, and above all never CR (0x0D) or LF (0x0A): at a shell prompt those
         /// submit the line, so an echoed parameter becomes command execution by anything that
         /// can write to the terminal (a <c>cat</c> of a hostile file, a compromised remote host,

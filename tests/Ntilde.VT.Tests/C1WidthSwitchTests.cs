@@ -105,6 +105,23 @@ public sealed class C1WidthSwitchTests
             dcs => Assert.Equal((byte[])[0x90, .. "1$r0m"u8, 0x9c], dcs));
     }
 
+    [Theory]
+    [InlineData("\u001b\\", 0x9c)]
+    [InlineData("\u009c", 0x9c)]
+    [InlineData("\a", 0x07)]
+    public void Osc_replies_emit_a_single_terminator_byte(string terminator, int expected)
+    {
+        var parser = new AnsiParser(new TerminalBuffer(40, 2), forceConPtyFiltering: false)
+        {
+            CellSizeReports = new CellSizeReportMetrics(8.25, 17.5, 2, 12.25),
+        };
+        var replies = WireReplies(parser);
+
+        parser.Process("\u001b G\u001b]776;?" + terminator);
+
+        Assert.Equal((byte[])[0x9d, .. "776;17;35;25"u8, (byte)expected], Assert.Single(replies));
+    }
+
     private static List<byte[]> WireReplies(AnsiParser parser)
     {
         var replies = new List<byte[]>();
