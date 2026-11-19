@@ -130,7 +130,7 @@ public static class MuxFrames
     /// <summary>Parses a FileTransfer payload; false for any length, flag or path that no correct daemon sends (a path that is not UTF-8 included).</summary>
     public static bool TryParseFileTransfer(ReadOnlySpan<byte> payload, out Guid sessionId, out long seq, out string path, out bool hasData, out ReadOnlySpan<byte> data)
     {
-        sessionId = default; seq = 0; path = string.Empty; hasData = false; data = default;
+        sessionId = Guid.Empty; seq = 0; path = string.Empty; hasData = false; data = default;
         if (payload.Length < FileTransferHeaderBytes) return false;
         byte flags = payload[SessionIdBytes + 8];
         int pathBytes = BinaryPrimitives.ReadInt32LittleEndian(payload.Slice(SessionIdBytes + 9, 4));

@@ -625,7 +625,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         Interlocked.Exchange(ref _deliveredOffset, next);
     }
 
-    private readonly object _fileGate = new();
+    private readonly Lock _fileGate = new();
     private readonly List<(long Seq, string Path, byte[]? Data)> _files = new(); // the daemon's t=f reads for the output frame about to arrive (#887)
 
     /// <summary>

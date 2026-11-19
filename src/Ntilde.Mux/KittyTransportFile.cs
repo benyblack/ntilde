@@ -126,18 +126,16 @@ public static class KittyTransportFile
                 continue;
             }
 
-            string parent = Join(root, resolved), current = Path.Combine(parent, part);
-            FileSystemInfo node = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
-            string? target = node.LinkTarget;
+            string parent = Join(root, resolved);
+            string? target = LinkTargetOf(Path.Combine(parent, part));
             if (target is null)
             {
                 resolved.Add(part);
                 continue;
             }
 
-            if (++hops > MaxLinkHops) return null;
-            string next = Normalize(Path.IsPathRooted(target) ? target : Path.Combine(parent, target));
-            if (IsNetworkOrDevicePath(next)) return null; // a link must not send the walk to a share or a device
+            string? next = ++hops > MaxLinkHops ? null : FollowTarget(parent, target);
+            if (next is null) return null;
             // Resolve the link's target from the start, then whatever followed the link on the original path.
             root = Path.GetPathRoot(next) ?? string.Empty;
             resolved.Clear();
@@ -145,6 +143,15 @@ public static class KittyTransportFile
         }
 
         return Join(root, resolved);
+    }
+
+    private static string? LinkTargetOf(string current) => (Directory.Exists(current) ? new DirectoryInfo(current) : (FileSystemInfo)new FileInfo(current)).LinkTarget;
+
+    /// <summary>Where a link found in <paramref name="parent"/> leads, or null when that is a share or a device: a link must not send the walk there.</summary>
+    private static string? FollowTarget(string parent, string target)
+    {
+        string next = Normalize(Path.IsPathRooted(target) ? target : Path.Combine(parent, target));
+        return IsNetworkOrDevicePath(next) ? null : next;
     }
 
     /// <summary>Windows normalises a path lexically (as its file system does); Unix leaves it for <see cref="Canonicalize"/>, which resolves "." and ".." the way the kernel does.</summary>
