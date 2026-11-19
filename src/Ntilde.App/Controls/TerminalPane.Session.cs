@@ -797,6 +797,14 @@ namespace Ntilde.Controls
 
         private void EchoKeyboardText(ITerminalSession session, string text)
         {
+            if (session is ITerminalOutputScheduler scheduler)
+                scheduler.TryScheduleOutput(() => ApplyKeyboardEcho(session, text));
+            else
+                ApplyKeyboardEcho(session, text);
+        }
+
+        private void ApplyKeyboardEcho(ITerminalSession session, string text)
+        {
             // Use the same parser and serialization as child output. This text is display-only.
             lock (_localSixelRecordingGate)
             {

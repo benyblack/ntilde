@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Ntilde.Pty
 {
-    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink, ITerminalByteInput, ITerminalNativeChildWaitObservation
+    public class RustPtySession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink, ITerminalByteInput, ITerminalNativeChildWaitObservation, ITerminalOutputScheduler
     {
         public Guid Id { get; } = Guid.NewGuid();
         private readonly PtySafeHandle _handle;
@@ -249,7 +249,7 @@ namespace Ntilde.Pty
         private Task? _powerShellInitTask;
 
         // Bounded queue for back-pressure - prevents OOM on high-throughput output
-        private readonly BlockingCollection<(string Text, byte[]? RecordingBytes, Action? RecordingAction)> _outputQueue = new(boundedCapacity: 100);
+        private readonly BlockingCollection<(string Text, byte[]? RecordingBytes, Action? OutputAction)> _outputQueue = new(boundedCapacity: 100);
         private readonly TaskCompletionSource _outputConsumerStopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal int QueuedOutputCount => _outputQueue.Count;
 
@@ -1026,6 +1026,14 @@ namespace Ntilde.Pty
             catch (Exception ex) { completion.TrySetException(ex); }
         };
 
+        public bool TryScheduleOutput(Action action)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+            if (_cts.IsCancellationRequested || _outputConsumerStopped.Task.IsCompleted) return false;
+            try { return _outputQueue.TryAdd((string.Empty, null, action)); }
+            catch (InvalidOperationException) { return false; }
+        }
+
         private bool TryQueueRecordingAction(Action apply)
         {
             try
@@ -1300,7 +1308,12 @@ namespace Ntilde.Pty
                 {
                     lock (_outputInvocationLock)
                     {
-                        if (chunk.RecordingAction is { } action) { action(); continue; }
+                        if (chunk.OutputAction is { } action)
+                        {
+                            try { action(); }
+                            catch (Exception ex) { PtyLogger.Error($"[RustPtySession] Output action failed: {ex}"); }
+                            continue;
+                        }
                         _recordingDelivery.Bytes = chunk.RecordingBytes;
                         try { EmitOutput(chunk.Text); }
                         finally { _recordingDelivery.Bytes = default; }

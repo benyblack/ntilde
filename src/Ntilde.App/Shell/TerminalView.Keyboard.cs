@@ -532,7 +532,7 @@ namespace Ntilde.Shell
                     mux.SendKeyboardText(text);
                 else
                 {
-                    if (keyboardText && _buffer?.Modes.IsLocalEchoEnabled == true && session.IsProcessRunning)
+                    if (keyboardText && session.IsProcessRunning)
                         LocalKeyboardEcho?.Invoke(session, text);
                     session.SendInput(text);
                 }

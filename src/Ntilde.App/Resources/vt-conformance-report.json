@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "107f4b4ca49246bc93ae407afaf244d89639f6bc3b575a308bbf89dcae7f969c",
+  "matrixSha256": "a3dbc8f2fae3c4ceb06a322051b70e7b407167b0b6e70934ece6386704281ebd",
   "summary": {
     "totalRows": 153,
     "supportedCount": 73,
@@ -2705,7 +2705,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "VT buffer \u002B App \u002B Mux",
-      "knownDeviations": "Applies to text input in GUI panes. The daemon orders persistent echo before the child response and skips it when output is mid-sequence or mid-codepoint. Echo text stays outside output-only recordings. Older daemons receive the original input frame.",
+      "knownDeviations": "Applies to text input in GUI panes. Direct PTYs and the daemon order echo behind queued output and ahead of the child response. Echo skips incomplete escape sequences, and the daemon also preserves split UTF-8 code points. Echo text stays outside output-only recordings. Older daemons receive the original input frame.",
       "sourceLine": 179
     },
     {

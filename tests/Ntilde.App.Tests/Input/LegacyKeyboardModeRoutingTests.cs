@@ -10,12 +10,20 @@ namespace Ntilde.Tests.Input;
 
 public sealed class LegacyKeyboardModeRoutingTests
 {
-    private static (ITerminalSession Session, List<string> Sent) CreateSession()
+    private static (ITerminalSession Session, List<string> Sent) CreateSession(Queue<Action>? output = null)
     {
         var sent = new List<string>();
         var session = new Mock<ITerminalSession>();
         session.SetupGet(x => x.IsProcessRunning).Returns(true);
         session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(sent.Add);
+        if (output != null)
+        {
+            session.As<ITerminalOutputScheduler>().Setup(x => x.TryScheduleOutput(It.IsAny<Action>())).Returns((Action action) =>
+            {
+                output.Enqueue(action);
+                return true;
+            });
+        }
         return (session.Object, sent);
     }
 
@@ -97,7 +105,8 @@ public sealed class LegacyKeyboardModeRoutingTests
     [AvaloniaFact]
     public void Srm_reset_echoes_typed_text_and_set_restores_child_echo()
     {
-        var (session, sent) = CreateSession();
+        var output = new Queue<Action>();
+        var (session, sent) = CreateSession(output);
         using var pane = new TerminalPane();
         pane.CreateAndWireParser(forceConPtyFiltering: false);
         typeof(TerminalPane).GetProperty(nameof(TerminalPane.Session))!.SetValue(pane, session);
@@ -106,29 +115,39 @@ public sealed class LegacyKeyboardModeRoutingTests
         var buffer = pane.Buffer!;
         var parser = pane.Parser!;
         void Type(string text) => view.RaiseEvent(new TextInputEventArgs { Text = text, RoutedEvent = TerminalView.TextInputEvent });
+        void DrainOutput()
+        {
+            while (output.TryDequeue(out Action? action)) action();
+        }
 
         Type("0");
+        DrainOutput();
         Assert.Equal(0, buffer.CursorCol);
 
-        parser.Process("\u001b[12l");
+        output.Enqueue(() => parser.Process("\u001b[12l"));
         Type("1");
         Type("1");
         Type("\u001b[2J");
+        Assert.Equal(0, buffer.CursorCol);
+        DrainOutput();
         Assert.Equal(2, buffer.CursorCol);
         Assert.Equal('1', buffer.ViewportRows[0].Cells[0].Character);
         Assert.Equal('1', buffer.ViewportRows[0].Cells[1].Character);
 
-        parser.Process("\u001b[12h");
+        output.Enqueue(() => parser.Process("\u001b[12h"));
         Type("2");
+        DrainOutput();
         Assert.Equal(2, buffer.CursorCol);
         parser.Process("2");
         Assert.Equal('2', buffer.ViewportRows[0].Cells[2].Character);
 
         parser.Process("\u001b[12l\u001bc");
         Type("3");
+        DrainOutput();
         Assert.Equal(0, buffer.CursorCol);
         parser.Process("\u001b[12l\u001b(0");
         Type("q");
+        DrainOutput();
         parser.Process("\u001b[2b");
         Assert.Equal(3, buffer.CursorCol);
         Assert.All(buffer.ViewportRows[0].Cells.Take(3), cell => Assert.Equal('─', cell.Character));
