@@ -635,8 +635,30 @@ public sealed class LineSizeTests
             Assert.Equal("d", buffer.GetGraphemeAbsolute(0, 1));
         }
         finally { buffer.Lock.ExitReadLock(); }
-        parser.Process("X");
+        parser.Process("\rX");
         Assert.Equal(new[] { "abc\u0301", "Xe" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_combining_mark_finds_its_character_before_a_wide_glyph_that_wrapped_early()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process(Dwl + "ab\u6f22\rab");
+        buffer.Resize(6, 8);
+        parser.Process("\u0301");
+        Assert.Equal(new[] { "ab\u0301", "\u6f22" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void Returning_the_second_row_of_a_re_wrapped_double_line_to_single_width_ends_the_line_before_it()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process(Dwl + "abcdef");
+        buffer.Resize(6, 8);
+        Assert.True(IsWrapped(buffer, 0));
+        parser.Process($"{Esc}[2;1H{Swl}");
+        Assert.False(IsWrapped(buffer, 0));
+        Assert.Empty(buffer.FindMatches("abcdef", false, true));
     }
 
     [Fact]

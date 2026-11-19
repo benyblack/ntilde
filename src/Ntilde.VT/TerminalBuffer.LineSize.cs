@@ -89,6 +89,22 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
+    /// Whether the row of the last written character soft-wraps into the cursor's row with the cursor at its start:
+    /// the row below with the same attribute, or two rows down for a half of a re-wrapped double-height line.
+    /// </summary>
+    private bool LastCharRowWrapsIntoCursorRowNoLock()
+    {
+        if (_cursorCol != 0 || _lastCharCol < 0 || _lastCharRow < 0 || _cursorRow >= Rows || _isPendingWrap) return false;
+        int distance = _cursorRow - _lastCharRow;
+        if (distance != 1 && distance != 2) return false;
+        TerminalRow row = _viewport[_lastCharRow];
+        if (!row.IsWrapped || _viewport[_cursorRow].LineSize != row.LineSize) return false;
+        if (distance == 1) return true;
+        LineSize between = _viewport[_lastCharRow + 1].LineSize;
+        return IsDoubleHeight(row.LineSize) && IsDoubleHeight(between) && between != row.LineSize;
+    }
+
+    /// <summary>
     /// A wrap pending at the end of a half of a re-wrapped double-height line: the half carries on two rows down, past
     /// the row of the other half (<see cref="DoubleSizeLineRows"/>), and the cursor goes there. False anywhere else.
     /// </summary>

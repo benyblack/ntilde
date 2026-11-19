@@ -158,8 +158,9 @@ namespace Ntilde.VT
             bool inRegion = _cursorRow >= ScrollTop && _cursorRow <= ScrollBottom;
             if (_cursorRow <= (inRegion ? ScrollTop : 0)) return false;
             var above = _viewport[_cursorRow - 1];
-            // The row above a half of a double-height line is its other half, never the row this one continues.
-            if (!above.IsWrapped || (IsDoubleHeight(above.LineSize) && _viewport[_cursorRow].LineSize != above.LineSize)) return false;
+            // A row continues the row above only with the same line attribute: the row above a half of a
+            // double-height line is its other half, and a line whose attribute changed is a line of its own.
+            if (!above.IsWrapped || _viewport[_cursorRow].LineSize != above.LineSize) return false;
 
             _cursorRow--;
             _cursorCol = Math.Min(RightMargin, CursorRowLastColumnNoLock);
@@ -258,122 +259,145 @@ namespace Ntilde.VT
 
             // If it's a combining mark OR we just had a ZWJ, try to attach to the previous cell.
             // We allow this even if _lastCharCol is -1, as the look-back logic can find the base.
-            bool mayAttachToPrevious =
-                _cursorRow == _lastCharRow &&
-                (isZeroWidthComponent || _isAfterZwj || UnicodeWidth.IsSingleRegionalIndicator(grapheme));
-
-            if (mayAttachToPrevious)
+            bool attaches = isZeroWidthComponent || _isAfterZwj || UnicodeWidth.IsSingleRegionalIndicator(grapheme);
+            // A resize can wrap a line between the last character and the cursor: the cursor is then at the start of
+            // the next row of the line. The attachment is made from where the cursor would stand after that
+            // character, and the cursor returns to its place afterwards.
+            int cursorRowBeforeAttach = _cursorRow, cursorColBeforeAttach = _cursorCol;
+            bool pendingWrapBeforeAttach = _isPendingWrap;
+            bool attachAcrossWrap = attaches && _cursorRow != _lastCharRow && LastCharRowWrapsIntoCursorRowNoLock();
+            if (attachAcrossWrap)
             {
-                int attachCol = -1;
+                _cursorRow = _lastCharRow;
+                _cursorCol = Math.Min(_lastCharCol + 1, Cols - 1);
+                _isPendingWrap = false;
+            }
+            bool mayAttachToPrevious = _cursorRow == _lastCharRow && attaches;
 
-                // 1. Try sequential marker first
-                if (_lastCharCol >= 0 && _cursorCol >= _lastCharCol && _cursorCol <= _lastCharCol + 8)
+            try
+            {
+                if (mayAttachToPrevious)
                 {
-                    // Verify if this is a suitable base for skin tones (look back for a non-space)
-                    int searchCol = Math.Min(_cursorCol, Cols - 1);
-                    while (searchCol >= 0)
-                    {
-                        var target = _viewport[_cursorRow].Cells[searchCol];
+                    int attachCol = -1;
 
-                        if (target.IsWideContinuation || _viewport[_cursorRow].GetTextSizing(searchCol) != null) { searchCol--; continue; }
-                        if (target.HasExtendedText || (target.Character != ' ' && target.Character != '\0'))
+                    // 1. Try sequential marker first
+                    if (_lastCharCol >= 0 && _cursorCol >= _lastCharCol && _cursorCol <= _lastCharCol + 8)
+                    {
+                        // Verify if this is a suitable base for skin tones (look back for a non-space)
+                        int searchCol = Math.Min(_cursorCol, Cols - 1);
+                        while (searchCol >= 0)
                         {
-                            attachCol = searchCol;
-                            break;
-                        }
-                        searchCol--;
-                        if (searchCol < _lastCharCol - 4) break; // Don't look too far back
-                    }
-                }
+                            var target = _viewport[_cursorRow].Cells[searchCol];
 
-                // 2. Look-back fallback (only if sequential marker didn't find anything)
-                if (attachCol < 0 && _cursorCol > 0)
-                {
-                    var prev = _viewport[_cursorRow].Cells[_cursorCol - 1];
-                    if (prev.IsWideContinuation && _cursorCol > 1)
-                    {
-                        attachCol = _cursorCol - 2;
-                    }
-                    else if (prev.HasExtendedText || (prev.Character != ' ' && prev.Character != '\0'))
-                    {
-                        attachCol = _cursorCol - 1;
-                    }
-                }
-
-                // Sized attachments must update their immutable block and every piece together.
-                if (attachCol >= 0 && _viewport[_cursorRow].GetTextSizing(attachCol) == null)
-                {
-                    var row = _viewport[_cursorRow];
-                    ref var cell = ref row.Cells[attachCol];
-                    if (!cell.IsWideContinuation)
-                    {
-                        string existing = row.GetExtendedText(attachCol) ?? cell.Character.ToString();
-                        if (!UnicodeWidth.ShouldAttachToPrevious(existing, grapheme, _isAfterZwj))
-                        {
-                            goto NormalWrite;
-                        }
-
-                        // Concatenation has to allocate here regardless: the merged cluster is stored
-                        // in the side table. string.Concat(span, span) avoids the interim allocation
-                        // an implicit ToString() would add.
-                        string merged = string.Concat(existing.AsSpan(), grapheme);
-                        row.SetExtendedText(attachCol, merged);
-                        cell.HasExtendedText = true;
-                        cell.IsDirty = true; // Force redraw
-                        row.TouchRevision();
-
-                        // Re-evaluate width of the merged cluster
-                        int newWidth = GetGraphemeWidth(merged);
-                        row.NoteColumnsWritten(Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
-
-                        // ALWAYS enforce wide flag and continuation for width >= 2
-                        if (newWidth >= 2)
-                        {
-                            cell.IsWide = true;
-                            // At the last column the row holds (the page's, or a double-size row's half) there is no
-                            // cell for the second half: the glyph stays wide without one, on either kind of row.
-                            if (attachCol + 1 <= CursorRowLastColumnNoLock)
+                            if (target.IsWideContinuation || _viewport[_cursorRow].GetTextSizing(searchCol) != null) { searchCol--; continue; }
+                            if (target.HasExtendedText || (target.Character != ' ' && target.Character != '\0'))
                             {
-                                // Width expansion overwrites the adjacent cell; retire its whole sized rectangle first.
-                                int absoluteRow = TextSizingAbsoluteRow(_cursorRow);
-                                EraseTextSizingRange(attachCol + 1, attachCol + 2, absoluteRow, absoluteRow + 1);
-                                // Ensure next cell is a continuation
-                                ref var nextCell = ref row.Cells[attachCol + 1];
-                                bool expandedIntoNextCell = false;
-                                if (!nextCell.IsWideContinuation)
-                                {
-                                    SyncPackedState();
-                                    nextCell = new TerminalCell(' ', _packedFg, _packedBg, (ushort)(_packedFlags | (ushort)TerminalCellFlags.WideContinuation));
-                                    row.SetExtendedText(attachCol + 1, null); // Ensure no old text remains
-                                    row.SetHyperlink(attachCol + 1, row.GetHyperlink(attachCol));
-                                    row.SetUnderline(attachCol + 1, UnderlineForWrite); // the continuation takes the pen's flags
-                                    expandedIntoNextCell = true;
-                                }
+                                attachCol = searchCol;
+                                break;
+                            }
+                            searchCol--;
+                            if (searchCol < _lastCharCol - 4) break; // Don't look too far back
+                        }
+                    }
 
-                                // If the cursor was waiting at the next cell, and we just expanded into it, push the cursor forward.
-                                if (expandedIntoNextCell && _cursorCol == attachCol + 1)
+                    // 2. Look-back fallback (only if sequential marker didn't find anything)
+                    if (attachCol < 0 && _cursorCol > 0)
+                    {
+                        var prev = _viewport[_cursorRow].Cells[_cursorCol - 1];
+                        if (prev.IsWideContinuation && _cursorCol > 1)
+                        {
+                            attachCol = _cursorCol - 2;
+                        }
+                        else if (prev.HasExtendedText || (prev.Character != ' ' && prev.Character != '\0'))
+                        {
+                            attachCol = _cursorCol - 1;
+                        }
+                    }
+
+                    // Sized attachments must update their immutable block and every piece together.
+                    if (attachCol >= 0 && _viewport[_cursorRow].GetTextSizing(attachCol) == null)
+                    {
+                        var row = _viewport[_cursorRow];
+                        ref var cell = ref row.Cells[attachCol];
+                        if (!cell.IsWideContinuation)
+                        {
+                            string existing = row.GetExtendedText(attachCol) ?? cell.Character.ToString();
+                            if (!UnicodeWidth.ShouldAttachToPrevious(existing, grapheme, _isAfterZwj))
+                            {
+                                goto NormalWrite;
+                            }
+
+                            // Concatenation has to allocate here regardless: the merged cluster is stored
+                            // in the side table. string.Concat(span, span) avoids the interim allocation
+                            // an implicit ToString() would add.
+                            string merged = string.Concat(existing.AsSpan(), grapheme);
+                            row.SetExtendedText(attachCol, merged);
+                            cell.HasExtendedText = true;
+                            cell.IsDirty = true; // Force redraw
+                            row.TouchRevision();
+
+                            // Re-evaluate width of the merged cluster
+                            int newWidth = GetGraphemeWidth(merged);
+                            row.NoteColumnsWritten(Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
+
+                            // ALWAYS enforce wide flag and continuation for width >= 2
+                            if (newWidth >= 2)
+                            {
+                                cell.IsWide = true;
+                                // At the last column the row holds (the page's, or a double-size row's half) there is no
+                                // cell for the second half: the glyph stays wide without one, on either kind of row.
+                                if (attachCol + 1 <= CursorRowLastColumnNoLock)
                                 {
-                                    _cursorCol++;
-                                    if (_cursorCol > Cols) _cursorCol = Cols;
-                                    // On a double-size row the glyph now fills the row's last column: the cursor waits
-                                    // there to wrap, as it would had the glyph arrived wide in one piece.
-                                    int doubleRowLast = CursorRowLastColumnNoLock;
-                                    if (doubleRowLast < Cols - 1 && _cursorCol > doubleRowLast)
+                                    // Width expansion overwrites the adjacent cell; retire its whole sized rectangle first.
+                                    int absoluteRow = TextSizingAbsoluteRow(_cursorRow);
+                                    EraseTextSizingRange(attachCol + 1, attachCol + 2, absoluteRow, absoluteRow + 1);
+                                    // Ensure next cell is a continuation
+                                    ref var nextCell = ref row.Cells[attachCol + 1];
+                                    bool expandedIntoNextCell = false;
+                                    if (!nextCell.IsWideContinuation)
                                     {
-                                        _cursorCol = doubleRowLast;
-                                        _isPendingWrap = Modes.IsAutoWrapMode;
+                                        SyncPackedState();
+                                        nextCell = new TerminalCell(' ', _packedFg, _packedBg, (ushort)(_packedFlags | (ushort)TerminalCellFlags.WideContinuation));
+                                        row.SetExtendedText(attachCol + 1, null); // Ensure no old text remains
+                                        row.SetHyperlink(attachCol + 1, row.GetHyperlink(attachCol));
+                                        row.SetUnderline(attachCol + 1, UnderlineForWrite); // the continuation takes the pen's flags
+                                        expandedIntoNextCell = true;
+                                    }
+
+                                    // If the cursor was waiting at the next cell, and we just expanded into it, push the cursor forward.
+                                    if (expandedIntoNextCell && _cursorCol == attachCol + 1)
+                                    {
+                                        _cursorCol++;
+                                        if (_cursorCol > Cols) _cursorCol = Cols;
+                                        // On a double-size row the glyph now fills the row's last column: the cursor waits
+                                        // there to wrap, as it would had the glyph arrived wide in one piece.
+                                        int doubleRowLast = CursorRowLastColumnNoLock;
+                                        if (doubleRowLast < Cols - 1 && _cursorCol > doubleRowLast)
+                                        {
+                                            _cursorCol = doubleRowLast;
+                                            _isPendingWrap = Modes.IsAutoWrapMode;
+                                        }
                                     }
                                 }
                             }
                         }
+
+
+                        _isAfterZwj = EndsWithZwj(grapheme);
+                        Invalidate();
+                        return; // CRITICAL: Stop here, don't write again to current cursor
                     }
-
-
-                    _isAfterZwj = EndsWithZwj(grapheme);
-                    Invalidate();
-                    return; // CRITICAL: Stop here, don't write again to current cursor
+                } // End of attachment attempt logic
+            }
+            finally
+            {
+                if (attachAcrossWrap)
+                {
+                    _cursorRow = cursorRowBeforeAttach;
+                    _cursorCol = cursorColBeforeAttach;
+                    _isPendingWrap = pendingWrapBeforeAttach;
                 }
-            } // End of attachment attempt logic
+            }
 
             // NORMAL WRITE LOGIC:
         NormalWrite:
