@@ -25,18 +25,21 @@ as tall as the undistorted fit of a square image into the whole grid, with the c
 
 - **`tiles`**: the virtual placement alone painted nothing (the transmit and the placement answered `OK`, the target stayed blank); the cells then showed **red, blue**; erasing the screen removed the image.
 - **`cell-mapping`**: the marks, not the position, chose the tile. Swapped columns showed **blue, red**; a lone cell naming column 0, printed in the *second* cell, showed red there and nothing in the first;
-  a bare placeholder after a cell with marks inherited its row and the next column (**red, blue**).
+  a bare placeholder after a cell with marks (row 0, column 0) continued in row 0 at the next column (**red, blue**). The grid has one row, so the inheritance of a nonzero row is not measured.
 - **`unbound`**: cells naming an image that was never transmitted, a placement that does not exist, or a tile outside the 2 x 1 grid painted **nothing**; the valid cells (the positive control) then painted
   red and blue; `a=d,d=i` made those same cells paint nothing again while still on screen.
 
 ## Limits
 
 One desktop (macOS), one App build, one 16x16 image, one grid size, one cell font. Not measured: a grid whose aspect differs from the image's (where the image sits inside the grid is not asserted: only that
-every painted tile of a row agrees), image ids above 24 bits (the third diacritic), relative placements (`P=`, `Q=`), scrolling, history and reflow of placeholder cells, a palette or theme background behind the cells,
+every painted tile of a row agrees), image ids above 24 bits (the third diacritic), the inheritance of a nonzero row, relative placements (`P=`, `Q=`), scrolling, history and reflow of placeholder cells, a palette or theme background behind the cells,
 text selection and copy, a second client, remote sessions, other platforms, and a restart or reattach with placeholders on screen (persistent tab). Unit tests pin several of those (`KittyUnicodePlaceholderTests`,
 `PersistentKittyPlaceholderTests`); they are not desktop measurements. No stock grade, Core score or common-harness comparison changes.
 
 ## Retained evidence and the earlier attempt
+
+The measured App is commit `8a2eb295` and the measured scripts are `c46e42c7`; later commits are publication, docs and test pins, and merges of main. A merge of main can change VT sources the run captured (the double-size line re-wrap, for one, touched
+`TerminalBuffer.WritePath.cs`), so the tree these files ship in is not the measured App: the claim is about the measured commits.
 
 `2026-11-19-kitty-placeholders-direct/` (ordinary tab) and `2026-11-19-kitty-placeholders/` (persistent tab) each hold the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy and the
 generated `summary.json` and `report.json`. The ordinary-tab directory also keeps `superseded-attempts/`: its first collection failed after two stages because the image carrier required the cell grid to stay the blank bound screen,

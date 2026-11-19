@@ -108,7 +108,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `osc22` | 1 | v1 | passed | 75 | `de218cd7` | v68 | 23 | `6c7e4a8b` |
 | `font-size` | 2 | v1 | passed | 76 | `cb745f6e` | v69 | 7 | `6303c15c` |
 | `kitty-animation` | 1 | v2 | passed | 71 | `cf59628f` | v64 | 34 | `816430bc` |
-| `kitty-placeholders` | 1 | v1 | passed | 1 | `8a2eb295` | v70 | 10 | `9639aaa3` |
+| `kitty-placeholders` | 1 | v1 | passed | 1 | `8a2eb295` | v70 | 10 | `1a163507` |
 | `cell-size` | 2 | v1 | passed | 71 | `8da07482` | v64 | 5 | `09930f53` |
 | `osc3008` | 1 | v1 | passed | 73 | `93b6bff1` | v66 | 5 | `65d98f5f` |
 | `caps` | 1 | v1 | passed | 77 | `6d9cac77` | v70 | 4 | `c802644e` |

@@ -4134,8 +4134,8 @@
       ],
       "evidence": {
         "files": 10,
-        "bytes": 2217789,
-        "sha256": "9639aaa3ab64e7b0a8a9d204d6b54609fd0ea1dd9cdb5756cf5b758c586bffd1"
+        "bytes": 2217890,
+        "sha256": "1a163507a69331645a8b76ea066f797231a8504fafc6c18cc89b20ac4d5e27bc"
       },
       "receipt": {
         "schemaVersion": 1,
@@ -4162,7 +4162,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/kitty-placeholders-publication.test.mjs",
-        "testSha256": "1fd077afefd494753eea4a528f3fa644a261cd2edf22b0e253d9447b28d91f22"
+        "testSha256": "42d1ddd06ee635e0bcde92dfe852e6c986db94a6e6704b58dec3ee053bb42c66"
       }
     },
     {

@@ -17,7 +17,8 @@ export const directPlaceholdersReceiptSuiteId = 'ntilde-owned-kitty-placeholders
 export { pinnedBundleArchive, upstreamBundleSha256 } from './kitty-animation-qualification.mjs';
 export { kittyPlaceholdersQualificationIds, pinnedPlaceholdersSpanDigests } from './kitty-animation-qualification.mjs';
 // Measured on the committed tree named here: the Release sidecar was built from the App at this commit and the measured scripts are its tree
-// (later commits are publication, docs, test pins and merges of main only). The App tree is unchanged between the two commits: the sidecar was built at the first and the second only changed measured scripts.
+// (later commits are publication, docs, test pins and merges of main; a merge of main can change VT sources the run captured, so the tree this publication ships in is not the measured App). The App tree is unchanged between the
+// two commits: the sidecar was built at the first and the second only changed measured scripts.
 export const measuredAppRevision = '8a2eb2952a7b965c101580093607d3f2681b7932';
 export const measuredScriptsRevision = 'c46e42c786fc0646443b6d913771c86050b49da5';
 // Both publications were collected on the same sidecar and the same scripts, one after the other.
@@ -33,7 +34,7 @@ const suiteId = animationSuiteIds[version], policy = ownedAnimationPolicies[vers
 const effectStatement = tab => `In ${tab}, Kitty Unicode placeholders behave as the Kitty protocol specifies, read by paired offscreen captures of one row of two cells: a transmitted 16x16 image (left half red, right half blue) with a virtual placement `
     + '(a=p,U=1) of a 2 x 1 grid draws nothing by itself; cells printing U+10EEEE whose foreground colour names the image, whose underline colour names the placement and whose row and column diacritics name tiles (0,0) and (0,1) show '
     + 'the red half and then the blue half, each tile an undistorted band of its own color; erasing the cells removes the image; the diacritics and not the screen position choose the tile (swapped columns swap the colors, '
-    + 'and a lone cell naming column 0 shows the red half wherever it is printed); a cell without diacritics inherits its row and the next column from the placeholder cell to its left; cells naming an image that was never transmitted, '
+    + 'and a lone cell naming column 0 shows the red half wherever it is printed); a bare placeholder after a cell with marks (row 0, column 0) continues in row 0 at the next column (inheritance of a nonzero row is not measured: the grid has one row); cells naming an image that was never transmitted, '
     + 'a placement that does not exist, or a tile outside the grid paint nothing while the valid cells (the positive control) do, and deleting the image\'s placements (a=d,d=i) makes those same cells paint nothing again. '
     + 'Every command that expects a Kitty reply returned OK (the virtual placement\'s reply echoes its placement id), and each clear passed its fence and left its target blank (a=d success is silent).';
 const effectContractOf = (id, tab) => Object.freeze({ id, version: 1, carrierCases: Object.freeze(animationCasesByVersion[version].map(item => item.id)), statement: effectStatement(tab),
@@ -43,7 +44,7 @@ const effectContractOf = (id, tab) => Object.freeze({ id, version: 1, carrierCas
 export const placeholdersEffectContract = effectContractOf('ntilde-kitty-unicode-placeholders-persistent-effect-v1', 'a persistent tab (persistent image policy 5)');
 export const directPlaceholdersEffectContract = effectContractOf('ntilde-kitty-unicode-placeholders-direct-effect-v1', 'an ordinary (non-persistent) tab');
 
-const notMeasured = remote => 'a grid whose aspect differs from the image\'s (where the image sits inside the grid is not specified here), ids above 24 bits (the third diacritic), relative placements (P=, Q=), scrolling, '
+const notMeasured = remote => 'a grid whose aspect differs from the image\'s (where the image sits inside the grid is not specified here), ids above 24 bits (the third diacritic), the inheritance of a nonzero row, relative placements (P=, Q=), scrolling, '
     + `history and reflow of placeholder cells, a palette or theme background behind the cells, text selection and copy, a second client, remote ${remote}sessions, other platforms`;
 /** What differs between the two kinds of tab the suite is collected in. */
 const variants = Object.freeze({
@@ -59,11 +60,22 @@ const variants = Object.freeze({
             + `the retained bundle and stay inconclusive by design. Not measured: a persistent tab in this publication (see the persistent one), ${notMeasured('')}.` }),
 });
 
-/** The shared persistent-suite verification, then the placeholder suite's own: one App process, the very one the launch proof names, and no relaunch. */
+/**
+ * The shared persistent-suite verification, then the placeholder suite's own: one App process, the very one the launch proof names, and no relaunch; every observation bound to the complete
+ * identities the launch proof recorded for the App and the worker (process, parent, user, terminal, executable); and the source snapshot's removal bound to the tree this run measured and
+ * dated after cleanup.
+ */
 export function verifyPlaceholdersRun(dir, kind = 'persistent') {
     const { scope, receiptSuiteId, noun } = variants[kind];
     const run = verifyPersistentSuiteRun(dir, { scope, receiptSuiteId, version, suiteId, policy, noun });
-    check(!run.original.relaunches && run.frames.every(frame => frame.ownership.app.pid === run.original.app.pid), 'a stage was observed under an App process other than the launched one, or the run relaunched it');
+    const { original, context, proof, frames } = run;
+    check(!original.relaunches && frames.every(frame => frame.ownership.app.pid === original.app.pid), 'a stage was observed under an App process other than the launched one, or the run relaunched it');
+    const sameProcess = (seen, recorded) => ['pid', 'ppid', 'uid', 'tty', 'executable'].every(key => seen[key] === recorded[key]);
+    check(original.app.executable === context.executable && frames.every(frame => sameProcess(frame.ownership.app, original.app) && sameProcess(frame.ownership.worker, original.worker)),
+        'an observation is not bound to the launched App and its worker as the launch proof recorded them');
+    const removal = proof.sourceSnapshot;
+    check(removal.policy === context.sourceSnapshotPolicy && removal.root === context.sourceSnapshotRoot && Date.parse(removal.removedAt) >= Date.parse(proof.cleanedUpAt),
+        'the source snapshot removal is not the one of the measured tree, or predates cleanup');
     return run;
 }
 

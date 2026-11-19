@@ -139,6 +139,14 @@ for (const variant of variants) describe(`placeholders publication: ${variant.la
         // The launch proof's own identities are what every observation is held to: a foreign App executable, or a worker whose parent is another process, is refused in either kind of tab.
         refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].app.executable = '/foreign/Ntilde'; }), /launched executable|not bound to the launched App|not a child of the recorded daemon|launched executable serving/);
         refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].worker.ppid = 1; }), /not bound to the launched App|not a child of the recorded daemon/);
+        // Every observation is held to the complete identities the launch proof recorded, not only to a process id: a foreign worker executable, another user or another terminal, re-bound to the receipt, is refused.
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].worker.executable = '/foreign/node'; }), /not bound to the launched App/);
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].app.uid += 1; }), /not bound to the launched App|not a child of the recorded daemon/);
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].worker.tty = 'ttys999'; }), /not bound to the launched App/);
+        // The source snapshot removal must be the one of the measured tree and come after cleanup.
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.root = '/tmp/some-other-tree'; }), /source snapshot removal/);
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.policy = 'readonly-owned-source-graph-v1'; }), /source snapshot removal/);
+        refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.removedAt = new Date(Date.parse(proof.cleanedUpAt) - 1000).toISOString(); }), /predates cleanup/);
         refuses(context => rebind(context, 'context.json', value => { value.collectionScope = { ...value.collectionScope, suiteVersion: 4 }; }), /declare the persistent .*scope/);
         refuses(context => {
             rebind(context, 'initial-settings.json', settings => { settings.SessionPersistence = variant.daemon ? 'Off' : 'KeepOnClose'; });
