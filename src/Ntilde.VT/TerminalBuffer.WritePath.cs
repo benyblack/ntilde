@@ -157,7 +157,7 @@ namespace Ntilde.VT
             if (!reverseWrap || _cursorRow <= 0 || _cursorRow >= Rows) return false;
             bool inRegion = _cursorRow >= ScrollTop && _cursorRow <= ScrollBottom;
             if (_cursorRow <= (inRegion ? ScrollTop : 0)) return false;
-            if (!_viewport[_cursorRow - 1].IsWrapped) return false;
+            if (!_viewport[_cursorRow - 1].IsWrapped || IsDoubleHeight(_viewport[_cursorRow - 1].LineSize)) return false;
 
             _cursorRow--;
             _cursorCol = RightMargin;

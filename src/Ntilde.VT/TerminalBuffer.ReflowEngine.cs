@@ -520,6 +520,8 @@ namespace Ntilde.VT
                     bool doublePaired = false;
                     bool doubleLastWrapped = false;
                     bool doubleTopWrapped = false;
+                    bool mainSavedWaitsAtDoubleRowEnd = false;
+                    bool altSavedWaitsAtDoubleRowEnd = false;
 
                     // Whether the next physical row carries on the double-size line being assembled, and in which
                     // half: -1 when it starts a line of its own. A row continues the row before it only through a
@@ -558,8 +560,10 @@ namespace Ntilde.VT
                                     len = scan + 1;
                                 }
                             }
-                            // Blank cells up to the cursor or a shell mark are kept, as on an ordinary line.
+                            // Blank cells up to the cursor, a saved cursor or a shell mark are kept, so each stays on its column.
                             if (phys == absCursorPhysicalIdx) len = Math.Max(len, Math.Min(_cursorCol, lastCol));
+                            if (phys == absMainSavedIdx) len = Math.Max(len, Math.Min(_savedCursors.Main.Col, lastCol));
+                            if (phys == absAltSavedIdx) len = Math.Max(len, Math.Min(_savedCursors.Alt.Col, lastCol));
                             if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark csPad) len = Math.Max(len, Math.Min(csPad.Column, lastCol + 1));
                             if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark osPad) len = Math.Max(len, Math.Min(osPad.Column, lastCol + 1));
                             len = Math.Min(len, row.Cells.Length);
@@ -652,8 +656,8 @@ namespace Ntilde.VT
                             switch (kind)
                             {
                                 case 0: newCursorPhysRow = flowRow; newCursorPhysCol = col; _cursorWaitsAtDoubleRowEnd = pastLastColumn; break;
-                                case 1: newMainSavedPhysRow = flowRow; newMainSavedPhysCol = col; break;
-                                case 2: newAltSavedPhysRow = flowRow; newAltSavedPhysCol = col; break;
+                                case 1: newMainSavedPhysRow = flowRow; newMainSavedPhysCol = col; mainSavedWaitsAtDoubleRowEnd = pastLastColumn; break;
+                                case 2: newAltSavedPhysRow = flowRow; newAltSavedPhysCol = col; altSavedWaitsAtDoubleRowEnd = pastLastColumn; break;
                                 case 3: newCommandStartPhysRow = flowRow; newCommandStartPhysCol = col; break;
                                 case 4: newOutputStartPhysRow = flowRow; newOutputStartPhysCol = col; break;
                                 default: imagePlacements.Add((image!, flowRow, Math.Min(col, newCols - 1))); break;
@@ -1206,12 +1210,14 @@ namespace Ntilde.VT
                         if (newMainSavedPhysRow < sbCount) _savedCursors.Main.Row = 0;
                         else _savedCursors.Main.Row = newMainSavedPhysRow - sbCount;
                         _savedCursors.Main.Col = Math.Clamp(newMainSavedPhysCol, 0, newCols);
+                        if (mainSavedWaitsAtDoubleRowEnd) _savedCursors.Main.IsPendingWrap = true;
                     }
                     if (newAltSavedPhysRow != -1)
                     {
                         if (newAltSavedPhysRow < sbCount) _savedCursors.Alt.Row = 0;
                         else _savedCursors.Alt.Row = newAltSavedPhysRow - sbCount;
                         _savedCursors.Alt.Col = Math.Clamp(newAltSavedPhysCol, 0, newCols);
+                        if (altSavedWaitsAtDoubleRowEnd) _savedCursors.Alt.IsPendingWrap = true;
                     }
 
                     // 8. Conditional Cursor Row Clearing (REFINED)

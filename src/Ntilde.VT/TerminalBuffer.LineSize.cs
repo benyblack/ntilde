@@ -10,6 +10,27 @@ public partial class TerminalBuffer
     /// <summary>The columns a row with <paramref name="size"/> holds on a page <paramref name="cols"/> wide.</summary>
     public static int ColumnsForLineSize(LineSize size, int cols) => size == LineSize.SingleWidth ? cols : Math.Max(1, cols / 2);
 
+    private static bool IsDoubleHeight(LineSize size) => size is LineSize.DoubleHeightTop or LineSize.DoubleHeightBottom;
+
+    /// <summary>
+    /// The pairs of rows a double-height line spans from <paramref name="absRow"/>, or 0 when that row does not start
+    /// one. A resize re-wraps the two halves side by side and lays them out top, bottom, top, bottom, each pair but
+    /// the last with the wrap bit set on both rows: the top half reads down the even rows, the bottom half down the odd ones.
+    /// </summary>
+    private int DoubleHeightLinePairsAt(int absRow, int totalRows)
+    {
+        int pairs = 0;
+        while (absRow + 1 < totalRows
+            && GetLineSizeAbsolute(absRow) == LineSize.DoubleHeightTop
+            && GetLineSizeAbsolute(absRow + 1) == LineSize.DoubleHeightBottom)
+        {
+            pairs++;
+            if (!IsRowWrapFlagSetAbsolute(absRow) || !IsRowWrapFlagSetAbsolute(absRow + 1)) break;
+            absRow += 2;
+        }
+        return pairs;
+    }
+
     /// <summary>The last column the cursor row holds: the page's last column, or the last of the left half on a double-size row.</summary>
     private int CursorRowLastColumnNoLock
         => _cursorRow >= 0 && _cursorRow < Rows && _viewport[_cursorRow].LineSize != LineSize.SingleWidth

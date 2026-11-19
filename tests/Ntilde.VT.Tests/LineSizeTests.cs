@@ -310,6 +310,38 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Search_reads_each_half_of_a_re_wrapped_double_height_line_as_one_line()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef\r\nafter");
+        buffer.Resize(6, 8);
+        Assert.Equal(2, buffer.FindMatches("abcdef", false, true).Count);
+        Assert.Empty(buffer.FindMatches("abcabc", false, true));
+        Assert.False(IsWrapped(buffer, 0)); // the row below is the other half, not a continuation
+    }
+
+    [Fact]
+    public void A_saved_cursor_past_the_text_of_a_double_line_keeps_its_column_through_a_widening()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}a{Esc}[1;5H{Esc}7{Esc}[3;1H");
+        buffer.Resize(20, 6);
+        parser.Process($"{Esc}8");
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(4, buffer.CursorCol);
+    }
+
+    [Fact]
+    public void A_saved_cursor_after_the_text_does_not_overwrite_it_once_the_re_wrap_fills_its_row()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abcd{Esc}7{Esc}[5;1H");
+        buffer.Resize(4, 6);
+        parser.Process($"{Esc}8X");
+        Assert.Equal(new[] { "ab", "cd", "X" }, Lines(buffer).Take(3));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

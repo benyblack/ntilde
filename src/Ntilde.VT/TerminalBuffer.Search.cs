@@ -46,19 +46,40 @@ public partial class TerminalBuffer
             var text = new StringBuilder(Cols);
             var columns = new List<SearchColumn>(Cols);
             var rows = new List<SearchRow>();
-            for (int row = 0; row < totalRows; row++)
+            bool SearchAssembledLine()
             {
-                bool wrapped = AppendSearchRow(row, history, text, columns, rows, pattern.SizedEnds);
-                if (wrapped && row + 1 < totalRows) continue;
-                if (!SearchLogicalLine(pattern, text.ToString(), columns, rows, matches))
-                {
-                    matches.Clear();
-                    return matches;
-                }
+                bool completed = SearchLogicalLine(pattern, text.ToString(), columns, rows, matches);
                 text.Clear();
                 columns.Clear();
                 rows.Clear();
                 pattern.SizedEnds?.Clear();
+                return completed;
+            }
+
+            for (int row = 0; row < totalRows; row++)
+            {
+                // A double-height line re-wrapped by a resize: each half is one logical line, on every other row.
+                int pairs = DoubleHeightLinePairsAt(row, totalRows);
+                if (pairs > 1)
+                {
+                    for (int half = 0; half < 2; half++)
+                    {
+                        for (int pair = 0; pair < pairs; pair++) AppendSearchRow(row + pair * 2 + half, history, text, columns, rows, pattern.SizedEnds);
+                        if (SearchAssembledLine()) continue;
+                        matches.Clear();
+                        return matches;
+                    }
+                    row += pairs * 2 - 1;
+                    continue;
+                }
+
+                bool wrapped = AppendSearchRow(row, history, text, columns, rows, pattern.SizedEnds) && !IsDoubleHeight(GetLineSizeAbsolute(row));
+                if (wrapped && row + 1 < totalRows) continue;
+                if (!SearchAssembledLine())
+                {
+                    matches.Clear();
+                    return matches;
+                }
             }
         }
         finally { Lock.ExitReadLock(); }
