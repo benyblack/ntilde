@@ -7,6 +7,7 @@ namespace Ntilde.VT
         private TerminalBuffer _buffer;
         private enum State { Normal, Esc, Csi, Osc, OscEsc, Dcs, DcsEsc, Charset, Apc, ApcEsc, EscHash }
         private State _state = State.Normal;
+        private bool _escapeSpacePending;
 
         // Flag to swallow a single newline after an inline image (common in scripts)
         private bool _swallowNextNewline;
@@ -578,6 +579,29 @@ namespace Ntilde.VT
             return false;
         }
 
+        /// <summary>Consumes ESC SP sequences, including S7C1T and S8C1T. Returns true to reprocess a non-ASCII character.</summary>
+        private bool ConsumeEscapeSpace(char c)
+        {
+            switch (c)
+            {
+                case '\x1b':
+                    _escapeSpacePending = false;
+                    return false;
+                case '\x18' or '\x1a':
+                    break; // CAN/SUB cancel the sequence.
+                case < '\x20':
+                    ExecuteC0Control(c);
+                    return false;
+                case <= '\x2f' or '\x7f':
+                    return false; // Additional intermediates and DEL.
+            }
+
+            _escapeSpacePending = false;
+            _state = State.Normal;
+            // ASCII finals are consumed. A non-ASCII character belongs back in the normal parser.
+            return c > '\x7f';
+        }
+
         public void Process(string input)
         {
             if (string.IsNullOrEmpty(input)) return;
@@ -646,6 +670,12 @@ namespace Ntilde.VT
                                 break;
 
                             case State.Esc:
+                                if (_escapeSpacePending)
+                                {
+                                    reprocessCurrent = ConsumeEscapeSpace(c);
+                                    break;
+                                }
+
                                 if (TryHandle7BitC1(c))
                                 {
                                     break;
@@ -703,6 +733,11 @@ namespace Ntilde.VT
                                         _ => 0,
                                     };
                                     _state = State.Charset;
+                                }
+                                else if (c == ' ')
+                                {
+                                    _escapeSpacePending = true;
+                                    _lastGraphicChar = null;
                                 }
                                 else if (c == '#')
                                 {

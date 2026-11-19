@@ -38,6 +38,10 @@ namespace Ntilde.VT
         /// <summary>Escape state-machine position, as the ordinal of <c>AnsiParser.State</c>.</summary>
         [JsonPropertyName("state")] public int State { get; set; }
 
+        /// <summary>ESC has a space intermediate and is waiting for its final byte.</summary>
+        [JsonPropertyName("esc_space"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool EscapeSpacePending { get; set; }
+
         /// <summary>The live CSI parameter/intermediate run, empty when not inside a CSI.</summary>
         [JsonPropertyName("csi")] public string CsiParams { get; set; } = string.Empty;
 
@@ -130,7 +134,7 @@ namespace Ntilde.VT
         public string ToDebugString()
         {
             var sb = new StringBuilder();
-            sb.Append("state=").Append(State);
+            sb.Append("state=").Append(State).Append(" esc_space=").Append(EscapeSpacePending);
             sb.Append(" csi=").Append(CsiParams).Append(" trunc=").Append(CsiTruncated);
             sb.Append(" osc=").Append(OscBuffer);
             sb.Append(" apc=").Append(ApcBuffer);
