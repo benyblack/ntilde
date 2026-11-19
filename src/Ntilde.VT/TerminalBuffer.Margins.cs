@@ -39,10 +39,12 @@ public partial class TerminalBuffer
     private TerminalCell ThemeBlankCell() => new(' ', Theme.Foreground, Theme.Background, false, false, true, true);
 
     /// <summary>
-    /// The blank a scroll, an insertion or a deletion of lines brings in: a space with the active background (background color erase, as ED, EL and ECH fill). With the default background this is the
-    /// same cell as <see cref="ThemeBlankCell"/>, so nothing changes until a program sets one.
+    /// The blank a scroll, an insertion or a deletion of lines brings in: a space with the active background (background color erase, as ED, EL and ECH fill). The foreground stays the default one, since
+    /// a space shows none, and so that with the default background this is exactly <see cref="ThemeBlankCell"/>: a cell the row still recognises as unused padding (<see cref="TerminalRow.IsWrapPaddingCell"/>).
     /// </summary>
-    private TerminalCell ActiveBlankCell() => new(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, fgIdx: CurrentFgIndex, bgIdx: CurrentBgIndex);
+    private TerminalCell ActiveBlankCell() => IsDefaultBackground
+        ? ThemeBlankCell()
+        : new(' ', Theme.Foreground, CurrentBackground, false, false, true, false, bgIdx: CurrentBgIndex);
 
     private void ResetHorizontalMarginsNoLock()
     {

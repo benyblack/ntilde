@@ -181,4 +181,30 @@ public sealed class ScrollBackgroundColorEraseTests
             Assert.True(cell.IsDefaultForeground);
         }
     }
+
+    [Fact]
+    public void A_foreground_colour_alone_does_not_change_the_default_blank_a_scroll_brings_in()
+    {
+        var buffer = new TerminalBuffer(10, 6);
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
+        Seed(parser);
+        parser.Process($"{Esc}[31;1;4m{Esc}[6;1H\n");
+        var reference = Cell(new TerminalBuffer(10, 6), 5, 0);
+        for (int col = 0; col < 10; col++)
+        {
+            var cell = Cell(buffer, 5, col);
+            Assert.Equal(reference.Flags & ~(int)TerminalCellFlags.Dirty, cell.Flags & ~(int)TerminalCellFlags.Dirty); // still unused padding, not a styled blank
+            Assert.True(cell.IsDefaultForeground);
+            Assert.True(cell.IsDefaultBackground);
+        }
+
+        // With a background the foreground is still the default one: a space shows none.
+        parser.Process($"{Esc}[44m\n");
+        for (int col = 0; col < 10; col++)
+        {
+            var cell = Cell(buffer, 5, col);
+            Assert.True(cell.IsDefaultForeground);
+            Assert.Equal(4, cell.BgIndex);
+        }
+    }
 }
