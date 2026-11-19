@@ -18,6 +18,7 @@ namespace Ntilde.VT
                 SixelCellWidthPx = size?.WidthPx,
                 SixelCellHeightPx = size?.HeightPx,
                 State = (int)_state,
+                EscapeSpacePending = _escapeSpacePending,
                 CsiParams = new string(_paramBuffer, 0, _paramLen),
                 CsiTruncated = _csiTruncated,
                 OscBuffer = new string(_oscStringBuffer.ToArray()),
@@ -72,6 +73,7 @@ namespace Ntilde.VT
             ImportContexts(state.ContextStack, state.EndedContexts);
 
             _state = (State)state.State;
+            _escapeSpacePending = _state == State.Esc && state.EscapeSpacePending;
 
             // The counts half of StateTransferValidation's rule: a parameter run longer than this
             // build's cap is truncated exactly where the accumulation path would have truncated
