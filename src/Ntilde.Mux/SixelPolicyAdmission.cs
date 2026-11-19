@@ -49,6 +49,9 @@ internal static class ImagePolicyAdmission
         // A snapshot with frames is only restorable under a policy that retains them: a peer whose policy predates animation would show a still image.
         if (!PersistentImagePolicy.AllowsAnimation(sessionPolicy) && snapshot.KittyImages is { } kitty && kitty.Exists(image => image?.Animation is not null))
             throw new MuxProtocolException(MuxErrorCodes.VersionMismatch, "A snapshot carries animation its session's image policy does not allow.");
+        // Virtual placements are the grids placeholder cells are fitted into: a peer whose policy predates them would show the cells without their image.
+        if (!PersistentImagePolicy.AllowsPlaceholders(sessionPolicy) && snapshot.KittyImages is { } placeholders && placeholders.Exists(image => image?.VirtualPlacements is not null))
+            throw new MuxProtocolException(MuxErrorCodes.VersionMismatch, "A snapshot carries Unicode placeholders its session's image policy does not allow.");
     }
 }
 

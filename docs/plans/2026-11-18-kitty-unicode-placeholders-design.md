@@ -58,7 +58,7 @@ Not in PR A: persistent sessions. Under a persistent-session policy that retains
 (`RetainImageSources`), `U=1` answers `ENOTSUP` and the feature query `ERR` until PR B,
 because a snapshot cannot yet carry virtual placements.
 
-## PR B: persistent sessions
+## PR B: persistent sessions (implemented)
 
 Image policy 5 (`PlaceholderImagesVersion`): the daemon and every client parse the same
 bytes, so each holds the same virtual placements; snapshots add them next to the retained

@@ -73,10 +73,17 @@ public partial class TerminalBuffer
                 Data = source.Data?.ToArray() ?? [], // a copy: the snapshot must not alias live retained bytes
                 SourceOrder = OrderOf(evictionOrder, source),
                 Animation = ExportKittyAnimation(asset, evictionOrder),
+                VirtualPlacements = ExportKittyVirtualPlacements(asset),
             });
         }
         return exported;
     }
+
+    /// <summary>The asset's virtual placements in the order they were made (the oldest is evicted first), or null when it has none.</summary>
+    private static List<TerminalKittyVirtualPlacementState>? ExportKittyVirtualPlacements(KittyImageAsset asset) =>
+        asset.VirtualPlacements.Count == 0
+            ? null
+            : asset.VirtualPlacements.Select(item => new TerminalKittyVirtualPlacementState { Placement = item.PlacementId, Columns = item.Columns, Rows = item.Rows }).ToList();
 
     /// <summary>
     /// The longest elapsed time a snapshot may carry for an animation's current frame (about 35 years). A headless daemon never advances a playhead, so a long-lived
@@ -230,6 +237,21 @@ public partial class TerminalBuffer
         var state = StateTransferValidation.RequirePresent(image, KittyImageWhat);
         ValidateKittyImageBytes(state, ref inflated);
         if (state.Animation is { } animation) ValidateKittyAnimation(state, animation, ref inflated);
+        if (state.VirtualPlacements is { } placements) ValidateKittyVirtualPlacements(placements);
+    }
+
+    /// <summary>Virtual placements a correct exporter could have made: at most the per-image maximum, each grid within the 1-200 a placement command is clamped to, one per id.</summary>
+    private static void ValidateKittyVirtualPlacements(List<TerminalKittyVirtualPlacementState> placements)
+    {
+        const string what = "Kitty virtual placements";
+        if (placements.Count is < 1 or > MaxKittyVirtualPlacements) throw StateTransferValidation.Reject(what, "an image carries between one and the maximum number");
+        var seen = new HashSet<uint>();
+        foreach (TerminalKittyVirtualPlacementState? candidate in placements)
+        {
+            TerminalKittyVirtualPlacementState placement = StateTransferValidation.RequirePresent(candidate, "Kitty virtual placement");
+            if (placement.Columns is < 1 or > MaxKittyVirtualGrid || placement.Rows is < 1 or > MaxKittyVirtualGrid) throw StateTransferValidation.Reject(what, "a grid outside the size a command can ask for");
+            if (!seen.Add(placement.Placement)) throw StateTransferValidation.Reject(what, "one id names two placements of one image");
+        }
     }
 
     /// <summary>The frames and playback state of an animated image: counts, indices and every packed frame checked against the image's own size, inflating nothing.</summary>
@@ -577,6 +599,8 @@ public partial class TerminalBuffer
                 Encoding = new KittyImageEncoding(state.Format, state.Compressed, state.RawWidth, state.RawHeight),
             };
             if (state.Animation is not null) RestoreKittyAnimation(asset, state.Animation, frameSources[i]);
+            foreach (TerminalKittyVirtualPlacementState placement in state.VirtualPlacements ?? [])
+                asset.VirtualPlacements.Add(new KittyVirtualPlacement(placement.Placement, placement.Columns, placement.Rows));
             _kittyImageAssets.Add(asset);
             assets.Add(asset);
         }
