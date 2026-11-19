@@ -25,6 +25,13 @@ public sealed class LineSizeTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    private static string AllText(TerminalBuffer buffer)
+    {
+        buffer.Lock.EnterReadLock();
+        try { return string.Join("\n", Enumerable.Range(0, buffer.TotalLines).Select(row => string.Concat(Enumerable.Range(0, buffer.Cols).Select(col => buffer.GetCellAbsolute(col, row).Character)).TrimEnd())); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     private static bool IsWrapped(TerminalBuffer buffer, int absRow)
     {
         buffer.Lock.EnterReadLock();
@@ -228,15 +235,91 @@ public sealed class LineSizeTests
     }
 
     [Fact]
-    public void A_page_narrower_than_a_double_lines_text_cuts_it_at_the_page_width()
+    public void A_page_narrower_than_a_double_lines_text_wraps_it_into_double_rows_and_widening_rejoins_them()
     {
-        // Recorded decision: a double-size line is a fixed row, not reflowed, so this is the one resize that loses text.
-        var (buffer, parser) = Create();
+        var (buffer, parser) = Create(rows: 8);
         parser.Process(Dwl + "abcde\r\nplain text");
-        buffer.Resize(4, 4);
-        buffer.Resize(10, 4);
-        Assert.Contains("abcd", Lines(buffer));
-        Assert.Contains(LineSize.DoubleWidth, AllSizes(buffer));
+        buffer.Resize(4, 8);
+        Assert.Equal(new[] { "ab", "cd", "e", "plai", "n te", "xt", "", "" }, Lines(buffer));
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer).Take(4));
+        Assert.True(IsWrapped(buffer, 0));
+        Assert.True(IsWrapped(buffer, 1));
+        Assert.False(IsWrapped(buffer, 2));
+        buffer.Resize(10, 8);
+        Assert.Equal(new[] { "abcde", "plain text", "", "", "", "", "", "" }, Lines(buffer));
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer).Take(2));
+        Assert.False(IsWrapped(buffer, 0));
+    }
+
+    [Fact]
+    public void A_double_height_line_re_wraps_with_each_top_half_straight_above_its_bottom_half()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef\r\nafter");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { "abc", "abc", "def", "def", "after", "", "", "" }, Lines(buffer));
+        Assert.Equal(
+            new[] { LineSize.DoubleHeightTop, LineSize.DoubleHeightBottom, LineSize.DoubleHeightTop, LineSize.DoubleHeightBottom, LineSize.SingleWidth },
+            Sizes(buffer).Take(5));
+        buffer.Resize(12, 8);
+        Assert.Equal(new[] { "abcdef", "abcdef", "after", "", "", "", "", "" }, Lines(buffer));
+        Assert.Equal(new[] { LineSize.DoubleHeightTop, LineSize.DoubleHeightBottom, LineSize.SingleWidth }, Sizes(buffer).Take(3));
+    }
+
+    [Fact]
+    public void Two_double_width_lines_one_under_the_other_stay_two_lines_through_a_resize()
+    {
+        var (buffer, parser) = Create(rows: 8);
+        parser.Process($"{Dwl}one\r\n{Dwl}two");
+        buffer.Resize(4, 8);
+        buffer.Resize(20, 8);
+        Assert.Equal(new[] { "one", "two" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_wide_glyph_that_does_not_fit_the_narrower_half_moves_to_the_next_row_whole()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "ab\u6f22");
+        buffer.Resize(6, 6);
+        Assert.Equal(new[] { "ab", "\u6f22" }, Lines(buffer).Take(2));
+        buffer.Resize(10, 6);
+        Assert.Equal("ab\u6f22", Lines(buffer)[0]);
+    }
+
+    [Fact]
+    public void The_cursor_stays_on_its_character_when_a_double_line_re_wraps()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "abcde");
+        buffer.Resize(6, 6);
+        parser.Process("X");
+        Assert.Equal(new[] { "abc", "deX" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_cursor_after_the_text_waits_at_the_last_column_when_the_re_wrap_fills_its_row()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "abcd");
+        buffer.Resize(4, 6);
+        Assert.Equal(1, buffer.CursorRow);
+        Assert.Equal(1, buffer.CursorCol);
+        parser.Process("X");
+        Assert.Equal(new[] { "ab", "cd", "X" }, Lines(buffer).Take(3));
+    }
+
+    [Fact]
+    public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 2);
+        parser.Process(Dwl + "abcdefgh\r\n1\r\n2\r\n3");
+        buffer.Resize(8, 2);
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, AllSizes(buffer).Take(3));
+        buffer.Resize(20, 6);
+        Assert.Equal(LineSize.DoubleWidth, AllSizes(buffer)[0]);
+        Assert.Equal(LineSize.SingleWidth, AllSizes(buffer)[1]);
+        Assert.Contains("abcdefgh", AllText(buffer));
     }
 
     [Fact]
@@ -526,16 +609,21 @@ public sealed class LineSizeTests
     [Theory]
     [InlineData(20)]
     [InlineData(6)]
-    public void A_width_change_keeps_a_double_size_line_as_one_unreflowed_row(int newCols)
+    public void A_width_change_re_wraps_a_double_size_line_at_half_the_new_width(int newCols)
     {
         var (buffer, parser) = Create();
         parser.Process($"plain\r\n{Dwl}abcde\r\nafter");
         buffer.Resize(newCols, 4);
-        Assert.Equal(new[] { LineSize.SingleWidth, LineSize.DoubleWidth, LineSize.SingleWidth, LineSize.SingleWidth }, Sizes(buffer));
-        string[] lines = Lines(buffer);
-        Assert.Equal("plain", lines[0]);
-        Assert.Equal("abcde", lines[1]); // the cells are kept; a narrower page shows fewer of them
-        Assert.Equal("after", lines[2]);
+        if (newCols == 20)
+        {
+            Assert.Equal(new[] { LineSize.SingleWidth, LineSize.DoubleWidth, LineSize.SingleWidth, LineSize.SingleWidth }, Sizes(buffer));
+            Assert.Equal(new[] { "plain", "abcde", "after", "" }, Lines(buffer));
+        }
+        else
+        {
+            Assert.Equal(new[] { LineSize.SingleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer));
+            Assert.Equal(new[] { "plain", "abc", "de", "after" }, Lines(buffer));
+        }
         parser.Process($"{Esc}[2;1H{Esc}[99C");
         Assert.Equal(newCols / 2 - 1, buffer.CursorCol);
     }

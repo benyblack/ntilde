@@ -31,6 +31,9 @@ namespace Ntilde.VT
             private readonly long _maxScrollbackBytes;
             private int _cursorRow;
             private int _cursorCol;
+            // The cursor stood after the last character of a double-size line and the re-wrap filled that row: it
+            // waits at the row's last column with a wrap pending, as it would after writing that character.
+            private bool _cursorWaitsAtDoubleRowEnd;
             private readonly Func<string, int> _getGraphemeWidth;
 
             // Shell-integration marks carried across the reflow. See TerminalBuffer's
@@ -78,6 +81,7 @@ namespace Ntilde.VT
                 target._scrollback = _scrollback;
                 target._cursorRow = _cursorRow;
                 target._cursorCol = _cursorCol;
+                if (_cursorWaitsAtDoubleRowEnd && !_isAltScreen && target.Modes.IsAutoWrapMode) target._isPendingWrap = true;
                 if (target.CommandStartMark == _observedCommandStartMark)
                 {
                     target.CommandStartMark = _commandStartMark;
@@ -501,6 +505,178 @@ namespace Ntilde.VT
                         }
                     }
 
+                    // A double-size line (DECDWL / DECDHL) holds half the page's columns, so it re-wraps at half the
+                    // new width into rows that keep its attribute, and rejoins when the page widens again. The two
+                    // halves of a double-height line re-wrap side by side and are laid out top, bottom, top, bottom,
+                    // so every top half stays directly above its bottom half.
+                    var doubleStreams = new[] { new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>(), new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>() };
+                    var doubleChunks = new[] { new List<(int Start, int Take)>(), new List<(int Start, int Take)>() };
+                    // What sits on the line and has to be found again: 0 cursor, 1 and 2 the saved cursors, 3 and 4 the shell marks, 5 an image.
+                    var doubleTracked = new List<(int Kind, int Stream, int Offset, TerminalImage? Image)>();
+                    int doubleStartPhys = -1;
+                    int doubleRowCount = 0;
+                    LineSize doubleSize = LineSize.SingleWidth;
+                    LineSize doubleLastSize = LineSize.SingleWidth;
+                    bool doublePaired = false;
+                    bool doubleLastWrapped = false;
+                    bool doubleTopWrapped = false;
+
+                    // Whether the next physical row carries on the double-size line being assembled, and in which
+                    // half: -1 when it starts a line of its own. A row continues the row before it only through a
+                    // soft wrap; the bottom half of a double-height line is the row straight after its top half.
+                    int ContinuedDoubleStream(TerminalRow row)
+                    {
+                        if (doubleStartPhys == -1) return -1;
+                        if (!doublePaired)
+                        {
+                            if (doubleRowCount == 1 && doubleSize == LineSize.DoubleHeightTop && row.LineSize == LineSize.DoubleHeightBottom) return 1;
+                            return doubleLastWrapped && row.LineSize == doubleSize ? 0 : -1;
+                        }
+                        if (doubleLastSize == LineSize.DoubleHeightTop) return row.LineSize == LineSize.DoubleHeightBottom ? 1 : -1;
+                        return row.LineSize == LineSize.DoubleHeightTop && doubleTopWrapped && doubleLastWrapped ? 0 : -1;
+                    }
+
+                    void AddDoubleRow(TerminalRow row, int phys, int stream)
+                    {
+                        var target = doubleStreams[stream];
+                        int start = target.Count;
+                        int lastCol = Math.Max(1, oldCols / 2) - 1;
+                        int len;
+                        if (row.IsWrapped)
+                        {
+                            len = Math.Clamp(row.WrappedColumns ?? lastCol + 1, 0, row.Cells.Length);
+                        }
+                        else
+                        {
+                            len = 0;
+                            for (int scan = 0; scan < row.Cells.Length; scan++)
+                            {
+                                var cell = row.Cells[scan];
+                                if ((cell.Character != ' ' && cell.Character != '\0') || !cell.IsDefaultBackground || cell.HasExtendedText
+                                    || row.GetHyperlink(scan) != null || row.GetUnderline(scan) != null || row.IsProtected(scan))
+                                {
+                                    len = scan + 1;
+                                }
+                            }
+                            // Blank cells up to the cursor or a shell mark are kept, as on an ordinary line.
+                            if (phys == absCursorPhysicalIdx) len = Math.Max(len, Math.Min(_cursorCol, lastCol));
+                            if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark csPad) len = Math.Max(len, Math.Min(csPad.Column, lastCol + 1));
+                            if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark osPad) len = Math.Max(len, Math.Min(osPad.Column, lastCol + 1));
+                            len = Math.Min(len, row.Cells.Length);
+                        }
+
+                        if (phys == absCursorPhysicalIdx) doubleTracked.Add((0, stream, start + Math.Min(Math.Min(_cursorCol, lastCol), len), null));
+                        if (phys == absMainSavedIdx) doubleTracked.Add((1, stream, start + Math.Min(Math.Min(_savedCursors.Main.Col, lastCol), len), null));
+                        if (phys == absAltSavedIdx) doubleTracked.Add((2, stream, start + Math.Min(Math.Min(_savedCursors.Alt.Col, lastCol), len), null));
+                        if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark cs) doubleTracked.Add((3, stream, start + Math.Min(cs.Column, len), null));
+                        if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark os) doubleTracked.Add((4, stream, start + Math.Min(os.Column, len), null));
+                        for (int k = unanchoredImages.Count - 1; k >= 0; k--)
+                        {
+                            if (unanchoredImages[k].CellY != phys) continue;
+                            doubleTracked.Add((5, stream, start + Math.Clamp(unanchoredImages[k].CellX, 0, len), unanchoredImages[k]));
+                            unanchoredImages.RemoveAt(k);
+                        }
+
+                        for (int k = 0; k < len; k++)
+                            target.Add((row.Cells[k], row.GetExtendedText(k), row.GetHyperlink(k), row.GetUnderline(k), row.IsProtected(k)));
+
+                        doubleRowCount++;
+                        doubleLastSize = row.LineSize;
+                        doubleLastWrapped = row.IsWrapped;
+                        if (stream == 0) doubleTopWrapped = row.IsWrapped;
+                    }
+
+                    void EmitDoubleRow(int stream, int chunk, LineSize size, bool wrapped, bool isHistory)
+                    {
+                        var chunks = doubleChunks[stream];
+                        var (start, take) = chunk < chunks.Count ? chunks[chunk] : (0, 0);
+                        var source = doubleStreams[stream];
+                        var row = isHistory ? historyRow : new TerminalRow(newCols, Theme.Foreground, Theme.Background);
+                        for (int c = 0; c < take; c++)
+                        {
+                            var entry = source[start + c];
+                            row.Cells[c] = entry.Cell;
+                            row.SetExtendedText(c, entry.ExtendedText);
+                            row.SetHyperlink(c, entry.Hyperlink);
+                            row.SetUnderline(c, entry.Underline);
+                            row.SetProtected(c, entry.Protected);
+                        }
+                        for (int c = take; c < newCols; c++) row.Cells[c] = def;
+                        row.WrittenColumns = take;
+                        row.IsWrapped = wrapped;
+                        row.WrappedColumns = wrapped ? take : null;
+                        row.LineSize = size;
+                        EmitRow(row, isHistory);
+                    }
+
+                    void FlushDoubleLine()
+                    {
+                        if (doubleStartPhys == -1) return;
+                        int half = Math.Max(1, newCols / 2);
+                        bool isHistory = doubleStartPhys < splitPhysIndex;
+                        int startFlowIndex = flowedRows;
+
+                        for (int s = 0; s < 2; s++)
+                        {
+                            var source = doubleStreams[s];
+                            var chunks = doubleChunks[s];
+                            chunks.Clear();
+                            int processed = 0;
+                            while (processed < source.Count)
+                            {
+                                int remaining = source.Count - processed;
+                                int take = Math.Min(remaining, half);
+                                if (take < remaining && take > 0 && source[processed + take - 1].Cell.IsWide) take--;
+                                if (take == 0) take = 1;
+                                chunks.Add((processed, take));
+                                processed += take;
+                            }
+                        }
+
+                        int rowsPerHalf = Math.Max(1, Math.Max(doubleChunks[0].Count, doubleChunks[1].Count));
+                        foreach (var (kind, stream, offset, image) in doubleTracked)
+                        {
+                            var chunks = doubleChunks[stream];
+                            int chunk = 0;
+                            int col = 0;
+                            for (int k = chunks.Count - 1; k >= 0; k--)
+                            {
+                                if (chunks[k].Start > offset) continue;
+                                chunk = k;
+                                col = offset - chunks[k].Start;
+                                break;
+                            }
+                            bool pastLastColumn = col >= half;
+                            if (pastLastColumn) col = half - 1;
+                            int flowRow = startFlowIndex + (doublePaired ? chunk * 2 + stream : chunk);
+                            switch (kind)
+                            {
+                                case 0: newCursorPhysRow = flowRow; newCursorPhysCol = col; _cursorWaitsAtDoubleRowEnd = pastLastColumn; break;
+                                case 1: newMainSavedPhysRow = flowRow; newMainSavedPhysCol = col; break;
+                                case 2: newAltSavedPhysRow = flowRow; newAltSavedPhysCol = col; break;
+                                case 3: newCommandStartPhysRow = flowRow; newCommandStartPhysCol = col; break;
+                                case 4: newOutputStartPhysRow = flowRow; newOutputStartPhysCol = col; break;
+                                default: imagePlacements.Add((image!, flowRow, Math.Min(col, newCols - 1))); break;
+                            }
+                        }
+
+                        for (int r = 0; r < rowsPerHalf; r++)
+                        {
+                            bool wrapped = r < rowsPerHalf - 1;
+                            EmitDoubleRow(0, r, doublePaired ? LineSize.DoubleHeightTop : doubleSize, wrapped, isHistory);
+                            if (doublePaired) EmitDoubleRow(1, r, LineSize.DoubleHeightBottom, wrapped, isHistory);
+                        }
+
+                        if (isHistory) historyRowCount += flowedRows - startFlowIndex;
+                        logicalIdx++;
+                        doubleStreams[0].Clear();
+                        doubleStreams[1].Clear();
+                        doubleTracked.Clear();
+                        doubleStartPhys = -1;
+                        doubleRowCount = 0;
+                        doublePaired = false;
+                    }
+
                     // Old scrollback rows already handed back to the pool; the store's logical indexes
                     // shift down by this much as its oldest pages go.
                     int oldRowsReleased = 0;
@@ -527,11 +703,37 @@ namespace Ntilde.VT
                             physRow = vpRow < actualVpLen ? _viewport[vpRow] : new TerminalRow(oldCols, Theme.Foreground, Theme.Background);
                         }
 
+                        // A double-size line holds half the columns, so it has no place in a logical line that
+                        // re-wraps at the page width: it ends the line before it and re-wraps on its own.
+                        if (physRow.LineSize != LineSize.SingleWidth && physRow.GetTextSizingMap() is not { Count: > 0 })
+                        {
+                            if (lineStartPhys != -1)
+                            {
+                                FlowLine(logicalIdx++, lineLen, lineStartPhys, i);
+                                lineStartPhys = -1;
+                            }
+                            int stream = ContinuedDoubleStream(physRow);
+                            if (stream == -1)
+                            {
+                                FlushDoubleLine();
+                                doubleStartPhys = i;
+                                doubleSize = physRow.LineSize;
+                                stream = 0;
+                            }
+                            else if (stream == 1)
+                            {
+                                doublePaired = true;
+                            }
+                            AddDoubleRow(physRow, i, stream);
+                            if (i < oldScrollbackCount && i - oldRowsReleased + 1 == _scrollback.OldestPageRowCount)
+                                oldRowsReleased += _scrollback.ReleaseOldestPage();
+                            continue;
+                        }
+                        FlushDoubleLine();
+
                         // Multi-line rectangles are physical grid content. Keep their rows together
                         // as fixed layout barriers; ordinary logical lines on either side still reflow.
-                        // A double-size line is one too: it holds half the columns, so it has no place in a logical
-                        // line that re-wraps at the page width. It keeps its cells and its attribute.
-                        if (physRow.GetTextSizingMap() is { Count: > 0 } || physRow.LineSize != LineSize.SingleWidth)
+                        if (physRow.GetTextSizingMap() is { Count: > 0 })
                         {
                             if (lineStartPhys != -1)
                             {
@@ -899,6 +1101,7 @@ namespace Ntilde.VT
                         FlowLine(logicalIdx, lineLen, lineStartPhys, lastLineEnd);
                         logicalIdx++;
                     }
+                    FlushDoubleLine();
 
                     // 6. Final Layout (Anchor-to-Top of Viewport)
                     // We want _scrollback to contain AT LEAST 'historyRowCount'.
