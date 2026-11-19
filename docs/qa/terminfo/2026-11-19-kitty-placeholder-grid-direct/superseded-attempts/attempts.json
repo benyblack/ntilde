@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "note": "Development attempts of the ordinary-tab placeholder grid measurement (#989) in order. Only the retained files are kept; none produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-1kNsra",
+      "runId": "9741bd695c30d3f7fb02875d9ebffc5e",
+      "scripts": "b5e6cec9",
+      "collection": "direct-placeholder-grid scope",
+      "outcome": "no evidence (4 of 14 stages had been read)",
+      "reason": "The first ordinary-tab collection. The rows case was being read (four stages in) when the worker reported 'Unexpected input outside the generated-event capture': bytes reached the terminal's input outside a capture window (the cause is not retained; nothing in the suite sends input). The run produced no evidence and the same suite was collected again on the same sidecar.",
+      "files": [
+        {
+          "file": "owned-1kNsra/failure.json",
+          "sha256": "5ba2d6df9aab3d5ee0450e99ce8664837ddef55e42247d16860b928e0d8dd17c",
+          "bytes": 107
+        },
+        {
+          "file": "owned-1kNsra/animation-raw-failure.json",
+          "sha256": "2ebeab7f9a112410b8fe004898960d4439743985381d7a46f2a889542a6069a5",
+          "bytes": 490
+        },
+        {
+          "file": "owned-1kNsra/ownership-proof.json",
+          "sha256": "2c67580536dee6ed41aa0a1a002eb3f86e0aac7afe523cbdb44e085cb013a86b",
+          "bytes": 16766
+        }
+      ]
+    },
+    {
+      "attempt": "owned-5HmvBc",
+      "runId": "2eb5378474182f92b0406d7904e0fb2c",
+      "scripts": "b5e6cec9",
+      "collection": "direct-placeholder-grid scope",
+      "outcome": "no evidence (12 of 14 stages had been read; the scrolled stage was refused)",
+      "reason": "The second ordinary-tab collection. The whole rows case passed, then the scrolled stage of the scroll case was refused by the carrier: the cell grid showed the placeholder cells on rows 3 and 4 as expected, but the line the scroll brought in at the bottom held the default cell (default foreground and background) where the expected screen had the blank cell with the active background. Terminals differ here (background color erase) and the suite does not measure it, so the carrier now accepts either fill for the two stages that expose a line (a scrolled-in line and an inserted one), and nothing else; the suite was collected again.",
+      "files": [
+        {
+          "file": "owned-5HmvBc/failure.json",
+          "sha256": "ae93773a57912e6faf38de011cd717f8a26a8e4578dc2b83473bd7a9e13ff80e",
+          "bytes": 104
+        },
+        {
+          "file": "owned-5HmvBc/animation-failed-observation.json",
+          "sha256": "3ac08680e8a97217fa27ca893d17ce5629b4b5a7eaeef54d96e1f49ddf420cfa",
+          "bytes": 29314
+        },
+        {
+          "file": "owned-5HmvBc/ownership-proof.json",
+          "sha256": "08ed7dc02825f3de7df1c14a05a7a06f365b3cb7a4ffff3665db133f84547a04",
+          "bytes": 38102
+        }
+      ]
+    }
+  ]
+}

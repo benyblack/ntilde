@@ -36,6 +36,8 @@ every painted tile of a row agrees), image ids above 24 bits (the third diacriti
 text selection and copy, a second client, remote sessions, other platforms, and a restart or reattach with placeholders on screen (persistent tab). Unit tests pin several of those (`KittyUnicodePlaceholderTests`,
 `PersistentKittyPlaceholderTests`); they are not desktop measurements. No stock grade, Core score or common-harness comparison changes.
 
+The cases listed above as not measured that concern **a grid of more than one row, the inheritance of a nonzero row, and scrolling, erasing and inserting** were measured afterwards: see the [placeholder grid qualification](2026-11-19-kitty-placeholder-grid-qualification.md).
+
 ## Retained evidence and the earlier attempt
 
 The measured App is commit `8a2eb295` and the measured scripts are `c46e42c7`; later commits are publication, docs and test pins, and merges of main. A merge of main can change VT sources the run captured (the double-size line re-wrap, for one, touched

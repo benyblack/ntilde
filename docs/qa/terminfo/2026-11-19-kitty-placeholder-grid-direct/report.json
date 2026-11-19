@@ -1,0 +1,1035 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-kitty-placeholder-grid-direct-qualification-v1",
+  "carrierSuiteId": "ntilde-owned-kitty-placeholders-grid-v1",
+  "contractsVersion": 1,
+  "runId": "abfec2ab0f17cc6c7adaf0b32337f67e",
+  "adapter": {
+    "id": "ntilde-owned-kitty-animation-persistent-adapter-v1",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "pinnedSpans": {
+      "helper": "e337ddbb1f81a40c2c6f997912e6f53aa9a86fa4d0cfde2705dbdb0b6b9899bb",
+      "extensions.kitty-graphics.unicode-placeholders": "0abcfe92c543fc0a03ae03feb09e09b973293747f373b2659925f21fb5c629e1"
+    }
+  },
+  "scope": "The Kitty Unicode placeholder grid suite alone in one ordinary (non-persistent, SessionPersistence Off) tab on a disposable macOS sidecar, the worker the App's own child: two cases (the tile rows, the row marks and the inheritance of a nonzero row on a 4 x 2 grid; and tiles that scroll, shrink and grow with their text rows), over paired original offscreen PNGs and complete cells/modes. No stock collector ran, so there is no stock grade and no Core or common-harness claim; the pinned callbacks are replayed from the retained bundle and stay inconclusive by design. Not measured: a persistent tab in this publication (see the persistent one), a grid whose aspect differs from the image's (where the image sits inside the grid is not asserted: a cell is read where its quadrant is under every placement of the square), swapped columns on a grid, ids above 24 bits (the third diacritic), relative placements (P=, Q=), resize and reflow of placeholder cells, a palette or theme background behind the cells, text selection and copy, a second client, remote sessions, other platforms.",
+  "cases": [
+    {
+      "caseId": "extensions.kitty-graphics.unicode-placeholders",
+      "pinned": {
+        "pass": false,
+        "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+        },
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":true}",
+          "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+          },
+          "declaredFalseResponse": "{\"declared\":false}"
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders"
+          }
+        }
+      },
+      "effectContract": {
+        "id": "ntilde-kitty-unicode-placeholder-grid-direct-effect-v1",
+        "version": 1,
+        "statement": "In an ordinary (non-persistent) tab, Kitty Unicode placeholders behave as the Kitty protocol specifies over a grid of more than one row, read by paired offscreen captures of a 4 x 2 grid of cells: a transmitted 16x16 image in four colored quadrants (red and green above, blue and yellow below) with a virtual placement (a=p,U=1) of a 4 x 2 grid draws nothing by itself; cells whose row and column marks name the grid's tiles show the quadrant color of their tile (red red green green over blue blue yellow yellow); the row marks and not the screen row choose the tile (the rows swapped on screen swap their colors, and the lower tiles printed on the top screen row alone show blue and yellow there with nothing below); a placeholder without marks after a cell with marks (row 1, column 0 in the lower row) continues in the same row at the next column, so a nonzero row is inherited too; and tiles belong to the text that carries them: scrolling the screen up one line moves them up with their cells, erasing the lower text row removes the lower tiles and only them, and inserting a line above the grid moves them down. A line a terminal scrolls in or inserts holds either the active background or the default cell depending on the terminal, and the suite accepts both. Every command that expects a Kitty reply returned OK (the virtual placement's reply echoes its placement id), and each clear passed its fence and left its target blank.",
+        "primary": "https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders",
+        "carrierCases": [
+          "kitty.placeholders.rows",
+          "kitty.placeholders.scroll"
+        ],
+        "validity": [
+          {
+            "name": "receipt-binds-animation-report",
+            "held": true,
+            "detail": "the complete receipt binds this exact report and records fixture removal"
+          },
+          {
+            "name": "carrier-policy",
+            "held": true,
+            "detail": "the retained report is the owned-kitty-placeholders-paired-raw-render-grid-v1 animation report of this run"
+          },
+          {
+            "name": "raw-reader-healthy",
+            "held": true,
+            "detail": "the exclusive raw reader sealed without failure over every admitted write"
+          },
+          {
+            "name": "state-restored",
+            "held": true,
+            "detail": "the final paired state is bound to the initial state after every write"
+          },
+          {
+            "name": "controlled-background",
+            "held": true,
+            "detail": "every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme"
+          },
+          {
+            "name": "fresh-paired-fences",
+            "held": true,
+            "detail": "every capture carries its own unpredictable paired challenges, none reused from the earlier phases or another capture"
+          },
+          {
+            "name": "blank-before-controls",
+            "held": true,
+            "detail": "every case began from an independently blank, unchanged-surroundings target"
+          },
+          {
+            "name": "acknowledgement-separate-from-pixels",
+            "held": true,
+            "detail": "every write was acknowledged by its raw fence while pixel assertions were graded separately"
+          },
+          {
+            "name": "wall-clock-windows-valid",
+            "held": true,
+            "detail": "the suite has no timed stage: every observation is a static frame chosen by an explicit command, so no elapsed-time window is claimed"
+          },
+          {
+            "name": "ordinary-tab-configured",
+            "held": true,
+            "detail": "the run set SessionPersistence Off in its private settings, so the local pane is the App's own pty and no multiplexer daemon runs"
+          },
+          {
+            "name": "worker-is-the-apps-child",
+            "held": true,
+            "detail": "every observation proved the worker a direct child of the launched App, with no daemon in its lineage"
+          },
+          {
+            "name": "no-multiplexer-daemon",
+            "held": true,
+            "detail": "the ownership proof records no multiplexer daemon: nothing hosted the shell but the App"
+          },
+          {
+            "name": "cleanup-verified",
+            "held": true,
+            "detail": "cleanup stopped the worker and the App and verified every process carrying the run marker gone before the receipt"
+          },
+          {
+            "name": "one-app-process-throughout",
+            "held": true,
+            "detail": "the same App process observed every stage: nothing was relaunched, so every placeholder was read from the live ordinary pane"
+          },
+          {
+            "name": "same-session-throughout",
+            "held": true,
+            "detail": "every observation saw the same worker, the App's own child"
+          },
+          {
+            "name": "virtual-placement-drew-nothing",
+            "held": true,
+            "detail": "the transmit and the virtual placement of the 4 x 2 grid were acknowledged OK and the target was still blank afterwards"
+          },
+          {
+            "name": "whole-grid-painted",
+            "held": true,
+            "detail": "the cells with their own row and column marks showed all four quadrant colors in their places, so the image, the placement and the cells were all in effect before any variation"
+          },
+          {
+            "name": "nonzero-row-inherited-and-not-defaulted",
+            "held": true,
+            "detail": "a bare placeholder after a cell naming row 1 painted the lower tiles, which a terminal that defaulted a missing row to 0 would have painted as the upper ones"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "carrierCases": [
+          {
+            "caseId": "kitty.placeholders.rows",
+            "result": "passed"
+          },
+          {
+            "caseId": "kitty.placeholders.scroll",
+            "result": "passed"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "caseId": "kitty.placeholders.rows",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "kitty.placeholders.rows.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows ..../...., each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "cells": "..../....",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "capture": {
+                    "start": 1795103605139,
+                    "end": 1795103605204
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.rows.build",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows ..../...., each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.rows.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "cells": "..../....",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605220,
+                    "latest": 1795103605240
+                  },
+                  "capture": {
+                    "start": 1795103605262,
+                    "end": 1795103605313
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.rows.grid",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows rrgg/bbyy, each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.rows.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.rows.build",
+                  "snapshot": 3,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "tiles",
+                "frameId": null,
+                "cells": "rrgg/bbyy",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605220,
+                    "latest": 1795103605240
+                  },
+                  "capture": {
+                    "start": 1795103605337,
+                    "end": 1795103605392
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.rows.rows-swapped",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows bbyy/rrgg, each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.rows.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.rows.grid",
+                  "snapshot": 4,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "tiles",
+                "frameId": null,
+                "cells": "bbyy/rrgg",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605220,
+                    "latest": 1795103605240
+                  },
+                  "capture": {
+                    "start": 1795103605417,
+                    "end": 1795103605466
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.rows.lower-tiles-on-top",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows bbyy/...., each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.rows.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.rows.rows-swapped",
+                  "snapshot": 5,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "tiles",
+                "frameId": null,
+                "cells": "bbyy/....",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605220,
+                    "latest": 1795103605240
+                  },
+                  "capture": {
+                    "start": 1795103605487,
+                    "end": 1795103605536
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.rows.inherit-rows",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows rrgg/bbyy, each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.rows.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.rows.lower-tiles-on-top",
+                  "snapshot": 6,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "tiles",
+                "frameId": null,
+                "cells": "rrgg/bbyy",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605220,
+                    "latest": 1795103605240
+                  },
+                  "capture": {
+                    "start": 1795103605557,
+                    "end": 1795103605605
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.rows.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows ..../...., each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.rows.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.rows.inherit-rows",
+                  "snapshot": 7,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "cells": "..../....",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605220,
+                    "latest": 1795103605240
+                  },
+                  "capture": {
+                    "start": 1795103605631,
+                    "end": 1795103605679
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            }
+          ]
+        },
+        {
+          "caseId": "kitty.placeholders.scroll",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "kitty.placeholders.scroll.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows ..../...., each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "cells": "..../....",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "capture": {
+                    "start": 1795103605770,
+                    "end": 1795103605818
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.scroll.build",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": [
+                  "OK",
+                  "OK"
+                ]
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows ..../...., each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.scroll.blank",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "cells": "..../....",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605828,
+                    "latest": 1795103605836
+                  },
+                  "capture": {
+                    "start": 1795103605839,
+                    "end": 1795103605890
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.scroll.shown",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows rrgg/bbyy, each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.scroll.blank",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.scroll.build",
+                  "snapshot": 11,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "tiles",
+                "frameId": null,
+                "cells": "rrgg/bbyy",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605828,
+                    "latest": 1795103605836
+                  },
+                  "capture": {
+                    "start": 1795103605910,
+                    "end": 1795103605964
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.scroll.scrolled",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows rrgg/bbyy, each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.scroll.blank",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.scroll.shown",
+                  "snapshot": 12,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "tiles",
+                "frameId": null,
+                "cells": "rrgg/bbyy",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605828,
+                    "latest": 1795103605836
+                  },
+                  "capture": {
+                    "start": 1795103605986,
+                    "end": 1795103606036
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 57,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.scroll.erase-lower",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows rrgg/...., each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.scroll.blank",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.scroll.scrolled",
+                  "snapshot": 13,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "tiles",
+                "frameId": null,
+                "cells": "rrgg/....",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605828,
+                    "latest": 1795103605836
+                  },
+                  "capture": {
+                    "start": 1795103606060,
+                    "end": 1795103606109
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.scroll.insert-line",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows rrgg/bbyy, each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.scroll.blank",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.scroll.erase-lower",
+                  "snapshot": 14,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "tiles",
+                "frameId": null,
+                "cells": "rrgg/bbyy",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605828,
+                    "latest": 1795103605836
+                  },
+                  "capture": {
+                    "start": 1795103606129,
+                    "end": 1795103606179
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 95,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            },
+            {
+              "stage": "kitty.placeholders.scroll.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "statuses": []
+              },
+              "assertions": [
+                {
+                  "description": "the grid of placeholder cells shows ..../...., each painted cell the exact color of its quadrant",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "kitty.placeholders.scroll.blank",
+                  "snapshot": 10,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "kitty.placeholders.scroll.insert-line",
+                  "snapshot": 15,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "classification": {
+                "kind": "background",
+                "frameId": null,
+                "cells": "..../....",
+                "geometryOk": true
+              },
+              "timing": {
+                "clock": "static",
+                "valid": true,
+                "reason": null,
+                "facts": {
+                  "build": {
+                    "earliest": 1795103605828,
+                    "latest": 1795103605836
+                  },
+                  "capture": {
+                    "start": 1795103606201,
+                    "end": 1795103606255
+                  }
+                }
+              },
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 36,
+                  "height": 38
+                },
+                "contentBounds": null
+              }
+            }
+          ]
+        }
+      ],
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "pinned-callbacks-preserved-plus-owned-placeholder-grid-pixel-effect-v1",
+        "evidence": "owned-controlled-pixels-paired-raw-render-direct-placeholder-grid",
+        "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+      }
+    }
+  ]
+}

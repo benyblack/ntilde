@@ -888,6 +888,10 @@ a red/blue image shown through a row of two placeholder cells, with controls for
 persistent tab (`--scope persistent-placeholders`, image policy 5): 19/19 stages in each, effect supported, pinned callbacks inconclusive by design, no stock run and no Core, stock or common-harness change. Placeholders are cells, so this suite's carrier checks the cell grid against
 the cells each stage printed (`screenAfter`) instead of the blank bound screen.
 
+The [2026-11-19 placeholder grid qualification](terminfo/2026-11-19-kitty-placeholder-grid-qualification.md) (#989) measures what that suite left open with a second suite (version 6, `ntilde-owned-kitty-placeholders-grid-v1`: a 4 x 2 grid over a four-quadrant image, the row marks, the
+inheritance of a nonzero row, and tiles that scroll, shrink and grow with their text rows) in both kinds of tab (`--scope direct-placeholder-grid`, `--scope persistent-placeholder-grid`): 14/14 stages in each, effect supported, pinned callbacks inconclusive by design, no inventory change (the same id). A
+scrolled-in or inserted line may hold the active background or the default cell, so the carrier's `screenAfter` hook may return several acceptable screens.
+
 The [2026-11-17 persistent restore qualification](terminfo/2026-11-17-kitty-animation-restore-qualification.md)
 (#1030) measures that restore: `--scope persistent-restore` terminates the App with SIGTERM while the daemon and shell keep running, starts it again on the same private root, and reads the reattached pane
 (a running animation continuing from its original start, a stopped one staying stopped, edited and PNG-derived frames surviving). Ownership is held per App process, and a read that a playhead restarted by the new App would also pass is

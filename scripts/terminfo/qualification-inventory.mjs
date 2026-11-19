@@ -123,6 +123,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'insert-replace-publication-projection.test.mjs': 'unit test of the projection of the registered insert-replace suite',
     'kitty-animation-persistent-publication.test.mjs': 'second measurement of the already registered extensions.kitty-graphics.animation, in a live persistent tab by its own receipt (no stock run); it adds no benchmark-suite claim or id',
     'kitty-animation-compose-publication.test.mjs': 'fourth measurement of the already registered extensions.kitty-graphics.animation, a=c frame composition in a live persistent tab by its own receipt (no stock run); it adds no benchmark-suite claim or id',
+    'kitty-placeholder-grid-publication.test.mjs': 'second measurement of the already registered extensions.kitty-graphics.unicode-placeholders, a 4 x 2 grid in an ordinary and a persistent tab by their own receipts (no stock run); it adds no benchmark-suite claim or id',
     'kitty-animation-restore-publication.test.mjs': 'third measurement of the already registered extensions.kitty-graphics.animation, after a killed-and-restarted App in a persistent tab by its own receipt (no stock run); it adds no benchmark-suite claim or id',
     'common-core-publication.test.mjs': 'common-harness comparison, a different evidence class from owned effect contracts',
     'core-erase-publication.test.mjs': 'frozen Core requirement results, a different evidence class from owned effect contracts',
