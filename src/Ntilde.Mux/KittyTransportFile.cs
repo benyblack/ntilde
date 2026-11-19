@@ -174,32 +174,32 @@ public static class KittyTransportFile
             _root = Restart(next, _pending, _resolved);
             return true;
         }
-    }
 
-    private static bool EndsWithSeparator(string path) => path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar);
+        private static bool EndsWithSeparator(string path) => path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar);
 
-    /// <summary>
-    /// What "." and ".." need, as the kernel treats them: the component in front of them must exist and be a directory (<c>frame.png/.</c>, <c>frame.png/..</c> and <c>missing/..</c> fail, they do not name the
-    /// directory they sit in); at the root there is nothing in front and ".." stays there.
-    /// </summary>
-    private static bool IsDirectoryOrRoot(string root, List<string> resolved) => resolved.Count == 0 || Directory.Exists(Join(root, resolved));
+        /// <summary>
+        /// What "." and ".." need, as the kernel treats them: the component in front of them must exist and be a directory (<c>frame.png/.</c>, <c>frame.png/..</c> and <c>missing/..</c> fail, they do not name the
+        /// directory they sit in); at the root there is nothing in front and ".." stays there.
+        /// </summary>
+        private static bool IsDirectoryOrRoot(string root, List<string> resolved) => resolved.Count == 0 || Directory.Exists(Join(root, resolved));
 
-    /// <summary>Resolves a link's target from the start, then whatever followed the link on the original path: the walk restarts at the target's root, ahead of what is still pending.</summary>
-    private static string Restart(string next, Stack<string> pending, List<string> resolved)
-    {
-        string root = Path.GetPathRoot(next) ?? string.Empty;
-        resolved.Clear();
-        foreach (string item in Split(next[root.Length..]).Reverse()) pending.Push(item);
-        return root;
-    }
+        /// <summary>Resolves a link's target from the start, then whatever followed the link on the original path: the walk restarts at the target's root, ahead of what is still pending.</summary>
+        private static string Restart(string next, Stack<string> pending, List<string> resolved)
+        {
+            string root = Path.GetPathRoot(next) ?? string.Empty;
+            resolved.Clear();
+            foreach (string item in Split(next[root.Length..]).Reverse()) pending.Push(item);
+            return root;
+        }
 
-    private static string? LinkTargetOf(string current) => (Directory.Exists(current) ? new DirectoryInfo(current) : (FileSystemInfo)new FileInfo(current)).LinkTarget;
+        private static string? LinkTargetOf(string current) => (Directory.Exists(current) ? new DirectoryInfo(current) : (FileSystemInfo)new FileInfo(current)).LinkTarget;
 
-    /// <summary>Where a link found in <paramref name="parent"/> leads, or null when that is a share or a device: a link must not send the walk there.</summary>
-    private static string? FollowTarget(string parent, string target)
-    {
-        string next = Normalize(Path.IsPathRooted(target) ? target : Path.Combine(parent, target));
-        return IsNetworkOrDevicePath(next) ? null : next;
+        /// <summary>Where a link found in <paramref name="parent"/> leads, or null when that is a share or a device: a link must not send the walk there.</summary>
+        private static string? FollowTarget(string parent, string target)
+        {
+            string next = Normalize(Path.IsPathRooted(target) ? target : Path.Combine(parent, target));
+            return IsNetworkOrDevicePath(next) ? null : next;
+        }
     }
 
     /// <summary>Windows normalises a path lexically (as its file system does); Unix leaves it for <see cref="Canonicalize"/>, which resolves "." and ".." the way the kernel does.</summary>
