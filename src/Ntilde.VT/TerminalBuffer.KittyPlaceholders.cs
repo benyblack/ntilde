@@ -98,11 +98,12 @@ public partial class TerminalBuffer
             if (cell.HasExtendedText) texts?.TryGet(col, out text);
             CellUnderline? underline = null;
             underlines?.TryGet(col, out underline);
-            if (!TryResolvePlaceholder(assets, cell, text, underline, ref previous, out KittyPlaceholders.Cell resolved, out KittyImageAsset? asset, out KittyVirtualPlacement placement) || asset is null)
+            if (ResolvePlaceholder(assets, cell, text, underline, ref previous) is not { } tile)
             {
                 FlushPlaceholderRun(images, ref run, absRow);
                 continue;
             }
+            (KittyPlaceholders.Cell resolved, KittyImageAsset asset, KittyVirtualPlacement placement) = tile;
             TermColor? background = cell.IsDefaultBackground || cell.IsPaletteBackground ? null : cell.Background;
             short backgroundIndex = cell.IsDefaultBackground ? (short)-1 : cell.BgIndex;
             if (run is { } open && open.Continues(asset, placement, resolved, col, background, backgroundIndex))
@@ -116,23 +117,22 @@ public partial class TerminalBuffer
         FlushPlaceholderRun(images, ref run, absRow);
     }
 
-    /// <summary>Decodes one cell: whether it is a placeholder that names a live virtual placement and a tile inside its grid.</summary>
-    private bool TryResolvePlaceholder(Dictionary<uint, KittyImageAsset?> assets, TerminalCell cell, string? text, CellUnderline? underline,
-        ref KittyPlaceholders.Previous previous, out KittyPlaceholders.Cell resolved, out KittyImageAsset? asset, out KittyVirtualPlacement placement)
+    /// <summary>The tile one placeholder cell shows: its resolved grid position, image and virtual placement.</summary>
+    private readonly record struct PlaceholderTile(KittyPlaceholders.Cell Resolved, KittyImageAsset Asset, KittyVirtualPlacement Placement);
+
+    /// <summary>Decodes one cell: the tile it shows, or null when it is no placeholder, names no live virtual placement, or lies outside the grid.</summary>
+    private PlaceholderTile? ResolvePlaceholder(Dictionary<uint, KittyImageAsset?> assets, TerminalCell cell, string? text, CellUnderline? underline,
+        ref KittyPlaceholders.Previous previous)
     {
-        resolved = default;
-        asset = null;
-        placement = default;
         if (text is null || !IsDrawablePlaceholder(cell, text))
         {
             previous = default;
-            return false;
+            return null;
         }
         uint foreground = KittyPlaceholders.ColorNumber(cell.IsPaletteForeground, cell.Fg, cell.Fg);
-        resolved = KittyPlaceholders.Resolve(text, foreground, UnderlineNumber(underline), previous, out previous);
-        if (!TryFindVirtualPlacement(assets, resolved, out KittyImageAsset? found, out placement) || found is null) return false;
-        asset = found;
-        return resolved.Column < placement.Columns && resolved.Row < placement.Rows;
+        KittyPlaceholders.Cell resolved = KittyPlaceholders.Resolve(text, foreground, UnderlineNumber(underline), previous, out previous);
+        if (!TryFindVirtualPlacement(assets, resolved, out KittyImageAsset? asset, out KittyVirtualPlacement placement) || asset is null) return null;
+        return resolved.Column < placement.Columns && resolved.Row < placement.Rows ? new PlaceholderTile(resolved, asset, placement) : null;
     }
 
     private static bool IsDrawablePlaceholder(TerminalCell cell, string? text) =>
