@@ -46,23 +46,78 @@ public partial class TerminalBuffer
             var text = new StringBuilder(Cols);
             var columns = new List<SearchColumn>(Cols);
             var rows = new List<SearchRow>();
-            for (int row = 0; row < totalRows; row++)
+            var doubleRuns = new[] { new List<int>(), new List<int>() };
+            bool SearchAssembledLine()
             {
-                bool wrapped = AppendSearchRow(row, history, text, columns, rows, pattern.SizedEnds);
-                if (wrapped && row + 1 < totalRows) continue;
-                if (!SearchLogicalLine(pattern, text.ToString(), columns, rows, matches))
-                {
-                    matches.Clear();
-                    return matches;
-                }
+                bool completed = SearchLogicalLine(pattern, text.ToString(), columns, rows, matches);
                 text.Clear();
                 columns.Clear();
                 rows.Clear();
                 pattern.SizedEnds?.Clear();
+                return completed;
+            }
+
+            for (int row = 0; row < totalRows; row++)
+            {
+                // A double-size line is one logical line however a resize wrapped it; a double-height line with both
+                // halves is two, on alternating rows. The reflow groups the rows the same way.
+                if (text.Length == 0 && rows.Count == 0 && GetLineSizeAbsolute(row) != LineSize.SingleWidth)
+                {
+                    doubleRuns[0].Clear();
+                    doubleRuns[1].Clear();
+                    var line = default(DoubleSizeLineRows);
+                    int end = row;
+                    for (; end < totalRows; end++)
+                    {
+                        LineSize size = GetLineSizeAbsolute(end);
+                        if (size == LineSize.SingleWidth) break;
+                        int run = line.Add(end, size, IsRowWrapFlagSetAbsolute(end),
+                            end + 1 < totalRows ? GetLineSizeAbsolute(end + 1) : LineSize.SingleWidth,
+                            end + 2 < totalRows ? GetLineSizeAbsolute(end + 2) : LineSize.SingleWidth);
+                        if (run < 0) break;
+                        doubleRuns[run].Add(line.LastRowStartsNewLine ? ~end : end);
+                    }
+
+                    int firstMatch = matches.Count;
+                    foreach (var run in doubleRuns)
+                    {
+                        if (run.Count == 0) continue;
+                        bool completed = true;
+                        foreach (int entry in run)
+                        {
+                            // A complemented index is a row that starts a new line within its half.
+                            if (entry < 0) completed &= SearchAssembledLine();
+                            AppendSearchRow(entry < 0 ? ~entry : entry, history, text, columns, rows, pattern.SizedEnds);
+                        }
+                        if (completed && SearchAssembledLine()) continue;
+                        matches.Clear();
+                        return matches;
+                    }
+                    // The two halves share rows alternately: results go back in reading order.
+                    if (doubleRuns[1].Count > 0) matches.Sort(firstMatch, matches.Count - firstMatch, SearchMatchReadingOrder.Instance);
+                    row = end - 1;
+                    continue;
+                }
+
+                AppendSearchRow(row, history, text, columns, rows, pattern.SizedEnds);
+                if (IsRowWrappedAbsolute(row) && row + 1 < totalRows && GetLineSizeAbsolute(row + 1) == LineSize.SingleWidth) continue;
+                if (!SearchAssembledLine())
+                {
+                    matches.Clear();
+                    return matches;
+                }
             }
         }
         finally { Lock.ExitReadLock(); }
         return matches;
+    }
+
+    private sealed class SearchMatchReadingOrder : IComparer<SearchMatch>
+    {
+        public static readonly SearchMatchReadingOrder Instance = new();
+
+        public int Compare(SearchMatch x, SearchMatch y)
+            => x.AbsRow != y.AbsRow ? x.AbsRow.CompareTo(y.AbsRow) : x.StartCol.CompareTo(y.StartCol);
     }
 
     private bool AppendSearchRow(int absRow, int history, StringBuilder text, List<SearchColumn> columns, List<SearchRow> rows, Dictionary<(int Row, int Col), int>? sizedEnds)

@@ -25,6 +25,13 @@ public sealed class LineSizeTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    private static string AllText(TerminalBuffer buffer)
+    {
+        buffer.Lock.EnterReadLock();
+        try { return string.Join("\n", Enumerable.Range(0, buffer.TotalLines).Select(row => string.Concat(Enumerable.Range(0, buffer.Cols).Select(col => buffer.GetCellAbsolute(col, row).Character)).TrimEnd())); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
     private static bool IsWrapped(TerminalBuffer buffer, int absRow)
     {
         buffer.Lock.EnterReadLock();
@@ -228,15 +235,540 @@ public sealed class LineSizeTests
     }
 
     [Fact]
-    public void A_page_narrower_than_a_double_lines_text_cuts_it_at_the_page_width()
+    public void A_page_narrower_than_a_double_lines_text_wraps_it_into_double_rows_and_widening_rejoins_them()
     {
-        // Recorded decision: a double-size line is a fixed row, not reflowed, so this is the one resize that loses text.
-        var (buffer, parser) = Create();
+        var (buffer, parser) = Create(rows: 8);
         parser.Process(Dwl + "abcde\r\nplain text");
-        buffer.Resize(4, 4);
+        buffer.Resize(4, 8);
+        Assert.Equal(new[] { "ab", "cd", "e", "plai", "n te", "xt", "", "" }, Lines(buffer));
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer).Take(4));
+        Assert.True(IsWrapped(buffer, 0));
+        Assert.True(IsWrapped(buffer, 1));
+        Assert.False(IsWrapped(buffer, 2));
+        buffer.Resize(10, 8);
+        Assert.Equal(new[] { "abcde", "plain text", "", "", "", "", "", "" }, Lines(buffer));
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer).Take(2));
+        Assert.False(IsWrapped(buffer, 0));
+    }
+
+    [Fact]
+    public void A_double_height_line_re_wraps_with_each_top_half_straight_above_its_bottom_half()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef\r\nafter");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { "abc", "abc", "def", "def", "after", "", "", "" }, Lines(buffer));
+        Assert.Equal(
+            new[] { LineSize.DoubleHeightTop, LineSize.DoubleHeightBottom, LineSize.DoubleHeightTop, LineSize.DoubleHeightBottom, LineSize.SingleWidth },
+            Sizes(buffer).Take(5));
+        buffer.Resize(12, 8);
+        Assert.Equal(new[] { "abcdef", "abcdef", "after", "", "", "", "", "" }, Lines(buffer));
+        Assert.Equal(new[] { LineSize.DoubleHeightTop, LineSize.DoubleHeightBottom, LineSize.SingleWidth }, Sizes(buffer).Take(3));
+    }
+
+    [Fact]
+    public void Two_double_width_lines_one_under_the_other_stay_two_lines_through_a_resize()
+    {
+        var (buffer, parser) = Create(rows: 8);
+        parser.Process($"{Dwl}one\r\n{Dwl}two");
+        buffer.Resize(4, 8);
+        buffer.Resize(20, 8);
+        Assert.Equal(new[] { "one", "two" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_wide_glyph_that_does_not_fit_the_narrower_half_moves_to_the_next_row_whole()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "ab\u6f22");
+        buffer.Resize(6, 6);
+        Assert.Equal(new[] { "ab", "\u6f22" }, Lines(buffer).Take(2));
+        buffer.Resize(10, 6);
+        Assert.Equal("ab\u6f22", Lines(buffer)[0]);
+    }
+
+    [Fact]
+    public void A_wide_glyph_ending_a_double_line_keeps_both_its_cells_through_a_width_change()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "a\u6f22\r\nnext");
+        buffer.Resize(4, 6);
+        Assert.Equal(new[] { "a", "\u6f22", "next" }, Lines(buffer).Take(3));
+        buffer.Resize(10, 6);
+        Assert.Equal(new[] { "a\u6f22", "next" }, Lines(buffer).Take(2));
+        buffer.Lock.EnterReadLock();
+        try { Assert.True(buffer.GetCellAbsolute(2, 0).IsWideContinuation); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void Typed_spaces_at_the_end_of_a_double_line_re_wrap_with_it()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 8);
+        parser.Process(Dwl + "abc      \r\nafter");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { "abc", "", "", "after" }, Lines(buffer).Take(4));
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer).Take(4));
+    }
+
+    [Fact]
+    public void A_shell_mark_after_the_text_is_dropped_when_the_re_wrap_fills_its_row()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abcd{Esc}]133;B{Esc}\\");
+        Assert.NotNull(buffer.CommandStartMark);
+        buffer.Resize(4, 6);
+        Assert.Null(buffer.CommandStartMark);
+    }
+
+    [Fact]
+    public void A_shell_mark_inside_a_double_line_follows_its_character()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abc{Esc}]133;B{Esc}\\de");
+        buffer.Resize(4, 6);
+        Assert.Equal((1, 1), (buffer.CommandStartMark!.Value.Row, buffer.CommandStartMark.Value.Column));
+    }
+
+    [Fact]
+    public void The_cursor_stays_on_its_character_when_a_double_line_re_wraps()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "abcde");
+        buffer.Resize(6, 6);
+        parser.Process("X");
+        Assert.Equal(new[] { "abc", "deX" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_cursor_after_the_text_waits_at_the_last_column_when_the_re_wrap_fills_its_row()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "abcd");
+        buffer.Resize(4, 6);
+        Assert.Equal(1, buffer.CursorRow);
+        Assert.Equal(1, buffer.CursorCol);
+        parser.Process("X");
+        Assert.Equal(new[] { "ab", "cd", "X" }, Lines(buffer).Take(3));
+    }
+
+    [Fact]
+    public void Search_reads_each_half_of_a_re_wrapped_double_height_line_as_one_line()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef\r\nafter");
+        buffer.Resize(6, 8);
+        Assert.Equal(2, buffer.FindMatches("abcdef", false, true).Count);
+        Assert.Empty(buffer.FindMatches("abcabc", false, true));
+        Assert.False(IsWrapped(buffer, 0)); // the row below is the other half, not a continuation
+    }
+
+    [Fact]
+    public void A_saved_cursor_past_the_text_of_a_double_line_keeps_its_column_through_a_widening()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}a{Esc}[1;5H{Esc}7{Esc}[3;1H");
+        buffer.Resize(20, 6);
+        parser.Process($"{Esc}8");
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(4, buffer.CursorCol);
+    }
+
+    [Fact]
+    public void A_saved_cursor_after_the_text_does_not_overwrite_it_once_the_re_wrap_fills_its_row()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abcd{Esc}7{Esc}[5;1H");
+        buffer.Resize(4, 6);
+        parser.Process($"{Esc}8X");
+        Assert.Equal(new[] { "ab", "cd", "X" }, Lines(buffer).Take(3));
+    }
+
+    [Fact]
+    public void Search_follows_a_lone_double_height_half_through_its_re_wrapped_rows()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\nafter");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { "abc", "def", "after" }, Lines(buffer).Take(3));
+        Assert.Single(buffer.FindMatches("abcdef", false, true));
+    }
+
+    [Fact]
+    public void Returning_a_re_wrapped_double_height_line_to_single_width_leaves_its_rows_as_separate_lines()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[?69h");
+        buffer.Resize(12, 8);
+        Assert.Equal(new[] { "abc", "abc", "def", "def" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
+    public void Underlined_blanks_at_the_end_of_a_double_line_survive_a_width_change()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}{Esc}[4m  {Esc}[0m\r\nafter");
+        buffer.Resize(12, 6);
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.True(buffer.GetCellAbsolute(0, 0).IsUnderline);
+            Assert.True(buffer.GetCellAbsolute(1, 0).IsUnderline);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void A_background_erase_past_the_half_of_a_double_line_adds_no_row_on_a_width_change()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abc{Esc}[41m{Esc}[K{Esc}[0m\r\nafter");
+        buffer.Resize(12, 6);
+        Assert.Equal(new[] { "abc", "after" }, Lines(buffer).Take(2));
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer).Take(2));
+    }
+
+    [Fact]
+    public void Reverse_wrap_lands_on_the_last_column_of_the_double_row_above_not_inside_a_wide_glyph()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 6);
+        parser.Process(Dwl + "ab\u6f22cd");
+        buffer.Resize(8, 6);
+        Assert.Equal(new[] { "ab\u6f22", "cd" }, Lines(buffer).Take(2));
+        parser.Process($"{Esc}[?45h{Esc}[2;1H\b");
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(2, buffer.CursorCol);
+    }
+
+    [Fact]
+    public void With_autowrap_off_a_saved_cursor_gains_no_pending_wrap_from_the_re_wrap()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}{Esc}[?7labcd{Esc}7{Esc}[5;1H");
+        buffer.Resize(4, 6);
+        parser.Process($"{Esc}8X");
+        Assert.Equal(new[] { "ab", "cX" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_wrap_pending_from_one_re_wrap_becomes_an_ordinary_column_in_the_next()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "abcd");
+        buffer.Resize(4, 6);
+        buffer.Resize(10, 6);
+        Assert.False(buffer.IsPendingWrap);
+        Assert.Equal(4, buffer.CursorCol);
+        parser.Process("\bX");
+        Assert.Equal("abcX", Lines(buffer)[0]);
+    }
+
+    [Fact]
+    public void A_double_height_line_across_the_top_of_the_screen_keeps_its_bottom_half_on_the_screen()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 2);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef\r\n");
+        buffer.Resize(14, 2);
+        Assert.Equal(new[] { "abcdef", "" }, Lines(buffer));
+        Assert.Equal(1, buffer.CursorRow);
+        Assert.Equal(new[] { LineSize.DoubleHeightTop, LineSize.DoubleHeightBottom, LineSize.SingleWidth }, AllSizes(buffer));
+    }
+
+    [Fact]
+    public void Typed_spaces_survive_a_width_change_after_an_insert_on_the_double_line()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 8);
+        parser.Process($"{Dwl}abc      {Esc}[1;1H{Esc}[@{Esc}[3;1H");
+        buffer.Resize(22, 8);
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth }, Sizes(buffer).Take(4));
+        Assert.Equal(" ab", Lines(buffer)[0]);
+    }
+
+    [Fact]
+    public void A_saved_pending_wrap_survives_a_resize_made_while_autowrap_is_off()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abcde{Esc}7{Esc}[?7l{Esc}[4;1H");
+        buffer.Resize(11, 6);
+        parser.Process($"{Esc}[?7h{Esc}8X");
+        Assert.Equal(new[] { "abcde", "X" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_combining_mark_after_a_re_wrap_still_attaches_to_the_last_character()
+    {
+        var (buffer, parser) = Create(rows: 8);
+        parser.Process(Dwl + "abcd");
+        buffer.Resize(4, 8);
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("c", buffer.GetGraphemeAbsolute(0, 1));
+            Assert.Equal("d\u0301", buffer.GetGraphemeAbsolute(1, 1));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void Text_a_row_still_holds_past_its_half_is_re_wrapped_not_dropped()
+    {
+        // A row resized before double-size lines re-wrapped: its text runs past the half of the narrower page.
+        var (source, sourceParser) = Create(cols: 6, rows: 4);
+        sourceParser.Process("abcde");
+        var state = source.ExportState(100);
+        state.Parser = sourceParser.ExportState();
+        state.Main.RowLineSizes = new[] { (int)LineSize.DoubleWidth, 0, 0, 0 };
+        var (buffer, parser) = Create(cols: 6, rows: 4);
+        TerminalStateTransfer.Restore(buffer, parser, state);
         buffer.Resize(10, 4);
-        Assert.Contains("abcd", Lines(buffer));
-        Assert.Contains(LineSize.DoubleWidth, AllSizes(buffer));
+        Assert.Equal("abcde", Lines(buffer)[0]);
+        Assert.Equal(LineSize.DoubleWidth, buffer.GetLineSize(0));
+    }
+
+    [Fact]
+    public void A_combining_mark_attaches_to_a_character_on_a_row_the_re_wrap_pushed_down()
+    {
+        var (buffer, parser) = Create(rows: 8);
+        parser.Process(Dwl + "abcde\r\nz");
+        buffer.Resize(6, 8);
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try { Assert.Equal("z\u0301", buffer.GetGraphemeAbsolute(0, 2)); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void The_alternate_screens_cursor_stays_put_while_the_main_screens_double_line_re_wraps()
+    {
+        var (buffer, parser) = Create(rows: 8);
+        parser.Process($"{Dwl}abcde{Esc}[?1049h{Esc}[1;4H");
+        buffer.Resize(6, 8);
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(3, buffer.CursorCol);
+        parser.Process($"{Esc}[?1049l");
+        Assert.Equal(new[] { "abc", "de" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void Search_results_on_a_re_wrapped_double_height_line_come_in_reading_order()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcabc\r\n{Bottom}abcabc");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { 0, 1, 2, 3 }, buffer.FindMatches("abc", false, true).Select(match => match.AbsRow));
+    }
+
+    [Fact]
+    public void A_bottom_half_whose_first_top_half_is_gone_still_reads_as_one_line()
+    {
+        var (source, sourceParser) = Create(cols: 12, rows: 4);
+        sourceParser.Process($"x\r\n{Top}abcdef\r\n{Bottom}abcdef\r\nz");
+        source.Resize(6, 4);
+        Assert.Equal(new[] { "abc", "def", "def", "z" }, Lines(source));
+        var state = source.ExportState(0);
+        state.Parser = sourceParser.ExportState();
+        var (buffer, parser) = Create(cols: 6, rows: 4);
+        TerminalStateTransfer.Restore(buffer, parser, state);
+        Assert.Single(buffer.FindMatches("abcdef", false, true));
+        buffer.Resize(12, 4);
+        Assert.Contains("abcdef", Lines(buffer));
+    }
+
+    [Fact]
+    public void The_alternate_screens_saved_cursor_is_not_moved_by_the_main_screens_double_line()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}ab{Esc}[?1049h0123456789{Esc}7{Esc}[3;1H");
+        buffer.Resize(20, 6);
+        parser.Process($"{Esc}8");
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(9, buffer.CursorCol);
+    }
+
+    [Fact]
+    public void The_command_line_reader_joins_a_re_wrapped_double_line_without_the_hidden_half()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 6);
+        parser.Process($"{Dwl}{Esc}]133;B{Esc}\\abcdef");
+        buffer.Resize(6, 6);
+        Assert.True(GridQueryReader.TryReadCommandLine(buffer, buffer.CommandStartMark!.Value, out var line));
+        Assert.Equal("abcdef", line.Text);
+    }
+
+    [Theory]
+    [InlineData(47)]
+    [InlineData(1047)]
+    [InlineData(1049)]
+    public void The_main_screens_cursor_follows_its_double_line_through_a_resize_behind_the_alternate_screen(int mode)
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abcde{Esc}[?{mode}h");
+        buffer.Resize(6, 6);
+        parser.Process($"{Esc}[?{mode}lX");
+        Assert.Equal(new[] { "abc", "deX" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_bottom_half_followed_by_an_unrelated_top_half_re_wraps_as_two_lines()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Bottom}abcdef\r\n{Top}UVWXYZ");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { "abc", "def", "UVW", "XYZ" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
+    public void A_combining_mark_finds_its_character_when_the_cursor_falls_on_a_row_boundary()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process(Dwl + "abcde\rabc");
+        buffer.Resize(6, 8);
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("c\u0301", buffer.GetGraphemeAbsolute(2, 0));
+            Assert.Equal("d", buffer.GetGraphemeAbsolute(0, 1));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        parser.Process("\rX");
+        Assert.Equal(new[] { "abc\u0301", "Xe" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_combining_mark_finds_its_character_before_a_wide_glyph_that_wrapped_early()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process(Dwl + "ab\u6f22\rab");
+        buffer.Resize(6, 8);
+        parser.Process("\u0301");
+        Assert.Equal(new[] { "ab\u0301", "\u6f22" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void Returning_the_second_row_of_a_re_wrapped_double_line_to_single_width_ends_the_line_before_it()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process(Dwl + "abcdef");
+        buffer.Resize(6, 8);
+        Assert.True(IsWrapped(buffer, 0));
+        parser.Process($"{Esc}[2;1H{Swl}");
+        Assert.False(IsWrapped(buffer, 0));
+        Assert.Empty(buffer.FindMatches("abcdef", false, true));
+    }
+
+    [Fact]
+    public void Returning_a_re_wrapped_double_width_line_to_single_width_leaves_its_rows_as_separate_lines()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process(Dwl + "abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[?69h");
+        buffer.Resize(12, 8);
+        Assert.Equal(new[] { "abc", "def" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_cursor_on_a_row_boundary_of_a_double_height_line_stays_in_its_own_half()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef{Esc}[1;4H");
+        buffer.Resize(6, 8);
+        parser.Process("X");
+        Assert.Equal(new[] { "abc", "abc", "Xef", "def" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
+    public void A_combining_mark_does_not_reach_for_a_character_that_left_the_screen()
+    {
+        // Autowrap off, so the cursor stays at the start of the second row while the character before it goes into history.
+        var (buffer, parser) = Create(cols: 12, rows: 1);
+        parser.Process($"{Dwl}{Esc}[?7labcd\rab");
+        buffer.Resize(4, 1);
+        Assert.Equal("ab\ncd", AllText(buffer));
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("b", buffer.GetGraphemeAbsolute(1, 0));
+            Assert.Equal("d", buffer.GetGraphemeAbsolute(1, 1));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void A_combining_mark_finds_its_character_on_a_row_boundary_of_a_double_height_line()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abc de\r\n{Bottom}abc de{Esc}[1;1Habc");
+        buffer.Resize(6, 8);
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try { Assert.Equal("c\u0301", buffer.GetGraphemeAbsolute(2, 0)); }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.Equal(new[] { "abc\u0301", "abc", " de", " de" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
+    public void A_wide_glyph_that_wraps_early_goes_on_in_the_same_half_of_a_re_wrapped_double_height_line()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[1;3H\u6f22");
+        Assert.Equal(new[] { "abc", "abc", "\u6f22f", "def" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
+    public void A_wrap_at_the_bottom_margin_does_not_leave_the_scrolling_region_for_the_next_row_of_the_half()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[1;2r{Esc}[1;1HabcX");
+        string[] lines = Lines(buffer);
+        Assert.Equal("def", lines[2]);
+        Assert.Equal("def", lines[3]);
+    }
+
+    [Fact]
+    public void Erasing_one_row_of_a_re_wrapped_half_leaves_the_other_half_one_line()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[1;1H{Esc}[2K");
+        Assert.Single(buffer.FindMatches("abcdef", false, true));
+        buffer.Resize(12, 8);
+        Assert.Equal(new[] { "", "abcdef", "def", "" }, Lines(buffer).Take(4));
+        Assert.Single(buffer.FindMatches("abcdef", false, true));
+    }
+
+    [Fact]
+    public void An_image_past_the_text_of_a_double_line_keeps_its_column_through_a_widening()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Dwl}a{Esc}[3;1H");
+        buffer.AddImage(new TerminalImage(new object(), 4, 0, 1, 1));
+        buffer.Resize(14, 8);
+        Assert.Equal((4, 0), (buffer.Images[0].CellX, buffer.Images[0].CellY));
+    }
+
+    [Fact]
+    public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 2);
+        parser.Process(Dwl + "abcdefgh\r\n1\r\n2\r\n3");
+        buffer.Resize(8, 2);
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, AllSizes(buffer).Take(3));
+        buffer.Resize(20, 6);
+        Assert.Equal(LineSize.DoubleWidth, AllSizes(buffer)[0]);
+        Assert.Equal(LineSize.SingleWidth, AllSizes(buffer)[1]);
+        Assert.Contains("abcdefgh", AllText(buffer));
     }
 
     [Fact]
@@ -526,16 +1058,21 @@ public sealed class LineSizeTests
     [Theory]
     [InlineData(20)]
     [InlineData(6)]
-    public void A_width_change_keeps_a_double_size_line_as_one_unreflowed_row(int newCols)
+    public void A_width_change_re_wraps_a_double_size_line_at_half_the_new_width(int newCols)
     {
         var (buffer, parser) = Create();
         parser.Process($"plain\r\n{Dwl}abcde\r\nafter");
         buffer.Resize(newCols, 4);
-        Assert.Equal(new[] { LineSize.SingleWidth, LineSize.DoubleWidth, LineSize.SingleWidth, LineSize.SingleWidth }, Sizes(buffer));
-        string[] lines = Lines(buffer);
-        Assert.Equal("plain", lines[0]);
-        Assert.Equal("abcde", lines[1]); // the cells are kept; a narrower page shows fewer of them
-        Assert.Equal("after", lines[2]);
+        if (newCols == 20)
+        {
+            Assert.Equal(new[] { LineSize.SingleWidth, LineSize.DoubleWidth, LineSize.SingleWidth, LineSize.SingleWidth }, Sizes(buffer));
+            Assert.Equal(new[] { "plain", "abcde", "after", "" }, Lines(buffer));
+        }
+        else
+        {
+            Assert.Equal(new[] { LineSize.SingleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer));
+            Assert.Equal(new[] { "plain", "abc", "de", "after" }, Lines(buffer));
+        }
         parser.Process($"{Esc}[2;1H{Esc}[99C");
         Assert.Equal(newCols / 2 - 1, buffer.CursorCol);
     }

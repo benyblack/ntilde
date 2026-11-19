@@ -31,6 +31,21 @@ namespace Ntilde.VT
             private readonly long _maxScrollbackBytes;
             private int _cursorRow;
             private int _cursorCol;
+            // The cursor stood after the last character of a double-size line and the re-wrap filled that row: it
+            // waits at the row's last column with a wrap pending, as it would after writing that character.
+            private bool _cursorWaitsAtDoubleRowEnd;
+            // The cursor was on a double-size line, so the re-wrap decides its pending wrap afresh: a wrap pending at
+            // the old last column means "after that character", which is an ordinary column once the row is wider.
+            // A wrap that was pending stays pending at a filled row's end whatever DECAWM says now; a new one needs DECAWM.
+            private bool _cursorOnDoubleLine;
+            // The character a combining mark would attach to, when it was on a double-size line: where it is now
+            // (a viewport row, or column -1 once it has left the screen).
+            private bool _lastCharOnDoubleLine;
+            private readonly int _oldCursorRow;
+            private readonly int _oldCursorCol;
+            private int _lastCharRow;
+            private int _lastCharCol = -1;
+            private readonly bool _cursorPendingWrap;
             private readonly Func<string, int> _getGraphemeWidth;
 
             // Shell-integration marks carried across the reflow. See TerminalBuffer's
@@ -60,8 +75,14 @@ namespace Ntilde.VT
                 _source = source;
                 _isAltScreen = source._isAltScreen;
                 Theme = source.Theme;
-                _cursorRow = source._cursorRow;
-                _cursorCol = source._cursorCol;
+                // The reflow rebuilds the main screen. While the alternate screen is showing, the main screen's
+                // cursor is the one kept aside for the way back, not the live one.
+                var mainCursor = source._screenCursorStates.Main;
+                _cursorRow = _isAltScreen ? Math.Clamp(mainCursor.Row, 0, Math.Max(0, _viewport.Length - 1)) : source._cursorRow;
+                _cursorCol = _isAltScreen ? Math.Max(0, mainCursor.Col) : source._cursorCol;
+                _cursorPendingWrap = _isAltScreen ? mainCursor.IsPendingWrap : source._isPendingWrap;
+                _oldCursorRow = _cursorRow;
+                _oldCursorCol = _cursorCol;
                 // Lambda, not a method group: GetGraphemeWidth takes a span now (#165) and does not
                 // match Func<string, int> directly. The reflow engine works in strings throughout.
                 _getGraphemeWidth = text => source.GetGraphemeWidth(text);
@@ -76,8 +97,33 @@ namespace Ntilde.VT
             {
                 target._viewport = _viewport;
                 target._scrollback = _scrollback;
-                target._cursorRow = _cursorRow;
-                target._cursorCol = _cursorCol;
+                bool pendingWrapAtRowEnd = _cursorWaitsAtDoubleRowEnd && (_cursorPendingWrap || target.Modes.IsAutoWrapMode);
+                if (_isAltScreen)
+                {
+                    var mainCursor = target._screenCursorStates.Main;
+                    mainCursor.Row = _cursorRow;
+                    mainCursor.Col = _cursorCol;
+                    if (_cursorOnDoubleLine) mainCursor.IsPendingWrap = pendingWrapAtRowEnd;
+                }
+                else
+                {
+                    target._cursorRow = _cursorRow;
+                    target._cursorCol = _cursorCol;
+                    if (_cursorOnDoubleLine) target._isPendingWrap = pendingWrapAtRowEnd;
+                }
+                if (_lastCharOnDoubleLine)
+                {
+                    target._lastCharRow = _lastCharRow;
+                    target._lastCharCol = _lastCharCol;
+                }
+                else if (!_isAltScreen && target._lastCharCol >= 0 && target._lastCharRow == _oldCursorRow && _cursorRow != _oldCursorRow)
+                {
+                    // The cursor's row moved (a line above it re-wrapped into more or fewer rows) and the character
+                    // just written moved with it: it is still as far left of the cursor as it was.
+                    int col = _cursorCol - (_oldCursorCol - target._lastCharCol);
+                    target._lastCharRow = _cursorRow;
+                    target._lastCharCol = col >= 0 && col <= _cursorCol ? col : -1;
+                }
                 if (target.CommandStartMark == _observedCommandStartMark)
                 {
                     target.CommandStartMark = _commandStartMark;
@@ -505,6 +551,207 @@ namespace Ntilde.VT
                     // shift down by this much as its oldest pages go.
                     int oldRowsReleased = 0;
 
+                    // A double-size line (DECDWL / DECDHL) holds half the page's columns, so it re-wraps at half the
+                    // new width into rows that keep its attribute, and rejoins when the page widens again. The two
+                    // halves of a double-height line re-wrap side by side and are laid out top, bottom, top, bottom,
+                    // so every top half stays directly above its bottom half.
+                    var doubleStreams = new[] { new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>(), new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>() };
+                    // Where each line of text starts in a stream: one line, unless a row in it started a new one.
+                    var doubleSegments = new[] { new List<int>(), new List<int>() };
+                    // Soft: the text carries on in the stream's next chunk.
+                    var doubleChunks = new[] { new List<(int Segment, int Start, int Take, bool Soft)>(), new List<(int Segment, int Start, int Take, bool Soft)>() };
+                    // What sits on the line and has to be found again: 0 cursor, 1 the main saved cursor, 3 and 4 the shell marks,
+                    // 5 an image, 6 the character a combining mark attaches to.
+                    int newLastCharPhysRow = -1;
+                    int newLastCharPhysCol = -1;
+                    var doubleTracked = new List<(int Kind, int Stream, int Segment, int Offset, TerminalImage? Image)>();
+                    int doubleStartPhys = -1;
+                    var doubleLine = default(DoubleSizeLineRows);
+                    // How many of the line's rows were history.
+                    int doubleHistoryRows = 0;
+                    bool mainSavedOnDoubleLine = false, mainSavedWaitsAtDoubleRowEnd = false;
+
+                    // Whether the next physical row carries on the double-size line being assembled, and in which
+                    // half: -1 when it starts a line of its own. A row continues the row before it only through a
+                    // soft wrap; the bottom half of a double-height line is the row straight after its top half.
+                    LineSize LineSizeAtPhys(int phys, int released)
+                    {
+                        if (phys >= totalPhysRows) return LineSize.SingleWidth;
+                        if (phys < oldScrollbackCount) return _scrollback.GetLineSize(phys - released);
+                        int vpRow = phys - oldScrollbackCount;
+                        return vpRow < actualVpLen ? _viewport[vpRow].LineSize : LineSize.SingleWidth;
+                    }
+
+                    // Where a cursor stands in its row's text. A wrap pending on its column puts it after that column's character.
+                    static int DoubleLineOffset(int col, bool pendingWrap, int lastCol) => Math.Min(col, lastCol) + (pendingWrap ? 1 : 0);
+
+                    void AddDoubleRow(TerminalRow row, int phys, int stream, bool startsNewLine)
+                    {
+                        var target = doubleStreams[stream];
+                        int start = target.Count;
+                        if (doubleSegments[stream].Count == 0 || startsNewLine) doubleSegments[stream].Add(start);
+                        int segment = doubleSegments[stream].Count - 1;
+                        int lastCol = Math.Max(1, oldCols / 2) - 1;
+                        // Only the left half is the line. What an erase with a background colour painted past it was never shown.
+                        int shown = Math.Min(lastCol + 1, row.Cells.Length);
+                        int len;
+                        if (row.IsWrapped)
+                        {
+                            len = Math.Clamp(row.WrappedColumns ?? shown, 0, shown);
+                        }
+                        else
+                        {
+                            len = 0;
+                            for (int scan = 0; scan < row.Cells.Length; scan++)
+                            {
+                                var cell = row.Cells[scan];
+                                bool text = (cell.Character != ' ' && cell.Character != '\0') || cell.HasExtendedText || cell.IsWideContinuation;
+                                // Past the half only text counts: a row resized before double-size lines re-wrapped
+                                // can still hold some there, while a background or a style there was never shown.
+                                if (text || (scan < shown && (!cell.IsDefaultBackground || cell.IsUnderline || cell.IsInverse || cell.IsStrikethrough
+                                    || row.GetHyperlink(scan) != null || row.GetUnderline(scan) != null || row.IsProtected(scan))))
+                                {
+                                    len = scan + 1;
+                                }
+                            }
+                            // Typed spaces at the end are text: the row's authored extent says how far they go.
+                            len = Math.Max(len, Math.Min(row.WrittenColumns, shown));
+                            // Blank cells up to the cursor, a saved cursor or a shell mark are kept, so each stays on its column.
+                            if (phys == absCursorPhysicalIdx) len = Math.Max(len, DoubleLineOffset(_cursorCol, _cursorPendingWrap, lastCol));
+                            if (phys == absMainSavedIdx) len = Math.Max(len, DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol));
+                            if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark csPad) len = Math.Max(len, Math.Min(csPad.Column, lastCol + 1));
+                            if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark osPad) len = Math.Max(len, Math.Min(osPad.Column, lastCol + 1));
+                            foreach (var image in unanchoredImages)
+                                if (image.CellY == phys) len = Math.Max(len, Math.Clamp(image.CellX, 0, lastCol));
+                            len = Math.Min(len, row.Cells.Length);
+                        }
+
+                        if (phys == absCursorPhysicalIdx) doubleTracked.Add((0, stream, segment, start + Math.Min(DoubleLineOffset(_cursorCol, _cursorPendingWrap, lastCol), len), null));
+                        if (phys == absMainSavedIdx) doubleTracked.Add((1, stream, segment, start + Math.Min(DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol), len), null));
+                        // The alternate screen's saved cursor names a place on that screen, not in this text: it stays as it is.
+                        if (!_isAltScreen && _source._lastCharCol >= 0 && phys == oldScrollbackCount + _source._lastCharRow)
+                            doubleTracked.Add((6, stream, segment, start + Math.Min(_source._lastCharCol, Math.Max(0, len - 1)), null));
+                        if (phys < splitPhysIndex) doubleHistoryRows++;
+                        if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark cs) doubleTracked.Add((3, stream, segment, start + Math.Min(cs.Column, len), null));
+                        if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark os) doubleTracked.Add((4, stream, segment, start + Math.Min(os.Column, len), null));
+                        for (int k = unanchoredImages.Count - 1; k >= 0; k--)
+                        {
+                            if (unanchoredImages[k].CellY != phys) continue;
+                            doubleTracked.Add((5, stream, segment, start + Math.Clamp(unanchoredImages[k].CellX, 0, len), unanchoredImages[k]));
+                            unanchoredImages.RemoveAt(k);
+                        }
+
+                        for (int k = 0; k < len; k++)
+                            target.Add((row.Cells[k], row.GetExtendedText(k), row.GetHyperlink(k), row.GetUnderline(k), row.IsProtected(k)));
+
+                    }
+
+                    void EmitDoubleRow(int stream, int chunk, LineSize size, bool lastRowOfHalf, bool isHistory)
+                    {
+                        var chunks = doubleChunks[stream];
+                        var (_, start, take, soft) = chunk < chunks.Count ? chunks[chunk] : (0, 0, 0, false);
+                        // The last chunk of the stream carries on into the blank rows that keep it level with a
+                        // longer other half, so a wider page takes them back. A line that ends inside the stream does not.
+                        bool wrapped = chunk + 1 < chunks.Count ? soft : !lastRowOfHalf;
+                        var source = doubleStreams[stream];
+                        var row = isHistory ? historyRow : new TerminalRow(newCols, Theme.Foreground, Theme.Background);
+                        for (int c = 0; c < take; c++)
+                        {
+                            var entry = source[start + c];
+                            row.Cells[c] = entry.Cell;
+                            row.SetExtendedText(c, entry.ExtendedText);
+                            row.SetHyperlink(c, entry.Hyperlink);
+                            row.SetUnderline(c, entry.Underline);
+                            row.SetProtected(c, entry.Protected);
+                        }
+                        for (int c = take; c < newCols; c++) row.Cells[c] = def;
+                        row.WrittenColumns = take;
+                        row.IsWrapped = wrapped;
+                        row.WrappedColumns = wrapped ? take : null;
+                        row.LineSize = size;
+                        EmitRow(row, isHistory);
+                    }
+
+                    void FlushDoubleLine()
+                    {
+                        if (doubleStartPhys == -1) return;
+                        int half = Math.Max(1, newCols / 2);
+                        int startFlowIndex = flowedRows;
+
+                        for (int s = 0; s < 2; s++)
+                        {
+                            var source = doubleStreams[s];
+                            var chunks = doubleChunks[s];
+                            var segments = doubleSegments[s];
+                            chunks.Clear();
+                            for (int segment = 0; segment < segments.Count; segment++)
+                            {
+                                int processed = segments[segment];
+                                int segmentEnd = segment + 1 < segments.Count ? segments[segment + 1] : source.Count;
+                                if (processed == segmentEnd) chunks.Add((segment, processed, 0, false)); // an empty line still has its row
+                                while (processed < segmentEnd)
+                                {
+                                    int remaining = segmentEnd - processed;
+                                    int take = Math.Min(remaining, half);
+                                    if (take < remaining && take > 0 && source[processed + take - 1].Cell.IsWide) take--;
+                                    if (take == 0) take = 1;
+                                    chunks.Add((segment, processed, take, processed + take < segmentEnd));
+                                    processed += take;
+                                }
+                            }
+                        }
+
+                        int rowsPerHalf = Math.Max(1, Math.Max(doubleChunks[0].Count, doubleChunks[1].Count));
+                        // A line that lies in history stays there however many rows it becomes. One that straddles
+                        // the top of the screen keeps as many rows in history as it had there.
+                        int historyRows = doubleHistoryRows == doubleLine.Count ? int.MaxValue : doubleHistoryRows;
+                        foreach (var (kind, stream, segment, offset, image) in doubleTracked)
+                        {
+                            var chunks = doubleChunks[stream];
+                            int chunk = 0;
+                            int col = 0;
+                            for (int k = chunks.Count - 1; k >= 0; k--)
+                            {
+                                if (chunks[k].Segment != segment || chunks[k].Start > offset) continue;
+                                chunk = k;
+                                col = offset - chunks[k].Start;
+                                break;
+                            }
+                            bool pastLastColumn = col >= half;
+                            if (pastLastColumn) col = half - 1;
+                            int flowRow = startFlowIndex + (doubleLine.HasSecondRun ? chunk * 2 + stream : chunk);
+                            switch (kind)
+                            {
+                                case 0: newCursorPhysRow = flowRow; newCursorPhysCol = col; _cursorOnDoubleLine = true; _cursorWaitsAtDoubleRowEnd = pastLastColumn; break;
+                                case 1: newMainSavedPhysRow = flowRow; newMainSavedPhysCol = col; mainSavedOnDoubleLine = true; mainSavedWaitsAtDoubleRowEnd = pastLastColumn; break;
+                                // A mark just past a filled row has no cell to name: it is dropped, as on an ordinary
+                                // line, rather than moved onto the character before it.
+                                case 3: if (!pastLastColumn) { newCommandStartPhysRow = flowRow; newCommandStartPhysCol = col; } break;
+                                case 4: if (!pastLastColumn) { newOutputStartPhysRow = flowRow; newOutputStartPhysCol = col; } break;
+                                case 5: imagePlacements.Add((image!, flowRow, Math.Min(col, newCols - 1))); break;
+                                default: newLastCharPhysRow = flowRow; newLastCharPhysCol = col; break;
+                            }
+                        }
+
+                        for (int r = 0; r < rowsPerHalf; r++)
+                        {
+                            bool lastRowOfHalf = r == rowsPerHalf - 1;
+                            EmitDoubleRow(0, r, doubleLine.Size0, lastRowOfHalf, flowedRows - startFlowIndex < historyRows);
+                            if (doubleLine.HasSecondRun) EmitDoubleRow(1, r, doubleLine.Size1, lastRowOfHalf, flowedRows - startFlowIndex < historyRows);
+                        }
+
+                        historyRowCount += Math.Min(flowedRows - startFlowIndex, historyRows);
+                        doubleHistoryRows = 0;
+                        logicalIdx++;
+                        doubleStreams[0].Clear();
+                        doubleStreams[1].Clear();
+                        doubleSegments[0].Clear();
+                        doubleSegments[1].Clear();
+                        doubleTracked.Clear();
+                        doubleStartPhys = -1;
+                        doubleLine.Reset();
+                    }
+
                     for (int i = 0; i < totalPhysRows; i++)
                     {
                         TerminalRow physRow;
@@ -527,11 +774,34 @@ namespace Ntilde.VT
                             physRow = vpRow < actualVpLen ? _viewport[vpRow] : new TerminalRow(oldCols, Theme.Foreground, Theme.Background);
                         }
 
+                        // A double-size line holds half the columns, so it has no place in a logical line that
+                        // re-wraps at the page width: it ends the line before it and re-wraps on its own.
+                        if (physRow.LineSize != LineSize.SingleWidth && physRow.GetTextSizingMap() is not { Count: > 0 })
+                        {
+                            if (lineStartPhys != -1)
+                            {
+                                FlowLine(logicalIdx++, lineLen, lineStartPhys, i);
+                                lineStartPhys = -1;
+                            }
+                            LineSize below = LineSizeAtPhys(i + 1, oldRowsReleased);
+                            LineSize twoBelow = LineSizeAtPhys(i + 2, oldRowsReleased);
+                            int stream = doubleLine.Add(i, physRow.LineSize, physRow.IsWrapped, below, twoBelow);
+                            if (stream == -1)
+                            {
+                                FlushDoubleLine();
+                                stream = doubleLine.Add(i, physRow.LineSize, physRow.IsWrapped, below, twoBelow);
+                            }
+                            if (doubleStartPhys == -1) doubleStartPhys = i;
+                            AddDoubleRow(physRow, i, stream, doubleLine.LastRowStartsNewLine);
+                            if (i < oldScrollbackCount && i - oldRowsReleased + 1 == _scrollback.OldestPageRowCount)
+                                oldRowsReleased += _scrollback.ReleaseOldestPage();
+                            continue;
+                        }
+                        FlushDoubleLine();
+
                         // Multi-line rectangles are physical grid content. Keep their rows together
                         // as fixed layout barriers; ordinary logical lines on either side still reflow.
-                        // A double-size line is one too: it holds half the columns, so it has no place in a logical
-                        // line that re-wraps at the page width. It keeps its cells and its attribute.
-                        if (physRow.GetTextSizingMap() is { Count: > 0 } || physRow.LineSize != LineSize.SingleWidth)
+                        if (physRow.GetTextSizingMap() is { Count: > 0 })
                         {
                             if (lineStartPhys != -1)
                             {
@@ -899,6 +1169,7 @@ namespace Ntilde.VT
                         FlowLine(logicalIdx, lineLen, lineStartPhys, lastLineEnd);
                         logicalIdx++;
                     }
+                    FlushDoubleLine();
 
                     // 6. Final Layout (Anchor-to-Top of Viewport)
                     // We want _scrollback to contain AT LEAST 'historyRowCount'.
@@ -974,6 +1245,13 @@ namespace Ntilde.VT
                         _cursorCol = 0;
                     }
 
+                    if (newLastCharPhysRow != -1)
+                    {
+                        _lastCharOnDoubleLine = true;
+                        _lastCharRow = newLastCharPhysRow >= sbCount ? newLastCharPhysRow - sbCount : -1;
+                        _lastCharCol = newLastCharPhysRow >= sbCount ? newLastCharPhysCol : -1;
+                    }
+
                     // 8. Reposition Images
                     if (imagePlacements.Count > 0)
                     {
@@ -1003,6 +1281,7 @@ namespace Ntilde.VT
                         if (newMainSavedPhysRow < sbCount) _savedCursors.Main.Row = 0;
                         else _savedCursors.Main.Row = newMainSavedPhysRow - sbCount;
                         _savedCursors.Main.Col = Math.Clamp(newMainSavedPhysCol, 0, newCols);
+                        if (mainSavedOnDoubleLine) _savedCursors.Main.IsPendingWrap = mainSavedWaitsAtDoubleRowEnd && (_savedCursors.Main.IsPendingWrap || _source.Modes.IsAutoWrapMode);
                     }
                     if (newAltSavedPhysRow != -1)
                     {
