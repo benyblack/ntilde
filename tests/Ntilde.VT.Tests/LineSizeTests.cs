@@ -613,6 +613,15 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_bottom_half_followed_by_an_unrelated_top_half_re_wraps_as_two_lines()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Bottom}abcdef\r\n{Top}UVWXYZ");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { "abc", "def", "UVW", "XYZ" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

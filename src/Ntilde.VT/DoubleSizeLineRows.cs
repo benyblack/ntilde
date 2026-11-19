@@ -48,9 +48,12 @@ internal struct DoubleSizeLineRows
         }
         else if (index == _next0) run = 0;
         else if (HasSecondRun && index == _next1) run = 1;
-        else if (_rows == 1 && index == _firstIndex + 1 && IsDoubleHeight(Size0) && IsDoubleHeight(size) && size != Size0)
+        else if (_rows == 1 && index == _firstIndex + 1 && IsDoubleHeight(size) && size != Size0
+            && (Size0 == LineSize.DoubleHeightTop || (Size0 == LineSize.DoubleHeightBottom && _next0 == index + 1)))
         {
-            // The other half of a double-height line is the row straight after its first half.
+            // The bottom half of a double-height line is the row straight after its top half. A top half after a
+            // bottom half is another line, unless that bottom half carries on past it: then the two were laid out
+            // together and the first top half is gone (cut off with the history above it).
             run = 1;
             Size1 = size;
             HasSecondRun = true;
