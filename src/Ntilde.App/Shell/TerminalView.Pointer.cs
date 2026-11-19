@@ -426,7 +426,8 @@ namespace Ntilde.Shell
             if (SessionPixelCellProvider?.Invoke() is { } cell
                 && float.IsFinite(cell.WidthPx) && float.IsFinite(cell.HeightPx) && cell.WidthPx > 0 && cell.HeightPx > 0
                 && _metrics.CellWidth > 0 && _metrics.CellHeight > 0)
-                return (cell.WidthPx / _metrics.CellWidth, cell.HeightPx / _metrics.CellHeight);
+                // In double, from the float sizes: a float ratio carries the rounding of a float into every pixel and the extent. A cell is never under one pixel, as the parser's ImageCellPixels reports it.
+                return (Math.Max(1.0, cell.WidthPx) / (double)_metrics.CellWidth, Math.Max(1.0, cell.HeightPx) / (double)_metrics.CellHeight);
             return (scale, scale);
         }
 

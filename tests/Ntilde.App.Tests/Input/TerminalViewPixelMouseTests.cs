@@ -223,6 +223,29 @@ namespace Ntilde.Tests.Input
         }
 
         [AvaloniaFact]
+        public void The_session_unit_is_computed_in_double_so_a_cell_boundary_and_the_extent_agree_with_the_reply()
+        {
+            var (view, _, buffer) = CreateView();
+            view.SetMetricsForTest(9f, 13f);
+            buffer.Resize(80, 30);
+            view.SessionPixelCellProvider = () => new SixelCellSize(13f, 15.25f);
+
+            // The 10th logical pixel column starts the 10th session pixel of a 13-pixel cell over a 9-pixel one: 9 x 13/9 is 13, not 12.99999976.
+            Assert.Equal(14, view.ToMouseReportPixel(new Point(9, 0)).X);
+            // 30 rows of 15.25 pixels are 457.5, which CSI 14 t reports as 458 (the text area bound).
+            Assert.Equal((80 * 13, 458), view.ToMouseReportPixel(new Point(100000, 100000)));
+        }
+
+        [AvaloniaFact]
+        public void A_session_cell_under_one_pixel_is_one_pixel_as_the_parser_reports_it()
+        {
+            var (view, _, _) = CreateView();
+            view.SessionPixelCellProvider = () => new SixelCellSize(0.5f, 0.25f);
+            // CSI 14 t reports 80 x 24 cells of 1 x 1 pixel: the text area is 80 x 24 pixels.
+            Assert.Equal((80, 24), view.ToMouseReportPixel(new Point(100000, 100000)));
+        }
+
+        [AvaloniaFact]
         public void A_declared_pixel_in_the_session_unit_is_routed_at_its_centre_and_reports_back_as_itself()
         {
             var (view, _, _) = CreateView(scale: 2);
