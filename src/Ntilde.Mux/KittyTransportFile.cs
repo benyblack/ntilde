@@ -136,10 +136,7 @@ public static class KittyTransportFile
 
             string? next = ++hops > MaxLinkHops ? null : FollowTarget(parent, target);
             if (next is null) return null;
-            // Resolve the link's target from the start, then whatever followed the link on the original path.
-            root = Path.GetPathRoot(next) ?? string.Empty;
-            resolved.Clear();
-            foreach (string item in Split(next[root.Length..]).Reverse()) pending.Push(item);
+            root = Restart(next, pending, resolved);
         }
 
         return Join(root, resolved);
@@ -154,6 +151,15 @@ public static class KittyTransportFile
         if (!Directory.Exists(Join(root, resolved))) return false;
         resolved.RemoveAt(resolved.Count - 1);
         return true;
+    }
+
+    /// <summary>Resolves a link's target from the start, then whatever followed the link on the original path: the walk restarts at the target's root, ahead of what is still pending.</summary>
+    private static string Restart(string next, Stack<string> pending, List<string> resolved)
+    {
+        string root = Path.GetPathRoot(next) ?? string.Empty;
+        resolved.Clear();
+        foreach (string item in Split(next[root.Length..]).Reverse()) pending.Push(item);
+        return root;
     }
 
     private static string? LinkTargetOf(string current) => (Directory.Exists(current) ? new DirectoryInfo(current) : (FileSystemInfo)new FileInfo(current)).LinkTarget;
