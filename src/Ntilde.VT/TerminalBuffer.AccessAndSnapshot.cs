@@ -71,6 +71,16 @@ namespace Ntilde.VT
         public bool IsRowWrappedAbsolute(int absRow)
         {
             AssertLockHeld();
+            // A row carries on in the row below only when that row has the same line attribute. A re-wrapped
+            // double-height line carries on two rows down, past its other half (DoubleSizeLineRows), and a row whose
+            // neighbour changed attribute is a line of its own: to everything that walks soft wraps row by row,
+            // both end here.
+            return IsRowWrapFlagSetAbsolute(absRow) && GetLineSizeAbsolute(absRow + 1) == GetLineSizeAbsolute(absRow);
+        }
+
+        /// <summary>The stored wrap bit of a row, whatever its line attribute. Requires the read lock.</summary>
+        private bool IsRowWrapFlagSetAbsolute(int absRow)
+        {
             if (absRow < 0) return false;
 
             if (_isAltScreen)

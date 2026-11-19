@@ -10,6 +10,8 @@ public partial class TerminalBuffer
     /// <summary>The columns a row with <paramref name="size"/> holds on a page <paramref name="cols"/> wide.</summary>
     public static int ColumnsForLineSize(LineSize size, int cols) => size == LineSize.SingleWidth ? cols : Math.Max(1, cols / 2);
 
+    private static bool IsDoubleHeight(LineSize size) => DoubleSizeLineRows.IsDoubleHeight(size);
+
     /// <summary>The last column the cursor row holds: the page's last column, or the last of the left half on a double-size row.</summary>
     private int CursorRowLastColumnNoLock
         => _cursorRow >= 0 && _cursorRow < Rows && _viewport[_cursorRow].LineSize != LineSize.SingleWidth
@@ -87,6 +89,40 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
+    /// Whether the row of the last written character soft-wraps into the cursor's row with the cursor at its start:
+    /// the row below with the same attribute, or two rows down for a half of a re-wrapped double-height line.
+    /// </summary>
+    private bool LastCharRowWrapsIntoCursorRowNoLock()
+    {
+        if (_cursorCol != 0 || _lastCharCol < 0 || _lastCharRow < 0 || _cursorRow >= Rows || _isPendingWrap) return false;
+        int distance = _cursorRow - _lastCharRow;
+        if (distance != 1 && distance != 2) return false;
+        TerminalRow row = _viewport[_lastCharRow];
+        if (!row.IsWrapped || _viewport[_cursorRow].LineSize != row.LineSize) return false;
+        if (distance == 1) return true;
+        LineSize between = _viewport[_lastCharRow + 1].LineSize;
+        return IsDoubleHeight(row.LineSize) && IsDoubleHeight(between) && between != row.LineSize;
+    }
+
+    /// <summary>
+    /// A wrap pending at the end of a half of a re-wrapped double-height line: the half carries on two rows down, past
+    /// the row of the other half (<see cref="DoubleSizeLineRows"/>), and the cursor goes there. False anywhere else.
+    /// </summary>
+    private bool FollowDoubleHeightWrapNoLock()
+    {
+        if (_cursorRow < 0 || _cursorRow + 2 >= Rows) return false;
+        // Not out of the scrolling region: at its bottom margin the wrap is an ordinary line feed.
+        if (_cursorRow <= ScrollBottom && _cursorRow + 2 > ScrollBottom) return false;
+        TerminalRow row = _viewport[_cursorRow];
+        if (!row.IsWrapped || !IsDoubleHeight(row.LineSize)) return false;
+        LineSize below = _viewport[_cursorRow + 1].LineSize;
+        if (!IsDoubleHeight(below) || below == row.LineSize || _viewport[_cursorRow + 2].LineSize != row.LineSize) return false;
+        _cursorRow += 2;
+        _cursorCol = 0;
+        return true;
+    }
+
+    /// <summary>
     /// A wrap is pending only while the cursor waits at the right edge of its row. A row that has since become wider
     /// than that (a resize, or a line of the screen that was not showing returned to single width) has room again:
     /// the next character goes on the column after the cursor.
@@ -96,10 +132,22 @@ public partial class TerminalBuffer
         if (_isPendingWrap && _cursorCol < RightEdgeForCursorNoLock) ReleasePendingWrapOnWiderRowNoLock();
     }
 
+    /// <summary>
+    /// Changes a row's attribute. On a half of a double-height line the wrap bit can mean "carries on two rows
+    /// down" (see <see cref="DoubleSizeLineRows"/>); it must not outlive the attribute and turn into an
+    /// ordinary wrap into the row below, which holds the other half.
+    /// </summary>
+    private static void ChangeLineSizeNoLock(TerminalRow row, LineSize size)
+    {
+        if (row.LineSize == size) return;
+        if (row.LineSize != LineSize.SingleWidth) row.IsWrapped = false;
+        row.LineSize = size;
+    }
+
     private void ReturnRowToSingleWidthForSizedTextNoLock(int viewportRow)
     {
         if (viewportRow < 0 || viewportRow >= Rows || _viewport[viewportRow].LineSize == LineSize.SingleWidth) return;
-        _viewport[viewportRow].LineSize = LineSize.SingleWidth;
+        ChangeLineSizeNoLock(_viewport[viewportRow], LineSize.SingleWidth);
         if (viewportRow == _cursorRow) ReleasePendingWrapOnWiderRowNoLock();
     }
 
@@ -119,7 +167,7 @@ public partial class TerminalBuffer
             TerminalRow row = _viewport[_cursorRow];
             if (row.LineSize == size) return;
             bool wasSingle = row.LineSize == LineSize.SingleWidth;
-            row.LineSize = size;
+            ChangeLineSizeNoLock(row, size);
             if (size == LineSize.SingleWidth) ReleasePendingWrapOnWiderRowNoLock();
             else
             {
@@ -176,7 +224,7 @@ public partial class TerminalBuffer
         try
         {
             if (row < 0 || row >= Rows || _viewport[row].LineSize == LineSize.SingleWidth) return;
-            _viewport[row].LineSize = LineSize.SingleWidth;
+            ChangeLineSizeNoLock(_viewport[row], LineSize.SingleWidth);
             if (row == _cursorRow) ReleasePendingWrapOnWiderRowNoLock();
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
@@ -188,6 +236,6 @@ public partial class TerminalBuffer
     {
         if (rows == null) return;
         foreach (TerminalRow row in rows)
-            if (row != null) row.LineSize = LineSize.SingleWidth;
+            if (row != null) ChangeLineSizeNoLock(row, LineSize.SingleWidth);
     }
 }
