@@ -358,6 +358,9 @@ namespace Ntilde.Shell
             };
         }
 
+        internal static string EncodeLegacyReturn(ModeState? modes)
+            => modes?.IsLineFeedNewLineMode == true ? "\r\n" : "\r";
+
         /// <summary>
         /// Encodes an Alt/Meta + printable key as an ESC-prefixed sequence, matching the
         /// standard xterm "metaSendsEscape" behavior (e.g. Alt+V -> ESC v). This restores

@@ -291,7 +291,7 @@ namespace Ntilde
         /// Non-blocking review note (#277): this builds its own encoding independent of
         /// <see cref="TerminalInputModeEncoder.EncodeKittyKey"/> and
         /// <see cref="TerminalView.HandleKeyDownCore"/>. Broadcast targets never receive kitty
-        /// sequences (e.g. bare "\r" for Enter, never "\x1b[13;2u" for Shift+Enter) regardless of
+        /// sequences (e.g. legacy Return bytes for Enter, never "\x1b[13;2u" for Shift+Enter) regardless of
         /// whether a broadcast target's own <c>ModeState.KittyKeyboard</c> has the disambiguate
         /// tier pushed. This is deliberate scoping, not an oversight: the broadcast path only ever
         /// needs to reach TUIs that also work with plain legacy input, and duplicating the
@@ -334,7 +334,7 @@ namespace Ntilde
 
             switch (key)
             {
-                case Key.Enter: sequence = "\r"; return true;
+                case Key.Enter: sequence = TerminalInputModeEncoder.EncodeLegacyReturn(buffer?.Modes); return true;
                 case Key.Back: sequence = "\x7f"; return true;
                 case Key.Tab: sequence = isShift ? "\x1b[Z" : "\t"; return true;
                 case Key.Escape: sequence = "\x1b"; return true;
