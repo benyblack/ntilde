@@ -871,9 +871,8 @@ namespace Ntilde.Shell
                             }
                             if (bitmap is { } bmp)
                             {
-                                SKRect destination = isPlaceholderRun
-                                    ? FitImageWithin(PlaceholderGrid(img, visualY, colEdges, rowEdges, paddingLeft, paddingTop), bmp.Width, bmp.Height)
-                                    : img.PreserveAspectRatio ? FitImageWithin(rect, bmp.Width, bmp.Height) : rect;
+                                SKRect fitArea = isPlaceholderRun ? PlaceholderGrid(img, visualY, colEdges, rowEdges, paddingLeft, paddingTop) : rect;
+                                SKRect destination = isPlaceholderRun || img.PreserveAspectRatio ? FitImageWithin(fitArea, bmp.Width, bmp.Height) : rect;
                                 canvas.DrawBitmap(bmp, destination, imagePaint);
                                 if (imageFacts is { Complete: true })
                                     imageFacts.Placements[imageIndex] = imageFacts.Placements[imageIndex] with

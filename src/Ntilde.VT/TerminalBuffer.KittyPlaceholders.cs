@@ -96,37 +96,46 @@ public partial class TerminalBuffer
             TerminalCell cell = cells[col];
             string? text = null;
             if (cell.HasExtendedText) texts?.TryGet(col, out text);
-            if (!KittyPlaceholders.IsPlaceholder(text) || cell.IsDefaultForeground || cell.IsHidden)
+            if (!IsDrawablePlaceholder(cell, text))
             {
                 FlushPlaceholderRun(images, ref run, absRow);
                 previous = default;
                 continue;
             }
             uint foreground = KittyPlaceholders.ColorNumber(cell.IsPaletteForeground, cell.Fg, cell.Fg);
-            KittyPlaceholders.Cell resolved = KittyPlaceholders.Resolve(text!, foreground, UnderlineNumber(underlines is not null && underlines.TryGet(col, out CellUnderline? underline) ? underline : null), previous, out previous);
+            CellUnderline? cellUnderline = null;
+            underlines?.TryGet(col, out cellUnderline);
+            KittyPlaceholders.Cell resolved = KittyPlaceholders.Resolve(text!, foreground, UnderlineNumber(cellUnderline), previous, out previous);
             if (!TryFindVirtualPlacement(assets, resolved, out KittyImageAsset? asset, out KittyVirtualPlacement placement)
                 || resolved.Column >= placement.Columns || resolved.Row >= placement.Rows)
             {
                 FlushPlaceholderRun(images, ref run, absRow);
                 continue;
             }
+            if (asset is null) continue;
             TermColor? background = cell.IsDefaultBackground || cell.IsPaletteBackground ? null : cell.Background;
             short backgroundIndex = cell.IsDefaultBackground ? (short)-1 : cell.BgIndex;
-            if (run is { } open && open.Continues(asset!, placement, resolved, col, background, backgroundIndex))
+            if (run is { } open && open.Continues(asset, placement, resolved, col, background, backgroundIndex))
             {
                 run = open with { Count = open.Count + 1 };
                 continue;
             }
             FlushPlaceholderRun(images, ref run, absRow);
-            run = new PlaceholderRun(asset!, placement, resolved.Row, resolved.Column, col, 1, background, backgroundIndex);
+            run = new PlaceholderRun(asset, placement, resolved.Row, resolved.Column, col, 1, background, backgroundIndex);
         }
         FlushPlaceholderRun(images, ref run, absRow);
     }
 
-    private static uint UnderlineNumber(CellUnderline? underline) =>
-        underline is not { HasColor: true } ? 0
-        : underline.ColorIndex >= 0 ? (uint)underline.ColorIndex & 0xFF
-        : underline.Color is { } color ? (uint)(color.R << 16 | color.G << 8 | color.B) : 0;
+    private static bool IsDrawablePlaceholder(TerminalCell cell, string? text) =>
+        KittyPlaceholders.IsPlaceholder(text) && !cell.IsDefaultForeground && !cell.IsHidden;
+
+    private static uint UnderlineNumber(CellUnderline? underline)
+    {
+        if (underline is not { HasColor: true }) return 0;
+        if (underline.ColorIndex >= 0) return (uint)underline.ColorIndex & 0xFF;
+        if (underline.Color is not { } color) return 0;
+        return (uint)(color.R << 16 | color.G << 8 | color.B);
+    }
 
     private bool TryFindVirtualPlacement(Dictionary<uint, KittyImageAsset?> assets, KittyPlaceholders.Cell cell,
         out KittyImageAsset? asset, out KittyVirtualPlacement placement)
