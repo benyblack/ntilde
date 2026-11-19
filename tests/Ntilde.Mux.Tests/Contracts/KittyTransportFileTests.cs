@@ -118,6 +118,21 @@ public sealed class KittyTransportFileTests : IDisposable
     }
 
     [Fact]
+    public void Dot_dot_after_a_file_or_a_missing_component_fails_as_the_kernel_fails_it()
+    {
+        // frame.png/../other.png is ENOTDIR and missing/../frame.png is ENOENT: neither names the file next to the component in front of "..".
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows normalises .. lexically");
+        Write("frame.png", [1]);
+        Write("other.png", [2]);
+        Assert.Null(KittyTransportFile.Read(Path.Combine(_dir, "frame.png", "..", "other.png")));
+        Assert.Null(KittyTransportFile.Read(Path.Combine(_dir, "missing", "..", "frame.png")));
+        File.CreateSymbolicLink(Path.Combine(_dir, "image"), Path.Combine("frame.png", "..", "other.png"));
+        Assert.Null(KittyTransportFile.Read(Path.Combine(_dir, "image")));
+        Directory.CreateDirectory(Path.Combine(_dir, "real-dir"));
+        Assert.Equal([2], ReadOrFail(Path.Combine(_dir, "real-dir", "..", "other.png")));      // an existing directory in front of ".." is an ordinary parent
+    }
+
+    [Fact]
     public void A_loop_of_links_is_refused_and_not_followed_forever()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "creating symbolic links needs a privilege on Windows");

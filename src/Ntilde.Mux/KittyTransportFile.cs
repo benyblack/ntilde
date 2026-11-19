@@ -122,7 +122,7 @@ public static class KittyTransportFile
             if (part == ".") continue;
             if (part == "..")
             {
-                if (resolved.Count > 0) resolved.RemoveAt(resolved.Count - 1);
+                if (!PopParent(root, resolved)) return null;
                 continue;
             }
 
@@ -143,6 +143,17 @@ public static class KittyTransportFile
         }
 
         return Join(root, resolved);
+    }
+
+    /// <summary>
+    /// ".." as the kernel treats it: the component in front of it must exist and be a directory (<c>frame.png/..</c> and <c>missing/..</c> fail, they do not name the directory they sit in), and at the root it stays there.
+    /// </summary>
+    private static bool PopParent(string root, List<string> resolved)
+    {
+        if (resolved.Count == 0) return true;
+        if (!Directory.Exists(Join(root, resolved))) return false;
+        resolved.RemoveAt(resolved.Count - 1);
+        return true;
     }
 
     private static string? LinkTargetOf(string current) => (Directory.Exists(current) ? new DirectoryInfo(current) : (FileSystemInfo)new FileInfo(current)).LinkTarget;
