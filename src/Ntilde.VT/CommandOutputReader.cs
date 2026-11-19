@@ -638,6 +638,8 @@ namespace Ntilde.VT
         /// </summary>
         private static int SoftWrappedRowEnd(TerminalBuffer buffer, int row, int cols)
         {
+            // A double-size line holds half the columns: it wraps at the half, and what lies past it is not text.
+            cols = TerminalBuffer.ColumnsForLineSize(buffer.GetLineSizeAbsolute(row), cols);
             if (cols >= 2 &&
                 IsBlank(buffer.GetCellAbsolute(cols - 1, row)) &&
                 buffer.GetCellAbsolute(0, row + 1).IsWide)

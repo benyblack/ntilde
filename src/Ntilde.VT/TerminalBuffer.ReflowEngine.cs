@@ -543,7 +543,7 @@ namespace Ntilde.VT
                     // so every top half stays directly above its bottom half.
                     var doubleStreams = new[] { new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>(), new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>() };
                     var doubleChunks = new[] { new List<(int Start, int Take)>(), new List<(int Start, int Take)>() };
-                    // What sits on the line and has to be found again: 0 cursor, 1 and 2 the saved cursors, 3 and 4 the shell marks,
+                    // What sits on the line and has to be found again: 0 cursor, 1 the main saved cursor, 3 and 4 the shell marks,
                     // 5 an image, 6 the character a combining mark attaches to.
                     int newLastCharPhysRow = -1;
                     int newLastCharPhysCol = -1;
@@ -553,7 +553,6 @@ namespace Ntilde.VT
                     // How many of the line's rows were history.
                     int doubleHistoryRows = 0;
                     bool mainSavedOnDoubleLine = false, mainSavedWaitsAtDoubleRowEnd = false;
-                    bool altSavedOnDoubleLine = false, altSavedWaitsAtDoubleRowEnd = false;
 
                     // Whether the next physical row carries on the double-size line being assembled, and in which
                     // half: -1 when it starts a line of its own. A row continues the row before it only through a
@@ -601,7 +600,6 @@ namespace Ntilde.VT
                             // Blank cells up to the cursor, a saved cursor or a shell mark are kept, so each stays on its column.
                             if (phys == absCursorPhysicalIdx) len = Math.Max(len, DoubleLineOffset(_cursorCol, _cursorPendingWrap, lastCol));
                             if (phys == absMainSavedIdx) len = Math.Max(len, DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol));
-                            if (phys == absAltSavedIdx) len = Math.Max(len, DoubleLineOffset(_savedCursors.Alt.Col, _savedCursors.Alt.IsPendingWrap, lastCol));
                             if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark csPad) len = Math.Max(len, Math.Min(csPad.Column, lastCol + 1));
                             if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark osPad) len = Math.Max(len, Math.Min(osPad.Column, lastCol + 1));
                             len = Math.Min(len, row.Cells.Length);
@@ -609,7 +607,7 @@ namespace Ntilde.VT
 
                         if (phys == absCursorPhysicalIdx) doubleTracked.Add((0, stream, start + Math.Min(DoubleLineOffset(_cursorCol, _cursorPendingWrap, lastCol), len), null));
                         if (phys == absMainSavedIdx) doubleTracked.Add((1, stream, start + Math.Min(DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol), len), null));
-                        if (phys == absAltSavedIdx) doubleTracked.Add((2, stream, start + Math.Min(DoubleLineOffset(_savedCursors.Alt.Col, _savedCursors.Alt.IsPendingWrap, lastCol), len), null));
+                        // The alternate screen's saved cursor names a place on that screen, not in this text: it stays as it is.
                         if (!_isAltScreen && _source._lastCharCol >= 0 && phys == oldScrollbackCount + _source._lastCharRow)
                             doubleTracked.Add((6, stream, start + Math.Min(_source._lastCharCol, Math.Max(0, len - 1)), null));
                         if (phys < splitPhysIndex) doubleHistoryRows++;
@@ -696,7 +694,6 @@ namespace Ntilde.VT
                             {
                                 case 0: newCursorPhysRow = flowRow; newCursorPhysCol = col; _cursorOnDoubleLine = true; _cursorWaitsAtDoubleRowEnd = pastLastColumn; break;
                                 case 1: newMainSavedPhysRow = flowRow; newMainSavedPhysCol = col; mainSavedOnDoubleLine = true; mainSavedWaitsAtDoubleRowEnd = pastLastColumn; break;
-                                case 2: newAltSavedPhysRow = flowRow; newAltSavedPhysCol = col; altSavedOnDoubleLine = true; altSavedWaitsAtDoubleRowEnd = pastLastColumn; break;
                                 // A mark just past a filled row has no cell to name: it is dropped, as on an ordinary
                                 // line, rather than moved onto the character before it.
                                 case 3: if (!pastLastColumn) { newCommandStartPhysRow = flowRow; newCommandStartPhysCol = col; } break;
@@ -1259,7 +1256,6 @@ namespace Ntilde.VT
                         if (newAltSavedPhysRow < sbCount) _savedCursors.Alt.Row = 0;
                         else _savedCursors.Alt.Row = newAltSavedPhysRow - sbCount;
                         _savedCursors.Alt.Col = Math.Clamp(newAltSavedPhysCol, 0, newCols);
-                        if (altSavedOnDoubleLine) _savedCursors.Alt.IsPendingWrap = altSavedWaitsAtDoubleRowEnd && (_savedCursors.Alt.IsPendingWrap || _source.Modes.IsAutoWrapMode);
                     }
 
                     // 8. Conditional Cursor Row Clearing (REFINED)

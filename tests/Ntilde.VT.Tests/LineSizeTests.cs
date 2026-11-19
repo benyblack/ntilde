@@ -579,6 +579,27 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void The_alternate_screens_saved_cursor_is_not_moved_by_the_main_screens_double_line()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}ab{Esc}[?1049h0123456789{Esc}7{Esc}[3;1H");
+        buffer.Resize(20, 6);
+        parser.Process($"{Esc}8");
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(9, buffer.CursorCol);
+    }
+
+    [Fact]
+    public void The_command_line_reader_joins_a_re_wrapped_double_line_without_the_hidden_half()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 6);
+        parser.Process($"{Dwl}{Esc}]133;B{Esc}\\abcdef");
+        buffer.Resize(6, 6);
+        Assert.True(GridQueryReader.TryReadCommandLine(buffer, buffer.CommandStartMark!.Value, out var line));
+        Assert.Equal("abcdef", line.Text);
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);
