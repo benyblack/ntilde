@@ -405,14 +405,40 @@ namespace Ntilde.Shell
         internal (int X, int Y) ToMouseReportPixel(Point position)
         {
             if (_buffer == null) return (1, 1);
-            return ToMouseReportPixel(position, _cachedRenderScaling, _metrics.CellWidth, _metrics.CellHeight, _buffer.Cols, _buffer.Rows);
+            var (scaleX, scaleY) = MousePixelScales();
+            return ToMouseReportPixel(position, scaleX, scaleY, _metrics.CellWidth, _metrics.CellHeight, _buffer.Cols, _buffer.Rows);
+        }
+
+        /// <summary>
+        /// The cell size, in pixels, the pane's session reports through <c>CSI 14 t</c>, <c>CSI 16 t</c> and image placement, when that is not this view's own device-pixel cell. A mux client has it: the
+        /// daemon holds one size for the session (the latest client wins) and every client's parser mirrors it, while this view's render scaling and font metrics are its own. Null for a direct pane, whose
+        /// parser is set from this view. Read on the UI thread; the value it returns is an immutable record the delivery thread replaces.
+        /// </summary>
+        internal Func<SixelCellSize?>? SessionPixelCellProvider { get; set; }
+
+        /// <summary>
+        /// Device pixels per logical pixel on each axis for the pointer position SGR-Pixels reports. A direct pane's is its own render scaling. A mux client maps the pointer into the session's reported cell
+        /// size, so a frame from any client, whatever its font or display scaling, is in the unit the session's size replies use right now; a position that crosses a cell boundary here crosses it there.
+        /// </summary>
+        private (double X, double Y) MousePixelScales()
+        {
+            double scale = double.IsFinite(_cachedRenderScaling) && _cachedRenderScaling > 0 ? _cachedRenderScaling : 1;
+            if (SessionPixelCellProvider?.Invoke() is { } cell
+                && float.IsFinite(cell.WidthPx) && float.IsFinite(cell.HeightPx) && cell.WidthPx > 0 && cell.HeightPx > 0
+                && _metrics.CellWidth > 0 && _metrics.CellHeight > 0)
+                return (cell.WidthPx / _metrics.CellWidth, cell.HeightPx / _metrics.CellHeight);
+            return (scale, scale);
         }
 
         /// <summary>The pure conversion behind <see cref="ToMouseReportPixel(Point)"/>: the logical position, the scale and the grid in, the one-based pixel position out.</summary>
-        internal static (int X, int Y) ToMouseReportPixel(Point position, double scale, double cellWidth, double cellHeight, int cols, int rows)
+        internal static (int X, int Y) ToMouseReportPixel(Point position, double scale, double cellWidth, double cellHeight, int cols, int rows) =>
+            ToMouseReportPixel(position, scale, scale, cellWidth, cellHeight, cols, rows);
+
+        /// <summary>As the square-scale form, with the scale of each axis: a mux client's is the session's cell size over its own logical cell.</summary>
+        internal static (int X, int Y) ToMouseReportPixel(Point position, double scaleX, double scaleY, double cellWidth, double cellHeight, int cols, int rows)
         {
-            if (!TryGetTextAreaPixels(scale, cellWidth, cellHeight, cols, rows, out scale, out int width, out int height)) return (1, 1);
-            return (PixelOffset(position.X, scale, width) + 1, PixelOffset(position.Y, scale, height) + 1);
+            if (!TryGetTextAreaPixels(scaleX, scaleY, cellWidth, cellHeight, cols, rows, out scaleX, out scaleY, out int width, out int height)) return (1, 1);
+            return (PixelOffset(position.X, scaleX, width) + 1, PixelOffset(position.Y, scaleY, height) + 1);
         }
 
         private static int PixelOffset(double logical, double scale, int extent)
@@ -423,14 +449,19 @@ namespace Ntilde.Shell
 
         /// <summary>The text area in whole device pixels (the largest pixel offset is one less), or false for a grid without a measurable size.</summary>
         internal static bool TryGetTextAreaPixels(double scale, double cellWidth, double cellHeight, int cols, int rows,
-            out double effectiveScale, out int width, out int height)
+            out double effectiveScale, out int width, out int height) =>
+            TryGetTextAreaPixels(scale, scale, cellWidth, cellHeight, cols, rows, out effectiveScale, out _, out width, out height);
+
+        internal static bool TryGetTextAreaPixels(double scaleX, double scaleY, double cellWidth, double cellHeight, int cols, int rows,
+            out double effectiveScaleX, out double effectiveScaleY, out int width, out int height)
         {
-            effectiveScale = double.IsFinite(scale) && scale > 0 ? scale : 1;
+            effectiveScaleX = double.IsFinite(scaleX) && scaleX > 0 ? scaleX : 1;
+            effectiveScaleY = double.IsFinite(scaleY) && scaleY > 0 ? scaleY : 1;
             width = height = 0;
             if (!double.IsFinite(cellWidth) || !double.IsFinite(cellHeight) || cellWidth <= 0 || cellHeight <= 0 || cols <= 0 || rows <= 0) return false;
-            // The extent is what CSI 14 t reports: the float cell size SyncLocalSixelCellSize stores times the grid, rounded, so the last pixel the
-            // reply counts is also reachable here (flooring would lose it to float error at fractional scales).
-            double w = Math.Round(cols * (float)(cellWidth * effectiveScale)), h = Math.Round(rows * (float)(cellHeight * effectiveScale));
+            // The extent is what CSI 14 t reports: the float cell size the session holds (SyncLocalSixelCellSize stores it for a direct pane, the daemon for a mux one) times the grid, rounded, so the last
+            // pixel the reply counts is also reachable here (flooring would lose it to float error at fractional scales).
+            double w = Math.Round(cols * (float)(cellWidth * effectiveScaleX)), h = Math.Round(rows * (float)(cellHeight * effectiveScaleY));
             if (w < 1 || h < 1 || w > int.MaxValue || h > int.MaxValue) return false;
             width = (int)w;
             height = (int)h;
@@ -445,10 +476,11 @@ namespace Ntilde.Shell
         internal bool TryGetPixelPosition(int pixelX, int pixelY, out Point position)
         {
             position = default;
-            if (_buffer == null || !TryGetTextAreaPixels(_cachedRenderScaling, _metrics.CellWidth, _metrics.CellHeight, _buffer.Cols, _buffer.Rows,
-                    out double scale, out int width, out int height)
+            var (requestedX, requestedY) = MousePixelScales();
+            if (_buffer == null || !TryGetTextAreaPixels(requestedX, requestedY, _metrics.CellWidth, _metrics.CellHeight, _buffer.Cols, _buffer.Rows,
+                    out double scaleX, out double scaleY, out int width, out int height)
                 || pixelX < 0 || pixelY < 0 || pixelX >= width || pixelY >= height) return false;
-            position = new Point((pixelX + 0.5) / scale, (pixelY + 0.5) / scale);
+            position = new Point((pixelX + 0.5) / scaleX, (pixelY + 0.5) / scaleY);
             return true;
         }
 
