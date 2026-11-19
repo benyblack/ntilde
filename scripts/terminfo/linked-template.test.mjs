@@ -67,7 +67,9 @@ test('a mode changed through a use is the template\'s original mode again for th
     assert.deepEqual(read(root), content);
 }));
 
-test('after a repair that failed, no later use is handed the unrepaired template', () => harness((use, root, links) => {
+test('after a repair that failed, no later use is handed the unrepaired template', t => harness((use, root, links) => {
+    // A template that copies has nothing to repair: its release does nothing, so there is no failure to provoke.
+    if (!links.linking) return t.skip('this file system is copied to, not linked');
     // Removing the pristine copy mid-use makes the repair of the written file throw.
     assert.throws(() => use(output => { writeFileSync(join(output, 'a.json'), 'never repaired'); links.remove(); }));
     // The template may still hold that write, so the next use must not link it. With the pristine copy gone its copy fails;
