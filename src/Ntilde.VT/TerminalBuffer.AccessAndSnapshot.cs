@@ -71,9 +71,12 @@ namespace Ntilde.VT
         public bool IsRowWrappedAbsolute(int absRow)
         {
             AssertLockHeld();
-            // A re-wrapped double-height line carries on two rows down, in the next row of the same half, not in
-            // the row below (TerminalBuffer.LineSize.cs): to everything that walks soft wraps row by row it ends here.
-            return IsRowWrapFlagSetAbsolute(absRow) && !IsDoubleHeight(GetLineSizeAbsolute(absRow));
+            // A re-wrapped double-height line carries on two rows down, in the next row of the same half, when the
+            // row below is its other half (TerminalBuffer.LineSize.cs): to everything that walks soft wraps row by
+            // row it ends here.
+            if (!IsRowWrapFlagSetAbsolute(absRow)) return false;
+            LineSize size = GetLineSizeAbsolute(absRow);
+            return !IsDoubleHeight(size) || GetLineSizeAbsolute(absRow + 1) == size;
         }
 
         /// <summary>The stored wrap bit of a row, whatever its line attribute. Requires the read lock.</summary>

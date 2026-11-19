@@ -59,7 +59,7 @@ public partial class TerminalBuffer
             for (int row = 0; row < totalRows; row++)
             {
                 // A double-height line re-wrapped by a resize: each half is one logical line, on every other row.
-                int pairs = DoubleHeightLinePairsAt(row, totalRows);
+                int pairs = text.Length == 0 && rows.Count == 0 ? DoubleHeightLinePairsAt(row, totalRows) : 0;
                 if (pairs > 1)
                 {
                     for (int half = 0; half < 2; half++)
@@ -73,8 +73,8 @@ public partial class TerminalBuffer
                     continue;
                 }
 
-                bool wrapped = AppendSearchRow(row, history, text, columns, rows, pattern.SizedEnds) && !IsDoubleHeight(GetLineSizeAbsolute(row));
-                if (wrapped && row + 1 < totalRows) continue;
+                AppendSearchRow(row, history, text, columns, rows, pattern.SizedEnds);
+                if (IsRowWrappedAbsolute(row) && row + 1 < totalRows) continue;
                 if (!SearchAssembledLine())
                 {
                     matches.Clear();

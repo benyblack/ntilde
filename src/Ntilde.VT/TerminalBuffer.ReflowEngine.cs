@@ -505,6 +505,10 @@ namespace Ntilde.VT
                         }
                     }
 
+                    // Old scrollback rows already handed back to the pool; the store's logical indexes
+                    // shift down by this much as its oldest pages go.
+                    int oldRowsReleased = 0;
+
                     // A double-size line (DECDWL / DECDHL) holds half the page's columns, so it re-wraps at half the
                     // new width into rows that keep its attribute, and rejoins when the page widens again. The two
                     // halves of a double-height line re-wrap side by side and are laid out top, bottom, top, bottom,
@@ -526,7 +530,15 @@ namespace Ntilde.VT
                     // Whether the next physical row carries on the double-size line being assembled, and in which
                     // half: -1 when it starts a line of its own. A row continues the row before it only through a
                     // soft wrap; the bottom half of a double-height line is the row straight after its top half.
-                    int ContinuedDoubleStream(TerminalRow row)
+                    LineSize LineSizeAtPhys(int phys, int released)
+                    {
+                        if (phys >= totalPhysRows) return LineSize.SingleWidth;
+                        if (phys < oldScrollbackCount) return _scrollback.GetLineSize(phys - released);
+                        int vpRow = phys - oldScrollbackCount;
+                        return vpRow < actualVpLen ? _viewport[vpRow].LineSize : LineSize.SingleWidth;
+                    }
+
+                    int ContinuedDoubleStream(TerminalRow row, LineSize rowBelow)
                     {
                         if (doubleStartPhys == -1) return -1;
                         if (!doublePaired)
@@ -535,7 +547,8 @@ namespace Ntilde.VT
                             return doubleLastWrapped && row.LineSize == doubleSize ? 0 : -1;
                         }
                         if (doubleLastSize == LineSize.DoubleHeightTop) return row.LineSize == LineSize.DoubleHeightBottom ? 1 : -1;
-                        return row.LineSize == LineSize.DoubleHeightTop && doubleTopWrapped && doubleLastWrapped ? 0 : -1;
+                        // The next pair belongs to the line only as a whole pair.
+                        return row.LineSize == LineSize.DoubleHeightTop && rowBelow == LineSize.DoubleHeightBottom && doubleTopWrapped && doubleLastWrapped ? 0 : -1;
                     }
 
                     void AddDoubleRow(TerminalRow row, int phys, int stream)
@@ -543,18 +556,21 @@ namespace Ntilde.VT
                         var target = doubleStreams[stream];
                         int start = target.Count;
                         int lastCol = Math.Max(1, oldCols / 2) - 1;
+                        // Only the left half is the line. What an erase with a background colour painted past it was never shown.
+                        int shown = Math.Min(lastCol + 1, row.Cells.Length);
                         int len;
                         if (row.IsWrapped)
                         {
-                            len = Math.Clamp(row.WrappedColumns ?? lastCol + 1, 0, row.Cells.Length);
+                            len = Math.Clamp(row.WrappedColumns ?? shown, 0, shown);
                         }
                         else
                         {
                             len = 0;
-                            for (int scan = 0; scan < row.Cells.Length; scan++)
+                            for (int scan = 0; scan < shown; scan++)
                             {
                                 var cell = row.Cells[scan];
                                 if ((cell.Character != ' ' && cell.Character != '\0') || !cell.IsDefaultBackground || cell.HasExtendedText
+                                    || cell.IsUnderline || cell.IsInverse || cell.IsStrikethrough
                                     || row.GetHyperlink(scan) != null || row.GetUnderline(scan) != null || row.IsProtected(scan))
                                 {
                                     len = scan + 1;
@@ -566,7 +582,7 @@ namespace Ntilde.VT
                             if (phys == absAltSavedIdx) len = Math.Max(len, Math.Min(_savedCursors.Alt.Col, lastCol));
                             if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark csPad) len = Math.Max(len, Math.Min(csPad.Column, lastCol + 1));
                             if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark osPad) len = Math.Max(len, Math.Min(osPad.Column, lastCol + 1));
-                            len = Math.Min(len, row.Cells.Length);
+                            len = Math.Min(len, shown);
                         }
 
                         if (phys == absCursorPhysicalIdx) doubleTracked.Add((0, stream, start + Math.Min(Math.Min(_cursorCol, lastCol), len), null));
@@ -681,10 +697,6 @@ namespace Ntilde.VT
                         doublePaired = false;
                     }
 
-                    // Old scrollback rows already handed back to the pool; the store's logical indexes
-                    // shift down by this much as its oldest pages go.
-                    int oldRowsReleased = 0;
-
                     for (int i = 0; i < totalPhysRows; i++)
                     {
                         TerminalRow physRow;
@@ -716,7 +728,7 @@ namespace Ntilde.VT
                                 FlowLine(logicalIdx++, lineLen, lineStartPhys, i);
                                 lineStartPhys = -1;
                             }
-                            int stream = ContinuedDoubleStream(physRow);
+                            int stream = ContinuedDoubleStream(physRow, LineSizeAtPhys(i + 1, oldRowsReleased));
                             if (stream == -1)
                             {
                                 FlushDoubleLine();

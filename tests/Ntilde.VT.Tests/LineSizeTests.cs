@@ -342,6 +342,64 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Search_follows_a_lone_double_height_half_through_its_re_wrapped_rows()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\nafter");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { "abc", "def", "after" }, Lines(buffer).Take(3));
+        Assert.Single(buffer.FindMatches("abcdef", false, true));
+    }
+
+    [Fact]
+    public void Returning_a_re_wrapped_double_height_line_to_single_width_leaves_its_rows_as_separate_lines()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[?69h");
+        buffer.Resize(12, 8);
+        Assert.Equal(new[] { "abc", "abc", "def", "def" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
+    public void Underlined_blanks_at_the_end_of_a_double_line_survive_a_width_change()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}{Esc}[4m  {Esc}[0m\r\nafter");
+        buffer.Resize(12, 6);
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.True(buffer.GetCellAbsolute(0, 0).IsUnderline);
+            Assert.True(buffer.GetCellAbsolute(1, 0).IsUnderline);
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void A_background_erase_past_the_half_of_a_double_line_adds_no_row_on_a_width_change()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abc{Esc}[41m{Esc}[K{Esc}[0m\r\nafter");
+        buffer.Resize(12, 6);
+        Assert.Equal(new[] { "abc", "after" }, Lines(buffer).Take(2));
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer).Take(2));
+    }
+
+    [Fact]
+    public void Reverse_wrap_lands_on_the_last_column_of_the_double_row_above_not_inside_a_wide_glyph()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 6);
+        parser.Process(Dwl + "ab\u6f22cd");
+        buffer.Resize(8, 6);
+        Assert.Equal(new[] { "ab\u6f22", "cd" }, Lines(buffer).Take(2));
+        parser.Process($"{Esc}[?45h{Esc}[2;1H\b");
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(2, buffer.CursorCol);
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

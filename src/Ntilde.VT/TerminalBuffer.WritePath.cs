@@ -157,10 +157,12 @@ namespace Ntilde.VT
             if (!reverseWrap || _cursorRow <= 0 || _cursorRow >= Rows) return false;
             bool inRegion = _cursorRow >= ScrollTop && _cursorRow <= ScrollBottom;
             if (_cursorRow <= (inRegion ? ScrollTop : 0)) return false;
-            if (!_viewport[_cursorRow - 1].IsWrapped || IsDoubleHeight(_viewport[_cursorRow - 1].LineSize)) return false;
+            var above = _viewport[_cursorRow - 1];
+            // The row above a half of a double-height line is its other half, never the row this one continues.
+            if (!above.IsWrapped || (IsDoubleHeight(above.LineSize) && _viewport[_cursorRow].LineSize != above.LineSize)) return false;
 
             _cursorRow--;
-            _cursorCol = RightMargin;
+            _cursorCol = Math.Min(RightMargin, CursorRowLastColumnNoLock);
             var previous = _viewport[_cursorRow];
             while (skipWideContinuation && _cursorCol > 0 && previous.Cells[_cursorCol].IsWideContinuation)
             {
