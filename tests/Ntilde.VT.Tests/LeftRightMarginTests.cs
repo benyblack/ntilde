@@ -224,6 +224,46 @@ public sealed class LeftRightMarginTests
         Assert.Equal((5, 8), Cursor(buffer));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RI_fills_the_exposed_cells_with_the_active_background(bool margins)
+    {
+        var (buffer, parser) = Seeded(margins);
+        int first = margins ? 2 : 0;
+        int last = margins ? 6 : 9;
+        var before = buffer.ViewportRows[0].Cells.ToArray();
+
+        parser.Process($"{Esc}[1;4H{Esc}[44m{Esc}M");
+        for (int col = first; col <= last; col++)
+        {
+            var cell = buffer.ViewportRows[0].Cells[col];
+            Assert.Equal(' ', cell.Character);
+            Assert.False(cell.IsDefaultBackground);
+            Assert.Equal(4, cell.BgIndex);
+            Assert.Equal(before[col].Character, buffer.ViewportRows[1].Cells[col].Character);
+        }
+
+        parser.Process($"{Esc}[48;2;18;52;86m{Esc}M");
+        for (int col = first; col <= last; col++)
+        {
+            var cell = buffer.ViewportRows[0].Cells[col];
+            Assert.False(cell.IsDefaultBackground);
+            Assert.Equal(-1, cell.BgIndex);
+            Assert.Equal(new TermColor(18, 52, 86), cell.Background);
+        }
+
+        parser.Process($"{Esc}[49m{Esc}M");
+        for (int col = 0; col < buffer.Cols; col++)
+        {
+            var cell = buffer.ViewportRows[0].Cells[col];
+            if (col >= first && col <= last)
+                Assert.True(cell.IsDefaultBackground);
+            else
+                Assert.Equal(before[col].Character, cell.Character);
+        }
+    }
+
     [Fact]
     public void RI_and_SD_scroll_the_band_down_and_SU_scrolls_it_up_wherever_the_cursor_is()
     {

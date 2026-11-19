@@ -694,17 +694,17 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
-                ScrollDownInternal();
+                ScrollDownInternal(ThemeBlankCell());
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             Invalidate();
         }
 
-        private void ScrollDownInternal()
+        private void ScrollDownInternal(TerminalCell blank)
         {
             if (HasHorizontalMargins)
             {
-                ScrollBandNoLock(ScrollTop, ScrollBottom, LeftMargin, RightMargin, 1, up: false, ThemeBlankCell());
+                ScrollBandNoLock(ScrollTop, ScrollBottom, LeftMargin, RightMargin, 1, up: false, blank);
                 return;
             }
 
@@ -744,7 +744,7 @@ namespace Ntilde.VT
             }
 
             // Create new blank line at the top of the region
-            _viewport[ScrollTop] = new TerminalRow(Cols, Theme.Foreground, Theme.Background);
+            _viewport[ScrollTop] = new TerminalRow(Cols, blank);
 
             // Moved rows keep their revisions, as in ScrollUpInternal (#657).
         }

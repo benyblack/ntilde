@@ -148,7 +148,12 @@ public partial class TerminalBuffer
         {
             if (_cursorRow == ScrollTop)
             {
-                if (CursorInHorizontalMarginsNoLock) ScrollDownInternal();
+                if (CursorInHorizontalMarginsNoLock)
+                {
+                    var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false,
+                        IsDefaultForeground, IsDefaultBackground, fgIdx: CurrentFgIndex, bgIdx: CurrentBgIndex);
+                    ScrollDownInternal(blank);
+                }
             }
             else
             {
