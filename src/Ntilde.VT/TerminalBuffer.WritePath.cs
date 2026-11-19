@@ -410,8 +410,11 @@ namespace Ntilde.VT
                 {
                     // A double-size row is one physical line of its own: a wrap out of it leaves no soft-wrap mark.
                     if (_cursorRow >= 0 && _cursorRow < Rows && !HasHorizontalMargins && _viewport[_cursorRow].LineSize == LineSize.SingleWidth) _viewport[_cursorRow].SetSoftWrap(_cursorCol);
-                    _cursorCol = LeftMargin;
-                    AdvanceCursorRowForLineFeed();
+                    if (!FollowDoubleHeightWrapNoLock())
+                    {
+                        _cursorCol = LeftMargin;
+                        AdvanceCursorRowForLineFeed();
+                    }
                     _isPendingWrap = false;
                     rightEdge = RightEdgeForCursorNoLock;
                 }

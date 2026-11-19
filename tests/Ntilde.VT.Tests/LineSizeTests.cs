@@ -692,6 +692,28 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_wide_glyph_that_wraps_early_goes_on_in_the_same_half_of_a_re_wrapped_double_height_line()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[1;3H\u6f22");
+        Assert.Equal(new[] { "abc", "abc", "\u6f22f", "def" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
+    public void A_wrap_at_the_bottom_margin_does_not_leave_the_scrolling_region_for_the_next_row_of_the_half()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[1;2r{Esc}[1;1HabcX");
+        string[] lines = Lines(buffer);
+        Assert.Equal("def", lines[2]);
+        Assert.Equal("def", lines[3]);
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

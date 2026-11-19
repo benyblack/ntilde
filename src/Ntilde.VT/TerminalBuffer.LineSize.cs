@@ -95,6 +95,8 @@ public partial class TerminalBuffer
     private bool FollowDoubleHeightWrapNoLock()
     {
         if (_cursorRow < 0 || _cursorRow + 2 >= Rows) return false;
+        // Not out of the scrolling region: at its bottom margin the wrap is an ordinary line feed.
+        if (_cursorRow <= ScrollBottom && _cursorRow + 2 > ScrollBottom) return false;
         TerminalRow row = _viewport[_cursorRow];
         if (!row.IsWrapped || !IsDoubleHeight(row.LineSize)) return false;
         LineSize below = _viewport[_cursorRow + 1].LineSize;
