@@ -116,7 +116,7 @@ test('only controlled pixels are measured, by the cursor, runtime-color reset, s
     const stored = committed();
     assert.ok(stored.benchmark.every(item => item.claims.every(claim => !claim.measuredLayers.includes('pixels'))));
     const pixelClaims = stored.benchmark.flatMap(item => item.claims.filter(claim => claim.measuredLayers.includes('controlled-pixels')).map(claim => [item.id, claim.suite]));
-    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.iterm2-images', 'static-images'], ['extensions.kitty-graphics.animation', 'kitty-animation'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
+    assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.iterm2-images', 'static-images'], ['extensions.kitty-graphics.animation', 'kitty-animation'], ['extensions.kitty-graphics.unicode-placeholders', 'kitty-placeholders'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
         ['extensions.osc111-reset-bg', 'color-reset'], ['extensions.osc112-reset-cursor', 'color-reset'],
         ['extensions.osc117-reset-highlight-bg', 'selection-colors'], ['extensions.osc119-reset-highlight-fg', 'selection-colors'],
         ['extensions.osc17-highlight-bg', 'selection-colors'], ['extensions.osc19-highlight-fg', 'selection-colors'], ['extensions.sixel', 'static-images']]);
@@ -140,6 +140,8 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
     assert.equal(base.source.identity, 'unverified');
     assert.ok(Object.keys(base.ungradedDiagnostics).every(id => !(id in base.outcomes)));
     for (const suite of stored.suites) {
+        // An owned-only publication ran no stock collector at all (the Unicode placeholder suite): it has no stock provenance, and none is invented for it.
+        if (suite.stock === null) { assert.deepEqual(['kitty-placeholders'].filter(name => name === suite.suite), [suite.suite]); continue; }
         assert.ok(['collected-run-id-recorded', 'collected-raw-digest-recorded', 'carried-forward'].includes(suite.stock.basis), suite.suite);
         // Runs from the rectangle-checksum suite on (policy v33 and later) turn the off-by-default DECRQCRA report on in their initial
         // settings, so their stock run answers editing.decrqcra: exactly that one case moves from inconclusive to supported. Every earlier
@@ -169,10 +171,10 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         if (suite.stock.basis !== 'carried-forward' && suite.suite !== 'ascii-reflow') assert.deepEqual(suite.stock.counts, expected, suite.suite);
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
-    const carried = stored.suites.filter(suite => suite.stock.basis === 'carried-forward');
+    const carried = stored.suites.filter(suite => suite.stock?.basis === 'carried-forward');
     assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase']);
     for (const suite of carried) assert.match(suite.stock.note, /carried, not re-measured/, suite.suite);
-    const runIds = stored.suites.map(suite => suite.stock.runId).filter(Boolean);
+    const runIds = stored.suites.map(suite => suite.stock?.runId).filter(Boolean);
     assert.equal(new Set(runIds).size, runIds.length, 'two suites must not claim the same stock run as freshly collected');
     assert.deepEqual(stockProvenance({}), null);
     assert.equal(stockProvenance({ stockCollector: { rerun: false, counts: {} }, stockCollectorRunId: 'x' }).basis, 'carried-forward');
@@ -359,15 +361,15 @@ test('current effect totals preserve the separate unsupported and measured-other
         assert.equal(font.effect.verdict, 'supported');
     }
     assert.equal(row(stored, 'extensions.osc710-font-normal'), undefined);
-    assert.equal(totals.effectSupportedIds, 147);
+    assert.equal(totals.effectSupportedIds, 148);
     assert.equal(totals.pinnedSupportedIds, 97);
     assert.equal(totals.pinnedAndEffectSupportedIds, 97);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 50);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 146);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 51);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 147);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 22, effectMeasuredUnsupported: 2, effectMeasuredOther: 1, effectNotMeasured: 19, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 21, effectMeasuredUnsupported: 2, effectMeasuredOther: 1, effectNotMeasured: 18, notPinnedSupported: 72 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -464,7 +466,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc720-scroll-up`, `extensions\.sixel`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 2 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 19 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 18 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
@@ -482,7 +484,8 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     // 336 KiB: the truecolor projection and four OSC 633 cases add their receipt bindings.
     // 352 KiB: the cell-size and OSC 5 cases add their separate source-bound runs and receipts.
     // 368 KiB: the OSC 3008 and OSC 720 cases add their source-bound runs and receipts.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 368 * 1024, 'the generated files stay reviewable');
+    // 384 KiB: the Unicode placeholder suite entry (no stock run, its own receipt binding) joins the merged inventory.
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 384 * 1024, 'the generated files stay reviewable');
 });
 
 test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and reset.method, with the reset() API layer named and no stock or Core movement', () => {

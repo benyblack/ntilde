@@ -40,13 +40,13 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 150,
-    "suiteClaims": 152,
+    "uniqueBenchmarkIds": 151,
+    "suiteClaims": 153,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 147,
+    "effectSupportedIds": 148,
     "effectUnsupportedIds": 2,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 97,
@@ -58,6 +58,7 @@
       "editing.decsace",
       "extensions.iterm2-images",
       "extensions.kitty-graphics.animation",
+      "extensions.kitty-graphics.unicode-placeholders",
       "extensions.notifications",
       "extensions.osc0-icon-title",
       "extensions.osc1-icon",
@@ -106,7 +107,7 @@
       "extensions.osc720-scroll-up",
       "extensions.sixel"
     ],
-    "effectSupportedOfStockInconclusive": 146,
+    "effectSupportedOfStockInconclusive": 147,
     "effectUnsupportedOfStockInconclusive": 2,
     "pinnedSupportedOfStockInconclusive": 96,
     "ungradedStockIdsWithEvidence": [
@@ -121,10 +122,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 22,
+      "effectUnqualified": 21,
       "effectMeasuredUnsupported": 2,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 19,
+      "effectNotMeasured": 18,
       "notPinnedSupported": 72
     }
   },
@@ -4121,6 +4122,50 @@
       }
     },
     {
+      "suite": "kitty-placeholders",
+      "suiteId": "ntilde-owned-kitty-placeholders-direct-qualification-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-19-kitty-placeholders-direct/",
+      "doc": "2026-11-19-kitty-placeholders-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.kitty-graphics.unicode-placeholders"
+      ],
+      "evidence": {
+        "files": 10,
+        "bytes": 2217789,
+        "sha256": "9639aaa3ab64e7b0a8a9d204d6b54609fd0ea1dd9cdb5756cf5b758c586bffd1"
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "runId": "efccf352e690986d61ee2bf3d2ca9ef4",
+        "cellReceipt": null,
+        "suiteEvidence": null
+      },
+      "run": {
+        "ownedRunId": "efccf352e690986d61ee2bf3d2ca9ef4",
+        "measuredAt": null,
+        "appRevision": "8a2eb2952a7b965c101580093607d3f2681b7932",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "c46e42c786fc0646443b6d913771c86050b49da5",
+        "collectorAdapterId": "ntilde-owned-kitty-animation-persistent-adapter-v1",
+        "collectorAdapterBundleSha256": null,
+        "gradingAdapterId": "ntilde-owned-kitty-animation-persistent-adapter-v1",
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v70",
+        "sourceSnapshotManifestSha256": "7546789f025d25f37c02acf9f57fd1a87e488821c4c15689486ae47836b2db8a"
+      },
+      "stock": null,
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/kitty-placeholders-publication.test.mjs",
+        "testSha256": "1fd077afefd494753eea4a528f3fa644a261cd2edf22b0e253d9447b28d91f22"
+      }
+    },
+    {
       "suite": "cell-size",
       "suiteId": "ntilde-owned-osc-cell-size-v1",
       "contractsVersion": 1,
@@ -6470,6 +6515,58 @@
             "controlled-pixels"
           ],
           "evidenceTag": "owned-controlled-pixels-paired-raw-render"
+        }
+      ]
+    },
+    {
+      "id": "extensions.kitty-graphics.unicode-placeholders",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "kitty-placeholders",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "kitty-placeholders",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.kitty-graphics.unicode-placeholders",
+          "suite": "kitty-placeholders",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-callbacks-preserved-plus-owned-placeholder-pixel-effect-v1"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+          },
+          "measuredLayers": [
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-controlled-pixels-paired-raw-render-direct-placeholders"
         }
       ]
     },

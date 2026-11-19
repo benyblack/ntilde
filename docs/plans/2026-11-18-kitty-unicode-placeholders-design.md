@@ -64,7 +64,7 @@ Image policy 5 (`PlaceholderImagesVersion`): the daemon and every client parse t
 bytes, so each holds the same virtual placements; snapshots add them next to the retained
 assets so reattach restores them. Older peers are refused the session, never downgraded.
 
-## PR C: measurement
+## PR C: measurement (implemented)
 
 An owned desktop run: a distinguishable multicolour image, placeholder cells for a 2x2
 grid, controls (blank before, tiles after, erase clears, an unbound id and a stale

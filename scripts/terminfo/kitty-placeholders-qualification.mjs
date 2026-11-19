@@ -17,11 +17,12 @@ export const directPlaceholdersReceiptSuiteId = 'ntilde-owned-kitty-placeholders
 export { pinnedBundleArchive, upstreamBundleSha256 } from './kitty-animation-qualification.mjs';
 export { kittyPlaceholdersQualificationIds, pinnedPlaceholdersSpanDigests } from './kitty-animation-qualification.mjs';
 // Measured on the committed tree named here: the Release sidecar was built from the App at this commit and the measured scripts are its tree
-// (later commits are publication, docs, test pins and merges of main only). Filled in when the run is published.
-export const measuredAppRevision = '0000000000000000000000000000000000000000';
-export const measuredScriptsRevision = '0000000000000000000000000000000000000000';
-export const directMeasuredAppRevision = '0000000000000000000000000000000000000000';
-export const directMeasuredScriptsRevision = '0000000000000000000000000000000000000000';
+// (later commits are publication, docs, test pins and merges of main only). The App tree is unchanged between the two commits: the sidecar was built at the first and the second only changed measured scripts.
+export const measuredAppRevision = '8a2eb2952a7b965c101580093607d3f2681b7932';
+export const measuredScriptsRevision = 'c46e42c786fc0646443b6d913771c86050b49da5';
+// Both publications were collected on the same sidecar and the same scripts, one after the other.
+export const directMeasuredAppRevision = '8a2eb2952a7b965c101580093607d3f2681b7932';
+export const directMeasuredScriptsRevision = 'c46e42c786fc0646443b6d913771c86050b49da5';
 
 const version = 5;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');

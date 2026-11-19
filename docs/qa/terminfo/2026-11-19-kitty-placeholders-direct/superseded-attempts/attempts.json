@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "note": "Development attempts of the ordinary-tab Unicode placeholder measurement (#989) in order. Only the retained files are kept; none produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-TpnTrY",
+      "runId": "94b3dbfe7ba68379e3eca7721db5b0d2",
+      "scripts": "8a2eb295",
+      "collection": "direct-placeholders scope",
+      "outcome": "no evidence (the carrier refused the first placeholder stage; 2 of 19 stages had been read)",
+      "reason": "The first ordinary-tab collection. The blank and build stages passed, then the carrier refused the show stage with 'Invalid or incomplete owned static-image evidence': every image carrier before it required the cell grid to stay the blank bound screen, but placeholders are cells, so the anchor row held the printed placeholder graphemes and their 24-bit foreground. The carrier was extended so the suite declares the screen each stage must leave (the cells it printed, built from the stage's own command text) and the suite was collected again.",
+      "files": [
+        {
+          "file": "owned-TpnTrY/failure.json",
+          "sha256": "7aff485f95872fd2a666f9db07cc09f0a6f7ade03265375c045c87d8c77250c9",
+          "bytes": 104
+        },
+        {
+          "file": "owned-TpnTrY/animation-failed-observation.json",
+          "sha256": "f4299f0bc6435cb96078f1924a4f933a7636fb29f724fa6abc1f4ce5a0762854",
+          "bytes": 26352
+        },
+        {
+          "file": "owned-TpnTrY/animation-raw-failure.json",
+          "sha256": "2a8792ba84a20829ae6183883782478df485416d07e3795681a180410df75c96",
+          "bytes": 437
+        },
+        {
+          "file": "owned-TpnTrY/ownership-proof.json",
+          "sha256": "3dd5bd13c03b434ad88724eb129a0de5211daf320a1fa0959f04fa941d6d339a",
+          "bytes": 14137
+        }
+      ]
+    }
+  ]
+}
