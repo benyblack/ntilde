@@ -549,12 +549,7 @@ namespace Ntilde.VT
                     int newLastCharPhysCol = -1;
                     var doubleTracked = new List<(int Kind, int Stream, int Offset, TerminalImage? Image)>();
                     int doubleStartPhys = -1;
-                    int doubleRowCount = 0;
-                    LineSize doubleSize = LineSize.SingleWidth;
-                    LineSize doubleLastSize = LineSize.SingleWidth;
-                    bool doublePaired = false;
-                    bool doubleLastWrapped = false;
-                    bool doubleTopWrapped = false;
+                    var doubleLine = default(DoubleSizeLineRows);
                     // How many of the line's rows were history.
                     int doubleHistoryRows = 0;
                     bool mainSavedOnDoubleLine = false, mainSavedWaitsAtDoubleRowEnd = false;
@@ -569,19 +564,6 @@ namespace Ntilde.VT
                         if (phys < oldScrollbackCount) return _scrollback.GetLineSize(phys - released);
                         int vpRow = phys - oldScrollbackCount;
                         return vpRow < actualVpLen ? _viewport[vpRow].LineSize : LineSize.SingleWidth;
-                    }
-
-                    int ContinuedDoubleStream(TerminalRow row, LineSize rowBelow)
-                    {
-                        if (doubleStartPhys == -1) return -1;
-                        if (!doublePaired)
-                        {
-                            if (doubleRowCount == 1 && doubleSize == LineSize.DoubleHeightTop && row.LineSize == LineSize.DoubleHeightBottom) return 1;
-                            return doubleLastWrapped && row.LineSize == doubleSize ? 0 : -1;
-                        }
-                        if (doubleLastSize == LineSize.DoubleHeightTop) return row.LineSize == LineSize.DoubleHeightBottom ? 1 : -1;
-                        // The next pair belongs to the line only as a whole pair.
-                        return row.LineSize == LineSize.DoubleHeightTop && rowBelow == LineSize.DoubleHeightBottom && doubleTopWrapped && doubleLastWrapped ? 0 : -1;
                     }
 
                     // Where a cursor stands in its row's text. A wrap pending on its column puts it after that column's character.
@@ -643,10 +625,6 @@ namespace Ntilde.VT
                         for (int k = 0; k < len; k++)
                             target.Add((row.Cells[k], row.GetExtendedText(k), row.GetHyperlink(k), row.GetUnderline(k), row.IsProtected(k)));
 
-                        doubleRowCount++;
-                        doubleLastSize = row.LineSize;
-                        doubleLastWrapped = row.IsWrapped;
-                        if (stream == 0) doubleTopWrapped = row.IsWrapped;
                     }
 
                     void EmitDoubleRow(int stream, int chunk, LineSize size, bool wrapped, bool isHistory)
@@ -698,7 +676,7 @@ namespace Ntilde.VT
                         int rowsPerHalf = Math.Max(1, Math.Max(doubleChunks[0].Count, doubleChunks[1].Count));
                         // A line that lies in history stays there however many rows it becomes. One that straddles
                         // the top of the screen keeps as many rows in history as it had there.
-                        int historyRows = doubleHistoryRows == doubleRowCount ? int.MaxValue : doubleHistoryRows;
+                        int historyRows = doubleHistoryRows == doubleLine.Count ? int.MaxValue : doubleHistoryRows;
                         foreach (var (kind, stream, offset, image) in doubleTracked)
                         {
                             var chunks = doubleChunks[stream];
@@ -713,7 +691,7 @@ namespace Ntilde.VT
                             }
                             bool pastLastColumn = col >= half;
                             if (pastLastColumn) col = half - 1;
-                            int flowRow = startFlowIndex + (doublePaired ? chunk * 2 + stream : chunk);
+                            int flowRow = startFlowIndex + (doubleLine.HasSecondRun ? chunk * 2 + stream : chunk);
                             switch (kind)
                             {
                                 case 0: newCursorPhysRow = flowRow; newCursorPhysCol = col; _cursorOnDoubleLine = true; _cursorWaitsAtDoubleRowEnd = pastLastColumn; break;
@@ -731,8 +709,8 @@ namespace Ntilde.VT
                         for (int r = 0; r < rowsPerHalf; r++)
                         {
                             bool wrapped = r < rowsPerHalf - 1;
-                            EmitDoubleRow(0, r, doublePaired ? LineSize.DoubleHeightTop : doubleSize, wrapped, flowedRows - startFlowIndex < historyRows);
-                            if (doublePaired) EmitDoubleRow(1, r, LineSize.DoubleHeightBottom, wrapped, flowedRows - startFlowIndex < historyRows);
+                            EmitDoubleRow(0, r, doubleLine.Size0, wrapped, flowedRows - startFlowIndex < historyRows);
+                            if (doubleLine.HasSecondRun) EmitDoubleRow(1, r, doubleLine.Size1, wrapped, flowedRows - startFlowIndex < historyRows);
                         }
 
                         historyRowCount += Math.Min(flowedRows - startFlowIndex, historyRows);
@@ -742,8 +720,7 @@ namespace Ntilde.VT
                         doubleStreams[1].Clear();
                         doubleTracked.Clear();
                         doubleStartPhys = -1;
-                        doubleRowCount = 0;
-                        doublePaired = false;
+                        doubleLine.Reset();
                     }
 
                     for (int i = 0; i < totalPhysRows; i++)
@@ -777,18 +754,15 @@ namespace Ntilde.VT
                                 FlowLine(logicalIdx++, lineLen, lineStartPhys, i);
                                 lineStartPhys = -1;
                             }
-                            int stream = ContinuedDoubleStream(physRow, LineSizeAtPhys(i + 1, oldRowsReleased));
+                            LineSize below = LineSizeAtPhys(i + 1, oldRowsReleased);
+                            LineSize twoBelow = LineSizeAtPhys(i + 2, oldRowsReleased);
+                            int stream = doubleLine.Add(i, physRow.LineSize, physRow.IsWrapped, below, twoBelow);
                             if (stream == -1)
                             {
                                 FlushDoubleLine();
-                                doubleStartPhys = i;
-                                doubleSize = physRow.LineSize;
-                                stream = 0;
+                                stream = doubleLine.Add(i, physRow.LineSize, physRow.IsWrapped, below, twoBelow);
                             }
-                            else if (stream == 1)
-                            {
-                                doublePaired = true;
-                            }
+                            if (doubleStartPhys == -1) doubleStartPhys = i;
                             AddDoubleRow(physRow, i, stream);
                             if (i < oldScrollbackCount && i - oldRowsReleased + 1 == _scrollback.OldestPageRowCount)
                                 oldRowsReleased += _scrollback.ReleaseOldestPage();

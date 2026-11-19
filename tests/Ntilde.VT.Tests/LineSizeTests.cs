@@ -554,6 +554,31 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Search_results_on_a_re_wrapped_double_height_line_come_in_reading_order()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcabc\r\n{Bottom}abcabc");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { 0, 1, 2, 3 }, buffer.FindMatches("abc", false, true).Select(match => match.AbsRow));
+    }
+
+    [Fact]
+    public void A_bottom_half_whose_first_top_half_is_gone_still_reads_as_one_line()
+    {
+        var (source, sourceParser) = Create(cols: 12, rows: 4);
+        sourceParser.Process($"x\r\n{Top}abcdef\r\n{Bottom}abcdef\r\nz");
+        source.Resize(6, 4);
+        Assert.Equal(new[] { "abc", "def", "def", "z" }, Lines(source));
+        var state = source.ExportState(0);
+        state.Parser = sourceParser.ExportState();
+        var (buffer, parser) = Create(cols: 6, rows: 4);
+        TerminalStateTransfer.Restore(buffer, parser, state);
+        Assert.Single(buffer.FindMatches("abcdef", false, true));
+        buffer.Resize(12, 4);
+        Assert.Contains("abcdef", Lines(buffer));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

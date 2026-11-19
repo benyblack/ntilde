@@ -46,6 +46,7 @@ public partial class TerminalBuffer
             var text = new StringBuilder(Cols);
             var columns = new List<SearchColumn>(Cols);
             var rows = new List<SearchRow>();
+            var doubleRuns = new[] { new List<int>(), new List<int>() };
             bool SearchAssembledLine()
             {
                 bool completed = SearchLogicalLine(pattern, text.ToString(), columns, rows, matches);
@@ -58,23 +59,42 @@ public partial class TerminalBuffer
 
             for (int row = 0; row < totalRows; row++)
             {
-                // A double-height line re-wrapped by a resize: each half is one logical line, on every other row.
-                int pairs = text.Length == 0 && rows.Count == 0 ? DoubleHeightLinePairsAt(row, totalRows) : 0;
-                if (pairs > 1)
+                // A double-size line is one logical line however a resize wrapped it; a double-height line with both
+                // halves is two, on alternating rows. The reflow groups the rows the same way.
+                if (text.Length == 0 && rows.Count == 0 && GetLineSizeAbsolute(row) != LineSize.SingleWidth)
                 {
-                    for (int half = 0; half < 2; half++)
+                    doubleRuns[0].Clear();
+                    doubleRuns[1].Clear();
+                    var line = default(DoubleSizeLineRows);
+                    int end = row;
+                    for (; end < totalRows; end++)
                     {
-                        for (int pair = 0; pair < pairs; pair++) AppendSearchRow(row + pair * 2 + half, history, text, columns, rows, pattern.SizedEnds);
+                        LineSize size = GetLineSizeAbsolute(end);
+                        if (size == LineSize.SingleWidth) break;
+                        int run = line.Add(end, size, IsRowWrapFlagSetAbsolute(end),
+                            end + 1 < totalRows ? GetLineSizeAbsolute(end + 1) : LineSize.SingleWidth,
+                            end + 2 < totalRows ? GetLineSizeAbsolute(end + 2) : LineSize.SingleWidth);
+                        if (run < 0) break;
+                        doubleRuns[run].Add(end);
+                    }
+
+                    int firstMatch = matches.Count;
+                    foreach (var run in doubleRuns)
+                    {
+                        if (run.Count == 0) continue;
+                        foreach (int runRow in run) AppendSearchRow(runRow, history, text, columns, rows, pattern.SizedEnds);
                         if (SearchAssembledLine()) continue;
                         matches.Clear();
                         return matches;
                     }
-                    row += pairs * 2 - 1;
+                    // The two halves share rows alternately: results go back in reading order.
+                    if (doubleRuns[1].Count > 0) matches.Sort(firstMatch, matches.Count - firstMatch, SearchMatchReadingOrder.Instance);
+                    row = end - 1;
                     continue;
                 }
 
                 AppendSearchRow(row, history, text, columns, rows, pattern.SizedEnds);
-                if (IsRowWrappedAbsolute(row) && row + 1 < totalRows) continue;
+                if (IsRowWrappedAbsolute(row) && row + 1 < totalRows && GetLineSizeAbsolute(row + 1) == LineSize.SingleWidth) continue;
                 if (!SearchAssembledLine())
                 {
                     matches.Clear();
@@ -84,6 +104,14 @@ public partial class TerminalBuffer
         }
         finally { Lock.ExitReadLock(); }
         return matches;
+    }
+
+    private sealed class SearchMatchReadingOrder : IComparer<SearchMatch>
+    {
+        public static readonly SearchMatchReadingOrder Instance = new();
+
+        public int Compare(SearchMatch x, SearchMatch y)
+            => x.AbsRow != y.AbsRow ? x.AbsRow.CompareTo(y.AbsRow) : x.StartCol.CompareTo(y.StartCol);
     }
 
     private bool AppendSearchRow(int absRow, int history, StringBuilder text, List<SearchColumn> columns, List<SearchRow> rows, Dictionary<(int Row, int Col), int>? sizedEnds)
