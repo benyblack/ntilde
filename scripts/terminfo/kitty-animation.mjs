@@ -3,14 +3,14 @@ import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { inputPriorCaptureCap } from './input-plan.mjs';
-import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, currentAnimationVersion, animationAnchor, animationCellEnvelope, animationHoldMs } from './kitty-animation-cases.mjs';
-import { animationFrameInput, animationFrameIds, animationPngIds, animationPngInput } from './kitty-animation-inputs.mjs';
-import { inspectAnimationPixels, evaluateAnimationTiming, timelineAppearance } from './kitty-animation-oracle.mjs';
+import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, currentAnimationVersion, animationAnchor, animationCellEnvelope, animationHoldMs, placeholderAnimationVersion, placeholderCellEnvelope, placeholderMaxImageId, placeholderStageCells } from './kitty-animation-cases.mjs';
+import { animationFrameInput, animationFrameIds, animationPngIds, animationPngInput, placeholderHalvesInput } from './kitty-animation-inputs.mjs';
+import { inspectAnimationPixels, inspectPlaceholderPixels, evaluateAnimationTiming, timelineAppearance } from './kitty-animation-oracle.mjs';
 import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageBoundScreen, StaticImageReport, validateImageCapture } from './static-images.mjs';
 import { pngHash } from './pixels-capture.mjs';
 
 /** Policies by suite version; a retained run's context names the one it was collected under, and its evidence is rederived under that version's plan. */
-export const ownedAnimationPolicies = Object.freeze({ 1: 'owned-kitty-animation-paired-raw-render-v1', 2: 'owned-kitty-animation-paired-raw-render-v2', 3: 'owned-kitty-animation-paired-raw-render-restore-v1', 4: 'owned-kitty-animation-paired-raw-render-compose-v1' });
+export const ownedAnimationPolicies = Object.freeze({ 1: 'owned-kitty-animation-paired-raw-render-v1', 2: 'owned-kitty-animation-paired-raw-render-v2', 3: 'owned-kitty-animation-paired-raw-render-restore-v1', 4: 'owned-kitty-animation-paired-raw-render-compose-v1', 5: 'owned-kitty-placeholders-paired-raw-render-v1' });
 export const ownedAnimationPolicy = ownedAnimationPolicies[currentAnimationVersion];
 /** The suite version a retained policy string names, or null for an unknown one. */
 export const animationVersionOfPolicy = policy => Object.keys(ownedAnimationPolicies).map(Number).find(version => ownedAnimationPolicies[version] === policy) ?? null;
@@ -67,8 +67,12 @@ export function animationReply(raw, stage, imageId) {
 }
 
 export function animationBoundScreen(initial, runId) { return imageBoundScreen(initial, runId); }
-/** The retained protocol inputs of a suite version: raw frames for v1, plus the PNG frames from v2. */
+/** The retained protocol inputs of a suite version: raw frames for v1, plus the PNG frames from v2; the placeholder suite has its one red/blue image. */
 export function animationInputs(version = currentAnimationVersion) {
+    if (version === placeholderAnimationVersion) {
+        const input = placeholderHalvesInput();
+        return [{ file: 'animation-inputs/halves.rgba', bytes: input.bytes, sha256: input.sha256 }];
+    }
     return [...animationFrameIds.map(frameId => {
         const input = animationFrameInput(frameId);
         return { file: `animation-inputs/${frameId}.rgba`, bytes: input.bytes, sha256: input.sha256 };
@@ -95,6 +99,8 @@ export const animationSpanOf = frame => {
 const scopeTail = 'independently captured raw replies, paired original offscreen PNGs, complete cells/modes and wall-clock capture spans. '
     + 'Elapsed-time claims are bounded to this App build and run: no display-refresh cadence, other platform, frame-rate, snapshot/persistent-session or stock-grade claim.';
 const scopes = Object.freeze({
+    5: 'Three bounded Kitty Unicode placeholder cases in one tab (U=1 virtual placements and U+10EEEE cells: the tiles a 2 x 1 grid shows, the tile the row and column marks choose, and the cells that must paint nothing); the run\'s collection scope says whether that tab is a persistent one or an ordinary one. '
+        + 'One 16x16 raw RGBA image (left half red, right half blue), one grid size and one cell font, so every observation is one uniform color per cell; ' + scopeTail,
     4: 'Two bounded Kitty animation frame-composition cases in one tab (a=c: replace and blend onto frames, and refused compositions that change nothing); the run\'s collection scope says whether that tab is a persistent one or an ordinary one. '
         + 'Whole-frame compositions only, so every observation is one uniform color; ' + scopeTail,
     1: 'Three bounded Kitty animation cases; ' + scopeTail,
@@ -119,6 +125,32 @@ export function buildAnimationReport(frames, actions, seal, runId, output, prior
         caseResults: builder.caseResults(), observations: builder.observations };
 }
 
+// The cell grid's own reporting of a placeholder cell (#989): the default foreground flag cleared (the cell has an explicit 24-bit foreground) and the extended-text flag set (it holds a grapheme of
+// more than one UTF-16 unit: the supplementary-plane placeholder, with or without combining marks). Only these two bits differ from a blank cell; the rest of a cell run is the controlled blank cell's.
+const defaultForegroundFlag = 1 << 8, extendedTextFlag = 1 << 13;
+
+/**
+ * The screen the cell grid must show once a placeholder stage's command has run: the bound blank screen with the anchor row holding exactly the cells the stage printed (their graphemes as text, their
+ * image id as a 24-bit foreground, every other attribute the blank cell's). Placeholders are cells, so unlike every other image carrier the screen changes. Built from the stage's own command text.
+ */
+export function placeholderScreen(bound, entry, state) {
+    if (entry.kind !== 'read') return bound;
+    const cells = placeholderStageCells(entry.stageId, state?.imageId, animationAnchor.col);
+    if (!cells.length) return bound;
+    checkImages(uint(state?.imageId) && bound.cellDetails.length === 1);
+    const screen = structuredClone(bound), [blank] = bound.cellDetails, before = animationAnchor.row * bound.cols + cells[0].column;
+    screen.lines[animationAnchor.row] = ' '.repeat(cells[0].column) + cells.map(cell => cell.text).join('');
+    const runs = [{ ...blank, count: before }];
+    for (const cell of cells) {
+        const run = { ...blank, count: 1, flags: (blank.flags & ~defaultForegroundFlag) | extendedTextFlag, foregroundArgb: (0xff000000 | cell.imageId) >>> 0 };
+        const last = runs.at(-1);
+        if (last.flags === run.flags && last.foregroundArgb === run.foregroundArgb) last.count++; else runs.push(run);
+    }
+    runs.push({ ...blank, count: blank.count - before - cells.length });
+    screen.cellDetails = runs.filter(run => run.count > 0);
+    return screen;
+}
+
 /** What the shared image-carrier observer and report need to know about one suite version. */
 function suiteOf(version) {
     const cases = animationCasesByVersion[version], stageOfEntry = entry => cases.find(value => value.id === entry.caseId).stages.find(value => value.id === entry.stageId);
@@ -128,25 +160,28 @@ function suiteOf(version) {
         retainPixel: retainedAnimationPixel, captureKind: imageCaptureKind, pairMayDiffer: mayDiffer(cases), stageOfEntry,
         acceptReply: (reply, entry, states) => { animationReply(reply.toString('ascii'), stageOfEntry(entry), states.get(entry.caseId).imageId); },
         newState(states) {
+            // A placeholder image id rides in a 24-bit foreground colour, and the wrong-image stage names the next id.
+            const limit = version === placeholderAnimationVersion ? placeholderMaxImageId + 1 : 0x100000000;
             let imageId;
-            do { imageId = randomInt(1, 0x100000000); } while ([...states.values()].some(value => value.imageId === imageId));
+            do { imageId = randomInt(1, limit); } while ([...states.values()].some(value => value.imageId === imageId));
             return { imageId };
         },
         actionFacts: state => ({ imageId: state.imageId ?? null }),
         registerState(action, states) {
-            checkImages(uint(action.imageId) && ![...states.values()].some(value => value.imageId === action.imageId));
+            checkImages(uint(action.imageId) && (version !== placeholderAnimationVersion || action.imageId <= placeholderMaxImageId) && ![...states.values()].some(value => value.imageId === action.imageId));
             return { imageId: action.imageId };
         },
         factsMatch: (action, state) => action.imageId === (state.imageId ?? null),
+        ...(version === placeholderAnimationVersion ? { screenAfter: (entry, state, bound) => placeholderScreen(bound, entry, state) } : {}),
     });
 }
-export const animationSuites = Object.freeze({ 1: suiteOf(1), 2: suiteOf(2), 3: suiteOf(3), 4: suiteOf(4) });
+export const animationSuites = Object.freeze({ 1: suiteOf(1), 2: suiteOf(2), 3: suiteOf(3), 4: suiteOf(4), 5: suiteOf(5) });
 export const animationSuite = animationSuites[currentAnimationVersion];
 
 class AnimationReport extends StaticImageReport {
     constructor(frames, actions, runId, output, priorChallenges, version) {
         super(frames, actions, runId, output, priorChallenges, animationSuites[version]);
-        this.cases = animationCasesByVersion[version]; this.suite = animationSuites[version];
+        this.cases = animationCasesByVersion[version]; this.suite = animationSuites[version]; this.version = version;
         this.lastEnd = -Infinity; this.facts = new Map();
     }
     initialFrameFacts(frame) { this.lastEnd = animationSpanOf(frame).end; }
@@ -186,8 +221,9 @@ class AnimationReport extends StaticImageReport {
         const timing = evaluateAnimationTiming(stage, facts);
         // A relaunch stage that follows a running animation shows whichever frame the independent timeline gives for the capture span (when the App came back varies); an ambiguous span makes the timing invalid, so the placeholder can only leave the stage inconclusive.
         const appearance = stage.appearance === 'timeline' ? timelineAppearance(facts) ?? 'root' : stage.appearance;
-        const inspect = observed => inspectAnimationPixels({ baseline: this.boundPixel.image, observed: observed.image, grid: observed.details.grid,
-            anchor: animationAnchor, cells: animationCellEnvelope, appearance });
+        const placeholders = this.version === placeholderAnimationVersion;
+        const inspect = observed => (placeholders ? inspectPlaceholderPixels : inspectAnimationPixels)({ baseline: this.boundPixel.image, observed: observed.image, grid: observed.details.grid,
+            anchor: animationAnchor, cells: placeholders ? placeholderCellEnvelope : animationCellEnvelope, appearance });
         const pixel = inspect(pixels[0]);
         checkImages(pixel.controls[0].passed);
         // Bleed is timing-independent, so a pair that differs must be clean in both members.

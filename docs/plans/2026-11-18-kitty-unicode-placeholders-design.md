@@ -64,11 +64,15 @@ Image policy 5 (`PlaceholderImagesVersion`): the daemon and every client parse t
 bytes, so each holds the same virtual placements; snapshots add them next to the retained
 assets so reattach restores them. Older peers are refused the session, never downgraded.
 
-## PR C: measurement
+## PR C: measurement (implemented)
 
-An owned desktop run: a distinguishable multicolour image, placeholder cells for a 2x2
-grid, controls (blank before, tiles after, erase clears, an unbound id and a stale
-placement id paint nothing, a wrong-row diacritic moves the tile). The pinned
+An owned desktop run ([qualification](../qa/terminfo/2026-11-19-kitty-placeholders-qualification.md)):
+one 16x16 image (left half red, right half blue), a 2x1 virtual placement and a row of two
+placeholder cells, with controls (blank before, tiles after, erase clears, swapped columns
+swap the colors, a lone cell shows its own tile, a bare placeholder continues in row 0, an
+unbound id, a stale placement id and a tile outside the grid paint nothing, and `a=d,d=i`
+stops the same cells painting). A 2x2 grid, the inheritance of a nonzero row and a wrong
+row that moves a tile (the grid has one row) were not measured. The pinned
 `extensions.kitty-graphics.unicode-placeholders` callbacks cannot return supported or
 unsupported (they report `insufficient-evidence`), so the verdict is an independently
 specified effect, kept apart from the pinned result, as for animation.

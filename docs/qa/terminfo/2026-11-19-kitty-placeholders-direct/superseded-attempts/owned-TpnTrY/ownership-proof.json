@@ -1,0 +1,192 @@
+{
+  "proofs": [
+    {
+      "privateClipboard": {
+        "policy": "private-app-storage-parent-transactions-v1",
+        "appBirth": "Thu Nov 19 10:11:56 2026",
+        "workerBirth": "Thu Nov 19 10:11:57 2026",
+        "outputDevice": {
+          "dev": "1018044615",
+          "rdev": "268435456",
+          "ino": "144753"
+        },
+        "originalTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600"
+      },
+      "app": {
+        "pid": 24553,
+        "ppid": 24548,
+        "uid": 501,
+        "tty": "??",
+        "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-measure/artifacts/sidecar-placeholders/Ntilde"
+      },
+      "worker": {
+        "pid": 24570,
+        "ppid": 24553,
+        "uid": 501,
+        "tty": "ttys000",
+        "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+      },
+      "tty": "/dev/ttys000",
+      "at": "2026-11-19T10:11:57.736Z",
+      "kittyAnimation": {
+        "policy": "owned-kitty-placeholders-paired-raw-render-v1",
+        "actions": [
+          {
+            "index": 0,
+            "kind": "kan-bind",
+            "caseId": null,
+            "stageId": null,
+            "imageId": null,
+            "commandHex": "1b631b5d31313b233130313031301b5c1b5b3f31303439681b5b34383b323b31363b31363b31366d1b5b324a1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f39346233646266653762613638333739653365636137373231646235623064321b5b353b34481b5b3f32356c",
+            "commandSha256": "574d70dffa859d9bf184b4ba50a057c4df2462ebe15e784040316641db494c43",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 24553,
+                "ppid": 24548,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-measure/artifacts/sidecar-placeholders/Ntilde"
+              },
+              "worker": {
+                "pid": 24570,
+                "ppid": 24553,
+                "uid": 501,
+                "tty": "ttys000",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "tty": "/dev/ttys000",
+              "at": "2026-11-19T10:11:57.908Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 1,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.tiles",
+            "stageId": "blank",
+            "imageId": 9196280,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f39346233646266653762613638333739653365636137373231646235623064321b5b353b34481b5b3f32356c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f39346233646266653762613638333739653365636137373231646235623064321b5b353b34481b5b3f32356c",
+            "commandSha256": "517f6292e7c124bb3f5c13c1af56275b777950b7563d1b1aaa71a89e56843588",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 24553,
+                "ppid": 24548,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-measure/artifacts/sidecar-placeholders/Ntilde"
+              },
+              "worker": {
+                "pid": 24570,
+                "ppid": 24553,
+                "uid": 501,
+                "tty": "ttys000",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "tty": "/dev/ttys000",
+              "at": "2026-11-19T10:11:58.005Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 2,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.tiles",
+            "stageId": "build",
+            "imageId": 9196280,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f39346233646266653762613638333739653365636137373231646235623064321b5b353b34481b5b3f32356c1b5f47613d742c663d33322c733d31362c763d31362c743d642c693d393139363238303b2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f38414150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f38414150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f38414150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f38414150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f38414150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f2f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f38414150384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f7741412f2f384141502f2f4141442f2f773d3d1b5c1b5f47613d702c553d312c693d393139363238302c703d312c633d322c723d311b5c1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f39346233646266653762613638333739653365636137373231646235623064321b5b353b34481b5b3f32356c",
+            "commandSha256": "3ffa236a323f4c807a46bc26098862b95f22d5524e7a290a87fd9f15ac730717",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 24553,
+                "ppid": 24548,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-measure/artifacts/sidecar-placeholders/Ntilde"
+              },
+              "worker": {
+                "pid": 24570,
+                "ppid": 24553,
+                "uid": 501,
+                "tty": "ttys000",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "tty": "/dev/ttys000",
+              "at": "2026-11-19T10:11:58.105Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          },
+          {
+            "index": 3,
+            "kind": "kan-read",
+            "caseId": "kitty.placeholders.tiles",
+            "stageId": "show",
+            "imageId": 9196280,
+            "commandHex": "1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f39346233646266653762613638333739653365636137373231646235623064321b5b353b34481b5b3f32356c1b5b33383b323b3134303b38323b3234386d1b5b35383b353b316df48ebbaecc85cc85f48ebbaecc85cc8d1b5b33396d1b5b35396d1b5b306d1b5b34383b323b31363b31363b31366d1b5b484e54494c44455f494d475f39346233646266653762613638333739653365636137373231646235623064321b5b353b34481b5b3f32356c",
+            "commandSha256": "d479803247a6fa260c478bb30b8bf097c0adfff5424234325e6b04e5406951a3",
+            "skipReason": null,
+            "ownership": {
+              "app": {
+                "pid": 24553,
+                "ppid": 24548,
+                "uid": 501,
+                "tty": "??",
+                "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-measure/artifacts/sidecar-placeholders/Ntilde"
+              },
+              "worker": {
+                "pid": 24570,
+                "ppid": 24553,
+                "uid": 501,
+                "tty": "ttys000",
+                "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+              },
+              "tty": "/dev/ttys000",
+              "at": "2026-11-19T10:11:58.187Z",
+              "terminalOutput": {
+                "tool": "/bin/stty",
+                "outputProcessing": false,
+                "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+              }
+            }
+          }
+        ],
+        "paneId": "43963da9-2f7a-4e19-84e1-5690a4040b81",
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        }
+      },
+      "terminalOutput": {
+        "tool": "/bin/stty",
+        "outputProcessing": false,
+        "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;",
+        "verifiedAt": "2026-11-19T10:11:57.761Z"
+      }
+    }
+  ],
+  "completed": false,
+  "collectionScope": {
+    "id": "owned-kitty-placeholders-direct-v1",
+    "persistence": "Off",
+    "suites": [
+      "kitty-placeholders"
+    ],
+    "suiteVersion": 5,
+    "deadlineMs": 300000
+  },
+  "cleanedUpAt": "2026-11-19T10:11:58.372Z"
+}

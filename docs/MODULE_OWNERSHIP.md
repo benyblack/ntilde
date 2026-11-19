@@ -305,7 +305,7 @@ invariant changes.
   and fixed at spawn; the daemon, GUI panes and the text client all configure
   their parsers with `PersistentImagePolicy.Apply`, so they place every image
   alike; a feature that changes placement, such as iTerm2's multipart form
-  (policy 2), Kitty animation frames (policy 3, #1017: retained packed in the image-source budget and read by the VT-owned `PngPixelReader`, never a host decoder) Kitty frame composition (`a=c`, policy 4, #1027: a composed frame replaces its destination, so snapshots carry nothing new) or Kitty Unicode placeholders (`U=1`, policy 5, #989: snapshots carry each image's virtual placements), takes a new version rather than changing an old one's. Mux owns admission (`ImagePolicyAdmission`) and refuses, never
+  (policy 2), Kitty animation frames (policy 3, #1017: retained packed in the image-source budget and read by the VT-owned `PngPixelReader`, never a host decoder), Kitty frame composition (`a=c`, policy 4, #1027: a composed frame replaces its destination, so snapshots carry nothing new) or Kitty Unicode placeholders (`U=1`, policy 5, #989: snapshots carry each image's virtual placements), takes a new version rather than changing an old one's. Mux owns admission (`ImagePolicyAdmission`) and refuses, never
   downgrades, a peer or attach that does not match.
 - **Kitty image assets own handles; placements borrow them.** VT separates transmit,
   transmit/display and retained placement, including uint ids, terminal-allocated
@@ -1235,7 +1235,7 @@ requires public test classes.
   restored playhead is told from one the new App restarted (or, for a stopped animation, resumed) by requiring the reads to predict different frames under the readings (otherwise the stage is inconclusive); the worker may have the App terminated only for the next declared relaunch stage, once.
   `--scope persistent-compose` and `--scope direct-compose` (#1027) collect the composition suite (version 4, `a=c`, whole-frame stages) in a persistent tab and in an ordinary tab: the
   ordinary-tab scope (`SessionPersistence Off`) has no daemon, so `handlePersistentRequest` proves only that the worker is the App's own child (`assertProcessOwnership` without a daemon), the receipt
-  is chosen by scope id (the same suite version has a receipt per kind of tab), and `verifyPersistentSuiteRun` checks the daemon lineage only for a persistent scope. Only the restore suite (`restoreAnimationVersion`) relaunches the App.
+  is chosen by scope id (the same suite version has a receipt per kind of tab), and `verifyPersistentSuiteRun` checks the daemon lineage only for a persistent scope. Only the restore suite (`restoreAnimationVersion`) relaunches the App. `--scope persistent-placeholders` and `--scope direct-placeholders` (#989) collect the Unicode placeholder suite (version 5) the same way, with a receipt per kind of tab; that suite declares the screen each stage leaves (`screenAfter`: the placeholder cells it printed), because placeholders are cells.
 - **Owned routed-input QA is a separate parent-owned acting boundary.** Policy v2
   captures a fixed 60-file graph and schema 9 requires all fourteen suites. Only
   source-selected standalone App events may run in the re-proved disposable local

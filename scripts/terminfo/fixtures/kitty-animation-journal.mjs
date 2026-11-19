@@ -5,7 +5,7 @@ import { initialInputScreen, inputPaneId, inputRunId, inputCapture } from './inp
 import { pixelCapture } from './pixel-capture.mjs';
 import { imageOwnership, rgbaPng } from './static-images-journal.mjs';
 import { animationCasesByVersion, animationExpectedReplies, currentAnimationVersion } from '../kitty-animation-cases.mjs';
-import { animationAppearanceColor } from '../kitty-animation-inputs.mjs';
+import { animationAppearanceColor, placeholderAppearances, placeholderColors } from '../kitty-animation-inputs.mjs';
 import { animationSuites, animationAction, animationInputs, animationBoundScreen, animationPixelPrefix } from '../kitty-animation.mjs';
 import { imageModeReplyHex, imageBackgroundReply } from '../static-images.mjs';
 import { snapshotHash } from '../agent-observer.mjs';
@@ -16,15 +16,27 @@ const iso = ms => new Date(animationEpoch + ms).toISOString();
 /** The frame the timeline gives at the middle of a capture span (tests keep the span well inside one window). */
 const timelineFrame = (startedAt, span) => ['root', 'second', 'third'][Math.floor(Math.max(0, (span[0] + span[1]) / 2 - startedAt) / 5000) % 3];
 
-/** A 32x32 aspect-fit square of one frame color at the controlled anchor, or blank; optional bleed outside it. */
+/** Paints one appearance onto the capture: the two-cell tile row of a placeholder appearance, or the 32x32 aspect-fit square of one frame color. Returns the tiles drawn, or null for a square or nothing. */
+function paintAppearance(rgba, width, appearance) {
+    if (!appearance || appearance === 'absent') return null;
+    const tiles = Object.hasOwn(placeholderAppearances, appearance) ? placeholderAppearances[appearance] : null;
+    if (!tiles) {
+        const color = animationAppearanceColor(appearance).color;
+        for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) rgba.set(color, ((72 + y) * width + 24 + x) * 4);
+        return null;
+    }
+    tiles.forEach((name, cell) => {
+        if (name !== 'absent') for (let y = 0; y < 16; y++) for (let x = 0; x < 8; x++) rgba.set(placeholderColors[name], ((72 + y) * width + 24 + cell * 8 + x) * 4);
+    });
+    return tiles;
+}
+
+/** A 32x32 aspect-fit square of one frame color at the controlled anchor, or blank; optional bleed outside it. A placeholder appearance (#989) is instead one 8x16 band per cell of the two-cell row. */
 export function syntheticAnimationCapture(screen, appearance, { bleed = false } = {}) {
     const capture = pixelCapture(screen), width = screen.cols * 8, height = screen.rows * 18;
     const rgba = Buffer.alloc(width * height * 4), background = screen.bufferState.alternateScreen ? 16 : 0;
     for (let i = 0; i < rgba.length; i += 4) rgba.set([background, background, background, 255], i);
-    if (appearance && appearance !== 'absent') {
-        const color = animationAppearanceColor(appearance).color;
-        for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) rgba.set(color, ((72 + y) * width + 24 + x) * 4);
-    }
+    const tiles = paintAppearance(rgba, width, appearance);
     if (bleed) rgba.set([255, 0, 0, 255], 0);
     const bytes = rgbaPng(width, height, rgba);
     Object.assign(capture, { width, height, byteCount: bytes.length, pngBase64: bytes.toString('base64') });
@@ -38,7 +50,7 @@ export function syntheticAnimationCapture(screen, appearance, { bleed = false } 
         cellWidthPx: 8, cellHeightPx: 18, baselineDip: 14, baselineOffsetPx: 14, underlineOffsetPx: 16, strikeOffsetPx: 9 });
     capture.imageDetails = appearance && appearance !== 'absent'
         ? { schemaVersion: 1, complete: true, totalPlacements: 1, placements: [{ index: 0, placementId: '11111111-2222-3333-4444-555555555555', col: 3,
-            viewportRow: 4, widthCells: 4, heightCells: 2, clipTopRows: 0, clipBottomRows: 0, clipRightColumns: 0, preserveAspectRatio: true,
+            viewportRow: 4, widthCells: tiles ? 2 : 4, heightCells: tiles ? 1 : 2, clipTopRows: 0, clipBottomRows: 0, clipRightColumns: 0, preserveAspectRatio: true,
             bitmapWidthPx: 16, bitmapHeightPx: 16, sixelPlacement: null }] }
         : { schemaVersion: 1, complete: true, totalPlacements: 0, placements: [] };
     return capture;
@@ -59,8 +71,8 @@ function plannedTiming(stage, startedAt, clock) {
     return { actionAt, readAt: actionAt + 600, span: [actionAt + 800, actionAt + 2000] };
 }
 
-/** Only the restore (3) and compose (4) suites run in a persistent tab; versions 1 and 2 stay on the direct-worker path. */
-const persistentVersions = new Set([3, 4]);
+/** The restore (3), compose (4) and placeholder (5) suites run in a persistent tab (the last two also in an ordinary one); versions 1 and 2 stay on the direct-worker path. */
+const persistentVersions = new Set([3, 4, 5]);
 
 /** The ownership proof at a moment: a direct run names the App; a persistent one also names the daemon the worker hangs from and the last relaunch. */
 function ownershipStamp(base, { appPid, daemonRecord, relaunchInfo, persistent }, at) {
@@ -96,7 +108,7 @@ function pairPixels(output, frameIndex, screen, appearance, { shownOther, bleed 
 
 /**
  * A scripted run on a simulated wall clock. Running reads aim their capture centre at the stage's target; holds wait out their gap.
- * `direct`: a version that normally runs in a persistent tab (the compose suite) as it runs in an ordinary tab, with the worker the App's own child and no daemon.
+ * `direct`: a version that normally runs in a persistent tab (the compose and placeholder suites) as it runs in an ordinary tab, with the worker the App's own child and no daemon.
  * Hooks: paint(entry, appearance) -> appearance, reply(entry, raw) -> raw, timing(entry, plan) -> plan, bleed(entry, side) -> boolean, pairDiffer(entry) -> the appearance of the second capture of a pair.
  */
 export function syntheticAnimationJournal(output, { runId = inputRunId, paneId = inputPaneId, initial = initialInputScreen(10, 60), paint, reply, timing, bleed, pairDiffer, version = currentAnimationVersion, relaunchAt, daemon, keepApp, direct = false } = {}) {
@@ -136,7 +148,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
         actions.push(action);
         const sample = replySample(entry, stage, state, action, reply);
         const appearance = appearanceOf(entry, stage, paint, startedAt.get(entry.caseId), plan.span);
-        add(entry, entry.kind === 'finish' ? initial : bound, sample, action, appearance, plan.readAt, plan.span);
+        add(entry, entry.kind === 'finish' ? initial : (animationSuites[version].screenAfter?.(entry, state, bound) ?? bound), sample, action, appearance, plan.readAt, plan.span);
         clock = plan.span[1];
     }
     const final = frames.at(-1).capture;

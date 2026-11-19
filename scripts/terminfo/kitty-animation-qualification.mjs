@@ -57,17 +57,29 @@ function loadPinnedRegistration(helper, text, id) {
     return definition;
 }
 
-/** Run both exact pinned callbacks. Neither reads a pixel or a frame time: their observations are constants whatever the declaration. */
-export async function replayPinnedAnimationProbe(archive) {
+/**
+ * Run both exact pinned callbacks of one registration of the pinned bundle (its span is [start, end, digest], see `registration`). Neither reads a pixel, a frame time or a cell: their observations are
+ * constants whatever the declaration. The animation and Unicode placeholder probes are replayed through this one path.
+ */
+export async function replayPinnedProbe(archive, id, span) {
     const bundle = gunzipSync(archive, { maxOutputLength: 1_000_000 });
     check(sha(bundle) === upstreamBundleSha256, 'upstream bundle differs');
-    const source = bundle.toString('utf8'), helper = extract(source, helperSpan), id = kittyAnimationQualificationIds[0];
-    const definition = loadPinnedRegistration(helper, extract(source, registration).trim().replace(/,$/, ''), id);
+    const source = bundle.toString('utf8'), helper = extract(source, helperSpan);
+    const definition = loadPinnedRegistration(helper, extract(source, span).trim().replace(/,$/, ''), id);
     const [declaredTrue, declaredFalse] = [true, false].map(value => structuredClone(definition.termless({ capabilities: { kittyGraphics: value } })));
     check(same(declaredTrue.observation, declaredFalse.observation), 'pinned termless verdict depends on the declaration');
     const terminal = structuredClone(await definition.term({}));
     return { [id]: { termless: { ...declaredTrue, declaredFalseResponse: declaredFalse.response }, terminal } };
 }
+
+/** The pinned animation probe's two callbacks. */
+export const replayPinnedAnimationProbe = archive => replayPinnedProbe(archive, kittyAnimationQualificationIds[0], registration);
+
+/** The pinned Unicode placeholder probe's two callbacks (#989): the registration that follows the animation one. */
+export const kittyPlaceholdersQualificationIds = Object.freeze(['extensions.kitty-graphics.unicode-placeholders']);
+const placeholdersRegistration = ['    probe("extensions.kitty-graphics.unicode-placeholders", (ctx) => {', '\n    probe("extensions.sixel"', '0abcfe92c543fc0a03ae03feb09e09b973293747f373b2659925f21fb5c629e1'];
+export const pinnedPlaceholdersSpanDigests = Object.freeze({ helper: helperSpan[2], 'extensions.kitty-graphics.unicode-placeholders': placeholdersRegistration[2] });
+export const replayPinnedPlaceholdersProbe = archive => replayPinnedProbe(archive, kittyPlaceholdersQualificationIds[0], placeholdersRegistration);
 
 const passedAll = results => results.every(value => value === 'passed');
 /** Grade a stage list exactly as an effect: failed wins, otherwise every stage must pass. */
