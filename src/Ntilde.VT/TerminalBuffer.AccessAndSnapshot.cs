@@ -344,6 +344,7 @@ namespace Ntilde.VT
         private void ClearAltScreenNoLock()
         {
             _textSizingPruneRequired = true;
+            AlternateScreenImagesBecomeSingleWidthNoLock();
             for (int i = 0; i < Rows; i++)
             {
                 var row = _viewport[i];

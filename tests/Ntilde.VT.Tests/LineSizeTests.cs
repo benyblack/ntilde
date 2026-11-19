@@ -869,6 +869,41 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Clearing_the_alternate_screen_returns_the_images_it_keeps_to_single_width()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 4);
+        parser.Process($"{Esc}[?1049h{Dwl}");
+        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 1));
+        Assert.Equal(LineSize.DoubleWidth, buffer.Images[0].LineSize);
+        parser.Process($"{Esc}[?1049l{Esc}[?1049h");
+        Assert.All(buffer.Images, image => Assert.Equal(LineSize.SingleWidth, image.LineSize));
+    }
+
+    [Fact]
+    public void A_SIXEL_on_a_double_width_row_is_clipped_at_the_columns_that_row_holds()
+    {
+        var buffer = new TerminalBuffer(20, 4);
+        var parser = new AnsiParser(buffer) { ImageDecoder = new FixedSizeImageDecoder(120, 20) };
+        parser.Process($"{Dwl}{Esc}Pq!30~-~{Esc}\\");
+        var image = Assert.Single(buffer.Images);
+        Assert.True(image.CellWidth > 10);
+        Assert.Equal(image.CellWidth - 10, image.ClipRightColumns);
+    }
+
+    [Fact]
+    public void A_margin_band_scroll_keeps_a_double_width_image_drawn_beside_the_band()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 4);
+        // One row in history takes the double-width image's row with it; three of its rows stay on screen.
+        parser.Process($"{Dwl}a");
+        buffer.AddImage(new TerminalImage(new object(), 4, 0, 1, 4));
+        parser.Process($"{Esc}[4;1H\n");
+        // DECLRMM leaves history alone, so the image stays double width: page columns 8 and 9, right of the band 5 to 6.
+        parser.Process($"{Esc}[?69h{Esc}[5;6s{Esc}[1;1H{Esc}[S");
+        Assert.Equal(LineSize.DoubleWidth, Assert.Single(buffer.Images).LineSize);
+    }
+
+    [Fact]
     public void An_image_keeps_its_line_attribute_when_a_scrolling_region_takes_its_row()
     {
         var (buffer, parser) = Create(cols: 12, rows: 6);

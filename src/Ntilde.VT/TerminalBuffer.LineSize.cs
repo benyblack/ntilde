@@ -302,6 +302,13 @@ public partial class TerminalBuffer
         return changed;
     }
 
+    /// <summary>Clearing the alternate screen returns its rows to single width, and the images it keeps with them.</summary>
+    private void AlternateScreenImagesBecomeSingleWidthNoLock()
+    {
+        foreach (TerminalImage image in _images)
+            if (image.IsAltScreenImage) image.LineSize = LineSize.SingleWidth;
+    }
+
     /// <summary>Returns every row of <paramref name="rows"/> to single width.</summary>
     private static void ResetLineSizesNoLock(TerminalRow[]? rows)
     {

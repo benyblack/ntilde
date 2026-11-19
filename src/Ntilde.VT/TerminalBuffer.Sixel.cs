@@ -28,7 +28,8 @@ public partial class TerminalBuffer
                 IsSixelImage = true,
                 SixelPlacement = provenance,
                 SixelSource = source,
-                ClipRightColumns = Math.Max(0, col + widthCells - Cols),
+                // In the row's own columns: a double-size row holds half as many, each two cells wide.
+                ClipRightColumns = Math.Max(0, col + widthCells - ColumnsForLineSize(_viewport[row].LineSize, Cols)),
                 IsAltScreenImage = _isAltScreen,
             };
             if (!TryAddSixelPlacement(image)) return false;

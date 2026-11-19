@@ -235,7 +235,9 @@ public partial class TerminalBuffer
             var img = _images[i];
             if (img.IsAltScreenImage != _isAltScreen || !img.IsSticky) continue;
             bool rowsOverlap = img.CellY + img.CellHeight > absTop && img.CellY <= absBottom;
-            bool colsOverlap = img.CellX + img.CellWidth > left && img.CellX <= right;
+            // The band is in page columns; an image on a double-size row covers two of them per column of its own.
+            int scale = img.LineSize == LineSize.SingleWidth ? 1 : 2;
+            bool colsOverlap = (img.CellX + img.CellWidth) * scale > left && img.CellX * scale <= right;
             if (!rowsOverlap || !colsOverlap) continue;
             RetireImage(img);
             _images.RemoveAt(i);

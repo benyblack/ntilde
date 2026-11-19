@@ -516,6 +516,7 @@ namespace Ntilde.VT
         {
             _textSizingPruneRequired = true;
             var blank = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
+            AlternateScreenImagesBecomeSingleWidthNoLock();
             // The inactive array may still have its pre-resize shape. Clear every retained
             // row in place; normal re-entry remains responsible for shape normalization.
             foreach (var row in _altScreen)
