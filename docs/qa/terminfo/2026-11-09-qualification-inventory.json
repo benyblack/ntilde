@@ -4162,7 +4162,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/kitty-placeholders-publication.test.mjs",
-        "testSha256": "42d1ddd06ee635e0bcde92dfe852e6c986db94a6e6704b58dec3ee053bb42c66"
+        "testSha256": "efda2c494dd109158da887dc2c6d6a9b4f4d68373c4ffd35fbf2632acea72609"
       }
     },
     {

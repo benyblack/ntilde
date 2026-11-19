@@ -145,6 +145,22 @@ for (const variant of variants) describe(`placeholders publication: ${variant.la
         refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.proofs[0].worker.tty = 'ttys999'; }), /not bound to the launched App/);
         // The source snapshot removal must be the one of the measured tree and come after cleanup.
         refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.root = '/tmp/some-other-tree'; }), /source snapshot removal/);
+        // A downgraded graph (the policy changed consistently in the context, the manifest and the removal record, the receipt re-bound) is refused: it would be validated against its own smaller inventory.
+        refuses(context => {
+            const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v1'; context.write('source-snapshot.json', manifest);
+            rebind(context, 'context.json', value => { value.sourceSnapshotPolicy = manifest.policy; value.sourceSnapshotManifestSha256 = hash(readFileSync(join(context.copy, 'source-snapshot.json'))); });
+            rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.policy = manifest.policy; });
+        }, /source policy/);
+        // The suite's own sources must be captured, and the removal root must be a recorded one that no longer exists.
+        refuses(context => rebind(context, 'context.json', value => { delete value.kittyAnimationCasesSourceSha256; }), /source policy/);
+        refuses(context => {
+            rebind(context, 'context.json', value => { delete value.sourceSnapshotRoot; });
+            rebind(context, 'ownership-proof.json', proof => { delete proof.sourceSnapshot.root; });
+        }, /source snapshot removal/);
+        refuses(context => {
+            rebind(context, 'context.json', value => { value.sourceSnapshotRoot = tmpdir(); });
+            rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.root = tmpdir(); });
+        }, /source snapshot removal/);
         refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.policy = 'readonly-owned-source-graph-v1'; }), /source snapshot removal/);
         refuses(context => rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.removedAt = new Date(Date.parse(proof.cleanedUpAt) - 1000).toISOString(); }), /predates cleanup/);
         refuses(context => rebind(context, 'context.json', value => { value.collectionScope = { ...value.collectionScope, suiteVersion: 4 }; }), /declare the persistent .*scope/);

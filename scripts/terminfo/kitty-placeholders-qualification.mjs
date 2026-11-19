@@ -3,6 +3,8 @@
 // contract for placeholders, and explicit validity controls over the lineage (App process, multiplexer daemon, worker). The run has no stock collector, so there is no stock grade, and the pinned verdict, the
 // effect verdict and any other result never merge.
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { directPlaceholdersScope, persistentPlaceholdersScope } from './collection-scope.mjs';
 import { animationCasesByVersion, animationSuiteIds } from './kitty-animation-cases.mjs';
 import { ownedAnimationPolicies } from './kitty-animation.mjs';
@@ -26,6 +28,11 @@ export const directMeasuredAppRevision = '8a2eb2952a7b965c101580093607d3f2681b79
 export const directMeasuredScriptsRevision = 'c46e42c786fc0646443b6d913771c86050b49da5';
 
 const version = 5;
+/** The source policy the placeholder suite was measured under; an older graph does not carry the suite's sources, so a downgraded one is refused rather than validated against its own (smaller) inventory. */
+export const placeholdersSourcePolicy = 'readonly-owned-source-graph-v70';
+/** The suite's own sources the measured graph must capture. */
+const requiredSources = Object.freeze(['kittyAnimationInputsSourceSha256', 'kittyAnimationCasesSourceSha256', 'kittyAnimationOracleSourceSha256', 'kittyAnimationSuiteSourceSha256', 'kittyAnimationCaptureSourceSha256',
+    'kittyAnimationCollectorSourceSha256', 'kittyAnimationReceiptSourceSha256']);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (ok, message) => { if (!ok) throw new Error(`kitty placeholders qualification: ${message}`); };
 const suiteId = animationSuiteIds[version], policy = ownedAnimationPolicies[version];
@@ -67,6 +74,9 @@ const variants = Object.freeze({
  */
 export function verifyPlaceholdersRun(dir, kind = 'persistent') {
     const { scope, receiptSuiteId, noun } = variants[kind];
+    const recorded = JSON.parse(readFileSync(join(dir, 'context.json')));
+    check(recorded.sourceSnapshotPolicy === placeholdersSourcePolicy && requiredSources.every(key => /^[a-f\d]{64}$/.test(recorded[key] ?? '')),
+        `the run was not measured under source policy ${placeholdersSourcePolicy} with the placeholder suite's sources captured`);
     const run = verifyPersistentSuiteRun(dir, { scope, receiptSuiteId, version, suiteId, policy, noun });
     const { original, context, proof, frames } = run;
     check(!original.relaunches && frames.every(frame => frame.ownership.app.pid === original.app.pid), 'a stage was observed under an App process other than the launched one, or the run relaunched it');
@@ -74,8 +84,9 @@ export function verifyPlaceholdersRun(dir, kind = 'persistent') {
     check(original.app.executable === context.executable && frames.every(frame => sameProcess(frame.ownership.app, original.app) && sameProcess(frame.ownership.worker, original.worker)),
         'an observation is not bound to the launched App and its worker as the launch proof recorded them');
     const removal = proof.sourceSnapshot;
-    check(removal.policy === context.sourceSnapshotPolicy && removal.root === context.sourceSnapshotRoot && Date.parse(removal.removedAt) >= Date.parse(proof.cleanedUpAt),
-        'the source snapshot removal is not the one of the measured tree, or predates cleanup');
+    check(removal.policy === context.sourceSnapshotPolicy && typeof removal.root === 'string' && removal.root.length > 0 && removal.root === context.sourceSnapshotRoot
+        && !existsSync(removal.root) && Date.parse(removal.removedAt) >= Date.parse(proof.cleanedUpAt),
+    'the source snapshot removal is not the one of the measured tree (a recorded, removed root), or predates cleanup');
     return run;
 }
 
