@@ -334,6 +334,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     }
 
     public bool SupportsByteInput => true;
+    public bool SupportsRawC1Replies => true;
 
     public bool TrySendInputBytes(ReadOnlyMemory<byte> input)
     {

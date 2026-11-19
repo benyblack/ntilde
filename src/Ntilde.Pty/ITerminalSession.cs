@@ -19,6 +19,10 @@ namespace Ntilde.Pty
     public interface ITerminalByteInput
     {
         bool SupportsByteInput { get; }
+
+        /// <summary>Whether the child transport accepts standalone C1 bytes in device replies.</summary>
+        bool SupportsRawC1Replies => false;
+
         bool TrySendInputBytes(ReadOnlyMemory<byte> input);
     }
 

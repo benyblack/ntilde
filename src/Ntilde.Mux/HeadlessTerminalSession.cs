@@ -190,7 +190,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         // Keep replies ordered with keyboard input on the writer so parsing never blocks on stdin.
         _parser.OnResponse = text =>
         {
-            if (_session is ITerminalByteInput { SupportsByteInput: true } && _parser.Encode8BitReply(text) is { } bytes)
+            if (_session is ITerminalByteInput { SupportsRawC1Replies: true } && _parser.Encode8BitReply(text) is { } bytes)
                 EnqueueInput(new QueuedInput(null, bytes));
             else
                 EnqueueInput(text);

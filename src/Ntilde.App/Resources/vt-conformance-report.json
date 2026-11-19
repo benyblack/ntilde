@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "089d4e1a0f9f4baaf60e4aa00a34cce4e6abb04ab4bee4ec85967e796044142d",
+  "matrixSha256": "dd811cdfdd099324cae6b03f84d4e4c5283dc4423af5dd323d586f1e264cfa68",
   "summary": {
     "totalRows": 153,
     "supportedCount": 73,
@@ -215,7 +215,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "\u0060src/Ntilde.VT/AnsiParser.cs\u0060, \u0060src/Ntilde.VT/AnsiParser.Replies.cs\u0060",
-      "knownDeviations": "Byte-capable direct and persistent sessions use raw C1 framing after S8C1T. Startup, RIS and S7C1T use seven-bit framing. Snapshots carry the selected width and any pending space intermediate. Keyboard input and host-generated replies are outside this coverage.",
+      "knownDeviations": "Direct and persistent sessions use raw C1 framing after S8C1T when the child transport supports it. Windows ConPTY and text-only transports keep seven-bit framing, as do startup, RIS and S7C1T. Snapshots carry the selected width and any pending space intermediate. Keyboard input and host-generated replies are outside this coverage.",
       "sourceLine": 64
     },
     {

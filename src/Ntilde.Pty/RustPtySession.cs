@@ -1345,6 +1345,7 @@ namespace Ntilde.Pty
         }
 
         public bool SupportsByteInput => true;
+        public bool SupportsRawC1Replies => !OperatingSystem.IsWindows(); // ConPTY input is UTF-8.
 
         public bool TrySendInputBytes(ReadOnlyMemory<byte> input)
         {

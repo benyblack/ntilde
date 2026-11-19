@@ -783,12 +783,16 @@ namespace Ntilde.Controls
                 var parser = Parser!;
                 parser.OnResponse += response =>
                 {
-                    if (Session is ITerminalDeviceReplySink replies)
+                    var current = Session;
+                    if (current is ITerminalDeviceReplySink replies)
                     {
-                        if (parser.Encode8BitReply(response) is { } wireBytes) replies.TrySendDeviceReply(response, wireBytes);
-                        else replies.TrySendDeviceReply(response);
+                        if (current is ITerminalByteInput { SupportsRawC1Replies: true }
+                            && parser.Encode8BitReply(response) is { } wireBytes)
+                            replies.TrySendDeviceReply(response, wireBytes);
+                        else
+                            replies.TrySendDeviceReply(response);
                     }
-                    else Session?.SendInput(response);
+                    else current?.SendInput(response);
                 };
             }
 

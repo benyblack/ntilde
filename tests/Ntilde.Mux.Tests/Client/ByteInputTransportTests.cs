@@ -9,15 +9,17 @@ public sealed class ByteInputTransportTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Cursor_reports_use_raw_c1_when_the_child_supports_byte_input(bool childSupportsBytes)
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task Cursor_reports_use_the_width_the_child_transport_supports(bool childSupportsBytes, bool childSupportsRawC1)
     {
         using var host = new MuxTestHost();
         MuxClient client = await host.ConnectClientAsync();
         Guid id = await MuxTestHost.SpawnAsync(client);
         ScriptedTerminalSession child = host.Fake(id);
         child.SupportsByteInput = childSupportsBytes;
+        child.SupportsRawC1Replies = childSupportsRawC1;
 
         child.Emit("\u001b ");
         child.Emit("G\u001b[6n\u001b F\u001b[6n");
@@ -25,7 +27,7 @@ public sealed class ByteInputTransportTests
         await TestWait.UntilAsync(() => child.WireInput.Count >= 2, "both replies reach the child");
         byte[] sevenBit = "\u001b[1;1R"u8.ToArray();
         byte[] eightBit = [0x9b, .. "1;1R"u8];
-        Assert.Equal(new[] { childSupportsBytes ? eightBit : sevenBit, sevenBit }, child.WireInput.ToArray());
+        Assert.Equal(new[] { childSupportsRawC1 ? eightBit : sevenBit, sevenBit }, child.WireInput.ToArray());
     }
 
     [Theory]

@@ -91,6 +91,7 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
         return true;
     }
     public bool SupportsByteInput => _inner is ITerminalByteInput { SupportsByteInput: true };
+    public bool SupportsRawC1Replies => _inner is ITerminalByteInput { SupportsRawC1Replies: true };
     public bool TrySendInputBytes(ReadOnlyMemory<byte> input) =>
         _inner is ITerminalByteInput { SupportsByteInput: true } bytes && bytes.TrySendInputBytes(input);
     public bool TrySendDeviceReply(string response) =>
