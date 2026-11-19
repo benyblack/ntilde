@@ -795,6 +795,25 @@ namespace Ntilde.Controls
             WireStreamOrderedSession(muxPreviousLost);
         }
 
+        private void EchoKeyboardText(ITerminalSession session, string text)
+        {
+            if (session is ITerminalOutputScheduler scheduler)
+                scheduler.TryScheduleOutput(() => ApplyKeyboardEcho(session, text));
+            else
+                ApplyKeyboardEcho(session, text);
+        }
+
+        private void ApplyKeyboardEcho(ITerminalSession session, string text)
+        {
+            // Use the same parser and serialization as child output. This text is display-only.
+            lock (_localSixelRecordingGate)
+            {
+                if (!ReferenceEquals(Session, session) || Parser is not { } parser || !parser.CanEchoKeyboardText(text)) return;
+                parser.Process(text);
+            }
+            QueueOutputUiRefresh();
+        }
+
         // Publishing can enable the flight recorder. Output ownership must be installed first.
         private void PublishAgentSessionLifecycle(ITerminalSession session)
         {

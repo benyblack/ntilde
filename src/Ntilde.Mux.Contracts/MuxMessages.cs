@@ -100,6 +100,10 @@ public sealed record WelcomeResult
     /// <summary>True only when this connection requested byte-exact Input. Absent means UTF-8 text.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool SupportsByteInput { get; init; }
+
+    /// <summary>Whether the daemon accepts committed keyboard text as a separate input frame.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SupportsKeyboardText { get; init; }
 }
 
 /// <summary>What the client looks like: applied to the mux parser so its replies describe it.</summary>

@@ -49,9 +49,10 @@ public static class MuxFrames
         return frame;
     }
 
-    public static MuxOutboundFrame Input(Guid sessionId, ReadOnlySpan<byte> utf8)
+    public static MuxOutboundFrame Input(Guid sessionId, ReadOnlySpan<byte> utf8, bool keyboardText = false)
     {
-        MuxOutboundFrame frame = MuxOutboundFrame.Rent(MuxFrameKind.Input, SessionIdBytes + utf8.Length);
+        MuxFrameKind kind = keyboardText ? MuxFrameKind.KeyboardText : MuxFrameKind.Input;
+        MuxOutboundFrame frame = MuxOutboundFrame.Rent(kind, SessionIdBytes + utf8.Length);
         Span<byte> p = frame.Payload;
         WriteGuid(p, sessionId);
         utf8.CopyTo(p[SessionIdBytes..]);

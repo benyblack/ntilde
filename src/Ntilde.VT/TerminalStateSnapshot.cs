@@ -472,6 +472,8 @@ namespace Ntilde.VT
         [JsonPropertyName("irm")] public bool IsInsertMode { get; set; }
         [JsonPropertyName("lnm")] public bool IsLineFeedNewLineMode { get; set; }
         [JsonPropertyName("srm")] public bool IsEchoEnabled { get; set; } = true;
+        [JsonPropertyName("local_echo"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IsLocalEchoEnabled { get; set; }
 
         /// <summary>
         /// xterm modifyOtherKeys level of the main screen (0-2). Optional: absent from legacy

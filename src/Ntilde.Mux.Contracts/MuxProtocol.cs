@@ -130,6 +130,9 @@ public enum MuxFrameKind : byte
     /// <see cref="Output"/> frame follows, or the fact that it could not read it. It precedes that output frame, so a client uses it at exactly that point of the stream.
     /// </summary>
     FileTransfer = 0x14,
+
+    /// <summary>Client → server, with the Input payload layout. May be displayed locally under ANSI SRM.</summary>
+    KeyboardText = 0x15,
 }
 
 /// <summary>A protocol-level failure carrying one of <see cref="MuxErrorCodes"/>.</summary>

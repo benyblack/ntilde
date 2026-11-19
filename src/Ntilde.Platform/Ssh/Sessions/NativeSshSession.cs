@@ -9,7 +9,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink, ITerminalByteInput
+public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, ITerminalRecordingBoundary, ITerminalDeviceReplySink, ITerminalByteInput, ITerminalOutputScheduler
 {
 
     private readonly INativeSshInterop _interop;
@@ -558,6 +558,17 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         {
             Volatile.Write(ref _isRunning, 0);
             CloseNativeHandle();
+        }
+    }
+
+    public bool TryScheduleOutput(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        lock (_decodeGate)
+        {
+            if (!IsProcessRunning) return false;
+            action();
+            return true;
         }
     }
 

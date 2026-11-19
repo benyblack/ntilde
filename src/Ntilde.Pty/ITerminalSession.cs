@@ -39,6 +39,13 @@ namespace Ntilde.Pty
         event Action<int>? OnExit;
     }
 
+    /// <summary>Orders host actions after output already admitted by a terminal session.</summary>
+    public interface ITerminalOutputScheduler
+    {
+        /// <summary>Schedules an action at the decoded output boundary. A closed or full queue may decline.</summary>
+        bool TryScheduleOutput(Action action);
+    }
+
     /// <summary>Descriptive metadata about the process backing this session.</summary>
     public interface ITerminalShellMetadata
     {

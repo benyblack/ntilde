@@ -116,6 +116,7 @@ public sealed class MuxClient : IDisposable
     public MuxHistoryLimits? HistoryLimits { get; private set; }
     public bool SupportsPresentationOnly { get; private set; }
     public bool SupportsByteInput { get; private set; }
+    private bool SupportsKeyboardText { get; set; }
 
     public bool IsConnected => Volatile.Read(ref _disconnected) == 0;
     public string? DisconnectReason => Volatile.Read(ref _disconnectReason);
@@ -172,6 +173,7 @@ public sealed class MuxClient : IDisposable
             client.HistoryLimits = welcome.HistoryLimits;
             client.SupportsPresentationOnly = welcome.SupportsPresentationOnly;
             client.SupportsByteInput = welcome.SupportsByteInput;
+            client.SupportsKeyboardText = welcome.SupportsKeyboardText;
             client.ServerVersion = welcome.ServerVersion;
             client.LoginSessionEnded = welcome.LoginSessionEnded == true;
             return client;
@@ -389,7 +391,8 @@ public sealed class MuxClient : IDisposable
     internal void PostRequest<T>(string method, T parameters, JsonTypeInfo<T> typeInfo) =>
         Post(MuxFrames.Request(new MuxRequest { Id = 0, Method = method, Params = MuxFrames.ToElement(parameters, typeInfo) }));
 
-    internal void SendInput(Guid sessionId, string text) => Post(MuxFrames.Input(sessionId, Encoding.UTF8.GetBytes(text)));
+    internal void SendInput(Guid sessionId, string text, bool keyboardText = false) =>
+        Post(MuxFrames.Input(sessionId, Encoding.UTF8.GetBytes(text), keyboardText && SupportsKeyboardText));
 
     internal bool TrySendInputBytes(Guid sessionId, ReadOnlyMemory<byte> input)
     {

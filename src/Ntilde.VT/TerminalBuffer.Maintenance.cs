@@ -445,6 +445,7 @@ namespace Ntilde.VT
                 Modes.IsApplicationKeypad = false;
                 Modes.IsBackarrowKeyMode = false;
                 Modes.IsLineFeedNewLineMode = false;
+                Modes.SetLocalEcho(null);
                 Modes.IsClipboardPasteMode = false;
                 Modes.IsCursorVisible = true;
                 ResetCursorPresentationNoLock();
