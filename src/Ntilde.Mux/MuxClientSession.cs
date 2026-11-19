@@ -625,6 +625,55 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         Interlocked.Exchange(ref _deliveredOffset, next);
     }
 
+    private readonly Lock _fileGate = new();
+    private readonly List<(long Seq, string Path, byte[]? Data)> _files = new(); // the daemon's t=f reads for the output frame about to arrive (#887)
+
+    /// <summary>
+    /// Delivery thread: what the daemon read for a <c>t=f</c> command in the output frame that follows at <paramref name="seq"/> (the file's bytes, or null when it could not read it).
+    /// Kept until that output frame has been parsed. A client that is not attached ignores it, as it ignores output.
+    /// </summary>
+    internal void DeliverFile(long seq, string path, byte[]? data)
+    {
+        long expected = Interlocked.Read(ref _expectedOffset);
+        if (expected < 0) return;
+        // The frame precedes the output frame at the next expected offset, and only that one: an entry for any other offset is not from a daemon this client can follow, and accepting
+        // it would let a peer park file bytes for offsets that never arrive.
+        if (seq != expected)
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Session {Id}: file transfer at stream offset {seq}, expected {expected}.");
+        lock (_fileGate)
+        {
+            // A daemon stages at most this much for one chunk (HeadlessTerminalSession); more is not a daemon this client can follow.
+            long bytes = data?.Length ?? 0;
+            foreach ((_, _, byte[]? entry) in _files) bytes += entry?.Length ?? 0;
+            if (_files.Count >= MuxFrames.MaxFileTransfersPerChunk || bytes > MuxFrames.MaxFileTransferBytes)
+                throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Session {Id}: more file transfers at stream offset {seq} than a daemon forwards for one chunk.");
+            _files.Add((seq, path, data));
+        }
+    }
+
+    /// <summary>
+    /// The reader to wire behind <see cref="Ntilde.VT.AnsiParser.ReadFileBytes"/> in a session whose image policy carries file transport (#887): called while the parser handles the
+    /// output frame that carries a <c>t=f</c> command, it answers with what the daemon read for that very command (the first unclaimed entry for the path), or null
+    /// (an unavailable payload, as the daemon answered) when there is none. A client never opens a file: the path names one on the daemon's host.
+    /// </summary>
+    public byte[]? ReadTransportFile(string? path)
+    {
+        if (path is null) return null;
+        lock (_fileGate)
+        {
+            int index = _files.FindIndex(entry => string.Equals(entry.Path, path, StringComparison.Ordinal));
+            if (index < 0) return null;
+            byte[]? data = _files[index].Data;
+            _files.RemoveAt(index);
+            return data;
+        }
+    }
+
+    private void DropFiles(long seq, bool unclaimedToo)
+    {
+        lock (_fileGate) _files.RemoveAll(entry => unclaimedToo ? entry.Seq == seq : entry.Seq != seq);
+    }
+
     internal void DeliverOutput(long seq, ReadOnlySpan<byte> data)
     {
         long expected = Interlocked.Read(ref _expectedOffset);
@@ -649,7 +698,16 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         int maxChars = Utf8ChunkDecoder.GetMaxCharCount(data.Length);
         if (_chars.Length < maxChars) _chars = new char[maxChars];
         int count = _decoder.Decode(data, _chars);
-        if (count > 0) OnOutputReceived?.Invoke(new string(_chars, 0, count));
+        DropFiles(seq, unclaimedToo: false); // entries for any other offset are stale
+        try
+        {
+            if (count > 0) OnOutputReceived?.Invoke(new string(_chars, 0, count));
+        }
+        finally
+        {
+            DropFiles(seq, unclaimedToo: true); // what this chunk's commands did not claim is not for the next one
+        }
+
         Interlocked.Exchange(ref _deliveredOffset, next);
     }
 

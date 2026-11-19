@@ -47,8 +47,15 @@ public static class PersistentImagePolicy
     /// </summary>
     public const int PlaceholderImagesVersion = 5;
 
+    /// <summary>
+    /// <see cref="PlaceholderImagesVersion"/> plus Kitty file transport (<c>t=f</c>, #887). A version of its own because the daemon, the only side that can read the
+    /// file, forwards the bytes it read in an ordered frame that a version-5 peer does not understand, and a version-5 session answers <c>ERR</c> to a <c>t=f</c> probe:
+    /// under one policy, one side would place the image and another would not.
+    /// </summary>
+    public const int FileTransportImagesVersion = 6;
+
     /// <summary>The highest policy this build supports.</summary>
-    public const int EnabledVersion = PlaceholderImagesVersion;
+    public const int EnabledVersion = FileTransportImagesVersion;
 
     /// <summary>Whether <paramref name="version"/> carries Kitty graphics and iTerm2 inline images.</summary>
     public static bool AllowsImages(int version) => version >= RetainedImagesVersion;
@@ -64,6 +71,12 @@ public static class PersistentImagePolicy
 
     /// <summary>Whether <paramref name="version"/> carries Kitty Unicode placeholders (<c>U=1</c> virtual placements).</summary>
     public static bool AllowsPlaceholders(int version) => version >= PlaceholderImagesVersion;
+
+    /// <summary>
+    /// Whether <paramref name="version"/> carries Kitty file transport (<c>t=f</c>): the daemon reads the file and every client is told what it read. The parser
+    /// needs no flag for it: a host wires <see cref="AnsiParser.ReadFileBytes"/> exactly when this is true, and a session below it leaves the reader null.
+    /// </summary>
+    public static bool AllowsFileTransport(int version) => version >= FileTransportImagesVersion;
 
     /// <summary>Configures a persistent-session parser (daemon or client) for <paramref name="version"/>.</summary>
     public static void Apply(AnsiParser parser, int version)

@@ -35,9 +35,12 @@ This document defines Ntilde image protocol behavior across platforms.
   sized by the `s=`/`v=` params.
 - `o=z` payloads are inflated (zlib) before decoding.
 - Transport `t=f` reads the file whose path is the payload through a host-injected
-  `AnsiParser.ReadFileBytes` delegate — the VT layer stays free of file I/O. The App layer's
-  reader is confined to absolute paths under `%TEMP%` with a 64 MB cap, because the path comes
-  from the remote stream. `t=s` (shared memory) is not supported and skips gracefully.
+  `AnsiParser.ReadFileBytes` delegate — the VT layer stays free of file I/O. The one reader
+  (`Ntilde.Mux.KittyTransportFile`) is confined to absolute paths under the temp directory, refuses a
+  symbolic link out of it, and caps a file at 64 MB, because the path comes from the remote stream. In a
+  persistent session (image policy 6, #887) only the daemon reads the file, on its own host, and forwards
+  the bytes to every client in order, so a client never opens a path. SSH panes have no reader (their
+  files are remote). `t=t` (temporary file) and `t=s` (shared memory) are not supported and skip gracefully.
 
 ## Notes
 

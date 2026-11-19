@@ -44,6 +44,7 @@ public sealed class ImagePolicyAdmissionTests
     [InlineData(1, 2)] // past this build
     [InlineData(2, PersistentImagePolicy.AnimationImagesVersion)] // a connection that predates animation cannot spawn a session that carries it
     [InlineData(3, PersistentImagePolicy.CompositionImagesVersion)] // nor one that predates frame composition a session that composes
+    [InlineData(5, PersistentImagePolicy.FileTransportImagesVersion)] // nor one that predates file transport a session that carries t=f
     [InlineData(4, PersistentImagePolicy.PlaceholderImagesVersion)] // nor one that predates Unicode placeholders a session that tiles them
     [InlineData(1, -1)]
     public async Task A_spawn_policy_the_connection_did_not_negotiate_is_refused_before_the_factory(int ceiling, int required)

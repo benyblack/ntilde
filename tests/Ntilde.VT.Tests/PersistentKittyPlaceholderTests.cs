@@ -81,7 +81,7 @@ public sealed class PersistentKittyPlaceholderTests
         Assert.Empty(four.Buffer.FindKittyImage(42, 0)!.VirtualPlacements);
         Assert.False(PersistentImagePolicy.AllowsPlaceholders(PersistentImagePolicy.CompositionImagesVersion));
         Assert.True(PersistentImagePolicy.AllowsPlaceholders(PersistentImagePolicy.PlaceholderImagesVersion));
-        Assert.Equal(PersistentImagePolicy.PlaceholderImagesVersion, PersistentImagePolicy.EnabledVersion);
+        Assert.True(PersistentImagePolicy.EnabledVersion >= PersistentImagePolicy.PlaceholderImagesVersion);
 
         var five = new Side();
         five.Send(Command("a=q,i=31,e=T,U=1,s=1,v=1,t=d,f=24", "AAAA"));

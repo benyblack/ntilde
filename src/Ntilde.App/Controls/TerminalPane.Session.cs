@@ -160,7 +160,7 @@ namespace Ntilde.Controls
         /// A mux-backed pane's session image policy (#838): with it, Kitty and iTerm2 images are placed from their
         /// headers exactly as the daemon places them, and the GUI decodes them for display only.
         /// </param>
-        internal void CreateAndWireParser(bool? forceConPtyFiltering = null, bool muxBacked = false, int imagePolicy = PersistentImagePolicy.Legacy)
+        internal void CreateAndWireParser(bool? forceConPtyFiltering = null, bool muxBacked = false, int imagePolicy = PersistentImagePolicy.Legacy, Func<string?, byte[]?>? muxFileReader = null)
         {
             if (Buffer == null) return;
 
@@ -244,7 +244,7 @@ namespace Ntilde.Controls
             // the delegate null makes t=f probes answer ERR, so remote clients fall back to
             // inline payloads, which are self-contained.
             // A mux-backed pane never decodes images (above), so it has nothing to read either.
-            Parser.ReadFileBytes = ResolveKittyFileReader(muxBacked);
+            Parser.ReadFileBytes = ResolveKittyFileReader(muxBacked, imagePolicy, muxFileReader);
 
             Parser.OnBell += () =>
             {
@@ -499,10 +499,15 @@ namespace Ntilde.Controls
         private bool AllowsNativeKittyGraphics(bool muxBacked) =>
             !muxBacked && (_settings?.AllowNativeKittyGraphics ?? true);
 
-        private Func<string, byte[]?>? ResolveKittyFileReader(bool muxBacked) =>
-            muxBacked || Profile is { Type: ConnectionType.SSH }
-                ? null
-                : ReadKittyTransportFile;
+        /// <summary>
+        /// The <c>t=f</c> reader: a direct pane reads the file itself (an SSH pane cannot: its files are remote). A mux-backed pane never opens a file, since the path names one on the
+        /// daemon's host; under an image policy that carries file transport (#887) it takes what the daemon read from its session, and below it has no reader (<c>t=f</c> answers <c>ERR</c>).
+        /// </summary>
+        private Func<string, byte[]?>? ResolveKittyFileReader(bool muxBacked, int imagePolicy, Func<string?, byte[]?>? muxFileReader)
+        {
+            if (muxBacked) return PersistentImagePolicy.AllowsFileTransport(imagePolicy) && muxFileReader is not null ? path => muxFileReader(path) : null;
+            return Profile is { Type: ConnectionType.SSH } ? null : ReadKittyTransportFile;
+        }
 
         /// Spawns the session and wires the handlers that depend on it. Split out of
         /// <c>InitializeSession</c> alongside <see cref="CreateAndWireParser"/>; no behaviour change.
@@ -846,92 +851,14 @@ namespace Ntilde.Controls
         /// answers), so the two call sites can never resolve the profile-effective theme
         /// differently — see the #265 wiring-bug follow-up.
         /// </summary>
-        /// <summary>
-        /// Hard cap on a single kitty <c>t=f</c> transport read. A 2000×2000 RGBA frame — the
-        /// parser's pixel guardrail — is 16 MB, so 64 MB leaves generous headroom for legitimate
-        /// staged frames while keeping a hostile path from pulling an arbitrary file into memory.
-        /// </summary>
-        internal const long KittyTransportMaxFileBytes = 64L * 1024 * 1024;
+        /// <summary>Hard cap on a single kitty <c>t=f</c> transport read (see <see cref="Ntilde.Mux.KittyTransportFile.MaxFileBytes"/>).</summary>
+        internal const long KittyTransportMaxFileBytes = Ntilde.Mux.KittyTransportFile.MaxFileBytes;
 
         /// <summary>
-        /// Disk reader behind <see cref="AnsiParser.ReadFileBytes"/> for kitty graphics file
-        /// transport. The path comes from the remote byte stream, so it is treated as hostile:
-        /// absolute paths only, confined to the user's temp directory (where clients like
-        /// terminal-browser stage raw RGBA frames), size-capped, and any failure degrades to a
-        /// null the parser logs and skips. Internal + static so the confinement rules are unit
-        /// testable without a pane.
+        /// Disk reader behind <see cref="AnsiParser.ReadFileBytes"/> for kitty graphics file transport in a direct pane. The path comes from the remote byte stream, so it is
+        /// treated as hostile; the rules (absolute, confined to the user's temp directory, no link out of it, size-capped, any failure a null) live in
+        /// <see cref="Ntilde.Mux.KittyTransportFile"/>, which a persistent session's daemon reads with too (#887).
         /// </summary>
-        internal static byte[]? ReadKittyTransportFile(string? path)
-        {
-            if (string.IsNullOrWhiteSpace(path) || !System.IO.Path.IsPathRooted(path))
-            {
-                return null;
-            }
-
-            string candidate;
-            try
-            {
-                candidate = System.IO.Path.GetFullPath(path);
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-
-            string tempRoot = System.IO.Path.GetFullPath(System.IO.Path.GetTempPath());
-            // Casing follows the platform's filesystem rules: ignore-case is only correct where
-            // the filesystem itself is case-insensitive - on Unix, /TMP/frame.rgba is a
-            // different directory from /tmp/frame.rgba, and accepting it as "under temp" would
-            // let a case-variant path escape the confinement boundary.
-            var pathComparison = OperatingSystem.IsWindows()
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal;
-            if (!candidate.StartsWith(tempRoot, pathComparison))
-            {
-                return null;
-            }
-
-            try
-            {
-                var info = new System.IO.FileInfo(candidate);
-                if (!info.Exists || info.Length > KittyTransportMaxFileBytes)
-                {
-                    return null;
-                }
-
-                // The writer (e.g. terminal-browser's frame ring) keeps the file open while it
-                // cycles frames, so a plain File.ReadAllBytes' FileShare.Read gets rejected with
-                // a sharing violation. Open tolerating concurrent writers: the path is only sent
-                // after the frame write completes, so the bytes read are the finished frame.
-                using var stream = new System.IO.FileStream(
-                    candidate,
-                    System.IO.FileMode.Open,
-                    System.IO.FileAccess.Read,
-                    System.IO.FileShare.ReadWrite | System.IO.FileShare.Delete);
-
-                // Re-check the cap on the OPENED handle: the file can grow between the
-                // FileInfo probe above and this open, and the allocation below trusts the
-                // length blindly.
-                if (stream.Length > KittyTransportMaxFileBytes)
-                {
-                    return null;
-                }
-
-                var bytes = new byte[stream.Length];
-                int read = 0;
-                while (read < bytes.Length)
-                {
-                    int n = stream.Read(bytes, read, bytes.Length - read);
-                    if (n <= 0) break;
-                    read += n;
-                }
-
-                return read == bytes.Length ? bytes : null;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
+        internal static byte[]? ReadKittyTransportFile(string? path) => Ntilde.Mux.KittyTransportFile.Read(path);
     }
 }

@@ -662,12 +662,23 @@ public sealed class MuxClient : IDisposable
                     break;
                 }
 
+            case MuxFrameKind.FileTransfer:
+                DeliverFileTransfer(frame);
+                break;
+
             case MuxFrameKind.Snapshot:
                 OnSnapshot(frame.Payload);
                 break;
             default:
                 throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"A server may not send {frame.Kind} frames.");
         }
+    }
+
+    /// <summary>A daemon's read of a Kitty <c>t=f</c> file, for the session's next output frame (#887).</summary>
+    private void DeliverFileTransfer(MuxInboundFrame frame)
+    {
+        if (!MuxFrames.TryParseFileTransfer(frame.Payload, out Guid id, out long seq, out string path, out bool hasData, out ReadOnlySpan<byte> data)) throw Malformed(frame.Kind);
+        if (_sessions.TryGetValue(id, out MuxClientSession? session)) session.DeliverFile(seq, path, hasData ? data.ToArray() : null);
     }
 
     private static MuxProtocolException Malformed(MuxFrameKind kind) =>

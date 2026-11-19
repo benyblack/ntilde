@@ -124,6 +124,12 @@ public enum MuxFrameKind : byte
     Output = 0x11,
     ResizeEvent = 0x12,
     Snapshot = 0x13,
+
+    /// <summary>
+    /// Server → client, only in a session whose image policy carries Kitty file transport (#887): the bytes of a <c>t=f</c> file the daemon read while parsing the chunk whose
+    /// <see cref="Output"/> frame follows, or the fact that it could not read it. It precedes that output frame, so a client uses it at exactly that point of the stream.
+    /// </summary>
+    FileTransfer = 0x14,
 }
 
 /// <summary>A protocol-level failure carrying one of <see cref="MuxErrorCodes"/>.</summary>
