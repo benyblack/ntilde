@@ -49,16 +49,10 @@ public sealed class EditingDefaultParameterTests
                 Assert.Equal($"HISTORY{row}", new string(history.ToArray().Select(cell => cell.Character).ToArray()).TrimEnd());
             }
             TerminalCell erased = buffer.GetCell(command == "X" ? 2 : 0, command == "M" ? 4 : 2);
-            if (command == "X")
-            {
-                Assert.False(erased.IsDefaultBackground);
-                Assert.False(erased.IsPaletteBackground);
-                Assert.Equal(0xff012cc7u, erased.Bg);
-            }
-            else
-            {
-                Assert.True(erased.IsDefaultBackground);
-            }
+            // ECH, IL and DL all fill with the active background (background color erase).
+            Assert.False(erased.IsDefaultBackground);
+            Assert.False(erased.IsPaletteBackground);
+            Assert.Equal(0xff012cc7u, erased.Bg);
         }
         finally { buffer.Lock.ExitReadLock(); }
     }

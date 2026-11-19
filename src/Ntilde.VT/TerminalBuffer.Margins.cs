@@ -38,6 +38,12 @@ public partial class TerminalBuffer
     /// <summary>The blank a scroll brings in: a space in the theme's default colors, as a new full-width row has.</summary>
     private TerminalCell ThemeBlankCell() => new(' ', Theme.Foreground, Theme.Background, false, false, true, true);
 
+    /// <summary>
+    /// The blank a scroll, an insertion or a deletion of lines brings in: a space with the active background (background color erase, as ED, EL and ECH fill). With the default background this is the
+    /// same cell as <see cref="ThemeBlankCell"/>, so nothing changes until a program sets one.
+    /// </summary>
+    private TerminalCell ActiveBlankCell() => new(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground, fgIdx: CurrentFgIndex, bgIdx: CurrentBgIndex);
+
     private void ResetHorizontalMarginsNoLock()
     {
         LeftMargin = 0;
@@ -148,12 +154,7 @@ public partial class TerminalBuffer
         {
             if (_cursorRow == ScrollTop)
             {
-                if (CursorInHorizontalMarginsNoLock)
-                {
-                    var blank = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false,
-                        IsDefaultForeground, IsDefaultBackground, fgIdx: CurrentFgIndex, bgIdx: CurrentBgIndex);
-                    ScrollDownInternal(blank);
-                }
+                if (CursorInHorizontalMarginsNoLock) ScrollDownInternal(ActiveBlankCell());
             }
             else
             {
