@@ -25,7 +25,6 @@ public partial class TerminalBuffer
                 ClipTop = top,
                 ClipBottom = bottom,
                 ClipRight = image.ClipRightColumns,
-                LineSize = (int)image.LineSize,
                 Order = order,
             });
         }
@@ -87,7 +86,6 @@ public partial class TerminalBuffer
                 IsSixelImage = true,
                 SixelSource = source,
                 IsAltScreenImage = state.Alt,
-                LineSize = ImportedLineSize(state.LineSize),
                 ClipTopRows = top,
                 ClipBottomRows = bottom,
                 ClipRightColumns = right,

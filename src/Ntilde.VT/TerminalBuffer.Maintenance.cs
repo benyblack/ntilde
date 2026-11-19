@@ -43,7 +43,6 @@ namespace Ntilde.VT
                 // though both live in the same list.
                 image.IsAltScreenImage = _isAltScreen;
                 _images.Add(image);
-                PlaceImageOnItsRowNoLock(image);
             }
             finally
             {
@@ -75,7 +74,6 @@ namespace Ntilde.VT
                 // Publish the replacement before releasing older placements, including
                 // when a host decoder reuses the same opaque handle.
                 _images.Add(image);
-                PlaceImageOnItsRowNoLock(image);
                 for (int i = _images.Count - 2; i >= 0; i--)
                 {
                     if (_images[i].KittyImageId == kittyId && _images[i].IsAltScreenImage == _isAltScreen)
@@ -365,7 +363,6 @@ namespace Ntilde.VT
                     }
                     row.ClearProtection(); // the filled E cells are fresh characters, never protected ones
                     row.LineSize = LineSize.SingleWidth; // DECALN returns every line to single width (DEC STD 070)
-                    ImagesTakeRowLineSizesNoLock(r, r + 1);
                     row.TouchRevision();
                 }
 
@@ -516,7 +513,6 @@ namespace Ntilde.VT
         {
             _textSizingPruneRequired = true;
             var blank = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
-            AlternateScreenImagesBecomeSingleWidthNoLock();
             // The inactive array may still have its pre-resize shape. Clear every retained
             // row in place; normal re-entry remains responsible for shape normalization.
             foreach (var row in _altScreen)

@@ -211,8 +211,9 @@ namespace Ntilde.VT
         public int CellWidth;
         public int CellHeight;
         /// <summary>
-        /// The line attribute of the row the image is anchored on (<see cref="CellY"/>). Its columns are that row's
+        /// The line attribute of the row at the image's origin (<see cref="CellY"/>). Its columns are that row's
         /// columns: on a double-size row each one is two cells wide, and the image is placed and stretched to match.
+        /// Single width when that row no longer exists (scrolled off the alternate screen, trimmed from history).
         /// </summary>
         public LineSize LineSize;
         public object ImageHandle;

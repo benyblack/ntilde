@@ -344,7 +344,6 @@ namespace Ntilde.VT
         private void ClearAltScreenNoLock()
         {
             _textSizingPruneRequired = true;
-            AlternateScreenImagesBecomeSingleWidthNoLock();
             for (int i = 0; i < Rows; i++)
             {
                 var row = _viewport[i];
@@ -592,11 +591,7 @@ namespace Ntilde.VT
             {
                 if (rowIndex < 0 || rowIndex >= Rows) return;
                 ClearRowInternal(rowIndex);
-                if (resetLineSize)
-                {
-                    _viewport[rowIndex].LineSize = LineSize.SingleWidth;
-                    ImagesTakeRowLineSizesNoLock(rowIndex, rowIndex + 1);
-                }
+                if (resetLineSize) _viewport[rowIndex].LineSize = LineSize.SingleWidth;
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             OnInvalidate?.Invoke();
@@ -1087,7 +1082,7 @@ namespace Ntilde.VT
                         CellY = img.CellY,
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
-                        LineSize = img.LineSize,
+                        LineSize = ImageLineSizeNoLock(img),
                         ImageHandle = img.ImageHandle,
                         PreserveAspectRatio = img.KittyImageId.HasValue || img.PreserveAspectRatio,
                         Source = img.SixelSource ?? (img.ImageHandle as IDeferredSixelImage)?.Source,

@@ -759,7 +759,7 @@ public sealed class LineSizeTests
     }
 
     [Fact]
-    public void An_image_snapshot_carries_the_line_attribute_of_the_row_it_was_placed_on_even_when_that_row_is_above_the_view()
+    public void An_image_snapshot_carries_the_line_attribute_of_the_row_at_its_origin_even_when_that_row_is_above_the_view()
     {
         var (buffer, parser) = Create(cols: 12, rows: 4);
         parser.Process($"{Dwl}a\r\nb");
@@ -785,37 +785,16 @@ public sealed class LineSizeTests
     }
 
     [Fact]
-    public void An_image_keeps_its_line_attribute_after_its_anchor_row_scrolls_off_the_alternate_screen()
+    public void An_image_whose_origin_row_has_scrolled_off_the_alternate_screen_is_single_width()
     {
+        // Nothing is stored on the image: with no row at its origin there is no attribute to read. Known gap.
         var (buffer, parser) = Create(cols: 12, rows: 4);
         parser.Process($"{Esc}[?1049h{Dwl}a");
         buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 3));
+        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
         parser.Process($"{Esc}[4;1H\n");
         Assert.Equal(-1, buffer.Images[0].CellY);
-        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
-    }
-
-    [Fact]
-    public void An_image_keeps_its_line_attribute_after_its_anchor_row_is_trimmed_from_history()
-    {
-        var (buffer, parser) = Create(cols: 12, rows: 4);
-        parser.Process($"{Dwl}a");
-        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 3));
-        parser.Process($"{Esc}[4;1H\n{Esc}[3J");
-        Assert.Equal(-1, buffer.Images[0].CellY);
-        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
-    }
-
-    [Fact]
-    public void An_image_keeps_its_line_attribute_after_history_evicts_its_anchor_row()
-    {
-        var buffer = new TerminalBuffer(12, 4) { MaxScrollbackBytes = 1 };
-        var parser = new AnsiParser(buffer);
-        parser.Process($"{Dwl}a");
-        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 400));
-        for (int i = 0; i < 300 && buffer.Images[0].CellY >= 0; i++) parser.Process($"{Esc}[4;1H\n");
-        Assert.True(buffer.Images[0].CellY < 0);
-        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
+        Assert.Equal(new[] { LineSize.SingleWidth }, ImageLineSizes(buffer, 0, 4));
     }
 
     [Fact]
@@ -844,11 +823,11 @@ public sealed class LineSizeTests
         buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 4));
         parser.Process($"{Esc}[1;1H{Esc}[J");
         Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
-        Assert.All(buffer.Images, image => Assert.Equal(LineSize.SingleWidth, image.LineSize));
+        Assert.Equal(new[] { LineSize.SingleWidth }, ImageLineSizes(buffer, 0, 4));
     }
 
     [Fact]
-    public void DECLRMM_returns_the_images_of_the_screen_not_showing_to_single_width_too()
+    public void An_image_on_the_screen_not_showing_is_single_width_after_DECLRMM_like_its_row()
     {
         var (buffer, parser) = Create(cols: 12, rows: 4);
         parser.Process(Dwl);
@@ -859,24 +838,14 @@ public sealed class LineSizeTests
     }
 
     [Fact]
-    public void Setting_the_attribute_a_row_already_has_settles_an_image_a_scrolling_region_brought_onto_it()
-    {
-        var (buffer, parser) = Create(cols: 12, rows: 6);
-        parser.Process($"{Esc}[2;1H{Dwl}a");
-        buffer.AddImage(new TerminalImage(new object(), 2, 1, 1, 3));
-        parser.Process($"{Esc}[2;5r{Esc}[S{Esc}[1;1H{Esc}#5");
-        Assert.Equal(new[] { LineSize.SingleWidth }, ImageLineSizes(buffer, 0, 6));
-    }
-
-    [Fact]
-    public void Clearing_the_alternate_screen_returns_the_images_it_keeps_to_single_width()
+    public void An_image_kept_through_an_alternate_screen_clear_is_single_width_like_its_row()
     {
         var (buffer, parser) = Create(cols: 12, rows: 4);
         parser.Process($"{Esc}[?1049h{Dwl}");
         buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 1));
-        Assert.Equal(LineSize.DoubleWidth, buffer.Images[0].LineSize);
+        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
         parser.Process($"{Esc}[?1049l{Esc}[?1049h");
-        Assert.All(buffer.Images, image => Assert.Equal(LineSize.SingleWidth, image.LineSize));
+        Assert.All(ImageLineSizes(buffer, 0, 4), size => Assert.Equal(LineSize.SingleWidth, size));
     }
 
     [Fact]
@@ -900,69 +869,21 @@ public sealed class LineSizeTests
         parser.Process($"{Esc}[4;1H\n");
         // DECLRMM leaves history alone, so the image stays double width: page columns 8 and 9, right of the band 5 to 6.
         parser.Process($"{Esc}[?69h{Esc}[5;6s{Esc}[1;1H{Esc}[S");
-        Assert.Equal(LineSize.DoubleWidth, Assert.Single(buffer.Images).LineSize);
+        Assert.Single(buffer.Images);
+        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
     }
 
     [Fact]
-    public void Deleting_characters_moves_an_image_of_another_line_attribute_by_page_columns()
-    {
-        var (buffer, parser) = Create(cols: 20, rows: 6);
-        parser.Process($"{Esc}[2;1H{Dwl}a");
-        buffer.AddImage(new TerminalImage(new object(), 4, 1, 1, 3));
-        // A scrolling region brings the double-width image (page column 8) onto single-width row 0.
-        parser.Process($"{Esc}[2;5r{Esc}[S");
-        Assert.Equal((4, 0, LineSize.DoubleWidth), (buffer.Images[0].CellX, buffer.Images[0].CellY, buffer.Images[0].LineSize));
-        // Right of the image's own column number, but left of where it is drawn: the image moves.
-        parser.Process($"{Esc}[1;7H{Esc}[2P");
-        Assert.Equal(3, buffer.Images[0].CellX);
-        // Right of where it is drawn: it stays.
-        parser.Process($"{Esc}[1;9H{Esc}[2P");
-        Assert.Equal(3, buffer.Images[0].CellX);
-    }
-
-    [Fact]
-    public void DECLRMM_leaves_an_image_below_a_shortened_screen_as_it_is()
-    {
-        var (buffer, parser) = Create(cols: 12, rows: 6);
-        parser.Process($"{Esc}[?1049h{Esc}[6;1H{Dwl}");
-        buffer.AddImage(new TerminalImage(new object(), 2, 5, 1, 1));
-        buffer.Resize(12, 4);
-        Assert.Equal(5, Assert.Single(buffer.Images).CellY);
-        parser.Process($"{Esc}[?69h");
-        Assert.Equal(LineSize.DoubleWidth, buffer.Images[0].LineSize);
-    }
-
-    [Fact]
-    public void An_image_keeps_its_line_attribute_when_a_scrolling_region_takes_its_row()
+    public void An_image_a_scrolling_region_moves_takes_the_attribute_of_the_row_it_lands_on()
     {
         var (buffer, parser) = Create(cols: 12, rows: 6);
         parser.Process($"{Esc}[2;1H{Dwl}a");
         buffer.AddImage(new TerminalImage(new object(), 2, 1, 1, 3));
-        // Rows 2 to 5 scroll: the image moves up to a row above the region, which is not the row it was placed on.
+        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 6));
+        // Rows 2 to 5 scroll: the image moves up onto single-width row 1, above the region.
         parser.Process($"{Esc}[2;5r{Esc}[S");
         Assert.Equal(0, buffer.Images[0].CellY);
-        Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
-        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 6));
-    }
-
-    [Fact]
-    public void A_state_transfer_carries_an_images_line_attribute_rather_than_reading_it_off_a_row()
-    {
-        var source = new TerminalBuffer(20, 6);
-        // The placement keeps its source, which is what a transfer carries. Four rows tall.
-        var sourceParser = new AnsiParser(source) { ImageDecoder = new FixedSizeImageDecoder(20, 80), RetainSixelSources = true };
-        // Placed on a double-width row, then moved by a scrolling region onto a single-width one.
-        sourceParser.Process($"{Esc}[2;1H{Dwl}{Esc}[2;3H{Esc}Pq!30~-~{Esc}\\{Esc}[2;5r{Esc}[S");
-        var placed = Assert.Single(source.Images);
-        Assert.Equal(LineSize.DoubleWidth, placed.LineSize);
-        Assert.Equal(LineSize.SingleWidth, source.GetLineSize(Math.Max(0, placed.CellY)));
-        var state = source.ExportState(100);
-        state.Parser = sourceParser.ExportState();
-        Assert.Equal((int)LineSize.DoubleWidth, Assert.Single(state.Sixels!).LineSize);
-        var buffer = new TerminalBuffer(20, 6);
-        var parser = new AnsiParser(buffer) { ImageDecoder = new FixedSizeImageDecoder(20, 80), RetainSixelSources = true };
-        TerminalStateTransfer.Restore(buffer, parser, state);
-        Assert.Equal(LineSize.DoubleWidth, Assert.Single(buffer.Images).LineSize);
+        Assert.Equal(new[] { LineSize.SingleWidth }, ImageLineSizes(buffer, 0, 6));
     }
 
     [Fact]
