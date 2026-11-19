@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "3afd84ceb704022a18dd4162404d6cc0127a8c21547aa66331558cceb93378b4",
+  "matrixSha256": "b4d9438fd6da1bb88534e9dc182fe9c13d3dea3a5cf0dffd50177749a04c50a7",
   "summary": {
     "totalRows": 153,
     "supportedCount": 73,
@@ -2210,7 +2210,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "VT\u002BApp input",
-      "knownDeviations": "RIS and the shell-prompt policy clear it; DECSTR keeps it. A mux text client does not mirror \u0060?1016\u0060 (and withholds tracking while it is selected): the session\u0027s \u0060CSI 14 t\u0060/\u006016 t\u0060 metrics are not the outer terminal\u0027s pixels. Native pointer devices, other platforms and fractional-scale rounding beyond the tested scales are unqualified. Real-App qualification of \u0060input.pixel-mouse\u0060 (effect contract supported, pinned probe inconclusive by design): \u0060docs/qa/terminfo/2026-11-16-sgr-pixel-mouse-qualification.md\u0060.",
+      "knownDeviations": "RIS and the shell-prompt policy clear it; DECSTR keeps it. A mux text client does not mirror \u0060?1016\u0060 (and withholds tracking while it is selected): the session\u0027s \u0060CSI 14 t\u0060/\u006016 t\u0060 metrics are not the outer terminal\u0027s pixels. A GUI client of a mux session reports in the session\u0027s cell size, the unit of its \u0060CSI 14 t\u0060/\u006016 t\u0060 replies (the latest client\u0027s metrics, #1005), not its own render scaling (\u0060tests/Ntilde.App.Tests/Input/TerminalViewPixelMouseTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Core/MainWindowMuxSharingTests.cs\u0060; not measured on a real multi-client desktop). Native pointer devices, other platforms and fractional-scale rounding beyond the tested scales are unqualified. Real-App qualification of \u0060input.pixel-mouse\u0060 (effect contract supported, pinned probe inconclusive by design): \u0060docs/qa/terminfo/2026-11-16-sgr-pixel-mouse-qualification.md\u0060.",
       "sourceLine": 165
     },
     {

@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
+using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Shell;
 using Ntilde.Shell.Mux;
@@ -205,6 +206,62 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
 
         Assert.True(Assert.Single(offered!.OfType<MuxSessionPickerRow>(), r => r.SessionId == id).OpenHere);
         Assert.Same(own, Assert.Single(AllPanes(window)));
+    }
+
+    /// <summary>
+    /// #1005: with two GUI clients of different cell metrics on one session, SGR-Pixels (?1016) from the window's pane is in the cell size the session reports
+    /// (the unit of its CSI 14 t reply and the daemon's latest client), not the pane's own scaling - through a change of the active client and of its metrics.
+    /// </summary>
+    [AvaloniaFact]
+    public void SGR_pixels_from_a_shared_pane_follow_the_cell_size_the_session_reports()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane own = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)own.Session!).Id;
+        MuxClient other = Task.Run(() => _mux.ConnectClientAsync()).GetAwaiter().GetResult();
+        HeadlessTerminalSession daemon = _mux.Mux(id);
+        MuxPresentation presentation = MuxTestHost.DefaultPresentation with { Cols = daemon.Buffer.Cols, Rows = daemon.Buffer.Rows };
+        ClientPaneModel theirs = Task.Run(() => MuxTestHost.AttachPaneAsync(other, id, presentation with { CellWidthPx = 13f, CellHeightPx = 27f })).GetAwaiter().GetResult();
+        PumpUntil(() => own.Parser!.SixelCellSizeOverride == new Ntilde.VT.SixelCellSize(13f, 27f), "the other client's cell size reached the pane");
+
+        own.Buffer!.Modes.MouseModeX10 = true;
+        own.Buffer.Modes.MouseModePixel = true;
+        TerminalView view = own.TermView;
+        double cellWidth = view.Metrics.CellWidth, cellHeight = view.Metrics.CellHeight;
+        var point = new Avalonia.Point(3.5 * cellWidth, 2.25 * cellHeight);
+        ScriptedTerminalSession fake = _mux.Fake(id);
+
+        void AssertReportedIn(float width, float height)
+        {
+            // The session's own geometry reply, and the pointer frame the pane sends, in the same unit.
+            fake.Emit("\u001b[14t");
+            int cols = own.Buffer!.Cols, rows = own.Buffer.Rows;
+            string reply = $"\u001b[4;{(int)Math.Round(rows * height)};{(int)Math.Round(cols * width)}t";
+            PumpUntil(() => fake.SentInput.Contains(reply), $"the session replied {reply}");
+            Assert.Equal(new Ntilde.VT.SixelCellSize(width, height), daemon.Parser.SixelCellSizeOverride);
+
+            int pixelX = (int)Math.Floor(3.5 * width) + 1, pixelY = (int)Math.Floor(2.25 * height) + 1;
+            Assert.Equal((pixelX, pixelY), view.ToMouseReportPixel(point));
+            view.HandleMousePressAt(point, TerminalMouseButton.Left, KeyModifiers.None);
+            string press = $"\u001b[<0;{pixelX};{pixelY}M";
+            PumpUntil(() => fake.SentInput.Contains(press), $"the daemon received {press}");
+            Assert.True(pixelX <= (int)Math.Round(cols * width) && pixelY <= (int)Math.Round(rows * height));
+        }
+
+        AssertReportedIn(13f, 27f);
+
+        // The other client changes its metrics (a font or display change): the session's size, the reply and the pointer unit all follow.
+        theirs.Session.UpdatePresentation(presentation with { CellWidthPx = 7.5f, CellHeightPx = 15.25f });
+        PumpUntil(() => own.Parser!.SixelCellSizeOverride == new Ntilde.VT.SixelCellSize(7.5f, 15.25f), "the changed cell size reached the pane");
+        AssertReportedIn(7.5f, 15.25f);
+
+        // The window's own client becomes the latest again, with its own metrics: the pointer unit is that one.
+        ((MuxClientSession)own.Session!).UpdatePresentation(own.BuildMuxPresentation() with { Cols = daemon.Buffer.Cols, Rows = daemon.Buffer.Rows });
+        Settle(id, other);
+        PumpUntil(() => own.Parser!.SixelCellSizeOverride == daemon.Parser.SixelCellSizeOverride && daemon.Parser.SixelCellSizeOverride is { } now && now.WidthPx != 7.5f,
+            "the pane's own cell size is the session's again");
+        var session = daemon.Parser.SixelCellSizeOverride!;
+        AssertReportedIn(session.WidthPx, session.HeightPx);
     }
 
     private static TabItem TabOf(MainWindow window, TerminalPane pane) =>
