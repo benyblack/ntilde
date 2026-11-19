@@ -116,13 +116,14 @@ public static class KittyTransportFile
         var pending = new Stack<string>(Split(full[root.Length..]).Reverse());
         var resolved = new List<string>();
         int hops = 0;
+        bool mustBeDirectory = EndsWithSeparator(full); // a trailing separator names a directory: frame.png/ is ENOTDIR
         while (pending.Count > 0)
         {
             string part = pending.Pop();
-            if (part == ".") continue;
-            if (part == "..")
+            if (part is "." or "..")
             {
-                if (!PopParent(root, resolved)) return null;
+                if (!IsDirectoryOrRoot(root, resolved)) return null;
+                if (part == ".." && resolved.Count > 0) resolved.RemoveAt(resolved.Count - 1);
                 continue;
             }
 
@@ -136,22 +137,20 @@ public static class KittyTransportFile
 
             string? next = ++hops > MaxLinkHops ? null : FollowTarget(parent, target);
             if (next is null) return null;
+            if (pending.Count == 0) mustBeDirectory = EndsWithSeparator(next); // the target is the tail of the path: its own trailing separator applies
             root = Restart(next, pending, resolved);
         }
 
-        return Join(root, resolved);
+        return mustBeDirectory && !IsDirectoryOrRoot(root, resolved) ? null : Join(root, resolved);
     }
 
+    private static bool EndsWithSeparator(string path) => path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar);
+
     /// <summary>
-    /// ".." as the kernel treats it: the component in front of it must exist and be a directory (<c>frame.png/..</c> and <c>missing/..</c> fail, they do not name the directory they sit in), and at the root it stays there.
+    /// What "." and ".." need, as the kernel treats them: the component in front of them must exist and be a directory (<c>frame.png/.</c>, <c>frame.png/..</c> and <c>missing/..</c> fail, they do not name the
+    /// directory they sit in); at the root there is nothing in front and ".." stays there.
     /// </summary>
-    private static bool PopParent(string root, List<string> resolved)
-    {
-        if (resolved.Count == 0) return true;
-        if (!Directory.Exists(Join(root, resolved))) return false;
-        resolved.RemoveAt(resolved.Count - 1);
-        return true;
-    }
+    private static bool IsDirectoryOrRoot(string root, List<string> resolved) => resolved.Count == 0 || Directory.Exists(Join(root, resolved));
 
     /// <summary>Resolves a link's target from the start, then whatever followed the link on the original path: the walk restarts at the target's root, ahead of what is still pending.</summary>
     private static string Restart(string next, Stack<string> pending, List<string> resolved)
