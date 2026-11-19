@@ -337,7 +337,7 @@ namespace Ntilde.Shell
         private bool TrySendLegacyAltKey(Key key, KeyModifiers modifiers, PhysicalKey physical, KittyKeyIdentity identity)
         {
             if ((modifiers & KeyModifiers.Alt) == 0) return false;
-            string? sequence = TerminalInputModeEncoder.EncodeAltKey(key, modifiers);
+            string? sequence = TerminalInputModeEncoder.EncodeAltKey(key, modifiers, _buffer?.Modes);
             if (sequence == null) return false;
             SendKeyInput(key, modifiers, physical, sequence, identity);
             return true;

@@ -52,23 +52,26 @@ public sealed class LegacyKeyboardModeRoutingTests
         Assert.Equal(expected, sequence);
     }
 
-    [AvaloniaFact]
-    public void Backspace_sends_bs_only_while_backarrow_key_mode_is_set()
+    [AvaloniaTheory]
+    [InlineData(KeyModifiers.None, "\x7f", "\b", 4)]
+    [InlineData(KeyModifiers.Alt, "\x1b\x7f", "\x1b\b", 0)]
+    public void Backspace_sends_bs_only_while_backarrow_key_mode_is_set(
+        KeyModifiers modifiers, string resetBytes, string setBytes, int expectedObservations)
     {
         var (view, parser, sent) = CreateView();
         int observed = 0;
         view.BackspaceObserved += () => observed++;
 
-        Assert.True(view.HandleKeyDownCore(Key.Back, KeyModifiers.None));
+        Assert.True(view.HandleKeyDownCore(Key.Back, modifiers));
         parser.Process("\u001b[?67h");
-        Assert.True(view.HandleKeyDownCore(Key.Back, KeyModifiers.None));
+        Assert.True(view.HandleKeyDownCore(Key.Back, modifiers));
         parser.Process("\u001b[?67l");
-        Assert.True(view.HandleKeyDownCore(Key.Back, KeyModifiers.None));
+        Assert.True(view.HandleKeyDownCore(Key.Back, modifiers));
         parser.Process("\u001b[?67h\u001bc");
-        Assert.True(view.HandleKeyDownCore(Key.Back, KeyModifiers.None));
+        Assert.True(view.HandleKeyDownCore(Key.Back, modifiers));
 
-        Assert.Equal(new[] { "\x7f", "\b", "\x7f", "\x7f" }, sent);
-        Assert.Equal(4, observed);
+        Assert.Equal(new[] { resetBytes, setBytes, resetBytes, resetBytes }, sent);
+        Assert.Equal(expectedObservations, observed);
     }
 
     [Theory]

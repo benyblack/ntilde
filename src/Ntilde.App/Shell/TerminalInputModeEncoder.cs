@@ -371,7 +371,7 @@ namespace Ntilde.Shell
         /// paste an image from the clipboard. Returns null when the combination should not
         /// be meta-encoded (no Alt, Ctrl+Alt/AltGr, or a non-printable key).
         /// </summary>
-        public static string? EncodeAltKey(Key key, KeyModifiers modifiers)
+        public static string? EncodeAltKey(Key key, KeyModifiers modifiers, ModeState? modes = null)
         {
             if ((modifiers & KeyModifiers.Alt) == 0)
             {
@@ -408,7 +408,7 @@ namespace Ntilde.Shell
             switch (key)
             {
                 case Key.Back:
-                    return "\x1b\x7f";  // M-DEL: backward-kill-word
+                    return "\x1b" + EncodeLegacyBackspace(modes);
                 case Key.Enter:
                     return "\x1b\r";
                 case Key.OemPeriod when !shift:
