@@ -118,6 +118,12 @@ namespace Ntilde.VT
         /// </summary>
         [JsonPropertyName("pw")] public bool IsPendingWrap { get; set; }
 
+        /// <summary>
+        /// The visible rows' line attributes (DECDWL / DECDHL), one per row, 0 single width. Written only when a row
+        /// is not single width; absent in legacy recordings, whose rows are single width.
+        /// </summary>
+        [JsonPropertyName("line_sizes"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int[]? RowLineSizes { get; set; }
+
         [JsonPropertyName("fg")] public uint CurrentForeground { get; set; }
         [JsonPropertyName("bg")] public uint CurrentBackground { get; set; }
         [JsonPropertyName("fgi")] public short CurrentFgIndex { get; set; }

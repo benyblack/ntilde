@@ -55,6 +55,7 @@ public partial class TerminalBuffer
     /// <summary>The ED region of <paramref name="mode"/> relative to the cursor, one row span at a time; the caller holds the lock.</summary>
     private void SelectiveEraseDisplayNoLock(int mode)
     {
+        SnapCursorToLineSizeNoLock();
         int cursorCol = Math.Clamp(_cursorCol, 0, Cols);
         int firstRow = mode == 0 ? _cursorRow : 0;
         int lastRow = mode == 1 ? _cursorRow : Rows - 1;

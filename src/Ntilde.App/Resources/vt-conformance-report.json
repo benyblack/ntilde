@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "633132e8fc808e5b2925f6a242cdddec9e0c7d3245b66fd4dbe5639796708aef",
+  "matrixSha256": "2202b806f3c9f025265afc005d30720cb38fed675132ce6e463bad5b031c1b33",
   "summary": {
     "totalRows": 149,
     "supportedCount": 71,
-    "partialCount": 70,
+    "partialCount": 71,
     "experimentalCount": 1,
-    "notSupportedCount": 7,
+    "notSupportedCount": 6,
     "wontSupportCount": 0,
-    "rowsWithLinkedEvidence": 141,
+    "rowsWithLinkedEvidence": 142,
     "supportedRowsWithLinkedEvidence": 71,
     "errorCount": 0,
     "warningCount": 0
@@ -19,36 +19,36 @@
       "order": 0,
       "title": "1) Input parsing \u0026 state machine",
       "startLine": 58,
-      "endLine": 68,
-      "rowCount": 9
+      "endLine": 67,
+      "rowCount": 8
     },
     {
       "order": 1,
       "title": "2) Cursor movement \u0026 positioning (CSI)",
-      "startLine": 74,
-      "endLine": 84,
+      "startLine": 73,
+      "endLine": 83,
       "rowCount": 9
     },
     {
       "order": 2,
       "title": "3) Erase \u0026 insert/delete (CSI)",
-      "startLine": 90,
-      "endLine": 113,
+      "startLine": 89,
+      "endLine": 112,
       "rowCount": 22
     },
     {
       "order": 3,
       "title": "4) Scrolling, margins, and origin mode",
-      "startLine": 119,
-      "endLine": 146,
+      "startLine": 118,
+      "endLine": 145,
       "rowCount": 26
     },
     {
       "order": 4,
       "title": "5) Screen buffers \u0026 modes (DEC private modes)",
-      "startLine": 152,
+      "startLine": 151,
       "endLine": 187,
-      "rowCount": 34
+      "rowCount": 35
     },
     {
       "order": 5,
@@ -285,20 +285,6 @@
       "sourceLine": 67
     },
     {
-      "section": "1) Input parsing \u0026 state machine",
-      "feature": "Double-width / double-height lines (ESC # 3, ESC # 4, ESC # 5, ESC # 6)",
-      "status": "\u274C Not supported",
-      "specOrNotes": "DECDHL top and bottom halves, DECSWL, DECDWL",
-      "evidenceText": "\u2014",
-      "evidenceKinds": [],
-      "evidenceLinks": [],
-      "hasAutomatedEvidenceSignal": false,
-      "hasLinkedEvidence": false,
-      "ownership": "\u0060src/Ntilde.VT/AnsiParser.cs\u0060",
-      "knownDeviations": "The sequences are consumed and ignored: there is no per-line size attribute, so every line keeps single width and height. \u0060ESC # 8\u0060 (DECALN) is the only \u0060ESC #\u0060 control acted on. Tracked by [#1036](https://github.com/benyblack/ntilde/issues/1036).",
-      "sourceLine": 68
-    },
-    {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
       "feature": "CUU/CUD/CUF/CUB (A/B/C/D)",
       "status": "\u26A0 Partial",
@@ -317,7 +303,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Explicit CUF movement is covered via pending-wrap reset; dedicated CUU/CUD/CUB targeted coverage is still missing",
-      "sourceLine": 76
+      "sourceLine": 75
     },
     {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
@@ -343,7 +329,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 77
+      "sourceLine": 76
     },
     {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
@@ -364,7 +350,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 78
+      "sourceLine": 77
     },
     {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
@@ -385,7 +371,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 79
+      "sourceLine": 78
     },
     {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
@@ -406,7 +392,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 80
+      "sourceLine": 79
     },
     {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
@@ -427,7 +413,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 81
+      "sourceLine": 80
     },
     {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
@@ -448,7 +434,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 82
+      "sourceLine": 81
     },
     {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
@@ -469,7 +455,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 83
+      "sourceLine": 82
     },
     {
       "section": "2) Cursor movement \u0026 positioning (CSI)",
@@ -490,7 +476,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 84
+      "sourceLine": 83
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -521,7 +507,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 92
+      "sourceLine": 91
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -550,7 +536,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Modes 0/1/2 erase their ED region except characters written under DECSCA 1, leaving the cursor, pen and saved lines alone; while nothing on the screen is protected they are exactly ED. Mode 2 retires intersecting inline images exactly as ED 2 does; images are never protected. Undefined private mode 3 is ignored and preserves scrollback, both screen banks and image anchors; ordinary ED 3 still clears history. Rows scrolled into history lose protection.",
-      "sourceLine": 93
+      "sourceLine": 92
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -575,7 +561,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Modes 0/1/2 still alias EL: unlike DECSED and DECSERA, DECSEL does not yet spare DECSCA-protected characters (pinned by \u0060Decsel_is_still_an_EL_alias\u0060). Undefined private mode 3 remains ignored.",
-      "sourceLine": 94
+      "sourceLine": 93
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -601,7 +587,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Exact unprefixed four-border DECERA supports omitted/zero parameters, page clipping, origin-mode row translation and bounds outside scrolling margins. Cursor, pen and row wrapping remain intact. Erasure clears cell visual/side-table attributes with existing erase colors and atomic wide/OSC66 glyph handling. Version1 full-state and actual recording snapshot/tail tests pass. Image-plane erasure is unqualified and leaves image ownership untouched; DECERA erases protected characters too (protection is not read-only); DECSERA is the selective form.",
-      "sourceLine": 95
+      "sourceLine": 94
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -626,7 +612,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "The exact four-border \u0060CSI Pt;Pl;Pb;Pr $ {\u0060 spelling takes DECERA\u0027s defaults, page clipping, DECOM translation, erase colors and wide/OSC66 handling but spares characters written under DECSCA 1; with nothing protected in the rectangle it is DECERA. Cursor, pen and row wrapping stay intact; the inline-image plane is untouched. Full-state and recording checkpoints carry the protection.",
-      "sourceLine": 96
+      "sourceLine": 95
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -651,7 +637,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "\u0060CSI 1 \u0022 q\u0060 protects later characters from DECSED and DECSERA; 0, 2 and an omitted value do not; other values and extra parameters are ignored. A separate pen mode, not SGR: SGR resets leave it alone, DECSC/DECRC save it per screen, DECSTR and RIS reset it, and entering the alternate screen keeps it. Stored per screen cell (a wide glyph\u0027s protection lives on its anchor and reads on both halves only while the pair is intact), kept through ICH/DCH/IRM, scrolling, resize/reflow, full-state export and recording checkpoints; ordinary erases and overwrites clear it. Rows scrolled into history lose protection. ISO SPA/EPA protection, DECRQSS and DECSEL are not covered; ANSI/text export carries no protection.",
-      "sourceLine": 97
+      "sourceLine": 96
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -676,7 +662,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Exact unprefixed \u0060CSI Pch;Pt;Pl;Pb;Pr $ x\u0060 fills the inclusive rectangle with one character (32-126 through the in-use GL set, 160-255 as Latin-1; any other code ignores the command) carrying the live SGR pen (attributes, literal/index/default colors, underline decoration). Omitted/zero borders, page clipping and origin-mode row translation follow DECERA; scrolling margins do not clip. Cursor, pen, pending wrap and row wrapping remain intact; hyperlinks and extended text are cleared, and intersected wide/scaled units are retired whole. Filled characters are written under the live DECSCA pen. Image-plane fill and non-ASCII fill characters beyond Latin-1 are unqualified.",
-      "sourceLine": 98
+      "sourceLine": 97
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -701,7 +687,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Exact unprefixed \u0060CSI Pts;Pls;Pbs;Prs;Pps;Ptd;Pld;Ppd $ v\u0060 copies the clipped source rectangle to the destination origin as if the source were read completely first, so overlapping copies cannot smear. Characters, attributes, colors, extended text, hyperlinks and underline decoration travel with the cells; the live pen is not applied. Omitted/zero parameters, page clipping and origin-mode row translation follow DECERA; a destination past the page clips. Only page 1 exists: a source or destination page other than 0/1 ignores the command. A wide glyph cut by the source or page edge copies as a blank; scaled-text metadata is not copied. DECSCA protection travels with the copied characters (a cut wide half copies as an unprotected blank). Image-plane copy and multiple pages are unqualified.",
-      "sourceLine": 99
+      "sourceLine": 98
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -726,7 +712,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Exact unprefixed identity; Pt;Pl;Pb;Pr default to the page and clip to it, DECOM offsets rows by the top margin and columns by the left margin, margins do not clip. Selectors 0, 1, 4, 5, 7, 22, 24, 25, 27 set or clear bold, underline, blink and inverse in order; other selectors (including xterm\u0027s 8/28) are ignored and an omitted list is selector 0. Text, colors, hyperlinks, extended text, cursor and the SGR pen are untouched; clearing underline drops its style and color but keeps overline; a wide glyph changes as one unit. The default extent is the DECSACE stream (first row from Pl, whole middle rows, last row through Pr); Pl \u003E Pr or Pt \u003E Pb is ignored. In the stream extent cells past a row\u0027s written extent (unoccupied) are left alone while the rectangle changes and occupies them. Protection is untouched (attributes only); OSC 66 block atomicity is not modelled.",
-      "sourceLine": 100
+      "sourceLine": 99
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -751,7 +737,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Same identity, borders and extent as DECCARA. Selectors 0, 1, 4, 5, 7 toggle the named attribute (0 or an omitted list toggles all four, a repeated selector cancels); 22/24/25/27 and other selectors are ignored. A second identical application restores the area. Toggling underline off drops its style and color. Unoccupied cells follow the same stream/rectangle rule. Protection is untouched (attributes only).",
-      "sourceLine": 101
+      "sourceLine": 100
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -776,7 +762,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Ps 0 or omitted and 1 select the stream (default), 2 the rectangle; other values, extra parameters and subparameters are ignored. RIS restores the stream, DECSTR keeps the selection, state transfer carries it. The setting is not readable (no DECRQSS) and is independent of margins, origin mode, the pen and protection.",
-      "sourceLine": 102
+      "sourceLine": 101
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -805,7 +791,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BApp",
       "knownDeviations": "**Off by default**: answered only when the \u0060AllowRectangleChecksumReport\u0060 setting is on, because a one-cell checksum names that cell\u0027s character and lets a program read the screen back; otherwise silent. When on, \u0060CSI Pi;Pg;Pt;Pl;Pb;Pr * y\u0060 replies \u0060DCS Pi ! ~ XXXX ST\u0060: four uppercase hex digits of the negated 16-bit sum of each cell\u0027s Unicode scalar plus bold 0x80, blink 0x40, reverse 0x20 and underline 0x10. Blanks count as spaces, a wide glyph once at its lead cell; combining marks, colors and other attributes add nothing. Omitted Pi is 0; Pg is not interpreted; DECERA\u0027s defaults, DECOM row offset and page clipping apply, and an inverted rectangle sums nothing. Only the exact unprefixed identity with at most six plain parameters is admitted; the request changes no state. Agreement with a particular xterm \u0060checksumExtension\u0060 or DEC terminal is not claimed. Direct panes only (persistent sessions stay silent).",
-      "sourceLine": 103
+      "sourceLine": 102
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -826,7 +812,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 104
+      "sourceLine": 103
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -855,7 +841,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Character/side-metadata shifts and whole-block erasure are tested; combined edit, resize and scrollback sequences are not comprehensively qualified.",
-      "sourceLine": 105
+      "sourceLine": 104
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -884,7 +870,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Character/side-metadata shifts and whole-block erasure are tested; combined edit, resize and scrollback sequences are not comprehensively qualified.",
-      "sourceLine": 106
+      "sourceLine": 105
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -909,7 +895,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Exact unprefixed one-parameter \u0060CSI Pn \u0027 }\u0060 (omitted/zero = 1) inserts blank columns at the cursor column on every row of the top/bottom scrolling region, only while the cursor row is inside it; columns pushed past the right edge are lost. With DECLRMM/DECSLRM margins it acts only while the cursor column is between them and moves only the columns between them; without them the page edges are the horizontal margins. Cursor, pen, pending wrap, scrollback and the image plane stay untouched. Introduced blanks carry the live colors and no visual attribute, as ICH/DCH blanks do; shifted cells keep attributes, literal/index colors, extended text, hyperlinks, underline decoration and DECSCA protection, and a wide glyph the shift would split is retired whole. Full-state round trip and chunked input are tested. Image-plane shifting is unqualified.",
-      "sourceLine": 107
+      "sourceLine": 106
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -934,7 +920,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Exact unprefixed one-parameter \u0060CSI Pn \u0027 ~\u0060 (omitted/zero = 1) deletes columns at the cursor column on every row of the top/bottom scrolling region, only while the cursor row is inside it; blank columns enter at the right edge. With DECLRMM/DECSLRM margins it acts only while the cursor column is between them and moves only the columns between them; without them the page edges are the horizontal margins. Cursor, pen, pending wrap, scrollback and the image plane stay untouched. Introduced blanks carry the live colors and no visual attribute, as ICH/DCH blanks do; shifted cells keep attributes, literal/index colors, extended text, hyperlinks, underline decoration and DECSCA protection, and a wide glyph the shift would split is retired whole. Full-state round trip and chunked input are tested. Image-plane shifting is unqualified.",
-      "sourceLine": 108
+      "sourceLine": 107
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -959,7 +945,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Exact unprefixed one-parameter \u0060CSI Pn SP @\u0060 (omitted/zero = 1) shifts every row of the top/bottom scrolling region left from the left margin whatever the cursor column, only while the cursor row is inside the region (xterm\u0027s rule); blank columns enter at the right edge. With DECLRMM/DECSLRM margins it acts only while the cursor column is between them and moves only the columns between them; without them the page edges are the horizontal margins. Cursor, pen, pending wrap, scrollback and the image plane stay untouched. Introduced blanks carry the live colors and no visual attribute, as ICH/DCH blanks do; shifted cells keep attributes, literal/index colors, extended text, hyperlinks, underline decoration and DECSCA protection, and a wide glyph the shift would split is retired whole. Full-state round trip and chunked input are tested. Image-plane shifting is unqualified.",
-      "sourceLine": 109
+      "sourceLine": 108
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -984,7 +970,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Exact unprefixed one-parameter \u0060CSI Pn SP A\u0060 (omitted/zero = 1) shifts every row of the top/bottom scrolling region right from the left margin whatever the cursor column, only while the cursor row is inside the region (xterm\u0027s rule); columns pushed past the right edge are lost. With DECLRMM/DECSLRM margins it acts only while the cursor column is between them and moves only the columns between them; without them the page edges are the horizontal margins. Cursor, pen, pending wrap, scrollback and the image plane stay untouched. Introduced blanks carry the live colors and no visual attribute, as ICH/DCH blanks do; shifted cells keep attributes, literal/index colors, extended text, hyperlinks, underline decoration and DECSCA protection, and a wide glyph the shift would split is retired whole. Full-state round trip and chunked input are tested. Image-plane shifting is unqualified.",
-      "sourceLine": 110
+      "sourceLine": 109
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -1010,7 +996,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Whole-block line edits and regional scrolling have regression coverage; arbitrary mixed line-edit/margin/resize sequences are not comprehensively qualified.",
-      "sourceLine": 111
+      "sourceLine": 110
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -1035,7 +1021,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Erasure clears underline metadata and whole text-size blocks; arbitrary mixed erase/resize sequences are not comprehensively qualified.",
-      "sourceLine": 112
+      "sourceLine": 111
     },
     {
       "section": "3) Erase \u0026 insert/delete (CSI)",
@@ -1056,7 +1042,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Repeats only an immediately preceding graphic character (xterm rule); count clamped to one line",
-      "sourceLine": 113
+      "sourceLine": 112
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1082,7 +1068,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Invalid margins and scroll-at-margin boundaries are tested; all combinations with line edits, resize and retained scrollback are not comprehensively qualified.",
-      "sourceLine": 121
+      "sourceLine": 120
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1116,7 +1102,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "Only complete exact \u0060r\u0060 with standard ST succeeds. Current absolute margins are reported without mutation, including after resize/reset/screen changes. Truncation, unknown legacy completeness, BEL recovery and invalid margins remain negative; settings other than \u0060r\u0060, \u0060m\u0060 and \u0060SP q\u0060 are unavailable. Follows xterm status polarity, not the VT510 manual\u0027s opposite documented status. Source/scripted-transport evidence only; frozen Q12 observations/grades are unchanged.",
-      "sourceLine": 122
+      "sourceLine": 121
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1142,7 +1128,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "Only complete exact \u0060s\u0060 with standard ST succeeds. Reports current absolute one-based margins whether or not DECLRMM is set (full width when unset), never origin-relative, without mutation; the reply replayed after \u0060CSI ? 69 h\u0060 restores them. Follows xterm, which gates \u0060s\u0060 on the VT level. Source/scripted-transport evidence only.",
-      "sourceLine": 123
+      "sourceLine": 122
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1176,7 +1162,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "Reports the active pen with a leading \u00600\u0060, so replaying the report reproduces it on any prior pen (tested). Underline styles use \u00604:n\u0060; extended colors use the semicolon \u006038/48/58;5;n\u0060 and \u0060;2;r;g;b\u0060 forms. Palette indexes 0-15 report as short ANSI codes where they exist, and theme-snapped truecolor reports its snapped index, as the pen stores it. Only exact \u0060m\u0060 with standard ST succeeds; BEL recovery and truncation stay negative. Source/scripted-transport evidence only.",
-      "sourceLine": 124
+      "sourceLine": 123
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1210,7 +1196,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "Reports \u00600\u0060 while the host\u0027s configured cursor is shown (DECSCUSR 0 restores it), otherwise xterm\u0027s 1-6 shape-and-blink code. VT does not know the host\u0027s configured shape, so it never reports it as a 1-6 value. Only exact \u0060SP q\u0060 with standard ST succeeds. Source/scripted-transport evidence only.",
-      "sourceLine": 125
+      "sourceLine": 124
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1248,7 +1234,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "Answers only from \u0060TerminalCapabilities\u0060 (#844): \u0060Co\u0060/\u0060colors\u0060, \u0060RGB\u0060, \u0060Tc\u0060, \u0060setrgbf\u0060/\u0060setrgbb\u0060, \u0060Su\u0060, \u0060Smulx\u0060, \u0060Setulc\u0060, \u0060Sync\u0060, \u0060Ss\u0060/\u0060Se\u0060, \u0060Ms\u0060, \u0060Enmg\u0060/\u0060Dsmg\u0060/\u0060Clmg\u0060/\u0060Cmg\u0060, \u0060hs\u0060, \u0060tsl\u0060/\u0060fsl\u0060. Every string value is expanded and run through the parser by a test. Names are case-sensitive; \u0060TN\u0060 and capabilities inherited from \u0060xterm-256color\u0060 (such as \u0060kcuu1\u0060) stay negative. A truncated, BEL-terminated, malformed or more-than-16-name list gets one \u0060DCS 0\u002Br ST\u0060; only validated hex is echoed. \u0060Ms\u0060 is answered only while the host accepts OSC 52 writes, so mux sessions never advertise it. Checked with Neovim 0.12.6 (\u0060docs/qa/terminfo/2026-11-05-neovim-capability-check.md\u0060).",
-      "sourceLine": 126
+      "sourceLine": 125
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1281,7 +1267,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "**Off by default**: answered only when the \u0060AllowTitleReport\u0060 setting is on, because the reply is typed into the foreground program\u0027s input and a hostile title becomes keystrokes (xterm ships it disallowed too); otherwise silent. The label is the raw requested state (the one the title stack saves), not the caption the host presents; a label holding any C0, DEL or C1 control character, or too long to retain, is answered empty. Exact \u0060CSI 20 t\u0060 only (no extra parameter, leader or intermediate); the reply always ends with ST. Direct panes only (persistent sessions stay silent).",
-      "sourceLine": 127
+      "sourceLine": 126
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1314,7 +1300,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Same gate, label rule and spelling rule as \u0060CSI 20 t\u0060. xterm\u0027s title modes (\u0060CSI \u003E Ps t\u0060, hex or UTF-8 query encodings) are not implemented. An unset title is answered as an empty label.",
-      "sourceLine": 128
+      "sourceLine": 127
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1343,7 +1329,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BApp",
       "knownDeviations": "Only \u0060termName\u0060 is a resource (there is no X resource database); its value is the \u0060TERM\u0060 the App gave the pane\u0027s child (\u0060xterm-256color\u0060, direct panes only, so a persistent session answers \u0060DCS 0 \u002B R\u0060). Names are case-sensitive; the name is echoed as spelled and the value is uppercase hex. One DCS per request; as in xterm the status is the first name\u0027s and the reply stops after the first name that is not known. A truncated, BEL-terminated, malformed (empty, odd-length, non-hex, non-printable) or more-than-16-name request is not answered. The VT never reads the process environment, so a shell that later changes \u0060TERM\u0060 is not reflected. XTGETTCAP \u0060TN\u0060 is a separate request and stays refused.",
-      "sourceLine": 129
+      "sourceLine": 128
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1368,7 +1354,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "No parameter or 0 pushes onto the top; 1..10 stores into that slot and moves the depth to it (xterm\u0027s \u0060xtermPushColors\u0060). A push with the ten slots full, a slot past 10, and a non-exact spelling do nothing. Independent of the kitty stack (OSC 30001/30101). RIS clears it; state transfer carries it. **Deliberate deviation:** an explicit \u00600\u0060 is the same as an omitted parameter (push/pop the top), as the ctlseqs text says (\u0022the default 0 will push\u0022); xterm\u0027s own code treats only an absent parameter as the default and an explicit \u00600\u0060 as a numbered store that sets the depth to 0, which contradicts that text, and the VT\u0027s CSI parameters do not distinguish the two spellings for any final byte.",
-      "sourceLine": 130
+      "sourceLine": 129
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1393,7 +1379,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "No parameter or 0 restores the slot below the depth and sets the depth to it; 1..10 restores that slot and sets the depth to the slot below it (xterm\u0027s \u0060xtermPopColors\u0060). A pop with nothing stored does nothing. The ctlseqs text says the numbered forms restore \u0022without popping\u0022; xterm\u0027s source moves the depth, and this follows the source.",
-      "sourceLine": 131
+      "sourceLine": 130
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1418,7 +1404,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "The current depth and the deepest depth reached, with the \u0060?\u0060 private marker xterm\u0027s \u0060xtermReportColors\u0060 sends. terminfo.dev\u0027s \u0060device.xtreportcolors\u0060 probe pins a reply without the marker, so that probe cannot match xterm\u0027s own reply (see the qualification note). Only the exact spelling (no parameter, or 0) answers.",
-      "sourceLine": 132
+      "sourceLine": 131
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1443,7 +1429,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "No parameter saves all eleven attributes; otherwise 1 bold, 2 faint, 3 italic, 4 underlined, 5 blink, 7 inverse, 8 invisible, 9 crossed-out, 21 doubly-underlined, 30 foreground and 31 background select them (ctlseqs). Choices the text does not make, taken here: a push onto a full stack is ignored; a parameter the text does not list selects nothing but still saves a level; the overline, the underline color and DECSCA protection are not part of the stack; the stack is shared by both screens, cleared by RIS (DECSTR leaves it) and carried by state transfer. The pen has one underline whose style tells the two apart, so 4 (any style but double) and 21 (double) are saved and restored independently, as xterm\u0027s two flags are; xterm holding both at once cannot be represented and resolves to the double underline. Only the exact spelling answers; the \u0060CSI Pm # p\u0060 alias is not implemented. Silent.",
-      "sourceLine": 133
+      "sourceLine": 132
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1468,7 +1454,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Restores exactly the attributes that level selected, to the saved values, and removes it; the others keep their current value. A pop with nothing saved, and a pop written with a parameter, do nothing. A saved default color is restored as the default, so it follows the theme. The \u0060CSI # q\u0060 alias is not implemented. Silent.",
-      "sourceLine": 134
+      "sourceLine": 133
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1493,7 +1479,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "One slot per mode, replaced by each later save: 1, 5, 6, 7, 25, 45, 66, 69, 80, 1004, 1007, 2004 hold their own value; 1000, 1002 and 1003 share the mouse tracking slot (the selector, none included), 1005, 1006 and 1015 the coordinate encoding slot, and 9 has a slot of its own that also keeps the tracking selector, as in xterm\u0027s \u0060savemodes\u0060. ?1048 is the cursor save (the DECSC bank). Choices the text does not make, taken here: the alternate-screen modes (47, 1047, 1049), 2026, 2031, 2048, 5522 and any unlisted value are not saved; RIS clears the slots (DECSTR leaves them); both screens share them and state transfer carries them. A saved ?1007 is the effective value. The \u0060CSI ? Pm s\u0060 form is distinct from SCOSC and from DECSLRM. Silent.",
-      "sourceLine": 135
+      "sourceLine": 134
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1518,7 +1504,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Applies the saved value through the DECSET/DECRST path (a restored ?6 homes the cursor, a restored ?69 resets the margins) and leaves the slot filled. **Deliberate deviation:** a slot nothing was saved into keeps the live value; xterm\u0027s slots start zeroed, so its restore of such a mode resets it. ?1048 is the cursor restore. Distinct from DECSTBM. Silent.",
-      "sourceLine": 136
+      "sourceLine": 135
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1555,7 +1541,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser",
       "knownDeviations": "Reports the Sixel decoder\u0027s real limits (#872): 4096 color registers, fixed (set succeeds only for 4096, so notcurses\u0027 attempts to set 256 or 1024 get Ps 3), and a 2000 x 2000 pixel clip. The geometry read is the text area in Sixel pixels (columns and rows times the cell size Sixel placement uses, so an image that wide fills the pane), capped at 2000 per side. It is the same text area \u0060CSI 14 t\u0060 reports (device pixels on a scaled display), capped at 2000. geometry reset and set fail, as in xterm. ReGIS (Pi 3) is not supported (Ps 1). Only the exact three-parameter form is answered, so a two-value geometry set stays silent, as in xterm. Persistent sessions answer from the daemon with the window\u0027s cell size. The probe never scrolls.",
-      "sourceLine": 137
+      "sourceLine": 136
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1581,7 +1567,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Regional index/reverse-index and bottom-margin wrap are tested; arbitrary combinations with resize and retained scrollback are not comprehensively qualified.",
-      "sourceLine": 138
+      "sourceLine": 137
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1602,7 +1588,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "",
-      "sourceLine": 139
+      "sourceLine": 138
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1627,7 +1613,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Off by default; DECRQM reports 1/2. Setting it makes \u0060CSI Pl;Pr s\u0060 DECSLRM; resetting it, RIS, DECSTR, DECALN and a resize restore full-width margins (RIS also resets the mode). State transfer carries the mode and the margins; a full-width payload is unchanged.",
-      "sourceLine": 140
+      "sourceLine": 139
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1652,7 +1638,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
       "knownDeviations": "Only while DECLRMM is set (otherwise \u0060CSI s\u0060 stays SCOSC). Omitted/zero Pl is 1; omitted, zero or oversized Pr is the last column; Pl not left of Pr is ignored; applied margins home the cursor (the top-left margin corner under DECOM). The margins bound printing and autowrap (a wrap returns to the left margin and is not marked as a soft wrap), CR/NEL/CNL/CPL, CUF/CUB/BS, HT, CUP/HVP/CHA/HPA and CPR under DECOM, IND/RI/LF at the region edges (outside the margins they neither scroll nor move there), SU/SD, IL/DL, ICH/DCH and insert mode, DECIC/DECDC/SL/SR and DECOM rectangle columns. Partial-width scrolls never feed scrollback; side tables move with their cells, wide glyphs cut by a margin are retired, and images overlapping the moved band are removed. ED/EL/ECH stay full-width; DECRQSS \u0060s\u0060 reports the margins; DECBI/DECFI are not implemented.",
-      "sourceLine": 141
+      "sourceLine": 140
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1677,7 +1663,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer",
       "knownDeviations": "Pending wrap, wide glyphs and combining marks have regressions. A width-changing selector arriving after a last-column base is not guaranteed to retroactively reflow it.",
-      "sourceLine": 142
+      "sourceLine": 141
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1698,7 +1684,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer",
       "knownDeviations": "Measured by terminfo.dev \u0060cursor.reverse-wrap\u0060 (see \u0060docs/qa/QA_TERMINFO.md\u0060).",
-      "sourceLine": 143
+      "sourceLine": 142
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1719,7 +1705,7 @@
       "hasLinkedEvidence": true,
       "ownership": "\u0060src/Ntilde.App/Shell/TerminalView.Scrolling.cs\u0060",
       "knownDeviations": "Wheel targets are eased through integer row offsets. This is visible animation, with mid-gesture accumulation and cancellation tests; it does not provide continuous pixel offsets or DECSCLM.",
-      "sourceLine": 144
+      "sourceLine": 143
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1733,7 +1719,7 @@
       "hasLinkedEvidence": false,
       "ownership": "App view",
       "knownDeviations": "Viewport scroll offsets and animation steps are whole rows.",
-      "sourceLine": 145
+      "sourceLine": 144
     },
     {
       "section": "4) Scrolling, margins, and origin mode",
@@ -1747,7 +1733,7 @@
       "hasLinkedEvidence": false,
       "ownership": "VT\u002BApp",
       "knownDeviations": "No tracked private mode 4 or terminal-controlled smooth-scroll behavior. ANSI mode 4 is insert mode (IRM), a separate feature.",
-      "sourceLine": 146
+      "sourceLine": 145
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -1785,7 +1771,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer",
       "knownDeviations": "Main scrollback is preserved and alt-screen output never enters scrollback. \u0060?47\u0060 and \u0060?1047\u0060 reuse the retained alternate buffer/state on entry. Following xterm, \u0060?1047l\u0060 clears the active alternate cells/row metadata before returning to main; while main is already active it does not clear a stashed alternate. \u0060?1049\u0060 clears and homes on entry. Nested/redundant alt-screen enters are treated as no-op, and a \u0060?1049\u0060 save is consumed by the first exit from alt-screen regardless of whether that exit uses \u0060?47l\u0060, \u0060?1047l\u0060, or \u0060?1049l\u0060.",
-      "sourceLine": 154
+      "sourceLine": 153
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -1831,7 +1817,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BReplay",
       "knownDeviations": "Four initial-state controls reproduce the old main/alternate clearing defect. Inherited autowrap on/off converges to the existing wrap-on policy. Main/alternate and chunked RIS restore the visible cursor, including DECRQM25, immutable render cuts, replay and mux attach. Both-screen image retirement remains snapshot-pinned. Owning state/transport coverage and the fresh 40x140 disposable-App case verify both banks/default witnesses with completed source/cleanup evidence; broad power-on state and legacy device hints remain unqualified. Published RIS negatives stay frozen. See \u0060docs/qa/terminfo/ris-cursor-visibility.md\u0060 for the source-backed visibility correction. See \u0060docs/qa/terminfo/reset-observations.md\u0060.",
-      "sourceLine": 155
+      "sourceLine": 154
     },
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
@@ -1869,6 +1855,45 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer\u002BApp",
       "knownDeviations": "Uses xterm-compatible autowrap-on defaults. Tabs, mouse/focus/paste/keyboard reporting, in-band resize and SIXEL display mode/metrics survive. Current pending wrap is cleared. Cursor shape/blink return to the presenting host preference through an optional default-appearance marker. Unsupported DEC hardware modes are outside the model.",
+      "sourceLine": 155
+    },
+    {
+      "section": "5) Screen buffers \u0026 modes (DEC private modes)",
+      "feature": "Double-size lines (DECDWL / DECDHL / DECSWL)",
+      "status": "\u26A0 Partial",
+      "specOrNotes": "A per-line attribute on the cursor row: double width, the top or bottom half of a double-height line, or back to single width. A double-size line shows each character two cells wide and holds half the page\u0027s columns (\u0060Cols / 2\u0060): making a line double loses the characters right of the centre, and cursor addressing (CUP, CHA, HPA, CUF, HT), autowrap, ICH and DCH stop at the half. The attribute moves with its line through scrolling, IL and DL and into history.",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/LineSizeTests.cs\u0060, \u0060tests/Ntilde.App.Tests/VttestScenarioTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Input/TerminalViewLinkActivationTests.cs\u0060; Replay: \u0060tests/Ntilde.VT.Tests/LineSizeTests.cs\u0060; Parity: \u0060tests/Ntilde.VT.Tests/StateTransfer/ParityCorpus.cs\u0060; Render: \u0060tests/Ntilde.App.Tests/RenderTests/LineSizeRenderTests.cs\u0060",
+      "evidenceKinds": [
+        "external",
+        "replay",
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/Input/TerminalViewLinkActivationTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/RenderTests/LineSizeRenderTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/VttestScenarioTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/LineSizeTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/StateTransfer/ParityCorpus.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BBuffer\u002BRenderer",
+      "knownDeviations": "Decisions (#1036). Reset: ED returns each line it erases completely to single width (ED 2 all lines; ED 0/1 the lines below/above the cursor, and the cursor line of ED 0 only from column 1); EL, ECH and DECSED never do; RIS and DECALN reset every line; DECSTR keeps the attribute; the alternate screen starts single width and the main screen keeps its lines. DECSWL restores nothing that becoming double lost: that is the VT100\u0027s behaviour and differs from xterm, whose \u0060repaint_line\u0060 (doublechr.c) only sets the line flag and leaves the cells stored, so the right half is hidden rather than discarded there. A wrap out of a double-size line leaves no soft-wrap mark. A cursor that a vertical move leaves right of the half is drawn on the line\u0027s last column, is reported there, and writes, erases, inserts, deletes and moves from there. A wrap pending at a double-size line\u0027s last column is dropped when the line returns to single width, and the next character continues on the same line. Left/right margins: the controls are ignored while DECLRMM is set, and setting DECLRMM returns every line to single width. Resize: a double-size line is never reflowed; it stays one row with its cells and attribute, and a narrower page shows fewer of them. Cells are stored up to the page width, so a page narrower than the line\u0027s text cuts the text there and widening again does not bring it back: the one exception to lossless resize (\u0060docs/MODULE_OWNERSHIP.md\u0060). A blank double-size line is kept through a shrink in height. Scrollback: history keeps the attribute and renders it. State transfer and recording checkpoints, the viewport-only ones included, carry it as an optional per-row field; recordings made before it existed read as single width. Rendering scales the row about the grid origin, so glyphs are stretched rather than drawn from a wider face, and the two DECDHL halves are each clipped to their own row; a half without its partner shows half a glyph, as on a VT100. Selection, search highlights, the cursor, link underlines and mouse reports use the doubled cells. Not covered: tab stops on a double-size line are in the line\u0027s own columns; rectangle operations, DECIC/DECDC and SL/SR address stored cells and can write right of the half, where nothing is shown; inline images on a double-size line, (OSC 66 sized text and double-size lines do not combine: a sized rectangle returns every line it is written on to single width, and making a line double retires any sized rectangle that touches it); ANSI/text export emits no \u0060ESC #\u0060; the Mux text client shows the cells at single width. VTTEST\u0027s double-size screens are not captured: unmeasured.",
       "sourceLine": 156
     },
     {

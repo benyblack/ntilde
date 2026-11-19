@@ -115,6 +115,8 @@ internal static class TerminalStateAssert
     {
         AssertEqual($"{what} cells", expected.CellsBase64, actual.CellsBase64);
         AssertEqual($"{what} row wraps", Describe(expected.RowWraps), Describe(actual.RowWraps));
+        AssertEqual($"{what} line sizes",
+            string.Join(',', expected.RowLineSizes ?? []), string.Join(',', actual.RowLineSizes ?? []));
         AssertEqual($"{what} extended text",
             DescribeMap(expected.ExtendedText), DescribeMap(actual.ExtendedText));
         AssertEqual($"{what} link ids", DescribeMap(expected.LinkIds), DescribeMap(actual.LinkIds));

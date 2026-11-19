@@ -19,7 +19,15 @@ public partial class TerminalBuffer
     private bool CursorInHorizontalMarginsNoLock => _cursorCol >= LeftMargin && _cursorCol <= RightMargin;
 
     /// <summary>The rightmost column a cursor-relative operation may reach: the right margin, or the last column once the cursor is right of it.</summary>
-    private int RightEdgeForCursorNoLock => _cursorCol <= RightMargin ? RightMargin : Cols - 1;
+    /// <remarks>A double-size row ends at its own last column; it never coexists with narrowed margins (see <see cref="SetLineSize"/>).</remarks>
+    private int RightEdgeForCursorNoLock
+    {
+        get
+        {
+            int rowLast = CursorRowLastColumnNoLock;
+            return _cursorCol <= RightMargin ? Math.Min(RightMargin, rowLast) : rowLast;
+        }
+    }
 
     /// <summary>The leftmost column a cursor-relative operation may reach: the left margin, or the first column once the cursor is left of it.</summary>
     private int LeftEdgeForCursorNoLock => _cursorCol >= LeftMargin ? LeftMargin : 0;
@@ -44,8 +52,19 @@ public partial class TerminalBuffer
         {
             Modes.IsLeftRightMarginMode = enable;
             if (!enable) ResetHorizontalMarginsNoLock();
+            else
+            {
+                // Left/right margins and double-size lines do not combine: every line returns to single width,
+                // on the screen that is not showing too, or it would bring double-size lines back under the margins.
+                if (CursorRowLastColumnNoLock < Cols - 1) ReleasePendingWrapOnWiderRowNoLock();
+                ResetLineSizesNoLock(_viewport);
+                ResetLineSizesNoLock(_mainScreen);
+                ResetLineSizesNoLock(_altScreen);
+            }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+        // A line that was double must be redrawn single even when nothing else follows.
+        if (enable) Invalidate();
     }
 
     /// <summary>
@@ -78,6 +97,7 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
+            SnapCursorToLineSizeNoLock();
             _cursorCol = (int)Math.Min(RightEdgeForCursorNoLock, (long)_cursorCol + Math.Max(0, count));
             _isPendingWrap = false;
         }

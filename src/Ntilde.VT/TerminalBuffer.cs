@@ -98,7 +98,8 @@ namespace Ntilde.VT
             get
             {
                 bool lockTaken = EnterReadLockIfNeeded();
-                try { return _cursorCol; }
+                // On a double-size row the cursor is on the row's last column at most, wherever a vertical move left it.
+                try { return Math.Min(_cursorCol, Math.Max(0, CursorRowLastColumnNoLock)); }
                 finally { ExitReadLockIfNeeded(Lock, lockTaken); }
             }
             set
@@ -106,7 +107,9 @@ namespace Ntilde.VT
                 bool lockTaken = EnterWriteLockIfNeeded();
                 try
                 {
-                    _cursorCol = value;
+                    // CHA/HPA arrive here already clamped to the page; a double-size row is narrower than that.
+                    int rowLast = CursorRowLastColumnNoLock;
+                    _cursorCol = rowLast < Cols - 1 && value > rowLast ? rowLast : value;
                     _isPendingWrap = false;
                 }
                 finally { ExitWriteLockIfNeeded(Lock, lockTaken); }

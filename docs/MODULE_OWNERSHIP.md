@@ -99,7 +99,9 @@ invariant changes.
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
   fixed physical layout barriers; a rectangle clipped by a narrower grid or taller than the
-  new screen is discarded whole, as permitted by the sizing protocol.
+  new screen is discarded whole, as permitted by the sizing protocol. A double-size line
+  (DECDWL / DECDHL) is a fixed row too and is never re-wrapped: a grid narrower than its
+  text cuts it at the grid's width, the one resize that loses ordinary text.
 - ED 2 and EL 2 retire erased rows' soft-wrap identity and extents in place. A later
   positioned replacement must not join neighboring hard lines during reflow. Row IDs,
   cursor, pen and scrollback remain intact; EL 2 leaves other rows' wraps unchanged.

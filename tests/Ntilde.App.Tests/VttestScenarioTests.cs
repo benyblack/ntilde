@@ -98,10 +98,11 @@ namespace Ntilde.Tests
             var buffer = CreateBuffer();
             var parser = CreateParser(buffer, _ => { });
 
-            parser.Process("\x1b#3"); // Double height top (ignored)
+            parser.Process("\x1b#3"); // Double height top: sets the line attribute, prints nothing
             parser.Process("A");      // Should write 'A'
 
             Assert.Equal('A', GetCellSafe(buffer, 0, 0).Character);
+            Assert.Equal(LineSize.DoubleHeightTop, buffer.GetLineSize(0));
         }
     }
 }

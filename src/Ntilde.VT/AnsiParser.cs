@@ -727,12 +727,24 @@ namespace Ntilde.VT
                                 break;
 
                             case State.EscHash:
-                                if (c == '8') // DECALN - Screen Alignment Pattern
+                                switch (c)
                                 {
-                                    _buffer.ScreenAlignmentPattern();
+                                    case '8': // DECALN - Screen Alignment Pattern
+                                        _buffer.ScreenAlignmentPattern();
+                                        break;
+                                    case '3': // DECDHL - top half of a double-height line
+                                        _buffer.SetLineSize(LineSize.DoubleHeightTop);
+                                        break;
+                                    case '4': // DECDHL - bottom half of a double-height line
+                                        _buffer.SetLineSize(LineSize.DoubleHeightBottom);
+                                        break;
+                                    case '5': // DECSWL - single-width line
+                                        _buffer.SetLineSize(LineSize.SingleWidth);
+                                        break;
+                                    case '6': // DECDWL - double-width line
+                                        _buffer.SetLineSize(LineSize.DoubleWidth);
+                                        break;
                                 }
-                                // 3, 4, 5, 6 are for single/double width/height lines.
-                                // We ignore them for now as we don't support per-line rendering attributes yet.
                                 _state = State.Normal;
                                 break;
 

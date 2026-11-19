@@ -227,6 +227,7 @@ namespace Ntilde.Replay
                         Rows = rowCount,
                         CursorCol = buffer.InternalCursorCol,
                         CursorRow = buffer.InternalCursorRow,
+                        RowLineSizes = buffer.ExportViewportLineSizes(),
                         IsAltScreen = buffer.IsAltScreenActive,
                         ScrollTop = buffer.ScrollTop,
                         ScrollBottom = buffer.ScrollBottom,

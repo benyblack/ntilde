@@ -152,10 +152,14 @@ namespace Ntilde.Shell
                 int visualRow = run.AbsRow - displayStart;
                 if (visualRow < 0 || visualRow >= rows) continue;
 
+                // A double-size line shows each cell two cells wide.
+                double cellWidth = _buffer != null && _buffer.LineSizeAtAbsoluteRow(run.AbsRow) != Ntilde.VT.LineSize.SingleWidth
+                    ? _metrics.CellWidth * 2
+                    : _metrics.CellWidth;
                 yield return new Avalonia.Rect(
-                    run.StartCol * _metrics.CellWidth,
+                    run.StartCol * cellWidth,
                     (visualRow + 1) * _metrics.CellHeight - 1.0,
-                    (run.EndCol - run.StartCol + 1) * _metrics.CellWidth,
+                    (run.EndCol - run.StartCol + 1) * cellWidth,
                     1.0);
             }
         }
