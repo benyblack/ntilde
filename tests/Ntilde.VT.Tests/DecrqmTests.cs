@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Ntilde.VT.Tests;
 
 // Issue #267: DECRQM (CSI Ps $ p / CSI ? Ps $ p) replies with DECRPM (CSI [?] Ps ; Pm $ y),
@@ -37,6 +39,7 @@ public class DecrqmTests
     [InlineData(7)]    // DECAWM - Auto Wrap Mode
     [InlineData(25)]   // DECTCEM - Text Cursor Enable Mode
     [InlineData(47)]   // Alternate screen (legacy)
+    [InlineData(67)]   // DECBKM - Backarrow Key Mode
     [InlineData(1000)] // X10 mouse reporting
     [InlineData(1002)] // Button-event mouse tracking
     [InlineData(1003)] // Any-event mouse tracking
@@ -56,6 +59,23 @@ public class DecrqmTests
 
         parser.Process($"\u001b[?{mode}l");
         Assert.Equal($"\u001b[?{mode};2$y", QueryPrivate(parser, responses, mode));
+    }
+
+    [Fact]
+    public void Backarrow_mode_survives_state_transfer_and_defaults_off_when_omitted()
+    {
+        var (source, parser, _) = CreateTerminal();
+        var (target, targetParser, responses) = CreateTerminal();
+        string withoutBackarrowMode = JsonSerializer.Serialize(source.ExportState(0));
+        Assert.DoesNotContain("\"bkm\"", withoutBackarrowMode, StringComparison.Ordinal);
+
+        parser.Process("\u001b[?67h");
+        string withBackarrowMode = JsonSerializer.Serialize(source.ExportState(0));
+        target.ImportState(JsonSerializer.Deserialize<TerminalStateSnapshot>(withBackarrowMode)!);
+        Assert.Equal("\u001b[?67;1$y", QueryPrivate(targetParser, responses, 67));
+
+        target.ImportState(JsonSerializer.Deserialize<TerminalStateSnapshot>(withoutBackarrowMode)!);
+        Assert.Equal("\u001b[?67;2$y", QueryPrivate(targetParser, responses, 67));
     }
 
     [Fact]

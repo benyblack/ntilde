@@ -453,6 +453,8 @@ namespace Ntilde.VT
         [JsonPropertyName("m_pixel"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? MouseModePixel { get; set; }
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
+        [JsonPropertyName("bkm"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IsBackarrowKeyMode { get; set; }
         [JsonPropertyName("awm")] public bool IsAutoWrapMode { get; set; } = true;
         /// <summary>Reverse-wraparound (?45). Absent in older payloads, which reads as off.</summary>
         [JsonPropertyName("rwm")] public bool IsReverseWrapMode { get; set; }

@@ -361,6 +361,9 @@ namespace Ntilde.Shell
         internal static string EncodeLegacyReturn(ModeState? modes)
             => modes?.IsLineFeedNewLineMode == true ? "\r\n" : "\r";
 
+        internal static string EncodeLegacyBackspace(ModeState? modes)
+            => modes?.IsBackarrowKeyMode == true ? "\b" : "\x7f";
+
         /// <summary>
         /// Encodes an Alt/Meta + printable key as an ESC-prefixed sequence, matching the
         /// standard xterm "metaSendsEscape" behavior (e.g. Alt+V -> ESC v). This restores
@@ -368,7 +371,7 @@ namespace Ntilde.Shell
         /// paste an image from the clipboard. Returns null when the combination should not
         /// be meta-encoded (no Alt, Ctrl+Alt/AltGr, or a non-printable key).
         /// </summary>
-        public static string? EncodeAltKey(Key key, KeyModifiers modifiers)
+        public static string? EncodeAltKey(Key key, KeyModifiers modifiers, ModeState? modes = null)
         {
             if ((modifiers & KeyModifiers.Alt) == 0)
             {
@@ -405,7 +408,7 @@ namespace Ntilde.Shell
             switch (key)
             {
                 case Key.Back:
-                    return "\x1b\x7f";  // M-DEL: backward-kill-word
+                    return "\x1b" + EncodeLegacyBackspace(modes);
                 case Key.Enter:
                     return "\x1b\r";
                 case Key.OemPeriod when !shift:

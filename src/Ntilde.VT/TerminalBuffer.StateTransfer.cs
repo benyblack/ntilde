@@ -871,6 +871,7 @@ namespace Ntilde.VT
             MouseModePixel = modes.MouseModePixel ? true : null,
             IsApplicationCursorKeys = modes.IsApplicationCursorKeys,
             IsApplicationKeypad = modes.IsApplicationKeypad,
+            IsBackarrowKeyMode = modes.IsBackarrowKeyMode,
             IsAutoWrapMode = modes.IsAutoWrapMode,
             IsReverseWrapMode = modes.IsReverseWrapMode,
             IsOriginMode = modes.IsOriginMode,
@@ -905,6 +906,7 @@ namespace Ntilde.VT
             target.MouseModePixel = source.MouseModePixel ?? false;
             target.IsApplicationCursorKeys = source.IsApplicationCursorKeys;
             target.IsApplicationKeypad = source.IsApplicationKeypad;
+            target.IsBackarrowKeyMode = source.IsBackarrowKeyMode;
             target.IsAutoWrapMode = source.IsAutoWrapMode;
             target.IsReverseWrapMode = source.IsReverseWrapMode;
             target.IsOriginMode = source.IsOriginMode;
