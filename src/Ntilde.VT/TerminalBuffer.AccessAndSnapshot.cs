@@ -1093,6 +1093,12 @@ namespace Ntilde.VT
                 }
             }
             AppendPlaceholderImages(list, absDisplayStart, absEnd);
+            // The anchor row may be scrolled out above the view, so the attribute travels with the image rather than being read off the visible rows.
+            for (int i = 0; i < list.Count; i++)
+            {
+                LineSize lineSize = GetLineSizeAbsolute(list[i].CellY);
+                if (lineSize != LineSize.SingleWidth) list[i] = list[i] with { LineSize = lineSize };
+            }
             return list;
         }
 

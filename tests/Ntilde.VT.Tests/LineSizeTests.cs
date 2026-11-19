@@ -759,6 +759,25 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void An_image_snapshot_carries_the_line_attribute_of_its_anchor_row_even_when_that_row_is_above_the_view()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 4);
+        parser.Process($"{Dwl}a\r\nb");
+        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 3));
+        buffer.AddImage(new TerminalImage(new object(), 2, 1, 1, 1));
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            var fromTheAnchor = buffer.GetVisibleImagesSnapshot(0, 4);
+            Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.SingleWidth }, fromTheAnchor.Select(image => image.LineSize));
+            // Seen from the row below, the first image's anchor row is out of view: it is still a double-width row's image.
+            var fromBelow = buffer.GetVisibleImagesSnapshot(1, 3);
+            Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.SingleWidth }, fromBelow.Select(image => image.LineSize));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);
