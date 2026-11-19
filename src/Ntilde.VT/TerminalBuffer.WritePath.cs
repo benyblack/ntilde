@@ -580,7 +580,7 @@ namespace Ntilde.VT
             // Horizontal margins scroll only the band between them, never into scrollback.
             if (HasHorizontalMargins)
             {
-                ScrollBandNoLock(ScrollTop, ScrollBottom, LeftMargin, RightMargin, 1, up: true, ThemeBlankCell());
+                ScrollBandNoLock(ScrollTop, ScrollBottom, LeftMargin, RightMargin, 1, up: true, ActiveBlankCell());
                 return;
             }
 
@@ -676,7 +676,7 @@ namespace Ntilde.VT
             }
 
             // 3. Create new blank line at the bottom of the region: a new row, with an Id of its own.
-            _viewport[ScrollBottom] = new TerminalRow(Cols, Theme.Foreground, Theme.Background);
+            _viewport[ScrollBottom] = new TerminalRow(Cols, ActiveBlankCell());
 
             // A move is not an edit (#657): the rows keep their revisions. What is keyed by viewport index - the
             // snapshot's row-cell cache, the dirty tracking - also keys by row Id, so a row that arrives at an index is
@@ -694,7 +694,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
-                ScrollDownInternal(ThemeBlankCell());
+                ScrollDownInternal(ActiveBlankCell());
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             Invalidate();

@@ -666,7 +666,7 @@ namespace Ntilde.VT
                 if (n <= 0) return;
                 if (HasHorizontalMargins)
                 {
-                    ScrollBandNoLock(top, bottom, LeftMargin, RightMargin, n, up: false, new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, true, true));
+                    ScrollBandNoLock(top, bottom, LeftMargin, RightMargin, n, up: false, ActiveBlankCell());
                     return;
                 }
 
@@ -706,9 +706,10 @@ namespace Ntilde.VT
                 }
 
                 // Fill the gap created at TOP with new blank lines
+                TerminalCell blank = ActiveBlankCell();
                 for (int i = 0; i < n; i++)
                 {
-                    _viewport[top + i] = new TerminalRow(Cols, CurrentForeground, CurrentBackground);
+                    _viewport[top + i] = new TerminalRow(Cols, blank);
                 }
 
                 // Moved rows keep their revisions, as in ScrollUpInternal (#657).
@@ -738,7 +739,7 @@ namespace Ntilde.VT
                 if (n <= 0) return;
                 if (HasHorizontalMargins)
                 {
-                    ScrollBandNoLock(top, bottom, LeftMargin, RightMargin, n, up: true, new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, true, true));
+                    ScrollBandNoLock(top, bottom, LeftMargin, RightMargin, n, up: true, ActiveBlankCell());
                     return;
                 }
 
@@ -789,9 +790,10 @@ namespace Ntilde.VT
                 }
 
                 // Fill the gap created at BOTTOM with new blank lines
+                TerminalCell blank = ActiveBlankCell();
                 for (int i = 0; i < n; i++)
                 {
-                    _viewport[bottom - n + 1 + i] = new TerminalRow(Cols, CurrentForeground, CurrentBackground);
+                    _viewport[bottom - n + 1 + i] = new TerminalRow(Cols, blank);
                 }
 
                 // Moved rows keep their revisions, as in ScrollUpInternal (#657).
