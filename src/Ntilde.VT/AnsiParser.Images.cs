@@ -153,6 +153,13 @@ namespace Ntilde.VT
         /// <summary>Whether frame composition (<c>a=c</c>) is carried where images are retained for snapshots: persistent image policy 4 and later (a peer that predates it answers <c>ENOTSUP</c>).</summary>
         public bool RetainedComposition { get; set; }
 
+        /// <summary>
+        /// Whether Unicode placeholders (<c>U=1</c> virtual placements, #989) are carried where images are retained for snapshots: persistent
+        /// image policy 5 and later. A peer that predates it cannot restore a snapshot holding virtual placements, so a session below it
+        /// answers <c>ENOTSUP</c> rather than showing the placeholder cells without their image on one side only.
+        /// </summary>
+        public bool RetainedPlaceholders { get; set; }
+
         /// <summary>Frames are retained for snapshots and their pixels never come from a decoder.</summary>
         private bool PersistentFrames => RetainImageSources && RetainedAnimation;
 

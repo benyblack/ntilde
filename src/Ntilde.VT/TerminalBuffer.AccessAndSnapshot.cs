@@ -1015,10 +1015,13 @@ namespace Ntilde.VT
             {
                 var cell = (c < row.Cells.Length) ? row.Cells[c] : TerminalCell.Default;
                 containsBlink |= cell.IsBlink && !cell.IsHidden;
+                // A Unicode placeholder draws no glyph of its own: its image, if any, is added by AppendPlaceholderImages.
+                string? text = cell.HasExtendedText ? row.GetExtendedText(c) : null;
+                bool placeholder = KittyPlaceholders.IsPlaceholder(text);
                 destination[c] = new RenderCellSnapshot
                 {
-                    Character = cell.Character,
-                    Text = cell.HasExtendedText ? row.GetExtendedText(c) : null,
+                    Character = placeholder ? ' ' : cell.Character,
+                    Text = placeholder ? null : text,
                     TextSizing = row.GetTextSizing(c),
                     Foreground = cell.Foreground,
                     Background = cell.Background,
@@ -1079,6 +1082,7 @@ namespace Ntilde.VT
                     });
                 }
             }
+            AppendPlaceholderImages(list, absDisplayStart, absEnd);
             return list;
         }
 

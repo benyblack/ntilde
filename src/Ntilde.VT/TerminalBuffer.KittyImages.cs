@@ -14,6 +14,8 @@ internal sealed class KittyImageAsset(uint id, uint number, bool isAltScreen, ob
     internal int PixelWidth { get; } = pixelWidth;
     internal int PixelHeight { get; } = pixelHeight;
     internal long PixelCharge => (long)PixelWidth * PixelHeight * 4 + (Animation?.ExtraCharge ?? 0);
+    /// <summary>The virtual placements (<c>U=1</c>) Unicode placeholder cells can name; oldest first, the newest last.</summary>
+    internal List<KittyVirtualPlacement> VirtualPlacements { get; } = new();
     /// <summary>The frames and playback clock once <c>a=f</c> or <c>a=a</c> has addressed the image; null for a still image.</summary>
     internal KittyAnimation? Animation { get; set; }
     /// <summary>Whether <paramref name="candidate"/> is the displayed handle or any frame's.</summary>
@@ -45,12 +47,15 @@ public partial class TerminalBuffer
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         int placementsBefore = _images.Count;
+        bool droppedVirtual = false;
         try
         {
             if (!TryAdmitImageHandle(handle)) return null;
             KittyImageAsset? old = id == 0 ? null : FindKittyImage(id, 0);
             if (id == 0 && number != 0) id = AllocateKittyImageId();
             List<KittyImageAsset> victims = KittyQuotaVictims(old, (long)pixelWidth * pixelHeight * 4);
+            // Placeholder tiles are not placements: replacing or evicting an image that has virtual placements still changes the frame.
+            droppedVirtual = (old?.VirtualPlacements.Count > 0) || victims.Exists(victim => victim.VirtualPlacements.Count > 0);
             if (old is not null) ReleaseKittySources(old);
             foreach (KittyImageAsset victim in victims) ReleaseKittySources(victim);
             ImageSource? source = sent is null ? null : ImageSources.Retain(sent.Bytes, sent.InflationCost);
@@ -64,7 +69,7 @@ public partial class TerminalBuffer
         }
         finally
         {
-            bool removedPlacements = _images.Count < placementsBefore;
+            bool removedPlacements = _images.Count < placementsBefore || droppedVirtual;
             ExitWriteLockIfNeeded(Lock, lockTaken);
             if (removedPlacements) Invalidate();
         }
@@ -120,6 +125,8 @@ public partial class TerminalBuffer
             image.KittyPlacementId = placementId == 0 ? null : placementId;
             if (placementId != 0)
             {
+                // The same placement id names one placement: a virtual one is replaced by a real one.
+                DeleteKittyVirtualPlacements(asset, placementId);
                 for (int i = _images.Count - 1; i >= 0; i--)
                 {
                     TerminalImage old = _images[i];
@@ -149,6 +156,9 @@ public partial class TerminalBuffer
         {
             KittyImageAsset? selected = visibleOnly ? null : FindKittyImage(id, number);
             HashSet<KittyImageAsset> affected = DeleteKittyPlacements(selected, placementId, visibleOnly);
+            // Virtual placements have no position, so only a selection by identity reaches them (a, A and the
+            // other position-based selections never do).
+            if (selected is not null && DeleteKittyVirtualPlacements(selected, placementId)) affected.Add(selected);
             // A placement-scoped deletion only frees an asset when that placement existed.
             // An unscoped hard delete must also release transmit-only data with no placement.
             if (!visibleOnly && selected is not null && placementId == 0) affected.Add(selected);
@@ -187,7 +197,8 @@ public partial class TerminalBuffer
             : selected is not null && image.KittyImageId == selected.Id;
     }
 
-    private bool HasKittyPlacement(KittyImageAsset asset) => _images.Any(image => ReferenceEquals(image.KittyAsset, asset));
+    private bool HasKittyPlacement(KittyImageAsset asset) =>
+        asset.VirtualPlacements.Count > 0 || _images.Any(image => ReferenceEquals(image.KittyAsset, asset));
 
     private void FreeKittyImage(KittyImageAsset asset)
     {

@@ -137,6 +137,19 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>
+        /// <see cref="UnderlineForWrite"/>, except that a Unicode placeholder (#989) keeps the pen's SGR 58 colour even when the cell is not
+        /// underlined: the protocol names the virtual placement by that colour, and clients set only the colour, not the underline.
+        /// The cell is still not drawn underlined, since that is the flag's job.
+        /// </summary>
+        private CellUnderline? UnderlineForGrapheme(ReadOnlySpan<char> grapheme)
+        {
+            CellUnderline? decoration = UnderlineForWrite;
+            if (!KittyPlaceholders.IsPlaceholder(grapheme)) return decoration;
+            // The pen's entry already carries an overline when one is set, so it replaces a colourless overline-only entry too.
+            return _currentUnderline is { HasColor: true } ? _currentUnderline : decoration;
+        }
+
         public bool IsBlink { get => _isBlink; set { _isBlink = value; _isStyleDirty = true; } }
 
         public bool IsStrikethrough { get => _isStrikethrough; set { _isStrikethrough = value; _isStyleDirty = true; } }
