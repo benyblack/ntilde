@@ -488,6 +488,16 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_saved_pending_wrap_survives_a_resize_made_while_autowrap_is_off()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abcde{Esc}7{Esc}[?7l{Esc}[4;1H");
+        buffer.Resize(11, 6);
+        parser.Process($"{Esc}[?7h{Esc}8X");
+        Assert.Equal(new[] { "abcde", "X" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

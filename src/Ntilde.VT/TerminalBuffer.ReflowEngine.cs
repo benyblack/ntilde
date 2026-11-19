@@ -36,6 +36,7 @@ namespace Ntilde.VT
             private bool _cursorWaitsAtDoubleRowEnd;
             // The cursor was on a double-size line, so the re-wrap decides its pending wrap afresh: a wrap pending at
             // the old last column means "after that character", which is an ordinary column once the row is wider.
+            // A wrap that was pending stays pending at a filled row's end whatever DECAWM says now; a new one needs DECAWM.
             private bool _cursorOnDoubleLine;
             private readonly bool _cursorPendingWrap;
             private readonly Func<string, int> _getGraphemeWidth;
@@ -86,7 +87,7 @@ namespace Ntilde.VT
                 target._scrollback = _scrollback;
                 target._cursorRow = _cursorRow;
                 target._cursorCol = _cursorCol;
-                if (_cursorOnDoubleLine && !_isAltScreen) target._isPendingWrap = _cursorWaitsAtDoubleRowEnd && target.Modes.IsAutoWrapMode;
+                if (_cursorOnDoubleLine && !_isAltScreen) target._isPendingWrap = _cursorWaitsAtDoubleRowEnd && (_cursorPendingWrap || target.Modes.IsAutoWrapMode);
                 if (target.CommandStartMark == _observedCommandStartMark)
                 {
                     target.CommandStartMark = _commandStartMark;
@@ -1240,14 +1241,14 @@ namespace Ntilde.VT
                         if (newMainSavedPhysRow < sbCount) _savedCursors.Main.Row = 0;
                         else _savedCursors.Main.Row = newMainSavedPhysRow - sbCount;
                         _savedCursors.Main.Col = Math.Clamp(newMainSavedPhysCol, 0, newCols);
-                        if (mainSavedOnDoubleLine) _savedCursors.Main.IsPendingWrap = mainSavedWaitsAtDoubleRowEnd && _source.Modes.IsAutoWrapMode;
+                        if (mainSavedOnDoubleLine) _savedCursors.Main.IsPendingWrap = mainSavedWaitsAtDoubleRowEnd && (_savedCursors.Main.IsPendingWrap || _source.Modes.IsAutoWrapMode);
                     }
                     if (newAltSavedPhysRow != -1)
                     {
                         if (newAltSavedPhysRow < sbCount) _savedCursors.Alt.Row = 0;
                         else _savedCursors.Alt.Row = newAltSavedPhysRow - sbCount;
                         _savedCursors.Alt.Col = Math.Clamp(newAltSavedPhysCol, 0, newCols);
-                        if (altSavedOnDoubleLine) _savedCursors.Alt.IsPendingWrap = altSavedWaitsAtDoubleRowEnd && _source.Modes.IsAutoWrapMode;
+                        if (altSavedOnDoubleLine) _savedCursors.Alt.IsPendingWrap = altSavedWaitsAtDoubleRowEnd && (_savedCursors.Alt.IsPendingWrap || _source.Modes.IsAutoWrapMode);
                     }
 
                     // 8. Conditional Cursor Row Clearing (REFINED)
