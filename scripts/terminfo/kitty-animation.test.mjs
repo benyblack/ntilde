@@ -25,7 +25,7 @@ test('the plan covers every stage once, bounded by the capture budget', () => {
 });
 
 test('suite v1 stays defined beside v2 so retained v1 evidence still rederives', () => {
-    assert.deepEqual(Object.keys(animationSuiteIds), ['1', '2', '3', '4']); assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[1]), 1);
+    assert.deepEqual(Object.keys(animationSuiteIds), ['1', '2', '3', '4', '5']); assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[1]), 1);
     assert.equal(animationVersionOfPolicy(ownedAnimationPolicies[2]), 2); assert.equal(animationVersionOfPolicy('owned-kitty-animation-paired-raw-render-v3'), null);
     assert.equal(animationVersionOfPolicy(undefined), null);
     // v1 is the three-case suite exactly as #988 retained it: 23 actions, 18 stages, three raw-frame inputs; v2 only adds the PNG and root-frame case and its two PNG inputs.

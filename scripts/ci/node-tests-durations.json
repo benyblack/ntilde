@@ -3,7 +3,7 @@
     "Each test file's seconds for scripts/ci/node-tests-shard.py, which deals the files out to the Script self-tests shards by them.",
     "The values are what scripts/ci/node-tests-run.mjs records: the sum of a file's top-level test durations while it runs files concurrently (three at a time on a 4-core runner). Contention makes them larger than a lone run of the file; a windows shard's wall time has been about its total divided by 2.5 (run 43008842301: 466, 846 and 937 against 178, 334 and 382 s).",
     "rest_head_start_seconds is in the same units: the rest shard also runs the job's quick checks, about 44 s of wall time on windows beyond what the other shards spend outside the node step (run 43008842301: rest 67 s, a 19 s, b 27 s), so about 110.",
-    "Refreshed using node-tests-shard.py --update from the Windows shard timing artifacts of run 44527105357 (PR #1053, all four shards), the first measurement after the receipt fixture began handing out hard links instead of copies. It is a single run, so a file's value is that run's and not the larger of several; every file the shards ran has a Windows measurement from it."
+    "Refreshed using node-tests-shard.py --update from the Windows shard timing artifacts of run 44527105357 (PR #1053, all four shards), the first measurement after the receipt fixture began handing out hard links instead of copies. It is a single run, so a file's value is that run's and not the larger of several; every file the shards ran has a Windows measurement from it. The two kitty-placeholders files reached main after that run and keep the initial weights main gave them (32.0 and 4.0)."
   ],
   "rest_head_start_seconds": 110,
   "seconds": {
@@ -179,6 +179,8 @@
     "scripts/terminfo/kitty-animation-publication.test.mjs": 120.5,
     "scripts/terminfo/kitty-animation-restore-publication.test.mjs": 77.4,
     "scripts/terminfo/kitty-animation.test.mjs": 56.6,
+    "scripts/terminfo/kitty-placeholders-publication.test.mjs": 32.0,
+    "scripts/terminfo/kitty-placeholders.test.mjs": 4.0,
     "scripts/terminfo/line-edit-contracts.test.mjs": 18.6,
     "scripts/terminfo/line-edit-grading-collector.test.mjs": 0.1,
     "scripts/terminfo/line-edit-grading.test.mjs": 14.2,

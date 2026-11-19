@@ -32,6 +32,26 @@ export const animationFrameColor = frameId => {
 };
 export const animationInputPins = pins;
 
+// The Unicode placeholder suite (#989) shows one image through placeholder cells: 16x16 raw RGBA, the left half red and the right half blue, so the tile each cell shows can be told by its color.
+// Like every input here it is generated from its colors and pinned by SHA-256, independently of the App.
+export const placeholderColors = Object.freeze({ red: Object.freeze([255, 0, 0, 255]), blue: Object.freeze([0, 0, 255, 255]) });
+const halvesBytes = () => Buffer.concat(Array.from({ length: animationImageSize.width * animationImageSize.height },
+    (_, index) => Buffer.from(index % animationImageSize.width < animationImageSize.width / 2 ? placeholderColors.red : placeholderColors.blue)));
+export const placeholderInputPin = hash(halvesBytes());
+/** Fresh raw RGBA bytes (f=32, s=16, v=16) of the red/blue image with their pin. */
+export function placeholderHalvesInput() {
+    const bytes = halvesBytes();
+    if (hash(bytes) !== placeholderInputPin) throw new Error('Placeholder image input pin mismatch.');
+    return { inputId: 'halves', ...animationImageSize, bytes, sha256: placeholderInputPin };
+}
+/** What the two cells of the placeholder row must show: the color of the tile each one is expected to paint, or 'absent' for nothing. */
+export const placeholderAppearances = Object.freeze({
+    absent: Object.freeze(['absent', 'absent']),
+    redBlue: Object.freeze(['red', 'blue']),
+    blueRed: Object.freeze(['blue', 'red']),
+    absentRed: Object.freeze(['absent', 'red']),
+});
+
 // Half-transparent PNG frames (f=100). Each is encoded here from its color, independently of the App and of Skia, and pinned by SHA-256.
 const pngFrames = Object.freeze({
     overRoot: Object.freeze({ color: Object.freeze([0, 255, 0, 128]) }),

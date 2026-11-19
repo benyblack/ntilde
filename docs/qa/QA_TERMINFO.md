@@ -883,6 +883,11 @@ The [2026-11-18 persistent composition qualification](terminfo/2026-11-18-kitty-
 effect supported, pinned callbacks inconclusive by design, no stock run and no Core, stock or common-harness change; partial rectangles are covered by unit tests only). The
 [ordinary-tab measurement](terminfo/2026-11-18-kitty-animation-compose-direct-qualification.md) runs the same suite with `--scope direct-compose` (no daemon, the root read back through the host decoder): 10/10, effect supported.
 
+The [2026-11-19 Unicode placeholder qualification](terminfo/2026-11-19-kitty-placeholders-qualification.md) (#989) measures `U=1` virtual placements and `U+10EEEE` cells with a new suite (version 5 of the animation carrier, `ntilde-owned-kitty-placeholders-v1`:
+a red/blue image shown through a row of two placeholder cells, with controls for the virtual placement alone, erased cells, swapped and inherited marks, and cells naming no image, placement or tile) in an ordinary tab (`--scope direct-placeholders`) and in a live
+persistent tab (`--scope persistent-placeholders`, image policy 5): 19/19 stages in each, effect supported, pinned callbacks inconclusive by design, no stock run and no Core, stock or common-harness change. Placeholders are cells, so this suite's carrier checks the cell grid against
+the cells each stage printed (`screenAfter`) instead of the blank bound screen.
+
 The [2026-11-17 persistent restore qualification](terminfo/2026-11-17-kitty-animation-restore-qualification.md)
 (#1030) measures that restore: `--scope persistent-restore` terminates the App with SIGTERM while the daemon and shell keep running, starts it again on the same private root, and reads the reattached pane
 (a running animation continuing from its original start, a stopped one staying stopped, edited and PNG-derived frames surviving). Ownership is held per App process, and a read that a playhead restarted by the new App would also pass is
