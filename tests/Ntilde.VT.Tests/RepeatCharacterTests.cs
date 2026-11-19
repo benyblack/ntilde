@@ -83,6 +83,8 @@ public class RepeatCharacterTests
     // ...and so does any other control sequence.
     [InlineData("\x1b[Hx\x1b[1;3H\x1b[5b")]
     [InlineData("\x1b[Hx\x1b[0m\x1b[5b")]
+    [InlineData("\x1b[Hx\x1b F\x1b[5b")]
+    [InlineData("\x1b[Hx\x1b G\x1b[5b")]
     // Nothing printed at all: nothing to repeat.
     [InlineData("\x1b[H\x1b[5b")]
     public void Rep_IsANoOpWhenThereIsNoPrecedingGraphicCharacter(string sequence)
