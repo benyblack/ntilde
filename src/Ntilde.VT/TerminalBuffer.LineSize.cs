@@ -149,17 +149,33 @@ public partial class TerminalBuffer
 
     /// <summary>
     /// After the line attribute of visible rows changed: the images of the showing screen whose origin is on one of
-    /// the rows [<paramref name="firstRow"/>, <paramref name="endRow"/>) take that row's attribute.
+    /// the rows [<paramref name="firstRow"/>, <paramref name="endRow"/>) take that row's attribute. Also called when
+    /// the attribute is set to what the row already has: a scrolling region can bring an image onto a row of another
+    /// attribute, and setting that row's attribute then settles the image too. Returns whether an image changed.
     /// </summary>
-    private void ImagesTakeRowLineSizesNoLock(int firstRow, int endRow)
+    private bool ImagesTakeRowLineSizesNoLock(int firstRow, int endRow)
     {
-        if (_images.Count == 0) return;
+        if (_images.Count == 0) return false;
+        bool changed = false;
         int top = _isAltScreen ? 0 : _scrollback.Count;
         foreach (TerminalImage image in _images)
         {
             int row = image.CellY - top;
-            if (image.IsAltScreenImage == _isAltScreen && row >= firstRow && row < endRow) image.LineSize = _viewport[row].LineSize;
+            if (image.IsAltScreenImage != _isAltScreen || row < firstRow || row >= endRow || image.LineSize == _viewport[row].LineSize) continue;
+            image.LineSize = _viewport[row].LineSize;
+            changed = true;
         }
+        return changed;
+    }
+
+    /// <summary>
+    /// DECLRMM returns every row of both screens to single width: so does every image whose origin is on one of those
+    /// rows, on the screen that is not showing too. An image whose origin is in history keeps its attribute, as its row does.
+    /// </summary>
+    private void ImagesOnScreenRowsBecomeSingleWidthNoLock()
+    {
+        foreach (TerminalImage image in _images)
+            if (image.CellY >= (image.IsAltScreenImage ? 0 : _scrollback.Count)) image.LineSize = LineSize.SingleWidth;
     }
 
     /// <summary>An image's left and right edge in single-width columns, the unit two images on rows of different attributes share.</summary>
@@ -191,27 +207,34 @@ public partial class TerminalBuffer
             if (_cursorRow < 0 || _cursorRow >= Rows) return;
             if (size != LineSize.SingleWidth && Modes.IsLeftRightMarginMode) return;
             TerminalRow row = _viewport[_cursorRow];
-            if (row.LineSize == size) return;
-            bool wasSingle = row.LineSize == LineSize.SingleWidth;
-            ChangeLineSizeNoLock(row, size);
-            ImagesTakeRowLineSizesNoLock(_cursorRow, _cursorRow + 1);
-            if (size == LineSize.SingleWidth) ReleasePendingWrapOnWiderRowNoLock();
+            if (row.LineSize == size)
+            {
+                // Nothing to change on the row; an image a scrolling region brought onto it may still differ.
+                if (!ImagesTakeRowLineSizesNoLock(_cursorRow, _cursorRow + 1)) return;
+            }
             else
             {
-                if (wasSingle)
+                bool wasSingle = row.LineSize == LineSize.SingleWidth;
+                ChangeLineSizeNoLock(row, size);
+                ImagesTakeRowLineSizesNoLock(_cursorRow, _cursorRow + 1);
+                if (size == LineSize.SingleWidth) ReleasePendingWrapOnWiderRowNoLock();
+                else
                 {
-                    // A sized rectangle is laid out in page columns and may span rows: one that touches this row is
-                    // retired whole rather than left with one row drawn at twice the width of the others.
-                    int abs = TextSizingAbsoluteRow(_cursorRow);
-                    EraseTextSizingRange(0, Cols, abs, abs + 1);
-                    BlankColumnsPastLineSizeNoLock(_cursorRow);
-                }
-                row.IsWrapped = false;
-                int last = CursorRowLastColumnNoLock;
-                if (_cursorCol > last)
-                {
-                    _cursorCol = last;
-                    _isPendingWrap = false;
+                    if (wasSingle)
+                    {
+                        // A sized rectangle is laid out in page columns and may span rows: one that touches this row is
+                        // retired whole rather than left with one row drawn at twice the width of the others.
+                        int abs = TextSizingAbsoluteRow(_cursorRow);
+                        EraseTextSizingRange(0, Cols, abs, abs + 1);
+                        BlankColumnsPastLineSizeNoLock(_cursorRow);
+                    }
+                    row.IsWrapped = false;
+                    int last = CursorRowLastColumnNoLock;
+                    if (_cursorCol > last)
+                    {
+                        _cursorCol = last;
+                        _isPendingWrap = false;
+                    }
                 }
             }
         }
@@ -250,12 +273,33 @@ public partial class TerminalBuffer
         bool lockTaken = EnterWriteLockIfNeeded();
         try
         {
-            if (row < 0 || row >= Rows || _viewport[row].LineSize == LineSize.SingleWidth) return;
-            ChangeLineSizeNoLock(_viewport[row], LineSize.SingleWidth);
-            if (row == _cursorRow) ReleasePendingWrapOnWiderRowNoLock();
+            if (row < 0 || row >= Rows) return;
+            bool imagesChanged = ImagesOnRowBecomeSingleWidthNoLock(row);
+            if (_viewport[row].LineSize == LineSize.SingleWidth)
+            {
+                if (!imagesChanged) return;
+            }
+            else
+            {
+                ChangeLineSizeNoLock(_viewport[row], LineSize.SingleWidth);
+                if (row == _cursorRow) ReleasePendingWrapOnWiderRowNoLock();
+            }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
+    }
+
+    private bool ImagesOnRowBecomeSingleWidthNoLock(int viewportRow)
+    {
+        bool changed = false;
+        int top = _isAltScreen ? 0 : _scrollback.Count;
+        foreach (TerminalImage image in _images)
+        {
+            if (image.IsAltScreenImage != _isAltScreen || image.CellY - top != viewportRow || image.LineSize == LineSize.SingleWidth) continue;
+            image.LineSize = LineSize.SingleWidth;
+            changed = true;
+        }
+        return changed;
     }
 
     /// <summary>Returns every row of <paramref name="rows"/> to single width.</summary>

@@ -837,6 +837,38 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void An_erase_that_returns_the_cursor_row_to_single_width_takes_its_image_along()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 4);
+        parser.Process(Dwl);
+        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 4));
+        parser.Process($"{Esc}[1;1H{Esc}[J");
+        Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
+        Assert.All(buffer.Images, image => Assert.Equal(LineSize.SingleWidth, image.LineSize));
+    }
+
+    [Fact]
+    public void DECLRMM_returns_the_images_of_the_screen_not_showing_to_single_width_too()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 4);
+        parser.Process(Dwl);
+        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 1));
+        parser.Process($"{Esc}[?1049h{Esc}[?69h{Esc}[?1049l");
+        Assert.Equal(LineSize.SingleWidth, buffer.GetLineSize(0));
+        Assert.Equal(new[] { LineSize.SingleWidth }, ImageLineSizes(buffer, 0, 4));
+    }
+
+    [Fact]
+    public void Setting_the_attribute_a_row_already_has_settles_an_image_a_scrolling_region_brought_onto_it()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 6);
+        parser.Process($"{Esc}[2;1H{Dwl}a");
+        buffer.AddImage(new TerminalImage(new object(), 2, 1, 1, 3));
+        parser.Process($"{Esc}[2;5r{Esc}[S{Esc}[1;1H{Esc}#5");
+        Assert.Equal(new[] { LineSize.SingleWidth }, ImageLineSizes(buffer, 0, 6));
+    }
+
+    [Fact]
     public void An_image_keeps_its_line_attribute_when_a_scrolling_region_takes_its_row()
     {
         var (buffer, parser) = Create(cols: 12, rows: 6);
