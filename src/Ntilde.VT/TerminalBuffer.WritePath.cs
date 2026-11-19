@@ -384,7 +384,11 @@ namespace Ntilde.VT
             // Handle Pending Wrap State (M1.3)
             DropStalePendingWrapNoLock();
             // With horizontal margins a wrap returns to the left margin, and the wrapped text is not one reflowable line: no soft-wrap mark.
-            if (_isPendingWrap && !isZeroWidthComponent && !_isAfterZwj)
+            if (_isPendingWrap && !isZeroWidthComponent && !_isAfterZwj && FollowDoubleHeightWrapNoLock())
+            {
+                _isPendingWrap = false;
+            }
+            else if (_isPendingWrap && !isZeroWidthComponent && !_isAfterZwj)
             {
                 if (_cursorRow >= 0 && _cursorRow < Rows && !HasHorizontalMargins && _viewport[_cursorRow].LineSize == LineSize.SingleWidth) _viewport[_cursorRow].SetSoftWrap(Cols);
                 _cursorCol = LeftMargin;

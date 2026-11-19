@@ -89,6 +89,22 @@ public partial class TerminalBuffer
     }
 
     /// <summary>
+    /// A wrap pending at the end of a half of a re-wrapped double-height line: the half carries on two rows down, past
+    /// the row of the other half (<see cref="DoubleSizeLineRows"/>), and the cursor goes there. False anywhere else.
+    /// </summary>
+    private bool FollowDoubleHeightWrapNoLock()
+    {
+        if (_cursorRow < 0 || _cursorRow + 2 >= Rows) return false;
+        TerminalRow row = _viewport[_cursorRow];
+        if (!row.IsWrapped || !IsDoubleHeight(row.LineSize)) return false;
+        LineSize below = _viewport[_cursorRow + 1].LineSize;
+        if (!IsDoubleHeight(below) || below == row.LineSize || _viewport[_cursorRow + 2].LineSize != row.LineSize) return false;
+        _cursorRow += 2;
+        _cursorCol = 0;
+        return true;
+    }
+
+    /// <summary>
     /// A wrap is pending only while the cursor waits at the right edge of its row. A row that has since become wider
     /// than that (a resize, or a line of the screen that was not showing returned to single width) has room again:
     /// the next character goes on the column after the cursor.
