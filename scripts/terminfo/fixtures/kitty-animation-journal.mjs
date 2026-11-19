@@ -5,7 +5,7 @@ import { initialInputScreen, inputPaneId, inputRunId, inputCapture } from './inp
 import { pixelCapture } from './pixel-capture.mjs';
 import { imageOwnership, rgbaPng } from './static-images-journal.mjs';
 import { animationCasesByVersion, animationExpectedReplies, currentAnimationVersion } from '../kitty-animation-cases.mjs';
-import { animationAppearanceColor, placeholderAppearances, placeholderColors } from '../kitty-animation-inputs.mjs';
+import { animationAppearanceColor, placeholderAppearances, placeholderColors, placeholderGridAppearances, placeholderQuadrantColors } from '../kitty-animation-inputs.mjs';
 import { animationSuites, animationAction, animationInputs, animationBoundScreen, animationPixelPrefix } from '../kitty-animation.mjs';
 import { imageModeReplyHex, imageBackgroundReply } from '../static-images.mjs';
 import { snapshotHash } from '../agent-observer.mjs';
@@ -17,8 +17,9 @@ const iso = ms => new Date(animationEpoch + ms).toISOString();
 const timelineFrame = (startedAt, span) => ['root', 'second', 'third'][Math.floor(Math.max(0, (span[0] + span[1]) / 2 - startedAt) / 5000) % 3];
 
 /** Paints one appearance onto the capture: the two-cell tile row of a placeholder appearance, or the 32x32 aspect-fit square of one frame color. Returns the tiles drawn, or null for a square or nothing. */
-function paintAppearance(rgba, width, appearance) {
+function paintAppearance(rgba, width, appearance, anchorShift = 0) {
     if (!appearance || appearance === 'absent') return null;
+    if (Object.hasOwn(placeholderGridAppearances, appearance)) return paintGrid(rgba, width, placeholderGridAppearances[appearance], anchorShift);
     const tiles = Object.hasOwn(placeholderAppearances, appearance) ? placeholderAppearances[appearance] : null;
     if (!tiles) {
         const color = animationAppearanceColor(appearance).color;
@@ -28,15 +29,24 @@ function paintAppearance(rgba, width, appearance) {
     tiles.forEach((name, cell) => {
         if (name !== 'absent') for (let y = 0; y < 16; y++) for (let x = 0; x < 8; x++) rgba.set(placeholderColors[name], ((72 + y) * width + 24 + cell * 8 + x) * 4);
     });
-    return tiles;
+    return { widthCells: 2, heightCells: 1 };
+}
+
+/** A 4 x 2 grid of 8x18 cells at the anchor (moved down by `anchorShift` rows): a painted cell is filled with its quadrant's color, an absent one left blank. */
+function paintGrid(rgba, width, pattern, anchorShift) {
+    pattern.split('/').forEach((line, row) => [...line].forEach((letter, column) => {
+        if (letter === '.') return;
+        for (let y = 0; y < 18; y++) for (let x = 0; x < 8; x++) rgba.set(placeholderQuadrantColors[letter], ((72 + (anchorShift * 18) + row * 18 + y) * width + 24 + column * 8 + x) * 4);
+    }));
+    return { widthCells: 4, heightCells: 2 };
 }
 
 /** A 32x32 aspect-fit square of one frame color at the controlled anchor, or blank; optional bleed outside it. A placeholder appearance (#989) is instead one 8x16 band per cell of the two-cell row. */
-export function syntheticAnimationCapture(screen, appearance, { bleed = false } = {}) {
+export function syntheticAnimationCapture(screen, appearance, { bleed = false, anchorShift = 0 } = {}) {
     const capture = pixelCapture(screen), width = screen.cols * 8, height = screen.rows * 18;
     const rgba = Buffer.alloc(width * height * 4), background = screen.bufferState.alternateScreen ? 16 : 0;
     for (let i = 0; i < rgba.length; i += 4) rgba.set([background, background, background, 255], i);
-    const tiles = paintAppearance(rgba, width, appearance);
+    const tiles = paintAppearance(rgba, width, appearance, anchorShift);
     if (bleed) rgba.set([255, 0, 0, 255], 0);
     const bytes = rgbaPng(width, height, rgba);
     Object.assign(capture, { width, height, byteCount: bytes.length, pngBase64: bytes.toString('base64') });
@@ -50,7 +60,7 @@ export function syntheticAnimationCapture(screen, appearance, { bleed = false } 
         cellWidthPx: 8, cellHeightPx: 18, baselineDip: 14, baselineOffsetPx: 14, underlineOffsetPx: 16, strikeOffsetPx: 9 });
     capture.imageDetails = appearance && appearance !== 'absent'
         ? { schemaVersion: 1, complete: true, totalPlacements: 1, placements: [{ index: 0, placementId: '11111111-2222-3333-4444-555555555555', col: 3,
-            viewportRow: 4, widthCells: tiles ? 2 : 4, heightCells: tiles ? 1 : 2, clipTopRows: 0, clipBottomRows: 0, clipRightColumns: 0, preserveAspectRatio: true,
+            viewportRow: 4 + anchorShift, widthCells: tiles ? tiles.widthCells : 4, heightCells: tiles ? tiles.heightCells : 2, clipTopRows: 0, clipBottomRows: 0, clipRightColumns: 0, preserveAspectRatio: true,
             bitmapWidthPx: 16, bitmapHeightPx: 16, sixelPlacement: null }] }
         : { schemaVersion: 1, complete: true, totalPlacements: 0, placements: [] };
     return capture;
@@ -72,7 +82,7 @@ function plannedTiming(stage, startedAt, clock) {
 }
 
 /** The restore (3), compose (4) and placeholder (5) suites run in a persistent tab (the last two also in an ordinary one); versions 1 and 2 stay on the direct-worker path. */
-const persistentVersions = new Set([3, 4, 5]);
+const persistentVersions = new Set([3, 4, 5, 6]);
 
 /** The ownership proof at a moment: a direct run names the App; a persistent one also names the daemon the worker hangs from and the last relaunch. */
 function ownershipStamp(base, { appPid, daemonRecord, relaunchInfo, persistent }, at) {
@@ -97,9 +107,9 @@ function appearanceOf(entry, stage, paint, startedAt, span) {
 }
 
 /** The two captures of a pair: the second may show another appearance (pairDiffer); each is written under its frame index. */
-function pairPixels(output, frameIndex, screen, appearance, { shownOther, bleed }) {
+function pairPixels(output, frameIndex, screen, appearance, { shownOther, bleed, anchorShift }) {
     return [appearance, shownOther ?? appearance].map((shown, side) => {
-        const capture = syntheticAnimationCapture(screen, shown, { bleed: bleed(side) });
+        const capture = syntheticAnimationCapture(screen, shown, { bleed: bleed(side), anchorShift });
         const bytes = Buffer.from(capture.pngBase64, 'base64'), { pngBase64, ...facts } = capture;
         const file = `${animationPixelPrefix}/frame-${String(frameIndex).padStart(3, '0')}-${side}.png`;
         writeFileSync(join(output, file), bytes); return { ...structuredClone(facts), file, sha256: pngHash(bytes) };
@@ -122,7 +132,8 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
     let appPid = baseOwnership.app.pid, currentPane = paneId, relaunchInfo;
     const stamp = at => ownershipStamp(baseOwnership, { appPid, daemonRecord, relaunchInfo, persistent: persistentVersions.has(version) && !direct }, at);
     const add = (entry, screen, sample, action, appearance, readAt, span) => {
-        const pixels = pairPixels(output, frames.length, screen, appearance, { shownOther: pairDiffer?.(entry), bleed: side => bleed?.(entry, side) === true });
+        const anchorShift = cases.find(item => item.id === entry.caseId)?.stages.find(item => item.id === entry.stageId)?.anchorShift ?? 0;
+        const pixels = pairPixels(output, frames.length, screen, appearance, { shownOther: pairDiffer?.(entry), bleed: side => bleed?.(entry, side) === true, anchorShift });
         frames.push({ index: frames.length, kind: 'kan-' + entry.kind, caseId: entry.caseId ?? null, stageId: entry.stageId ?? null,
             paneId: currentPane, screen: structuredClone(screen), afterScreen: structuredClone(screen), sha256: snapshotHash(screen),
             afterSha256: snapshotHash(screen), pixels, pairSpan: { startMs: animationEpoch + span[0], endMs: animationEpoch + span[1] },

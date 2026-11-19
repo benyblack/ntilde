@@ -1,5 +1,5 @@
 // Planned protocol variants and the independent playback timeline only; importing performs no terminal I/O.
-import { animationFrameInput, animationPngInput, placeholderHalvesInput } from './kitty-animation-inputs.mjs';
+import { animationFrameInput, animationPngInput, placeholderHalvesInput, placeholderQuadrantsInput } from './kitty-animation-inputs.mjs';
 
 /**
  * Suite versions: 1 is the three-case suite that retained runs still carry (#988); 2 adds PNG and root-frame composition (#1015) and is what full collections produce;
@@ -7,8 +7,9 @@ import { animationFrameInput, animationPngInput, placeholderHalvesInput } from '
  * persistent-restore collection (a direct tab has nothing to reattach to).
  * 4 (#1027) is the frame-composition suite (`a=c`): full-frame compositions and refused ones, only in the persistent-compose collection (persistent image policy 4); full collections stay on 2.
  * 5 (#989) is the Unicode placeholder suite (`U=1` virtual placements and U+10EEEE cells): one image shown through placeholder cells, in the placeholder collections only (an ordinary tab and a persistent tab, image policy 5).
+ * 6 (#989) is the placeholder grid suite: what suite 5 left unmeasured (a grid of more than one row, the inheritance of a nonzero row, and cells that scroll, are erased and are inserted with their text), in its own two collections.
  */
-export const animationSuiteIds = Object.freeze({ 1: 'ntilde-owned-kitty-animation-v1', 2: 'ntilde-owned-kitty-animation-v2', 3: 'ntilde-owned-kitty-animation-restore-v1', 4: 'ntilde-owned-kitty-animation-compose-v1', 5: 'ntilde-owned-kitty-placeholders-v1' });
+export const animationSuiteIds = Object.freeze({ 1: 'ntilde-owned-kitty-animation-v1', 2: 'ntilde-owned-kitty-animation-v2', 3: 'ntilde-owned-kitty-animation-restore-v1', 4: 'ntilde-owned-kitty-animation-compose-v1', 5: 'ntilde-owned-kitty-placeholders-v1', 6: 'ntilde-owned-kitty-placeholders-grid-v1' });
 /** The one suite version whose stages relaunch the App (#1030); every other version runs without one. */
 export const restoreAnimationVersion = 3;
 export const currentAnimationVersion = 2;
@@ -109,7 +110,22 @@ const placeholderCases = Object.freeze([
         stage('wrong-image', 'absent', { reply: 'wrong-image' }), stage('stale-placement', 'absent', { reply: 'stale-placement' }), stage('outside-grid', 'absent', { reply: 'outside-grid' }),
         stage('valid', 'redBlue', { reply: 'valid' }), stage('deleted', 'absent', { reply: 'delete' }), clear]) }),
 ]);
-export const animationCasesByVersion = Object.freeze({ 1: timedCases, 2: Object.freeze([...timedCases, compositionCase]), 3: restoreCases, 4: composeCases, 5: placeholderCases });
+// The placeholder grid cases (#989). The first placeholder suite read one row of two cells; this one reads a 4 x 2 grid (which with a 16x16 image is about as square as a cell font allows), over an image in four colored quadrants,
+// so every one of the eight cells has an interior color that names the tile it shows, row and column. A stage is a row of cells per screen row; the cells' marks are written out from the protocol (see placeholderGridPrints).
+// rows: the whole grid, the row marks (a swapped pair of rows, and the lower tiles on the top screen row alone), and a bare placeholder inheriting the row of a nonzero row and the next column from its left neighbour.
+// scroll: the tiles move, shrink and grow with the text rows that carry them (scroll up one line, erase the lower text row, insert a line above the grid): `anchorShift` is how many rows the reading moves from the anchor.
+export const placeholderGridVersion = 6;
+export const placeholderGridEnvelope = Object.freeze({ cols: 4, rows: 2 });
+const gridBuild = stage('build', 'absent', { reply: 'build', expect: replies('ok', 'placed') });
+const placeholderGridCases = Object.freeze([
+    Object.freeze({ id: 'kitty.placeholders.rows', stages: Object.freeze([stage('blank', 'absent'), gridBuild,
+        stage('grid', 'full', { reply: 'grid' }), stage('rows-swapped', 'rowsSwapped', { reply: 'rows-swapped' }), stage('lower-tiles-on-top', 'lowerTilesOnTopRow', { reply: 'lower-tiles-on-top' }),
+        stage('inherit-rows', 'full', { reply: 'inherit-rows' }), clear]) }),
+    Object.freeze({ id: 'kitty.placeholders.scroll', stages: Object.freeze([stage('blank', 'absent'), gridBuild,
+        stage('shown', 'full', { reply: 'shown' }), stage('scrolled', 'full', { reply: 'scrolled', anchorShift: -1 }), stage('erase-lower', 'upperRowOnly', { reply: 'erase-lower' }),
+        stage('insert-line', 'full', { reply: 'insert-line', anchorShift: 1 }), clear]) }),
+]);
+export const animationCasesByVersion = Object.freeze({ 1: timedCases, 2: Object.freeze([...timedCases, compositionCase]), 3: restoreCases, 4: composeCases, 5: placeholderCases, 6: placeholderGridCases });
 export const animationCases = animationCasesByVersion[currentAnimationVersion];
 
 const uint = value => Number.isSafeInteger(value) && value >= 1 && value <= 0xffffffff;
@@ -136,8 +152,8 @@ const composeCommands = Object.freeze({
     intact: imageId => apc(`a=a,i=${imageId},c=2`),
 });
 
-// Placeholder commands (#989). These literals are the protocol's, written out here and not taken from the App: U+10EEEE, and kitty's row/column diacritics numbers 0, 1 and 2 (U+0305, U+030D, U+030E).
-const placeholderChar = '\u{10EEEE}', placeholderMarks = Object.freeze(['\u0305', '\u030D', '\u030E']);
+// Placeholder commands (#989). These literals are the protocol's, written out here and not taken from the App: U+10EEEE, and kitty's row/column diacritics numbers 0 to 3 (U+0305, U+030D, U+030E, U+0310).
+const placeholderChar = '\u{10EEEE}', placeholderMarks = Object.freeze(['\u0305', '\u030D', '\u030E', '\u0310']);
 /** The largest image id a placeholder stage may use: it is carried by a 24-bit foreground colour (no third mark), and the wrong-image stage names the next id. */
 export const placeholderMaxImageId = 0xfffffe;
 const placeholderCell = (row, column) => placeholderChar + (row === undefined ? '' : placeholderMarks[row] + placeholderMarks[column]);
@@ -174,6 +190,33 @@ export function placeholderStageCells(stageId, imageId, anchorCol) {
     return print.cells.map((marks, index) => ({ column: anchorCol + (print.skip ?? 0) + index, text: placeholderCell(...marks), imageId: imageId + (print.idOffset ?? 0) }));
 }
 
+// Grid stages (#989). `print` is what the stage writes, per screen row (anchor row 4 and the one below it): the (row, column) marks of each cell, [] being a bare placeholder that inherits from its left neighbour.
+// `operation` runs after the printing and moves the cells; `final` is where the cells are once it has run, per screen row (the screen the cell grid must then show).
+const gridMarks = (row, columns = [0, 1, 2, 3]) => columns.map(column => [row, column]);
+const gridInherit = row => [[row, 0], [], [], []];
+const gridFull = Object.freeze({ 4: gridMarks(0), 5: gridMarks(1) });
+const placeholderGridPrints = Object.freeze({
+    grid: { print: gridFull },
+    'rows-swapped': { print: { 4: gridMarks(1), 5: gridMarks(0) } },
+    'lower-tiles-on-top': { print: { 4: gridMarks(1) } },
+    'inherit-rows': { print: { 4: gridInherit(0), 5: gridInherit(1) } },
+    shown: { print: gridFull },
+    scrolled: { print: gridFull, operation: '\x1b[S', final: { 3: gridFull[4], 4: gridFull[5] } },                  // SU: the screen scrolls up one line
+    'erase-lower': { print: gridFull, operation: '\x1b[6;1H\x1b[2K', final: { 4: gridFull[4] } },                    // EL 2 on the lower text row
+    'insert-line': { print: gridFull, operation: '\x1b[5;1H\x1b[L', final: { 5: gridFull[4], 6: gridFull[5] } },    // IL at the grid's first text row
+});
+const gridCommand = (spec, imageId) => '\x1b[2J' + Object.entries(spec.print).map(([row, marks]) => `\x1b[${Number(row) + 1};${animationAnchor.col + 1}H` + placeholderRun(imageId, 1, ...marks.map(item => placeholderCell(...item)))).join('') + (spec.operation ?? '');
+const placeholderGridCommands = Object.freeze({
+    build: imageId => apc(`a=t,${frameControls},i=${imageId};` + placeholderQuadrantsInput().bytes.toString('base64')) + apc(`a=p,U=1,i=${imageId},p=1,c=4,r=2`),
+    ...Object.fromEntries(Object.entries(placeholderGridPrints).map(([stageId, spec]) => [stageId, imageId => gridCommand(spec, imageId)])),
+});
+/** The placeholder cells the screen holds once a grid stage has run: where each sits (screen row and column) and its grapheme, with the image id the foreground names. Empty for a stage that leaves the screen blank. */
+export function placeholderGridStageCells(stageId, imageId) {
+    const spec = placeholderGridPrints[stageId];
+    if (!spec) return [];
+    return Object.entries(spec.final ?? spec.print).flatMap(([row, marks]) => marks.map((item, index) => ({ row: Number(row), column: animationAnchor.col + index, text: placeholderCell(...item), imageId })));
+}
+
 /** Exact bounded bytes; the image id is parent-chosen per case, never guessed from a reply. */
 export function animationCommand(caseId, stageId, { imageId } = {}, version = currentAnimationVersion) {
     const spec = animationCasesByVersion[version].find(item => item.id === caseId);
@@ -181,6 +224,13 @@ export function animationCommand(caseId, stageId, { imageId } = {}, version = cu
     if (!entry) throw new Error('Unknown animation stage.');
     if (stageId === 'blank' || entry.relaunch || (entry.waitMs && !entry.reply)) return '';
     if (!uint(imageId)) throw new Error('Animation image id must be an explicit positive uint32.');
+    if (version === placeholderGridVersion) {
+        if (imageId > placeholderMaxImageId) throw new Error('A placeholder image id must fit a 24-bit foreground colour.');
+        if (stageId === 'clear') return apc(`a=d,d=I,i=${imageId}`) + clearScreen;
+        const command = placeholderGridCommands[stageId];
+        if (!command) throw new Error('Unknown placeholder grid stage.');
+        return command(imageId);
+    }
     if (version === placeholderAnimationVersion) {
         if (imageId > placeholderMaxImageId) throw new Error('A placeholder image id must fit a 24-bit foreground colour with room for the next id.');
         if (stageId === 'clear') return apc(`a=d,d=I,i=${imageId}`) + clearScreen;

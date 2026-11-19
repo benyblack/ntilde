@@ -67,13 +67,18 @@ export const isDirectComposeScope = value => JSON.stringify(value) === JSON.stri
  */
 export const persistentPlaceholdersScope = Object.freeze({ id: 'owned-kitty-placeholders-persistent-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-placeholders']), suiteVersion: 5, deadlineMs: 300000 });
 export const directPlaceholdersScope = Object.freeze({ id: 'owned-kitty-placeholders-direct-v1', persistence: 'Off', suites: Object.freeze(['kitty-placeholders']), suiteVersion: 5, deadlineMs: 300000 });
+/** The placeholder grid collections (#989): suite version 6, a 4 x 2 grid of cells, in a persistent tab and in an ordinary one, each with its own receipt. */
+export const persistentPlaceholderGridScope = Object.freeze({ id: 'owned-kitty-placeholder-grid-persistent-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-placeholder-grid']), suiteVersion: 6, deadlineMs: 300000 });
+export const directPlaceholderGridScope = Object.freeze({ id: 'owned-kitty-placeholder-grid-direct-v1', persistence: 'Off', suites: Object.freeze(['kitty-placeholder-grid']), suiteVersion: 6, deadlineMs: 300000 });
+export const isPersistentPlaceholderGridScope = value => JSON.stringify(value) === JSON.stringify(persistentPlaceholderGridScope);
+export const isDirectPlaceholderGridScope = value => JSON.stringify(value) === JSON.stringify(directPlaceholderGridScope);
 export const isPersistentPlaceholdersScope = value => JSON.stringify(value) === JSON.stringify(persistentPlaceholdersScope);
 export const isDirectPlaceholdersScope = value => JSON.stringify(value) === JSON.stringify(directPlaceholdersScope);
-export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope) || isPersistentRestoreScope(value) || isPersistentComposeScope(value) || isPersistentPlaceholdersScope(value);
+export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope) || isPersistentRestoreScope(value) || isPersistentComposeScope(value) || isPersistentPlaceholdersScope(value) || isPersistentPlaceholderGridScope(value);
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 /** Every animation-only collection: the persistent ones and the ordinary-tab composition and placeholder ones. */
-export const isAnimationOnlyScope = value => isPersistentAnimationScope(value) || isDirectComposeScope(value) || isDirectPlaceholdersScope(value);
+export const isAnimationOnlyScope = value => isPersistentAnimationScope(value) || isDirectComposeScope(value) || isDirectPlaceholdersScope(value) || isDirectPlaceholderGridScope(value);
 export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV4) || same(value, osc5Osc633ScopeV4) || same(value, osc633ScopeV3) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
 export const isLegacyScope = value => same(value, legacyScope) || same(value, legacyScopeV4) || same(value, osc5LegacyScopeV4) || same(value, legacyScopeV3) || same(value, integratedLegacyScope) || same(value, historicLegacyScope);
 export const isHistoricOsc633Scope = value => same(value, historicOsc633Scope) || same(value, historicLegacyScope);
