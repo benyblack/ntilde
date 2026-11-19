@@ -18,7 +18,7 @@ export { pinnedBundleArchive, upstreamBundleSha256 } from './kitty-animation-qua
 // Measured on the committed trees named here: the Release sidecar was built from the App at the first commit, and the measured scripts are the tree of the second (the commits between them only changed measured scripts, so the App tree is
 // the same). Later commits are publication, docs and test pins, and merges of main (which can change VT sources the run captured, so the tree this publication ships in is not the measured App).
 export const measuredAppRevision = 'b5e6cec9fde963cceffb56e2498c13b50af570d7';
-export const measuredScriptsRevision = '7ada2aab870f9880832123cd23c06f05642b3767';
+export const measuredScriptsRevision = '499bdffdd3211fb693bdf9b87f684ac92b5238e1';
 // Both publications were collected on the same sidecar and the same scripts, one after the other.
 export const directMeasuredAppRevision = measuredAppRevision;
 export const directMeasuredScriptsRevision = measuredScriptsRevision;

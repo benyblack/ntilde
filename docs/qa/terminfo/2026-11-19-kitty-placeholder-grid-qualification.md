@@ -11,7 +11,7 @@ owned animation carrier), in an ordinary tab (`--scope direct-placeholder-grid`)
 | `extensions.kitty-graphics.unicode-placeholders`, grid, ordinary tab | inconclusive by design | inconclusive by design | **supported** (`ntilde-kitty-unicode-placeholder-grid-direct-effect-v1`) | none (no stock collector ran) |
 | `extensions.kitty-graphics.unicode-placeholders`, grid, persistent tab | inconclusive by design | inconclusive by design | **supported** (`ntilde-kitty-unicode-placeholder-grid-persistent-effect-v1`) | none (no stock collector ran) |
 
-All 14 stages of the two cases passed in both tabs (ordinary tab: run `abfec2ab`, persistent tab: run `4713a882`; App commit `b5e6cec9`, scripts commit `7ada2aab`, source policy v70), with eighteen validity controls held in each: the nine of the animation carrier, four lineage controls of the kind
+All 14 stages of the two cases passed in both tabs (ordinary tab: run `bf0ffaaf`, persistent tab: run `36d3e84b`; App commit `b5e6cec9`, scripts commit `499bdffd`, source policy v70), with eighteen validity controls held in each: the nine of the animation carrier, four lineage controls of the kind
 of tab, and five of the grid suite (one App process and one worker throughout, the virtual placement drew nothing, the whole grid painted, and a nonzero row was inherited, not defaulted). The pinned callbacks are replayed from the retained bundle and stay inconclusive by design. No stock, Core or
 common-harness number changes, and the inventory is unchanged (one id, already counted).
 
@@ -38,8 +38,9 @@ reflow of placeholder cells, a palette or theme background behind the cells, tex
 ## Retained evidence and the earlier attempts
 
 `2026-11-19-kitty-placeholder-grid-direct/` (ordinary tab) and `2026-11-19-kitty-placeholder-grid/` (persistent tab) each hold the whole owned run (`owned-run.zip`, SHA-256 pinned in `manifest.json`), the pinned bundle copy and the generated `summary.json` and `report.json`. The ordinary-tab directory keeps
-`superseded-attempts/` (`attempts.json` records the outcome, reason and digests): a first collection stopped after four stages on unexpected input outside a capture window (cause not retained), and a second passed the whole `rows` case but was refused at the scrolled stage because the scrolled-in line held the default cell
-(see above); the carrier then accepted either fill and the suite was collected again. The measured App is commit `b5e6cec9` and the measured scripts `7ada2aab`; later commits are publication, docs and test pins, and merges of main (which can change VT sources the run captured). `kitty-placeholder-grid-publication.test.mjs` rederives the
+`superseded-attempts/` (`attempts.json` records the outcome, reason and digests): a first collection stopped after four stages on unexpected input outside a capture window (cause not retained), a second passed the whole `rows` case but was refused at the scrolled stage because the scrolled-in line held the default cell
+(see above; the carrier then accepted either fill), and a complete 14/14 run, published first, was superseded because review found that the oracle read a painted cell only inside its sampled rectangle (the oracle now also requires the part of each tile that every placement of the square covers to be painted, and the retained pixels satisfied that too).
+The persistent-tab directory keeps that last superseded run as well. The measured App is commit `b5e6cec9` and the measured scripts `499bdffd`; later commits are publication, docs and test pins, and merges of main (which can change VT sources the run captured). `kitty-placeholder-grid-publication.test.mjs` rederives the
 receipt binding, settings, measured sources, lineage and the whole carrier report from the journals for both publications and refuses a downgraded, stripped, relaunched or foreign run.
 
 ```sh

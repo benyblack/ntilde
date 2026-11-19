@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "note": "Development attempts of the persistent-tab placeholder grid measurement (#989) in order. Only the retained files are kept; none produced a grade.",
+  "attempts": [
+    {
+      "attempt": "owned-xyZFH8",
+      "runId": "4713a882f59c78789a890834fd1c52bb",
+      "scripts": "7ada2aab",
+      "collection": "persistent-placeholder-grid scope",
+      "outcome": "14/14 passed (superseded by review)",
+      "reason": "A complete run (14/14), published first. Review then found that the grid oracle read a painted cell only inside its sampled rectangle, so a tile could have passed by painting just that rectangle (the retained pixels also satisfy the stricter reading); the fix edits a measured file (the oracle: the part of each tile that every placement of the square covers must be painted too), so the run is superseded by a fresh one.",
+      "files": [
+        {
+          "file": "owned-xyZFH8/animation-observations.json",
+          "sha256": "1f55f4b46d2a730ed5372b068ae1ea30d01985b5f1dad33b9a9361825c4d4ef0",
+          "bytes": 645247
+        },
+        {
+          "file": "owned-xyZFH8/ownership-proof.json",
+          "sha256": "cb6c9530b4716e63919c76be64e61565009efb5c5c09f1d5bb3314abb6b6bfc6",
+          "bytes": 58178
+        },
+        {
+          "file": "owned-xyZFH8/persistent-animation-receipt.json",
+          "sha256": "182a015226e23e27811471a0836738f4021b2ec558c79acbe67aa2e908f6d396",
+          "bytes": 966
+        }
+      ]
+    }
+  ]
+}

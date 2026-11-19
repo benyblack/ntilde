@@ -51,6 +51,31 @@
           "bytes": 38102
         }
       ]
+    },
+    {
+      "attempt": "owned-M4iO8H",
+      "runId": "abfec2ab0f17cc6c7adaf0b32337f67e",
+      "scripts": "7ada2aab",
+      "collection": "direct-placeholder-grid scope",
+      "outcome": "14/14 passed (superseded by review)",
+      "reason": "A complete run (14/14), published first. Review then found that the grid oracle read a painted cell only inside its sampled rectangle, so a tile could have passed by painting just that rectangle (the retained pixels also satisfy the stricter reading); the fix edits a measured file (the oracle: the part of each tile that every placement of the square covers must be painted too), so the run is superseded by a fresh one.",
+      "files": [
+        {
+          "file": "owned-M4iO8H/animation-observations.json",
+          "sha256": "9c44e0b7ff3e385ad9bf847716bedf47061aede1027f08f954f5a201885d3dc7",
+          "bytes": 635571
+        },
+        {
+          "file": "owned-M4iO8H/ownership-proof.json",
+          "sha256": "219b8d39a709fc25fec57da754eeb974a6a9c8a5e8be563947e5bfa2d5e4120b",
+          "bytes": 51858
+        },
+        {
+          "file": "owned-M4iO8H/persistent-animation-receipt.json",
+          "sha256": "a0bb2c2588cd856632aa4e9fd43f947bee3cbfd8d9b2168f5933a33c36057e7e",
+          "bytes": 950
+        }
+      ]
     }
   ]
 }

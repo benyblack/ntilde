@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "ownedRunId": "4713a882f59c78789a890834fd1c52bb",
+  "ownedRunId": "36d3e84b314e92c1d5f7e94c2f9e43c1",
   "appRevision": "b5e6cec9fde963cceffb56e2498c13b50af570d7",
-  "scriptsRevision": "7ada2aab870f9880832123cd23c06f05642b3767",
+  "scriptsRevision": "499bdffdd3211fb693bdf9b87f684ac92b5238e1",
   "context": {
     "adapter": "ntilde-owned-kitty-animation-persistent-adapter-v1",
     "collectionScope": {
@@ -17,8 +17,8 @@
     "appVersion": "0.14.0",
     "appVersionSource": "operator supplied; not independently verified",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-v70",
-    "sourceSnapshotManifestSha256": "ac51bebc6c3285e59ed8d8420616ebdda2a05d60c1b99cdcc5986bd7b52a270b",
-    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-Eh50IT",
+    "sourceSnapshotManifestSha256": "380071d8414e3f4aee7b9596b106e0b9ec8054f7190defb5e772fe077137aee4",
+    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-F1rNqV",
     "runnerSourceSha256": "8f836be22d709db3c201ddad7964ff29fb7946c1ebbafa36cf7c7fbf0a400641",
     "adapterSourceSha256": "d21ad64158e39ca20c093cb1cad82f772a42afc0a460b5117ed6f3ff3f4d50e3",
     "ownershipSourceSha256": "611d80e38e54f096a9a529e6b16832624ca1803fde8c90ebaadba84c37945fda",
@@ -434,7 +434,7 @@
     "collectionScopeSourceSha256": "91d8c956e116796bcf5f31a4925a608c116c4416ca586a4ebf501344c9e7c625",
     "kittyAnimationInputsSourceSha256": "c091ab7de4972da59c837ccd97bb917b74d4fa50f3f2046a67a5bc81b74fb659",
     "kittyAnimationCasesSourceSha256": "0646c3e916fc30f4964a3e88c41bf4ca547db995b702cdf4ee84c3c0621c13f0",
-    "kittyAnimationOracleSourceSha256": "2415b1464b2b1c2d294563ad4399fd30b3d41178e61c579952f55968696aafac",
+    "kittyAnimationOracleSourceSha256": "5543dc18bfea12420d55a13f6af33d5037568bc427c1b426067af5e284e7ad8c",
     "kittyAnimationSuiteSourceSha256": "c617f6e3cc8e3d494f57941ea9043edff31ddf07b881b80119bcace3f0565080",
     "kittyAnimationCaptureSourceSha256": "ec9f44d7dc89fdc66669b5ffa869fdd96c717c71be885fc8662a0e8b57378dfd",
     "kittyAnimationCollectorSourceSha256": "f0515ce6aa6b86564d3ac448754b0fda43109499e67c378d2eda060640e8b52f",
@@ -488,21 +488,21 @@
     "capsGradingSourceSha256": "344db29b793d70cb07aa46d8b36eaa4181fae438d654011d4edc3a64f550b4bb",
     "capsGradingCollectorSourceSha256": "0d0a1c0c30143364ca7218494de813ee7c90ca97482f42062fe66f03e23bb4ad",
     "capsReceiptSourceSha256": "79773c5131440feaafe04b6b76c210205ec2ec71136965ecd7889f0e182a2959",
-    "initialSettingsSha256": "1550a5e9812ef5c64ca60ac45c9c220095ccee3fcd2307a14c24eab9a92583e9",
+    "initialSettingsSha256": "3abcf3659b5e88c34e875ba0cef337b05bcd4a62d0b8bf4518aae662da63543e",
     "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "e21be15f90671dd970078843adf5f37f57cecba482a8f798550b1a1f491d1cf3",
     "nodeVersion": "v24.22.2",
-    "startedAt": "2026-11-19T15:54:53.823Z",
-    "runId": "4713a882f59c78789a890834fd1c52bb",
+    "startedAt": "2026-11-19T16:10:45.206Z",
+    "runId": "36d3e84b314e92c1d5f7e94c2f9e43c1",
     "animationSuiteId": "ntilde-owned-kitty-placeholders-grid-v1",
     "ownedAnimationPolicy": "owned-kitty-placeholders-paired-raw-render-grid-v1",
-    "ownerPid": 55135
+    "ownerPid": 65822
   },
   "receipt": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-kitty-placeholder-grid-persistent-receipt-v1",
-    "runId": "4713a882f59c78789a890834fd1c52bb",
+    "runId": "36d3e84b314e92c1d5f7e94c2f9e43c1",
     "collectionScope": {
       "id": "owned-kitty-placeholder-grid-persistent-v1",
       "persistence": "KeepOnClose",
@@ -513,45 +513,45 @@
       "deadlineMs": 300000
     },
     "animationEvidence": {
-      "runId": "4713a882f59c78789a890834fd1c52bb",
+      "runId": "36d3e84b314e92c1d5f7e94c2f9e43c1",
       "suiteId": "ntilde-owned-kitty-placeholders-grid-v1",
       "file": "animation-observations.json",
-      "sha256": "1f55f4b46d2a730ed5372b068ae1ea30d01985b5f1dad33b9a9361825c4d4ef0",
+      "sha256": "ca8884a367ae19c0b609a68009d23ab43c5c56f8bf99ab14e6e8391ee1304208",
       "counts": {
         "passed": 14
       },
       "provisionalUntil": "cell-receipt.json"
     },
-    "ownershipProofSha256": "cb6c9530b4716e63919c76be64e61565009efb5c5c09f1d5bb3314abb6b6bfc6",
-    "contextSha256": "9927602208c1026865b91a7dd6d848d743003b118c98dbb9006588e6adb30098",
+    "ownershipProofSha256": "17e78798e58a7181993bfcbd697fd7ec9becb1793806a5cf311d56cfce42b0ad",
+    "contextSha256": "ad8b5ae85bbd90fc91d90769677d976caa6cccdd43be9430f17654f33017ea9d",
     "fixtureRemoved": true,
-    "completedAt": "2026-11-19T15:54:58.456Z"
+    "completedAt": "2026-11-19T16:10:51.761Z"
   },
   "daemon": {
     "identity": {
-      "pid": 55138,
+      "pid": 65834,
       "uid": 501,
       "executable": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde"
     },
-    "appData": "/Users/behnam/.ntilde-qa/nt-EF14aT/appdata",
+    "appData": "/Users/behnam/.ntilde-qa/nt-TV79u2/appdata",
     "command": "/Users/behnam/Projects/ntilde/.claude/worktrees/kitty-placeholders-grid/artifacts/sidecar-grid/Ntilde mux serve",
-    "birth": "Thu Nov 19 15:54:54 2026",
-    "appBirth": "Thu Nov 19 15:54:53 2026",
+    "birth": "Thu Nov 19 16:10:45 2026",
+    "appBirth": "Thu Nov 19 16:10:45 2026",
     "descriptor": {
-      "pid": 55138,
+      "pid": 65834,
       "processName": "Ntilde",
-      "endpoint": "/Users/behnam/.ntilde-qa/nt-EF14aT/appdata/mux/mux.sock"
+      "endpoint": "/Users/behnam/.ntilde-qa/nt-TV79u2/appdata/mux/mux.sock"
     }
   },
   "pane": {
-    "id": "4110cbbb-97f5-4e6f-90c3-93f928438d40",
+    "id": "c00899e1-2551-4de2-9c47-1f6e791ba428",
     "stable": true
   },
   "carrier": {
     "suiteId": "ntilde-owned-kitty-placeholders-grid-v1",
     "policy": "owned-kitty-placeholders-paired-raw-render-grid-v1",
     "file": "animation-observations.json",
-    "sha256": "1f55f4b46d2a730ed5372b068ae1ea30d01985b5f1dad33b9a9361825c4d4ef0",
+    "sha256": "ca8884a367ae19c0b609a68009d23ab43c5c56f8bf99ab14e6e8391ee1304208",
     "counts": {
       "passed": 14
     },

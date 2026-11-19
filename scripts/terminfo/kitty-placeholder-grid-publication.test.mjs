@@ -18,10 +18,10 @@ const publication = name => fileURLToPath(new URL(`../../docs/qa/terminfo/${name
 /** The two publications of the same suite: a live persistent tab (image policy 5) and an ordinary tab. */
 const variants = [
     { label: 'persistent tab', kind: 'persistent', dir: publication('2026-11-19-kitty-placeholder-grid'), scope: persistentPlaceholderGridScope, receiptSuiteId: placeholderGridReceiptSuiteId, qualificationSuiteId: placeholderGridQualificationSuiteId,
-        contract: placeholderGridEffectContract, app: measuredAppRevision, scripts: measuredScriptsRevision, attempts: 0, daemon: true,
+        contract: placeholderGridEffectContract, app: measuredAppRevision, scripts: measuredScriptsRevision, attempts: 1, daemon: true,
         limits: ['image policy 5', 'No stock collector ran', 'an ordinary (non-persistent) tab in this publication', 'swapped columns on a grid', 'ids above 24 bits', 'relative placements', 'resize and reflow', 'a second client', 'remote persistent sessions', 'a restart or reattach'] },
     { label: 'ordinary tab', kind: 'direct', dir: publication('2026-11-19-kitty-placeholder-grid-direct'), scope: directPlaceholderGridScope, receiptSuiteId: directPlaceholderGridReceiptSuiteId, qualificationSuiteId: directPlaceholderGridQualificationSuiteId,
-        contract: directPlaceholderGridEffectContract, app: directMeasuredAppRevision, scripts: directMeasuredScriptsRevision, attempts: 2, daemon: false,
+        contract: directPlaceholderGridEffectContract, app: directMeasuredAppRevision, scripts: directMeasuredScriptsRevision, attempts: 3, daemon: false,
         limits: ['ordinary (non-persistent, SessionPersistence Off) tab', 'No stock collector ran', 'a persistent tab in this publication', 'swapped columns on a grid', 'ids above 24 bits', 'relative placements', 'resize and reflow', 'a second client', 'remote sessions'] },
 ];
 
