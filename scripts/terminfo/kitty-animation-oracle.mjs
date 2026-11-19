@@ -157,9 +157,16 @@ export function inspectPlaceholderGridPixels({ baseline, observed, grid, anchor,
     const controls = [check('reference target is independently blank with the known background', baselineBlank),
         check('all non-target capture pixels remain unchanged', outsideUnchanged)];
     const assertion = check(`the grid of placeholder cells shows ${expected.join('/')}, each painted cell the exact color of its quadrant`, flat.every(item => item.color === item.expected));
-    const kind = flat.every(item => item.expected === 'absent' && item.color === 'absent') ? 'background' : (flat.some(item => item.color === 'mixed') ? 'mixed' : 'tiles');
+    let kind = 'tiles';
+    if (flat.some(item => item.color === 'mixed')) kind = 'mixed';
+    if (flat.every(item => item.expected === 'absent' && item.color === 'absent')) kind = 'background';
+    /** One letter per cell: the color it showed, '.' for nothing and '?' for anything else. */
+    const letterOf = item => {
+        if (item.color === 'absent') return '.';
+        return item.color === 'mixed' ? '?' : item.color;
+    };
     return { scope: 'bounded placeholder-grid pixel comparison only; no ownership, freshness, timing or stock grade',
-        controls, assertions: [assertion], classification: { kind, frameId: null, cells: shown.map(line => line.map(item => (item.color === 'absent' || item.color === 'mixed' ? (item.color === 'absent' ? '.' : '?') : item.color)).join('')).join('/'), geometryOk: true },
+        controls, assertions: [assertion], classification: { kind, frameId: null, cells: shown.map(line => line.map(letterOf).join('')).join('/'), geometryOk: true },
         measurement: { envelope, contentBounds: null, cells: flat.map(item => ({ rect: item.rect, sample: item.sample, expected: item.expected, color: item.color })) } };
 }
 
