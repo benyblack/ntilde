@@ -68,8 +68,11 @@ test('a mode changed through a use is the template\'s original mode again for th
 }));
 
 test('after a repair that failed, no later use is handed the unrepaired template', t => harness((use, root, links) => {
-    // A template that copies has nothing to repair: its release does nothing, so there is no failure to provoke.
-    if (!links.linking) return t.skip('this file system is copied to, not linked');
+    // A copy has nothing to repair, so there is no failure to provoke: that is the whole template on a file system it
+    // copies to, and this one file where the link itself was refused (the first test reports that case).
+    let linked = false;
+    use(output => { linked = lstatSync(join(output, 'a.json')).nlink > 1; });
+    if (!links.linking || !linked) return t.skip('this file was copied, not linked');
     // Removing the pristine copy mid-use makes the repair of the written file throw.
     assert.throws(() => use(output => { writeFileSync(join(output, 'a.json'), 'never repaired'); links.remove(); }));
     // The template may still hold that write, so the next use must not link it. With the pristine copy gone its copy fails;
