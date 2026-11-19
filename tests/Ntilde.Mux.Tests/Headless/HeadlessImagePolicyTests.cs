@@ -178,6 +178,67 @@ public sealed class HeadlessImagePolicyTests
         }
     }
 
+    private const string Placeholder = "\U0010EEEE";
+    private static readonly string[] Marks = ["\u0305", "\u030D"]; // kitty's first two row/column diacritics: numbers 0 and 1
+    private static string Mark(int number) => Marks[number];
+    private static List<TerminalKittyVirtualPlacementState> Virtuals(TerminalBuffer buffer) =>
+        buffer.ExportState(int.MaxValue).KittyImages?.SingleOrDefault()?.VirtualPlacements ?? [];
+
+    /// <summary>An image and a 2 x 1 virtual placement named 7 (invisible), sent before a second client attaches.</summary>
+    private static readonly string PlaceholderSetup =
+        Kitty("a=t,i=42,f=32,s=1,v=1", Convert.ToBase64String([1, 2, 3, 255]))
+        + Kitty("a=p,U=1,i=42,p=7,c=2,r=1");
+
+    /// <summary>The two cells that show it, printed once everyone is attached.</summary>
+    private static readonly string PlaceholderCells = $"\x1b[3;4H\x1b[38;5;42m\x1b[58;5;7m{Placeholder}{Mark(0)}{Mark(0)}{Placeholder}{Mark(0)}{Mark(1)}\x1b[0m";
+
+    private static string PlaceholderRuns(TerminalBuffer buffer)
+    {
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            return string.Join("|", buffer.GetVisibleImagesSnapshot(buffer.TotalLines - buffer.Rows, buffer.Rows).Where(image => image.GridColumns > 0)
+                .Select(run => $"{run.CellX},{run.CellY}+{run.CellWidth} g{run.GridColumn},{run.GridRow}/{run.GridColumns}x{run.GridRows}"));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public async Task Every_client_of_a_policy_five_session_tiles_the_same_placeholders_and_a_policy_four_one_refuses_them()
+    {
+        using var host = new MuxTestHost();
+        var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+        MuxClient first = await host.ConnectClientAsync(options);
+        int policy = PersistentImagePolicy.PlaceholderImagesVersion;
+        Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = policy }, Ct);
+        ClientPaneModel firstPane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: policy);
+        host.Fake(id).Emit(PlaceholderSetup);
+        await host.SettleAsync(id, first);
+        MuxClient second = await host.ConnectClientAsync(options);
+        ClientPaneModel secondPane = await MuxTestHost.AttachPaneAsync(second, id, imagePolicy: policy);   // restored from a snapshot carrying the virtual placement
+        host.Fake(id).Emit(PlaceholderCells);
+        await host.SettleAsync(id, first, second);
+        string daemon = PlaceholderRuns(host.Mux(id).Buffer);
+        Assert.Equal("3,", daemon[..2]);                                                                    // one run of two cells on row 3 (1-based) starting at column 4
+        Assert.Equal(daemon, PlaceholderRuns(firstPane.Buffer));
+        Assert.Equal(daemon, PlaceholderRuns(secondPane.Buffer));
+        Assert.Equal(7u, Assert.Single(Virtuals(host.Mux(id).Buffer)).Placement);
+        Assert.Equal(7u, Assert.Single(Virtuals(secondPane.Buffer)).Placement);
+        host.AssertPaneMatchesMux(id, firstPane, "attached throughout");
+        host.AssertPaneMatchesMux(id, secondPane, "attached after the placement");
+
+        // Under policy four the same placement is refused on the daemon, so nobody holds a grid for the cells.
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession(PersistentImagePolicy.CompositionImagesVersion, conPtyFiltering: false);
+        using (mux)
+        {
+            fake.Emit(PlaceholderSetup);
+            await mux.FlushAsync();
+            await TestWait.UntilAsync(() => fake.SentInput.Count >= 2, "the replies reached the child writer");
+            Assert.Contains("ENOTSUP", fake.SentInput.ToArray()[1], StringComparison.Ordinal);
+            Assert.Empty(Virtuals(mux.Buffer));
+        }
+    }
+
     [Fact]
     public async Task A_policy_two_session_still_refuses_animation_and_its_snapshot_carries_none()
     {

@@ -9,6 +9,9 @@ public partial class TerminalBuffer
     /// <summary>Virtual placements one image keeps; storing one more drops the oldest.</summary>
     internal const int MaxKittyVirtualPlacements = 64;
 
+    /// <summary>The most columns or rows a placement command can ask for (it clamps each side to 1-200); a snapshot is held to the same.</summary>
+    internal const int MaxKittyVirtualGrid = 200;
+
     /// <summary>
     /// Records (or replaces) a virtual placement of <paramref name="asset"/>. It is invisible and moves no
     /// cursor: it only tells the Unicode placeholder cells that name the image how big the grid is.

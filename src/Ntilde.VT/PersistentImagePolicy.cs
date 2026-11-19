@@ -40,8 +40,15 @@ public static class PersistentImagePolicy
     /// </summary>
     public const int CompositionImagesVersion = 4;
 
+    /// <summary>
+    /// <see cref="CompositionImagesVersion"/> plus Kitty Unicode placeholders (<c>U=1</c> virtual placements, #989). A version of its own because a version-4 peer
+    /// answers <c>ENOTSUP</c> to <c>U=1</c>: under one policy, one side would hold the grid a placeholder cell is fitted into and the other would draw nothing, and a
+    /// snapshot carrying virtual placements could not be restored by a peer that predates them.
+    /// </summary>
+    public const int PlaceholderImagesVersion = 5;
+
     /// <summary>The highest policy this build supports.</summary>
-    public const int EnabledVersion = CompositionImagesVersion;
+    public const int EnabledVersion = PlaceholderImagesVersion;
 
     /// <summary>Whether <paramref name="version"/> carries Kitty graphics and iTerm2 inline images.</summary>
     public static bool AllowsImages(int version) => version >= RetainedImagesVersion;
@@ -55,6 +62,9 @@ public static class PersistentImagePolicy
     /// <summary>Whether <paramref name="version"/> composes Kitty animation frames (<c>a=c</c>).</summary>
     public static bool AllowsComposition(int version) => version >= CompositionImagesVersion;
 
+    /// <summary>Whether <paramref name="version"/> carries Kitty Unicode placeholders (<c>U=1</c> virtual placements).</summary>
+    public static bool AllowsPlaceholders(int version) => version >= PlaceholderImagesVersion;
+
     /// <summary>Configures a persistent-session parser (daemon or client) for <paramref name="version"/>.</summary>
     public static void Apply(AnsiParser parser, int version)
     {
@@ -66,5 +76,6 @@ public static class PersistentImagePolicy
         parser.AllowITerm2Multipart = AllowsITerm2Multipart(version);
         parser.RetainedAnimation = AllowsAnimation(version);
         parser.RetainedComposition = AllowsComposition(version);
+        parser.RetainedPlaceholders = AllowsPlaceholders(version);
     }
 }
