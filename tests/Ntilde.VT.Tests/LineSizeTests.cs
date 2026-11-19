@@ -443,6 +443,16 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void With_autowrap_off_a_saved_cursor_gains_no_pending_wrap_from_the_re_wrap()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}{Esc}[?7labcd{Esc}7{Esc}[5;1H");
+        buffer.Resize(4, 6);
+        parser.Process($"{Esc}8X");
+        Assert.Equal(new[] { "ab", "cX" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

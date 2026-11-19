@@ -1227,14 +1227,14 @@ namespace Ntilde.VT
                         if (newMainSavedPhysRow < sbCount) _savedCursors.Main.Row = 0;
                         else _savedCursors.Main.Row = newMainSavedPhysRow - sbCount;
                         _savedCursors.Main.Col = Math.Clamp(newMainSavedPhysCol, 0, newCols);
-                        if (mainSavedWaitsAtDoubleRowEnd) _savedCursors.Main.IsPendingWrap = true;
+                        if (mainSavedWaitsAtDoubleRowEnd && _source.Modes.IsAutoWrapMode) _savedCursors.Main.IsPendingWrap = true;
                     }
                     if (newAltSavedPhysRow != -1)
                     {
                         if (newAltSavedPhysRow < sbCount) _savedCursors.Alt.Row = 0;
                         else _savedCursors.Alt.Row = newAltSavedPhysRow - sbCount;
                         _savedCursors.Alt.Col = Math.Clamp(newAltSavedPhysCol, 0, newCols);
-                        if (altSavedWaitsAtDoubleRowEnd) _savedCursors.Alt.IsPendingWrap = true;
+                        if (altSavedWaitsAtDoubleRowEnd && _source.Modes.IsAutoWrapMode) _savedCursors.Alt.IsPendingWrap = true;
                     }
 
                     // 8. Conditional Cursor Row Clearing (REFINED)
