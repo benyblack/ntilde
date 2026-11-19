@@ -9,6 +9,7 @@ import { animationCasesByVersion, animationCommand, animationExpectedReplies, an
 import { placeholderGridAppearances, placeholderQuadrantColors, placeholderQuadrantOf, placeholderQuadrantsInput, placeholderQuadrantInputPin } from './kitty-animation-inputs.mjs';
 import { inspectPlaceholderGridPixels } from './kitty-animation-oracle.mjs';
 import { inputRunId } from './fixtures/input-journal.mjs';
+import { snapshotHash } from './agent-observer.mjs';
 
 const version = placeholderGridVersion;
 const [rows, scroll] = ['rows', 'scroll'].map(name => 'kitty.placeholders.' + name);
@@ -198,6 +199,27 @@ test('the cell grid must hold exactly the cells a grid stage left, on the rows i
         assert.throws(() => rebuild(tamper(scroll, 'scrolled', frame => { frame.screen.lines[5] = frame.screen.lines[4]; })));     // the cells where they were before the scroll
         assert.throws(() => rebuild(tamper(rows, 'grid', frame => { frame.screen.cellDetails[1].count = 3; })));                  // one cell short in a run
         assert.throws(() => rebuild(tamper(scroll, 'insert-line', frame => { frame.screen.lines[4] = frame.screen.lines[5]; })));
+        // A terminal that does not erase with the background (the scrolled-in or inserted line holds the default cell) is as valid: that screen is accepted too, and no other change to those lines is.
+        const exposed = (caseId, stageId, row) => frame => { // the exposed row holds the default cell (default foreground and background)
+            const details = []; let at = 0;
+            for (const run of frame.screen.cellDetails) {
+                const from = at, to = at + run.count; at = to;
+                const start = row * frame.screen.cols, end = start + frame.screen.cols;
+                if (to <= start || from >= end) { details.push(run); continue; }
+                if (from < start) details.push({ ...run, count: start - from });
+                details.push({ ...run, count: Math.min(to, end) - Math.max(from, start), flags: run.flags | 512, backgroundArgb: null });
+                if (to > end) details.push({ ...run, count: to - end });
+            }
+            frame.screen.cellDetails = details; frame.afterScreen = structuredClone(frame.screen);
+        };
+        for (const [caseId, stageId, row] of [[scroll, 'scrolled', 9], [scroll, 'insert-line', 4]]) {
+            const frames = tamper(caseId, stageId, exposed(caseId, stageId, row));
+            frames[at(caseId, stageId)].sha256 = snapshotHash(frames[at(caseId, stageId)].screen); frames[at(caseId, stageId)].afterSha256 = frames[at(caseId, stageId)].sha256;
+            assert.doesNotThrow(() => rebuild(frames), `${stageId} with a default-filled new line`);
+        }
+        const wrongRow = tamper(scroll, 'scrolled', exposed(scroll, 'scrolled', 7));
+        wrongRow[at(scroll, 'scrolled')].sha256 = snapshotHash(wrongRow[at(scroll, 'scrolled')].screen); wrongRow[at(scroll, 'scrolled')].afterSha256 = wrongRow[at(scroll, 'scrolled')].sha256;
+        assert.throws(() => rebuild(wrongRow));                                                                                      // a default-filled line anywhere else is still refused
         const text = (caseId, stageId) => journal.frames[at(caseId, stageId)].screen.lines;
         assert.notEqual(text(scroll, 'scrolled')[3], ''); assert.equal(text(scroll, 'scrolled')[5], '');
         assert.equal(text(scroll, 'insert-line')[4], ''); assert.notEqual(text(scroll, 'insert-line')[6], '');

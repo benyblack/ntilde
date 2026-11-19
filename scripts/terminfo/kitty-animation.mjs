@@ -3,7 +3,7 @@ import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { inputPriorCaptureCap } from './input-plan.mjs';
-import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, currentAnimationVersion, animationAnchor, animationCellEnvelope, animationHoldMs, placeholderAnimationVersion, placeholderCellEnvelope, placeholderMaxImageId, placeholderStageCells, placeholderGridVersion, placeholderGridEnvelope, placeholderGridStageCells } from './kitty-animation-cases.mjs';
+import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, currentAnimationVersion, animationAnchor, animationCellEnvelope, animationHoldMs, placeholderAnimationVersion, placeholderCellEnvelope, placeholderMaxImageId, placeholderStageCells, placeholderGridVersion, placeholderGridEnvelope, placeholderGridStageCells, placeholderGridExposedRow } from './kitty-animation-cases.mjs';
 import { animationFrameInput, animationFrameIds, animationPngIds, animationPngInput, placeholderHalvesInput, placeholderQuadrantsInput } from './kitty-animation-inputs.mjs';
 import { inspectAnimationPixels, inspectPlaceholderPixels, inspectPlaceholderGridPixels, evaluateAnimationTiming, timelineAppearance } from './kitty-animation-oracle.mjs';
 import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageBoundScreen, StaticImageReport, validateImageCapture } from './static-images.mjs';
@@ -133,7 +133,7 @@ export function buildAnimationReport(frames, actions, seal, runId, output, prior
 
 // The cell grid's own reporting of a placeholder cell (#989): the default foreground flag cleared (the cell has an explicit 24-bit foreground) and the extended-text flag set (it holds a grapheme of
 // more than one UTF-16 unit: the supplementary-plane placeholder, with or without combining marks). Only these two bits differ from a blank cell; the rest of a cell run is the controlled blank cell's.
-const defaultForegroundFlag = 1 << 8, extendedTextFlag = 1 << 13;
+const defaultForegroundFlag = 1 << 8, defaultBackgroundFlag = 1 << 9, extendedTextFlag = 1 << 13;
 
 /**
  * The screen the cell grid must show once a placeholder stage's command has run: the bound blank screen with the anchor row holding exactly the cells the stage printed (their graphemes as text, their
@@ -145,15 +145,24 @@ export function placeholderScreen(bound, entry, state) {
     return cells.length ? screenWithCells(bound, cells, state) : bound;
 }
 
-/** The screen the cell grid must show once a placeholder grid stage has run: the cells (several screen rows of them, wherever the stage left them) over the bound blank screen. */
+/**
+ * The screen(s) the cell grid may show once a placeholder grid stage has run: the cells (several screen rows of them, wherever the stage left them) over the bound blank screen. A stage whose operation exposes a new
+ * blank line (scrolling up, inserting a line) has two acceptable screens, since what such a line holds depends on the terminal: filled with the active background (background color erase), or the default cell.
+ */
 export function placeholderGridScreen(bound, entry, state) {
     if (entry.kind !== 'read') return bound;
     const cells = placeholderGridStageCells(entry.stageId, state?.imageId);
-    return cells.length ? screenWithCells(bound, cells, state) : bound;
+    if (!cells.length) return bound;
+    const exposed = placeholderGridExposedRow(entry.stageId, bound.rows);
+    const filled = screenWithCells(bound, cells, state);
+    return exposed === undefined ? filled : [filled, screenWithCells(bound, cells, state, exposed)];
 }
 
-/** The bound blank screen with `cells` ({ row, column, text, imageId }) on it: each row's graphemes as its text and each cell's image id as a 24-bit foreground, every other attribute the blank cell's. */
-function screenWithCells(bound, cells, state) {
+/**
+ * The bound blank screen with `cells` ({ row, column, text, imageId }) on it: each row's graphemes as its text and each cell's image id as a 24-bit foreground, every other attribute the blank cell's.
+ * With `defaultRow`, every cell of that screen row instead holds the default cell (default foreground and background), as a line a terminal scrolled or inserted in without background color erase does.
+ */
+function screenWithCells(bound, cells, state, defaultRow) {
     checkImages(uint(state?.imageId) && bound.cellDetails.length === 1);
     const screen = structuredClone(bound), [blank] = bound.cellDetails, ordered = [...cells].sort((a, b) => a.row - b.row || a.column - b.column);
     for (const row of new Set(ordered.map(cell => cell.row))) {
@@ -161,14 +170,16 @@ function screenWithCells(bound, cells, state) {
         checkImages(line.every((cell, index) => cell.column === line[0].column + index));
         screen.lines[row] = ' '.repeat(line[0].column) + line.map(cell => cell.text).join('');
     }
-    const runs = [], flags = (blank.flags & ~defaultForegroundFlag) | extendedTextFlag;
+    const special = new Map(ordered.map(cell => [cell.row * bound.cols + cell.column,
+        { ...blank, count: 1, flags: (blank.flags & ~defaultForegroundFlag) | extendedTextFlag, foregroundArgb: (0xff000000 | cell.imageId) >>> 0 }]));
+    if (defaultRow !== undefined) for (let column = 0; column < bound.cols; column++) special.set(defaultRow * bound.cols + column, { ...blank, count: 1, flags: blank.flags | defaultBackgroundFlag, backgroundArgb: null });
+    const runs = [];
     let cursor = 0;
-    for (const cell of ordered) {
-        const index = cell.row * bound.cols + cell.column, foregroundArgb = (0xff000000 | cell.imageId) >>> 0;
+    for (const index of [...special.keys()].sort((a, b) => a - b)) {
         if (index > cursor) runs.push({ ...blank, count: index - cursor });
-        const last = runs.at(-1);
-        if (index === cursor && last?.flags === flags && last.foregroundArgb === foregroundArgb) last.count++;
-        else runs.push({ ...blank, count: 1, flags, foregroundArgb });
+        const run = special.get(index), last = runs.at(-1);
+        if (index === cursor && last && last.flags !== blank.flags && last.flags === run.flags && last.foregroundArgb === run.foregroundArgb && last.backgroundArgb === run.backgroundArgb) last.count++;
+        else runs.push(run);
         cursor = index + 1;
     }
     if (cursor < blank.count) runs.push({ ...blank, count: blank.count - cursor });

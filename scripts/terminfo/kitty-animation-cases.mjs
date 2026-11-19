@@ -201,9 +201,9 @@ const placeholderGridPrints = Object.freeze({
     'lower-tiles-on-top': { print: { 4: gridMarks(1) } },
     'inherit-rows': { print: { 4: gridInherit(0), 5: gridInherit(1) } },
     shown: { print: gridFull },
-    scrolled: { print: gridFull, operation: '\x1b[S', final: { 3: gridFull[4], 4: gridFull[5] } },                  // SU: the screen scrolls up one line
+    scrolled: { print: gridFull, operation: '\x1b[S', final: { 3: gridFull[4], 4: gridFull[5] }, exposed: 'last' },  // SU: the screen scrolls up one line, a new blank line enters at the bottom
     'erase-lower': { print: gridFull, operation: '\x1b[6;1H\x1b[2K', final: { 4: gridFull[4] } },                    // EL 2 on the lower text row
-    'insert-line': { print: gridFull, operation: '\x1b[5;1H\x1b[L', final: { 5: gridFull[4], 6: gridFull[5] } },    // IL at the grid's first text row
+    'insert-line': { print: gridFull, operation: '\x1b[5;1H\x1b[L', final: { 5: gridFull[4], 6: gridFull[5] }, exposed: 4 },  // IL at the grid's first text row: a new blank line at row 4
 });
 const gridCommand = (spec, imageId) => '\x1b[2J' + Object.entries(spec.print).map(([row, marks]) => `\x1b[${Number(row) + 1};${animationAnchor.col + 1}H` + placeholderRun(imageId, 1, ...marks.map(item => placeholderCell(...item)))).join('') + (spec.operation ?? '');
 const placeholderGridCommands = Object.freeze({
@@ -215,6 +215,15 @@ export function placeholderGridStageCells(stageId, imageId) {
     const spec = placeholderGridPrints[stageId];
     if (!spec) return [];
     return Object.entries(spec.final ?? spec.print).flatMap(([row, marks]) => marks.map((item, index) => ({ row: Number(row), column: animationAnchor.col + index, text: placeholderCell(...item), imageId })));
+}
+
+/**
+ * The screen row a stage's operation exposes as a new blank line (a scrolled-in last row, an inserted line), or undefined. What a terminal fills it with is not what this suite measures, and terminals differ (background color erase
+ * fills it with the active background, otherwise it holds the default cell), so the carrier accepts either.
+ */
+export function placeholderGridExposedRow(stageId, rows) {
+    const exposed = placeholderGridPrints[stageId]?.exposed;
+    return exposed === 'last' ? rows - 1 : exposed;
 }
 
 /** Exact bounded bytes; the image id is parent-chosen per case, never guessed from a reply. */

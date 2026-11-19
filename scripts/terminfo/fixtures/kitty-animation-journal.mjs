@@ -159,7 +159,7 @@ export function syntheticAnimationJournal(output, { runId = inputRunId, paneId =
         actions.push(action);
         const sample = replySample(entry, stage, state, action, reply);
         const appearance = appearanceOf(entry, stage, paint, startedAt.get(entry.caseId), plan.span);
-        add(entry, entry.kind === 'finish' ? initial : (animationSuites[version].screenAfter?.(entry, state, bound) ?? bound), sample, action, appearance, plan.readAt, plan.span);
+        add(entry, entry.kind === 'finish' ? initial : [animationSuites[version].screenAfter?.(entry, state, bound) ?? bound].flat()[0], sample, action, appearance, plan.readAt, plan.span);
         clock = plan.span[1];
     }
     const final = frames.at(-1).capture;
