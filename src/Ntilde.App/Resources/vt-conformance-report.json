@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "7d52bfbd377bf8aee0f91aaf7ac7284a34998f90eb9d77b667a7fb83c2c63b6a",
+  "matrixSha256": "ae686f689234132843f2747a32ba20af9fa392a6bc2c2692469dbef1a9b0e7cf",
   "summary": {
     "totalRows": 149,
     "supportedCount": 71,
@@ -1566,7 +1566,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Regional index/reverse-index and bottom-margin wrap are tested; arbitrary combinations with resize and retained scrollback are not comprehensively qualified.",
+      "knownDeviations": "Regional index/reverse-index and bottom-margin wrap are tested. Reverse index fills vacated cells with the active background (\u0060tests/Ntilde.VT.Tests/LeftRightMarginTests.cs\u0060); arbitrary combinations with resize and retained scrollback are not comprehensively qualified.",
       "sourceLine": 137
     },
     {

@@ -382,14 +382,15 @@ namespace Ntilde.VT
         }
 
         public TerminalRow(int cols, TermColor fg, TermColor bg)
+            : this(cols, new TerminalCell(' ', fg, bg, false, false, true, true))
+        {
+        }
+
+        internal TerminalRow(int cols, TerminalCell blank)
         {
             Id = System.Threading.Interlocked.Increment(ref _nextId);
             Cells = new TerminalCell[cols];
-            for (int i = 0; i < cols; i++)
-            {
-                // Initialize as Default so they update when theme changes
-                Cells[i] = new TerminalCell(' ', fg, bg, false, false, true, true);
-            }
+            System.Array.Fill(Cells, blank);
         }
     }
 }
