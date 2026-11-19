@@ -99,9 +99,12 @@ public partial class MainWindow
             return true;
         }
 
-        position = new Point((input.Column.GetValueOrDefault() - 0.5) * view.Metrics.CellWidth,
-            (input.Row.GetValueOrDefault() - 0.5) * view.Metrics.CellHeight);
-        cell = (input.Column.GetValueOrDefault(), input.Row.GetValueOrDefault());
+        // A double-size line holds half the columns, each two cells wide: a column right of its half is not a cell of that row.
+        Point cellCentre = view.MouseReportCellCentre(input.Column.GetValueOrDefault(), input.Row.GetValueOrDefault());
+        var requested = (input.Column.GetValueOrDefault(), input.Row.GetValueOrDefault());
+        if (view.ToMouseReportCell(cellCentre) != requested && view.IsDoubleSizeViewportRow(requested.Item2)) return false;
+        position = cellCentre;
+        cell = requested;
         return true;
     }
 

@@ -374,6 +374,7 @@ namespace Ntilde.VT
             Dictionary<int, int>? linkIds = null;
             Dictionary<int, int>? underlineIds = null;
             List<int>? protectedCells = null;
+            int[]? lineSizes = null;
 
             for (int r = 0; r < rowCount && r < rows.Length; r++)
             {
@@ -381,6 +382,7 @@ namespace Ntilde.VT
                 int copy = Math.Min(cols, row.Cells.Length);
                 Array.Copy(row.Cells, 0, cells, r * cols, copy);
                 wraps[r] = row.IsWrapped;
+                if (row.LineSize != LineSize.SingleWidth) (lineSizes ??= new int[rowCount])[r] = (int)row.LineSize;
                 writtenColumns[r] = Math.Min(row.WrittenColumns, cols);
                 int? width = row.IsWrapped ? Math.Min(row.WrappedColumns ?? row.Cells.Length, cols) : null;
                 StoreWrappedColumns(ref wrapColumns, rowCount, r, width, cols);
@@ -411,6 +413,7 @@ namespace Ntilde.VT
                 RowWraps = wraps,
                 RowWrapColumns = wrapColumns,
                 RowWrittenColumns = writtenColumns,
+                RowLineSizes = lineSizes,
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
                 UnderlineIds = underlineIds,
@@ -452,6 +455,7 @@ namespace Ntilde.VT
             {
                 TerminalRow row = rows[r];
                 row.IsWrapped = false;
+                row.LineSize = LineSize.SingleWidth;
                 row.WrittenColumns = 0;
                 row.ClearExtendedText();
                 row.ClearHyperlinks();
@@ -484,6 +488,7 @@ namespace Ntilde.VT
 
                 row.WrittenColumns = Math.Min(state.RowWrittenColumns?[r]
                     ?? (state.RowWrapColumns is { } known && known[r] >= 0 ? known[r] : sourceCols), colsToCopy);
+                if (state.RowLineSizes is { } sizes && r < sizes.Length) row.LineSize = (LineSize)sizes[r];
                 if (state.RowWraps != null && r < state.RowWraps.Length)
                 {
                     row.IsWrapped = state.RowWraps[r];
@@ -594,6 +599,7 @@ namespace Ntilde.VT
             Dictionary<int, string>? extendedText = null;
             Dictionary<int, int>? linkIds = null;
             Dictionary<int, int>? underlineIds = null;
+            int[]? lineSizes = null;
 
             for (int i = 0; i < keep; i++)
             {
@@ -610,6 +616,7 @@ namespace Ntilde.VT
                 }
 
                 wraps[i] = _scrollback.IsRowWrapped(logical);
+                if (_scrollback.GetLineSize(logical) is var size and not LineSize.SingleWidth) (lineSizes ??= new int[keep])[i] = (int)size;
                 writtenColumns[i] = Math.Min(_scrollback.GetWrittenColumns(logical), cols);
                 StoreWrappedColumns(ref wrapColumns, keep, i, _scrollback.GetWrappedColumns(logical), cols);
 
@@ -632,6 +639,7 @@ namespace Ntilde.VT
                 RowWraps = wraps,
                 RowWrapColumns = wrapColumns,
                 RowWrittenColumns = writtenColumns,
+                RowLineSizes = lineSizes,
                 ExtendedText = extendedText,
                 LinkIds = linkIds,
                 UnderlineIds = underlineIds,
@@ -703,7 +711,8 @@ namespace Ntilde.VT
 
                 bool wrapped = state.RowWraps != null && i < state.RowWraps.Length && state.RowWraps[i];
                 int? wrappedColumns = state.RowWrapColumns is { } widths && widths[i] >= 0 ? Math.Min(widths[i], Cols) : null;
-                _scrollback.AppendRow(buffer, wrapped, extended, hyperlinks, rowUnderlines, wrappedColumns,
+                LineSize lineSize = state.RowLineSizes is { } sizes && i < sizes.Length ? (LineSize)sizes[i] : LineSize.SingleWidth;
+                _scrollback.AppendRow(buffer, wrapped, new RowSideTables(extended, hyperlinks, rowUnderlines, null, lineSize), wrappedColumns,
                     Math.Min(state.RowWrittenColumns?[i] ?? wrappedColumns ?? sourceCols, Cols));
             }
         }
@@ -1026,9 +1035,19 @@ namespace Ntilde.VT
                 StateTransferValidation.RequireInRange(count, 0, cols, $"{what} written columns");
         }
 
+        private static void ValidateLineSizes(int[]? sizes, int rows, string what)
+        {
+            if (sizes == null) return;
+            if (sizes.Length != rows)
+                throw StateTransferValidation.Reject(what, "line size count does not match row count");
+            foreach (int size in sizes)
+                StateTransferValidation.RequireInRange(size, 0, (int)LineSize.DoubleHeightBottom, $"{what} line size");
+        }
+
         private static void ValidateWrappedColumns(TerminalScreenState state, int rows, int cols, byte[]? blob, string what)
         {
             ValidateWrittenColumns(state.RowWrittenColumns, rows, cols, what);
+            ValidateLineSizes(state.RowLineSizes, rows, what);
             if (state.RowWrapColumns is not { } widths) return;
             if (widths.Length != rows)
                 throw StateTransferValidation.Reject(what, "wrap column count does not match row count");

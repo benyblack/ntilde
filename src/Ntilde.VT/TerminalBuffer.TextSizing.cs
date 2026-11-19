@@ -132,6 +132,10 @@ public partial class TerminalBuffer
         if (!ReserveTextSizing(block, _cursorCol, TextSizingAbsoluteRow(_cursorRow), !Modes.IsInsertMode && IsTextSizingTargetStable(block))) return;
         FindTextSizingWritePosition(width);
         FitTextSizingHeight(height);
+        // Sized text and double-size lines do not combine: a sized rectangle is laid out in page columns, and a
+        // double-size line holds half of them. Every line the rectangle ends up on returns to single width; a line
+        // it only wrapped away from keeps its attribute.
+        for (int dy = 0; dy < height; dy++) ReturnRowToSingleWidthForSizedTextNoLock(_cursorRow + dy);
         if (Modes.IsInsertMode) InsertTextSizingRectangle(width, height);
         int absTop = TextSizingAbsoluteRow(_cursorRow);
         EraseTextSizingRange(_cursorCol, _cursorCol + width, absTop, absTop + height);
@@ -200,11 +204,13 @@ public partial class TerminalBuffer
     {
         while (true)
         {
+            DropStalePendingWrapNoLock();
             if (_isPendingWrap || _cursorCol + width > Cols)
             {
                 if (Modes.IsAutoWrapMode || LowerTextSizingEnd(Math.Max(0, Cols - width), width) >= 0)
                 {
-                    _viewport[_cursorRow].SetSoftWrap(_cursorCol);
+                    // A double-size row is one physical line of its own: a wrap out of it leaves no soft-wrap mark.
+                    if (_viewport[_cursorRow].LineSize == LineSize.SingleWidth) _viewport[_cursorRow].SetSoftWrap(_cursorCol);
                     _cursorCol = 0;
                     AdvanceCursorRowForLineFeed();
                 }

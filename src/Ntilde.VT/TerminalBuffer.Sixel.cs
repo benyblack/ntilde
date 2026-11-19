@@ -19,6 +19,7 @@ public partial class TerminalBuffer
         {
             handle = PrepareSixelPlacementHandle(handle, source);
             bool display = Modes.IsSixelDisplayMode;
+            SnapCursorToLineSizeNoLock();
             int row = display ? 0 : _cursorRow;
             int col = display ? 0 : _cursorCol;
             int absoluteRow = _isAltScreen ? row : _scrollback.Count + row;

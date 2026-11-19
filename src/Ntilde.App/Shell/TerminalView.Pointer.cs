@@ -390,8 +390,9 @@ namespace Ntilde.Shell
                 return (1, 1);
             }
 
-            int col = Math.Clamp((int)(position.X / _metrics.CellWidth), 0, _buffer.Cols - 1);
             int visualRow = Math.Clamp((int)(position.Y / _metrics.CellHeight), 0, _buffer.Rows - 1);
+            int displayStart = Math.Max(0, _buffer.TotalLines - _buffer.Rows - _scrollOffset);
+            int col = ColumnAtX(position.X, displayStart + visualRow);
             return (col + 1, visualRow + 1);
         }
 
@@ -461,7 +462,6 @@ namespace Ntilde.Shell
         {
             if (_buffer == null) return (0, 0);
 
-            int col = (int)(position.X / _metrics.CellWidth);
             int visualRow = (int)(position.Y / _metrics.CellHeight);
 
             // Clamp visual row first
@@ -473,13 +473,46 @@ namespace Ntilde.Shell
             int displayStart = Math.Max(0, totalLines - _buffer.Rows - _scrollOffset);
             int absRow = displayStart + visualRow;
 
-            // Clamp columns
-            col = Math.Clamp(col, 0, _buffer.Cols - 1);
-
             // AbsRow shouldn't need clamping if logic correct, but safety:
             absRow = Math.Clamp(absRow, 0, totalLines - 1);
 
-            return (absRow, col);
+            return (absRow, ColumnAtX(position.X, absRow));
+        }
+
+        /// <summary>
+        /// The centre of a one-based viewport cell: the inverse of <see cref="ToMouseReportCell"/>, so on a double-size
+        /// line, whose cells are two cells wide, a column is found where it is drawn.
+        /// </summary>
+        internal bool IsDoubleSizeViewportRow(int row)
+        {
+            if (_buffer == null || row < 1 || row > _buffer.Rows) return false;
+            int displayStart = Math.Max(0, _buffer.TotalLines - _buffer.Rows - _scrollOffset);
+            return _buffer.LineSizeAtAbsoluteRow(displayStart + row - 1) != Ntilde.VT.LineSize.SingleWidth;
+        }
+
+        internal Point MouseReportCellCentre(int column, int row)
+        {
+            double cellWidth = _metrics.CellWidth;
+            if (_buffer != null && row >= 1 && row <= _buffer.Rows)
+            {
+                int displayStart = Math.Max(0, _buffer.TotalLines - _buffer.Rows - _scrollOffset);
+                if (_buffer.LineSizeAtAbsoluteRow(displayStart + row - 1) != Ntilde.VT.LineSize.SingleWidth) cellWidth *= 2;
+            }
+            return new Point((column - 0.5) * cellWidth, (row - 0.5) * _metrics.CellHeight);
+        }
+
+        /// <summary>
+        /// The column under a horizontal position on the row at <paramref name="absRow"/>, clamped to the row. A
+        /// double-size line (DECDWL / DECDHL) shows each of its cells two cells wide and holds half the columns.
+        /// </summary>
+        private int ColumnAtX(double x, int absRow)
+        {
+            if (_buffer == null || _metrics.CellWidth <= 0) return 0;
+            Ntilde.VT.LineSize lineSize = _buffer.LineSizeAtAbsoluteRow(absRow);
+            if (lineSize == Ntilde.VT.LineSize.SingleWidth)
+                return Math.Clamp((int)(x / _metrics.CellWidth), 0, _buffer.Cols - 1);
+            int columns = TerminalBuffer.ColumnsForLineSize(lineSize, _buffer.Cols);
+            return Math.Clamp((int)(x / (_metrics.CellWidth * 2)), 0, columns - 1);
         }
     }
 }

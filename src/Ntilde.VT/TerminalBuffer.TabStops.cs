@@ -79,7 +79,7 @@ namespace Ntilde.VT
                 int remaining = System.Math.Max(1, count);
                 int col = System.Math.Clamp(_cursorCol, 0, System.Math.Max(0, Cols - 1));
                 // A cursor at or left of the right margin stops there (xterm's TabToNextStop with DECLRMM).
-                int limit = _cursorCol <= RightMargin ? RightMargin : Cols - 1;
+                int limit = RightEdgeForCursorNoLock;
                 while (remaining-- > 0)
                 {
                     col = FindNextTabStopNoLock(col);
@@ -99,6 +99,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                SnapCursorToLineSizeNoLock();
                 int remaining = System.Math.Max(1, count);
                 int col = System.Math.Clamp(_cursorCol, 0, System.Math.Max(0, Cols - 1));
                 while (remaining-- > 0)
@@ -121,6 +122,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                SnapCursorToLineSizeNoLock();
                 if (_cursorCol >= 0 && _cursorCol < _tabStops.Length)
                 {
                     _tabStops[_cursorCol] = true;
@@ -137,6 +139,7 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
+                SnapCursorToLineSizeNoLock();
                 if (_cursorCol >= 0 && _cursorCol < _tabStops.Length)
                 {
                     _tabStops[_cursorCol] = false;

@@ -167,7 +167,7 @@ namespace Ntilde.VT
         /// <summary>
         /// Whether the character at <paramref name="col"/> was written under DECSCA 1 and is still protected. A wide glyph is protected
         /// as a unit, held on its anchor: a continuation is protected exactly when it still follows a protected wide anchor, and an
-        /// anchor only while its continuation (or the screen edge) follows it. A half that an overwrite, erase, shift or clip has
+        /// anchor only while its continuation (or the edge of the screen or of a double-size line's half) follows it. A half that an overwrite, erase, shift or clip has
         /// orphaned therefore reads unprotected without any cleanup at the place that orphaned it.
         /// </summary>
         public bool IsProtected(int col)
@@ -176,7 +176,9 @@ namespace Ntilde.VT
             var cell = Cells[col];
             if (cell.IsWideContinuation) return col > 0 && Cells[col - 1].IsWide && _protected.TryGet(col - 1, out _);
             if (!_protected.TryGet(col, out _)) return false;
-            return !cell.IsWide || col == Cells.Length - 1 || Cells[col + 1].IsWideContinuation;
+            // The edge is the last column the row holds: the page's, or the last of the left half on a double-size line.
+            int lastCol = TerminalBuffer.ColumnsForLineSize(LineSize, Cells.Length) - 1;
+            return !cell.IsWide || col == Cells.Length - 1 || col == lastCol || Cells[col + 1].IsWideContinuation;
         }
 
         /// <summary>True when any column of this row reads protected (see <see cref="IsProtected"/>).</summary>

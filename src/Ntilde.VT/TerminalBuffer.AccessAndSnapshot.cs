@@ -268,6 +268,7 @@ namespace Ntilde.VT
 
         private void CaptureCursorStateNoLock(CursorState target)
         {
+            SnapCursorToLineSizeNoLock();
             target.Row = _cursorRow;
             target.Col = _cursorCol;
             target.Foreground = CurrentForeground;
@@ -337,6 +338,7 @@ namespace Ntilde.VT
             {
                 var row = _viewport[i];
                 row.IsWrapped = false;
+                row.LineSize = LineSize.SingleWidth;
                 row.WrittenColumns = 0;
                 for (int c = 0; c < Cols; c++)
                 {
@@ -445,6 +447,7 @@ namespace Ntilde.VT
                 }
 
                 resized[i].IsWrapped = source[i].IsWrapped;
+                resized[i].LineSize = source[i].LineSize;
                 resized[i].WrittenColumns = Math.Min(source[i].WrittenColumns, Cols);
                 resized[i].WrappedColumns = source[i].IsWrapped
                     ? Math.Min(source[i].WrappedColumns ?? source[i].Cells.Length, Cols) : null;
@@ -506,6 +509,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(_cursorCol, Cols, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 if (_cursorCol >= 0 && _cursorCol < Cols) row.NoteColumnsWritten(Cols);
@@ -532,6 +536,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(0, Math.Min(Cols, _cursorCol + 1), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + 1));
@@ -565,13 +570,18 @@ namespace Ntilde.VT
             OnInvalidate?.Invoke();
         }
 
-        public void EraseLineAll(int rowIndex)
+        /// <param name="rowIndex">The visible row to erase.</param>
+        /// <param name="resetLineSize">
+        /// True when ED erases the line completely, which returns a double-size line to single width. EL never does.
+        /// </param>
+        public void EraseLineAll(int rowIndex, bool resetLineSize = false)
         {
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
                 if (rowIndex < 0 || rowIndex >= Rows) return;
                 ClearRowInternal(rowIndex);
+                if (resetLineSize) _viewport[rowIndex].LineSize = LineSize.SingleWidth;
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             OnInvalidate?.Invoke();
@@ -602,6 +612,7 @@ namespace Ntilde.VT
             try
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
+                SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(_cursorCol, (int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count)), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 if (count > 0 && _cursorCol >= 0 && _cursorCol < Cols)
@@ -787,8 +798,8 @@ namespace Ntilde.VT
             bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
-                _cursorCol = Math.Clamp(col, 0, Cols - 1);
                 _cursorRow = Math.Clamp(row, 0, Rows - 1);
+                _cursorCol = Math.Clamp(col, 0, Math.Max(0, CursorRowLastColumnNoLock));
                 _isPendingWrap = false;
             }
             finally
@@ -986,6 +997,7 @@ namespace Ntilde.VT
                 AbsRow = absRow,
                 Revision = row.Revision,
                 Cols = bufferCols,
+                LineSize = row.LineSize,
                 Cells = new RenderCellSnapshot[bufferCols],
                 RowId = row.Id
             };
@@ -1186,6 +1198,12 @@ namespace Ntilde.VT
                 // Cells
                 if (legacyCells != null)
                 {
+                    // A viewport-only checkpoint carries line attributes only when a row had one; a value read
+                    // from disk that no control could have set is single width.
+                    ResetLineSizesNoLock(_viewport);
+                    if (snapshot.RowLineSizes is { } lineSizes)
+                        for (int r = 0; r < Math.Min(lineSizes.Length, _viewport.Length); r++)
+                            if (lineSizes[r] is >= 1 and <= 3) _viewport[r].LineSize = (LineSize)lineSizes[r];
                     var cellSpan = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, TerminalCell>(legacyCells.AsSpan());
 
                     int expectedCells = snapshot.Cols * snapshot.Rows;

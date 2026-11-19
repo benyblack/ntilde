@@ -640,7 +640,9 @@ namespace Ntilde.Shell
                     if (item.Snapshot.HasValue)
                     {
                         var snapshot = item.Snapshot.Value;
-                        bool shouldUseSpanRendering = !item.HasBlinkInk && rowSpans is { Count: > 0 } && ShouldUseSpanRenderingForRow(rowSpans, snapshot.Cols);
+                        // Span repaint clears and clips in single-width column space, so a double-size row is always drawn whole.
+                        bool shouldUseSpanRendering = !item.HasBlinkInk && snapshot.LineSize == LineSize.SingleWidth
+                            && rowSpans is { Count: > 0 } && ShouldUseSpanRenderingForRow(rowSpans, snapshot.Cols);
 
                         SKPicture? previousRowPicture = null;
                         if (shouldUseSpanRendering)
@@ -945,8 +947,9 @@ namespace Ntilde.Shell
                     while (selTemp < selectionRows.Length && selectionRows.Array[selTemp].AbsRow == absRow)
                     {
                         var sel = selectionRows.Array[selTemp];
-                        float x1 = GetColEdge(colEdges, sel.ColStart, paddingLeft);
-                        float x2 = GetColEdge(colEdges, sel.ColEnd + 1, paddingLeft);
+                        LineSize overlayLineSize = LineSizeOfVisualRow(renderSnapshot, r);
+                        float x1 = LineSizeX(GetColEdge(colEdges, sel.ColStart, paddingLeft), overlayLineSize);
+                        float x2 = LineSizeX(GetColEdge(colEdges, sel.ColEnd + 1, paddingLeft), overlayLineSize);
                         canvas.DrawRect(x1, y, x2 - x1, rowHeight, selectionPaint);
                         IncrementRectDrawCall();
                         RedrawTextOver(r, sel.ColStart, sel.ColEnd + 1, selectionForeground, selectionPaint.Color);
@@ -964,8 +967,9 @@ namespace Ntilde.Shell
                     {
                         var m = searchHighlights.Array[tempIdx];
                         var p = m.IsActive ? activeMatchPaint : matchPaint;
-                        float x1 = GetColEdge(colEdges, m.StartCol, paddingLeft);
-                        float x2 = GetColEdge(colEdges, m.EndCol + 1, paddingLeft);
+                        LineSize overlayLineSize = LineSizeOfVisualRow(renderSnapshot, r);
+                        float x1 = LineSizeX(GetColEdge(colEdges, m.StartCol, paddingLeft), overlayLineSize);
+                        float x2 = LineSizeX(GetColEdge(colEdges, m.EndCol + 1, paddingLeft), overlayLineSize);
                         canvas.DrawRect(x1, y, x2 - x1, rowHeight, p);
                         IncrementRectDrawCall();
                         RedrawTextOver(r, m.StartCol, m.EndCol + 1, foregroundOverride: null, overlayFill: p.Color);
@@ -985,8 +989,14 @@ namespace Ntilde.Shell
 
                     if (visualRow >= 0 && visualRow < bufferRows)
                     {
-                        float x1 = FromDevicePx(_pixelGrid.XForCol(renderSnapshot.CursorCol));
-                        float x2 = FromDevicePx(_pixelGrid.XForCol(renderSnapshot.CursorCol + 1));
+                        // On a double-size line the cursor is two cells wide and cannot sit past the line's last column,
+                        // where a vertical move may have left it until the next character is written.
+                        LineSize cursorLineSize = LineSizeOfVisualRow(renderSnapshot, visualRow);
+                        int cursorDrawCol = cursorLineSize == LineSize.SingleWidth
+                            ? renderSnapshot.CursorCol
+                            : Math.Min(renderSnapshot.CursorCol, TerminalBuffer.ColumnsForLineSize(cursorLineSize, renderSnapshot.BufferCols) - 1);
+                        float x1 = LineSizeX(FromDevicePx(_pixelGrid.XForCol(cursorDrawCol)), cursorLineSize);
+                        float x2 = LineSizeX(FromDevicePx(_pixelGrid.XForCol(cursorDrawCol + 1)), cursorLineSize);
                         int rowTopPx = _pixelGrid.YForRowTop(visualRow);
                         int rowBottomPx = _pixelGrid.YForRowTop(visualRow + 1);
                         float rowTop = FromDevicePx(rowTopPx);
@@ -1002,7 +1012,7 @@ namespace Ntilde.Shell
                                     IncrementRectDrawCall();
                                     // The glyph under the block, in the theme's cursor text color
                                     // (it used to be hidden by the opaque rect).
-                                    int cursorCol = renderSnapshot.CursorCol;
+                                    int cursorCol = cursorDrawCol;
                                     int cursorEnd = cursorCol + 1;
                                     if (renderSnapshot.RowsData.Array != null && visualRow < renderSnapshot.RowsData.Length)
                                     {
@@ -1394,6 +1404,13 @@ namespace Ntilde.Shell
             {
                 return 0;
             }
+
+            // A double-size line is the same row drawn through a transform: every x doubles about the grid origin, and a
+            // double-height half also doubles y and shows its half through the row's own band. Everything below, the
+            // span clip included, is then in the row's own column space.
+            bool lineSizeScaled = BeginLineSizeTransform(canvas, snapshot.LineSize, snapshot.BufferCols > 0 ? snapshot.BufferCols : snapshot.Cols, rowTopYDip, snappedCellHeight);
+            bool glyphAtlasWasSuppressed = _suppressGlyphAtlas;
+            _suppressGlyphAtlas |= lineSizeScaled;
 
             bool hasSpanClip = effectiveSpanStart > 0 || effectiveSpanEnd < snapshot.Cols;
             if (hasSpanClip)
@@ -1819,7 +1836,8 @@ namespace Ntilde.Shell
                                     continue;
                                 }
 
-                                var cached = _glyphCache.GetOrAdd(grapheme, glyphFont, (float)_renderScaling, fg);
+                                // Atlas sprites are rasterized at the cell size; a scaled row draws its glyphs as text instead.
+                                GlyphSprite? cached = _suppressGlyphAtlas ? null : _glyphCache.GetOrAdd(grapheme, glyphFont, (float)_renderScaling, fg);
 
                                 if (cached != null)
                                 {
@@ -1928,6 +1946,9 @@ namespace Ntilde.Shell
                 {
                     canvas.Restore();
                 }
+
+                _suppressGlyphAtlas = glyphAtlasWasSuppressed;
+                if (lineSizeScaled) canvas.Restore();
             }
         }
 

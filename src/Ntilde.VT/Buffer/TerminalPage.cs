@@ -39,6 +39,8 @@ namespace Ntilde.VT.Storage
         // Zero means full-row/legacy; otherwise the value is the content column count plus one.
         private int[]? _wrappedColumns;
         private int[]? _writtenColumns;
+        // Null while every row in the page is single width.
+        private byte[]? _lineSizes;
 
         // Sparse per-row metadata side-channels. null = no extended text/hyperlinks on any row in this page.
         // Indexed by rowIndex (0..RowsInPage-1). Each element is null if that row has no metadata.
@@ -118,6 +120,7 @@ namespace Ntilde.VT.Storage
             _isWrappedMask = 0;
             _wrappedColumns = null;
             _writtenColumns = null;
+            _lineSizes = null;
             _extendedText = null;
             _hyperlinks = null;
             _underlines = null;
@@ -136,6 +139,7 @@ namespace Ntilde.VT.Storage
             _isWrappedMask = 0;
             _wrappedColumns = null;
             _writtenColumns = null;
+            _lineSizes = null;
             _extendedText = null;
             _hyperlinks = null;
             _underlines = null;
@@ -143,6 +147,23 @@ namespace Ntilde.VT.Storage
             // Clear the usable portion so pooled memory doesn't retain stale data.
             Cells.AsSpan(0, RowsInPage * Cols).Clear();
             ArrayPool<TerminalCell>.Shared.Return(Cells, clearArray: false);
+        }
+
+        public LineSize GetLineSize(int rowIndex)
+        {
+            if ((uint)rowIndex >= (uint)RowsInPage) throw new ArgumentOutOfRangeException(nameof(rowIndex));
+            return _lineSizes == null ? LineSize.SingleWidth : (LineSize)_lineSizes[rowIndex];
+        }
+
+        internal void SetLineSize(int rowIndex, LineSize size)
+        {
+            if ((uint)rowIndex >= (uint)RowsInPage) throw new ArgumentOutOfRangeException(nameof(rowIndex));
+            if (_lineSizes == null)
+            {
+                if (size == LineSize.SingleWidth) return;
+                _lineSizes = new byte[RowsInPage];
+            }
+            _lineSizes[rowIndex] = (byte)size;
         }
 
         public bool IsRowWrapped(int rowIndex)
@@ -264,6 +285,7 @@ namespace Ntilde.VT.Storage
         public void ClearRowMetadata(int rowIndex)
         {
             SetRowWrapped(rowIndex, false);
+            SetLineSize(rowIndex, LineSize.SingleWidth);
             SetWrittenColumns(rowIndex, Cols);
             if (_extendedText != null) _extendedText[rowIndex] = null;
             if (_hyperlinks != null) _hyperlinks[rowIndex] = null;

@@ -73,6 +73,13 @@ invariant changes.
   from the direct view. Headless and mux hosts without those facts stay silent. The read-only
   pane metadata API independently projects the view metrics; a CSI 16 t reply is a control,
   never substituted for either OSC query.
+- **iTerm2 feature reporting declares only owned evidence.** VT owns the exact
+  `OSC 1337 ; RequestCapabilities` reply: a fixed literal per host-acceptance state, never a
+  composed generic mechanism, with `Cw` gated by the host OSC 52 answer (the XTGETTCAP `Ms`
+  gate) and every code backed by its own implementation and tests
+  ([contract](qa/terminfo/iterm-feature-reporting.md)). The environment-variable half
+  (`TERM_FEATURES`) stays unset on every spawn path; unsolicited `Capabilities` forms and every
+  other `1337;` payload stay silent.
 - **RIS clearing belongs to VT.** Screen selection and default-pen/runtime-color
   reset precede the existing full clear under one write cut. Main and retained
   alternate screens return to visible DECTCEM cursor presentation in that cut;
@@ -92,7 +99,9 @@ invariant changes.
 - Source of truth — renderers/replay/sessions read this, they don't replicate state
 - Lossless reflow — resize never silently drops ordinary text content. OSC 66 rectangles are
   fixed physical layout barriers; a rectangle clipped by a narrower grid or taller than the
-  new screen is discarded whole, as permitted by the sizing protocol.
+  new screen is discarded whole, as permitted by the sizing protocol. A double-size line
+  (DECDWL / DECDHL) is a fixed row too and is never re-wrapped: a grid narrower than its
+  text cuts it at the grid's width, the one resize that loses ordinary text.
 - ED 2 and EL 2 retire erased rows' soft-wrap identity and extents in place. A later
   positioned replacement must not join neighboring hard lines during reflow. Row IDs,
   cursor, pen and scrollback remain intact; EL 2 leaves other rows' wraps unchanged.

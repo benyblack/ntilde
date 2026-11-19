@@ -188,6 +188,16 @@ namespace Ntilde.VT
         public int Cols;
         public RenderCellSnapshot[] Cells;
         public long RowId;
+        /// <summary>
+        /// The row's VT100 line attribute. A row that is not single shows its first <c>Cols / 2</c> cells, each two
+        /// cells wide; a double-height row shows the top or bottom half of glyphs drawn two rows tall.
+        /// </summary>
+        public LineSize LineSize;
+        /// <summary>
+        /// The page's width when the row was captured. <see cref="Cols"/> is the width the viewer asked for, which
+        /// differs while a resize is in flight; a double-size row's half is measured against the page.
+        /// </summary>
+        public int BufferCols;
         /// <summary>At least one unhidden SGR 5 cell in this immutable row projection.</summary>
         public bool ContainsBlink { get; set; }
     }

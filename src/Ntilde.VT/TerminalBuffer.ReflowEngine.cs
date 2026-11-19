@@ -193,6 +193,7 @@ namespace Ntilde.VT
                 }
                 result.WrittenColumns = Math.Min(cols, source.WrittenColumns);
                 result.IsWrapped = false;
+                result.LineSize = source.LineSize;
                 return result;
             }
 
@@ -259,7 +260,7 @@ namespace Ntilde.VT
                                 break;
                             }
                         }
-                        if (!isEmpty || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
+                        if (!isEmpty || row.LineSize != LineSize.SingleWidth || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
                     }
 
                     int vpRowsToTake = lastActiveVpRow + 1;
@@ -341,6 +342,7 @@ namespace Ntilde.VT
                             row.ClearProtection();
                             row.ClearTextSizing();
                             row.IsWrapped = false;
+                            row.LineSize = LineSize.SingleWidth;
                         }
                         else
                         {
@@ -513,6 +515,7 @@ namespace Ntilde.VT
                             int storeRow = i - oldRowsReleased;
                             _scrollback.GetRow(storeRow).CopyTo(scrollbackRow.Cells);
                             scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(storeRow);
+                            scrollbackRow.LineSize = _scrollback.GetLineSize(storeRow);
                             scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow), _scrollback.GetUnderlineMap(storeRow), _scrollback.GetTextSizingMap(storeRow));
                             scrollbackRow.WrittenColumns = _scrollback.GetWrittenColumns(storeRow);
                             scrollbackRow.WrappedColumns = _scrollback.GetWrappedColumns(storeRow);
@@ -526,7 +529,9 @@ namespace Ntilde.VT
 
                         // Multi-line rectangles are physical grid content. Keep their rows together
                         // as fixed layout barriers; ordinary logical lines on either side still reflow.
-                        if (physRow.GetTextSizingMap() is { Count: > 0 })
+                        // A double-size line is one too: it holds half the columns, so it has no place in a logical
+                        // line that re-wraps at the page width. It keeps its cells and its attribute.
+                        if (physRow.GetTextSizingMap() is { Count: > 0 } || physRow.LineSize != LineSize.SingleWidth)
                         {
                             if (lineStartPhys != -1)
                             {
@@ -1026,7 +1031,7 @@ namespace Ntilde.VT
                             if (!nextRow.IsWrapped)
                             {
                                 // Check if row has any actual content
-                                bool hasContent = nextRow.GetTextSizingMap() is { Count: > 0 }
+                                bool hasContent = nextRow.LineSize != LineSize.SingleWidth || nextRow.GetTextSizingMap() is { Count: > 0 }
                                     || nextRow.GetUnderlineMap() is { Count: > 0 }
                                     || nextRow.HasProtectedCells;
                                 for (int c = 0; c < nextRow.Cells.Length; c++)

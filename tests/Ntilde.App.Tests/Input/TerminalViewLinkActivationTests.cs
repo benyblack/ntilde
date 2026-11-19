@@ -272,6 +272,41 @@ public sealed class TerminalViewLinkActivationTests
     }
 
     /// <summary>
+    /// #1036: a double-width line (DECDWL) shows each cell two cells wide, so the pointer is over the column at half its
+    /// single-width position, and the hovered link's underline spans the doubled cells.
+    /// </summary>
+    [AvaloniaFact]
+    public void On_a_double_width_line_the_pointer_and_the_link_underline_use_doubled_cells()
+    {
+        var (view, _) = CreateView("\u001b#6ab" + Osc8("https://example.com/docs", "docs") + "\r\nplain");
+
+        // Single-width column 5 is over double-width column 2, the first cell of the link (columns 2-5).
+        view.UpdateHoveredLink(CellCentre(0, 5));
+        Assert.Equal([new HyperlinkRun(0, 2, 5)], view.HoveredLinkRunsForTest);
+        Assert.Equal(
+            [new Rect(2 * 2 * CellWidth, CellHeight - 1, 4 * 2 * CellWidth, 1)],
+            view.HoveredLinkUnderlines(displayStart: 0, rows: 24));
+
+        // Single-width column 3 is over double-width column 1, which is not part of the link.
+        view.UpdateHoveredLink(CellCentre(0, 3));
+        Assert.Null(view.HoveredLinkUriForTest);
+
+        // Mouse reports name the character cell: one-based, halved on the double-width row only, and clamped to its 40 columns.
+        Assert.Equal((3, 1), view.ToMouseReportCell(CellCentre(0, 5)));
+        Assert.Equal((40, 1), view.ToMouseReportCell(CellCentre(0, 79)));
+        Assert.Equal((6, 2), view.ToMouseReportCell(CellCentre(1, 5)));
+        Assert.Equal((80, 2), view.ToMouseReportCell(CellCentre(1, 79)));
+
+        // A generated pointer event aimed at a cell lands on that cell: the inverse of the report conversion.
+        Assert.Equal((7, 1), view.ToMouseReportCell(view.MouseReportCellCentre(7, 1)));
+        Assert.Equal((40, 1), view.ToMouseReportCell(view.MouseReportCellCentre(40, 1)));
+        Assert.NotEqual((41, 1), view.ToMouseReportCell(view.MouseReportCellCentre(41, 1))); // not a cell of the double row
+        Assert.Equal((7, 2), view.ToMouseReportCell(view.MouseReportCellCentre(7, 2)));
+        Assert.True(view.IsDoubleSizeViewportRow(1));
+        Assert.False(view.IsDoubleSizeViewportRow(2));
+    }
+
+    /// <summary>
     /// #95 gap 5: a hovered link says where it leads before it is followed - the attack these tests pin is text that looks
     /// like one link with a target that is another - and how to follow it. Leaving it takes the tip away.
     /// </summary>

@@ -181,6 +181,7 @@ namespace Ntilde.VT.Storage
             if (underlines != null && underlines.Count > 0)
                 currentPage.SetUnderlineFromMap(rowIndex, underlines);
             currentPage.SetTextSizingFromMap(rowIndex, metadata.TextSizing);
+            currentPage.SetLineSize(rowIndex, metadata.LineSize);
             currentPage.UsedRows++;
             _totalRowsAppended++;
 
@@ -206,6 +207,13 @@ namespace Ntilde.VT.Storage
         {
             var (page, row) = FindPage(logicalIndex);
             return page.IsRowWrapped(row);
+        }
+
+        /// <summary>The VT100 line attribute the row had when it left the screen.</summary>
+        public LineSize GetLineSize(int logicalIndex)
+        {
+            var (page, row) = FindPage(logicalIndex);
+            return page.GetLineSize(row);
         }
 
         internal int GetWrittenColumns(int logicalIndex)
@@ -390,7 +398,7 @@ namespace Ntilde.VT.Storage
             wrappedColumns = page.GetWrappedColumns(rowIndex);
             writtenColumns = page.GetWrittenColumns(rowIndex);
             metadata = new(page.GetExtendedTextMap(rowIndex), page.GetHyperlinkMap(rowIndex),
-                page.GetUnderlineMap(rowIndex), page.GetTextSizingMap(rowIndex));
+                page.GetUnderlineMap(rowIndex), page.GetTextSizingMap(rowIndex), page.GetLineSize(rowIndex));
             page.ClearRowMetadata(rowIndex);
 
             page.UsedRows--;

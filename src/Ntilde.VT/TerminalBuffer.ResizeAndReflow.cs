@@ -202,6 +202,7 @@ namespace Ntilde.VT
                             // tables come straight across. Copying only Cells left the extended
                             // graphemes and OSC 8 links behind (#164).
                             _viewport[i].CopyRowMetadataFrom(oldAlt[i], copyCols);
+                            _viewport[i].LineSize = oldAlt[i].LineSize;
                             _viewport[i].ClearProtectionOfClippedWideAnchor(copyCols, oldCols);
                             _viewport[i].WrittenColumns = Math.Min(oldAlt[i].WrittenColumns, newCols);
                             if (oldAlt[i].IsWrapped)
@@ -294,6 +295,7 @@ namespace Ntilde.VT
                         // shrink-then-grow round trip through scrollback.
                         row.IsWrapped = isWrapped;
                         row.RestoreSideTables(metadata.ExtendedText, metadata.Hyperlinks, metadata.Underlines, metadata.TextSizing);
+                        row.LineSize = metadata.LineSize;
                         row.WrittenColumns = writtenColumns;
                         row.WrappedColumns = wrappedColumns;
                         newViewport[i] = row;
@@ -412,7 +414,8 @@ namespace Ntilde.VT
         /// </remarks>
         private static bool IsRowPadding(TerminalRow row)
         {
-            if (row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells) return false;
+            // A double-size line is not padding even when blank: discarding it would lose the attribute.
+            if (row.LineSize != LineSize.SingleWidth || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells) return false;
             bool rowHasLinks = row.GetHyperlinkMap() is { Count: > 0 };
             var cells = row.Cells;
 
