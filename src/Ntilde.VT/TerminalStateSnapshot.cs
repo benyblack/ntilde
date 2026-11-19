@@ -202,6 +202,22 @@ namespace Ntilde.VT
         /// </summary>
         [JsonPropertyName("animation"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public TerminalKittyAnimationState? Animation { get; set; }
+
+        /// <summary>
+        /// The image's virtual placements (persistent image policy 5, #989): the grids Unicode placeholder cells fit it into. Absent when it has none, so a snapshot of
+        /// an image without them is byte-for-byte what it was before they were carried. A session whose policy predates them refuses a snapshot that has them.
+        /// </summary>
+        [JsonPropertyName("virtual"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TerminalKittyVirtualPlacementState>? VirtualPlacements { get; set; }
+    }
+
+    /// <summary>A virtual placement of a retained Kitty image: invisible, it only sizes the grid its placeholder cells show tiles of.</summary>
+    public sealed class TerminalKittyVirtualPlacementState
+    {
+        /// <summary>Kitty <c>p=</c>; 0 when the placement has none.</summary>
+        [JsonPropertyName("placement")] public uint Placement { get; set; }
+        [JsonPropertyName("cols")] public int Columns { get; set; }
+        [JsonPropertyName("rows")] public int Rows { get; set; }
     }
 
     /// <summary>The playback state and frames of one retained Kitty image.</summary>

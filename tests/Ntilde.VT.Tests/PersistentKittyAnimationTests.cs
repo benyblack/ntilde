@@ -147,7 +147,7 @@ public sealed class PersistentKittyAnimationTests
         Assert.EndsWith(";ERR\x1b\\", side.Replies[2], StringComparison.Ordinal);
         Assert.False(PersistentImagePolicy.AllowsAnimation(PersistentImagePolicy.MultipartImagesVersion));
         Assert.True(PersistentImagePolicy.AllowsAnimation(PersistentImagePolicy.AnimationImagesVersion));
-        Assert.Equal(PersistentImagePolicy.CompositionImagesVersion, PersistentImagePolicy.EnabledVersion);
+        Assert.Equal(PersistentImagePolicy.PlaceholderImagesVersion, PersistentImagePolicy.EnabledVersion);
         var current = new Side(decoder: null);
         current.Send(Kitty("a=q,i=31,e=f,s=1,v=1,t=d,f=24", "AAAA"));
         Assert.EndsWith(";OK\x1b\\", current.Replies[0], StringComparison.Ordinal);

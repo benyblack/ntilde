@@ -155,10 +155,16 @@ the run's cells over their own background colour. `a=d` with `d=i`, `I`, `n` or 
 placements (or frees the image); the position-based selections never touch them. `a=q,e=T,U=1` (or
 `e=p`) is answered with the action, `C=1` when asked for, and `U=1`.
 
-Where images are retained for snapshots (persistent sessions) the command is refused with `ENOTSUP` and the
-feature query answers `ERR` until image policy 5 carries virtual placements in snapshots. Not covered: a
+In persistent sessions the command needs persistent image policy 5 (`PersistentImagePolicy.PlaceholderImagesVersion`,
+`AnsiParser.RetainedPlaceholders`, fixed at spawn like the others): under policy 4 or below it is refused with `ENOTSUP`
+and `a=q,e=T,U=1` answers `ERR`, because a peer that predates it would show the placeholder cells without their image.
+Snapshots carry each image's virtual placements (`virtual`: placement id and grid, absent when there are none, so an image
+without them exports exactly as before) and a restore validates them (between one and 64 per image, each side 1-200, one per
+id) before restoring any; a session whose policy is below 5 refuses a snapshot that has them (`ImagePolicyAdmission`).
+The tiles themselves are never carried: they follow from the cells, which snapshots already carry. Not covered: a
 palette background colour is not resolved through the theme (the theme background shows through instead), an image
 that does not match its grid's aspect is not centred, relative placements (`P=`, `Q=`), and a real-desktop owned
-measurement. Tests: `KittyUnicodePlaceholderTests` (cells, inheritance, selection, deletion, replies, policy) and
+measurement. Tests: `KittyUnicodePlaceholderTests` (cells, inheritance, selection, deletion, replies, policy), `PersistentKittyPlaceholderTests`
+(daemon and client alike, snapshot round trip, validation), the mux admission, client and headless image-policy tests and
 `KittyUnicodePlaceholderRenderTests` (painted pixels). The pinned
 `extensions.kitty-graphics.unicode-placeholders` callbacks cannot return supported or unsupported.
