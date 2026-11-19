@@ -67,9 +67,9 @@ not a frozen owned desktop measurement or remote child acknowledgement.
 
 Two existing decoder/placement fixtures now request `a=T` explicitly: their prior
 omitted action / `a=t` accidentally depended on the old transmit-also-displays
-behavior. Existing legacy layout handling remains partial. In particular accepted
-extra keys such as `U=1` do not establish virtual placements; animation, Unicode
-placeholder rendering, extended source crops/layout/deletion, fresh owned Sixel
+behavior. Existing legacy layout handling remains partial. Since #989 `U=1` does
+establish a virtual placement (see the Unicode placeholders section below); animation,
+extended source crops/layout/deletion, fresh owned Sixel
 and iTerm2 pixels, timed playback, and cross-platform runtime evidence remain in
 #770/#775. #770 stays open. Historical stock grades and published evidence remain
 unchanged.
@@ -130,3 +130,35 @@ playhead on an injected clock and frame retirement; `KittyAnimationRenderTests` 
 paints the frame the clock selects. These do not establish wall-clock playback on the desktop; that
 belongs to the owned measurement (`kitty-animation-model.md`). The pinned
 `extensions.kitty-graphics.animation` probe can only return inconclusive whatever Ntilde does.
+
+## Unicode placeholders (#989)
+
+`U=1` on `a=p` or `a=T` stores a *virtual placement* of the image: a `c` x `r` grid (default: the
+image's size in cells), at most 64 per image, a repeated `p=` replacing the earlier one. It places
+nothing and leaves the cursor alone. The image appears where the client prints `U+10EEEE`:
+
+- the foreground colour is the low 24 bits of the image id (`38;5;n` is an 8-bit id, `38;2;r;g;b`
+  a 24-bit id; a default foreground names nothing), a third combining mark adds the high byte;
+- the underline colour (SGR 58, even without an underline) is the virtual placement's `p=`; none
+  means the newest virtual placement of the image, an unknown one shows nothing. The cell keeps that
+  colour in the row's underline side table only for placeholder cells;
+- the first two marks from kitty's `rowcolumn-diacritics.txt` (297 numbers, ascending) are the row
+  and column; a missing mark is inherited from the placeholder cell to the left under the three rules
+  of the protocol (same foreground and underline colour, same row, column plus one), otherwise 0;
+- a cell outside the grid, for an unknown image, or without a foreground shows nothing.
+
+The tiles are not stored. Each frame's visible placeholder cells are resolved and grouped into runs
+(one grid row of one virtual placement across consecutive columns and one background colour), so scrolling,
+erase, insert/delete, reflow and copy move or drop the image together with its text. The renderer fits
+the bitmap into the whole grid (aspect kept, anchored top-left like every Kitty placement) and paints only
+the run's cells over their own background colour. `a=d` with `d=i`, `I`, `n` or `N` removes virtual
+placements (or frees the image); the position-based selections never touch them. `a=q,e=T,U=1` (or
+`e=p`) is answered with the action, `C=1` when asked for, and `U=1`.
+
+Where images are retained for snapshots (persistent sessions) the command is refused with `ENOTSUP` and the
+feature query answers `ERR` until image policy 5 carries virtual placements in snapshots. Not covered: a
+palette background colour is not resolved through the theme (the theme background shows through instead), an image
+that does not match its grid's aspect is not centred, relative placements (`P=`, `Q=`), and a real-desktop owned
+measurement. Tests: `KittyUnicodePlaceholderTests` (cells, inheritance, selection, deletion, replies, policy) and
+`KittyUnicodePlaceholderRenderTests` (painted pixels). The pinned
+`extensions.kitty-graphics.unicode-placeholders` callbacks cannot return supported or unsupported.

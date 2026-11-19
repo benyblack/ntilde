@@ -454,7 +454,7 @@ namespace Ntilde.VT
                     row.SetExtendedText(_cursorCol, grapheme.ToString());
                 }
                 row.SetHyperlink(_cursorCol, _currentHyperlink);
-                row.SetUnderline(_cursorCol, UnderlineForWrite);
+                row.SetUnderline(_cursorCol, UnderlineForGrapheme(grapheme));
                 if (tracksProtection) row.SetProtected(_cursorCol, _state.IsCharacterProtected); // a wide glyph's protection lives on its anchor
 
                 if (width >= 2 && _cursorCol + 1 < Cols)

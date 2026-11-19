@@ -269,7 +269,18 @@ public partial class TerminalBuffer
 
     private bool HasVisibleKittyPlacement(KittyImageAsset asset, int? firstVisibleLine) =>
         _images.Any(image => ReferenceEquals(image.KittyAsset, asset)
-            && (firstVisibleLine is not { } top || (image.CellY + image.CellHeight > top && image.CellY < top + Rows)));
+            && (firstVisibleLine is not { } top || (image.CellY + image.CellHeight > top && image.CellY < top + Rows)))
+        || HasVisiblePlaceholder(asset, firstVisibleLine);
+
+    /// <summary>Whether a Unicode placeholder cell on screen shows the asset: an animation seen only that way still needs its redraws scheduled.</summary>
+    private bool HasVisiblePlaceholder(KittyImageAsset asset, int? firstVisibleLine)
+    {
+        if (asset.VirtualPlacements.Count == 0) return false;
+        if (firstVisibleLine is not { } top) return true;
+        var tiles = new List<RenderImageSnapshot>();
+        AppendPlaceholderImages(tiles, top, top + Rows);
+        return tiles.Exists(tile => ReferenceEquals(tile.ImageHandle, asset.Handle));
+    }
 
     /// <summary>Points the asset and every placement of it at <paramref name="frame"/>'s pixels.</summary>
     private void ShowKittyFrame(KittyImageAsset asset, KittyFrame frame)
