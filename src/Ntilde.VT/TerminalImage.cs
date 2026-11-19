@@ -10,6 +10,11 @@ namespace Ntilde.VT
         public int CellWidth { get; }
         public int CellHeight { get; }
         public int ZIndex { get; set; }
+        /// <summary>
+        /// The line attribute last read off the row the image is anchored on. The buffer reads the row itself while it
+        /// exists; this is what remains once that row has scrolled out of the page or out of history.
+        /// </summary>
+        internal LineSize AnchorLineSize { get; set; }
 
         public bool IsSixelImage { get; internal set; }
         /// <summary>Creation-time reservation facts; null for generic/legacy/transferred placements.</summary>

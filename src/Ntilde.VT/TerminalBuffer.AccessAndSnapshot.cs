@@ -696,6 +696,7 @@ namespace Ntilde.VT
                     // If image starts in or below the insertion point, shift it down
                     if (img.IsSticky && img.CellY >= absTop && img.CellY <= absBottom)
                     {
+                        RememberImageLineSizeNoLock(img);
                         img.CellY += n;
                         if (ClipSixelImage(img, absTop, absBottom) || img.CellY > absBottom)
                         {
@@ -778,6 +779,7 @@ namespace Ntilde.VT
                         else
                         {
                             // Image is below the deleted range, shift it UP
+                            RememberImageLineSizeNoLock(img);
                             img.CellY -= n;
                             if (ClipSixelImage(img, absTop, absBottom))
                             {
@@ -854,6 +856,7 @@ namespace Ntilde.VT
                     }
                 }
 
+                RememberImageLineSizesNoLock();
                 _isAltScreen = true;
 
                 // The prompt that emitted 133;B is not on the screen the user is looking at any
@@ -919,6 +922,7 @@ namespace Ntilde.VT
                 if (clearAltBeforeExit) ClearAltScreenNoLock();
                 SaveActiveScreenStateNoLock();
                 _altScreen = _viewport;    // Save current viewport as alt screen
+                RememberImageLineSizesNoLock();
                 _isAltScreen = false;
 
                 // Kitty keyboard protocol: swap back to the main screen's flag stack.
@@ -1082,6 +1086,7 @@ namespace Ntilde.VT
                         CellY = img.CellY,
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
+                        LineSize = ImageLineSizeNoLock(img),
                         ImageHandle = img.ImageHandle,
                         PreserveAspectRatio = img.KittyImageId.HasValue || img.PreserveAspectRatio,
                         Source = img.SixelSource ?? (img.ImageHandle as IDeferredSixelImage)?.Source,
@@ -1092,9 +1097,10 @@ namespace Ntilde.VT
                     });
                 }
             }
+            int placeholderRuns = list.Count;
             AppendPlaceholderImages(list, absDisplayStart, absEnd);
-            // The anchor row may be scrolled out above the view, so the attribute travels with the image rather than being read off the visible rows.
-            for (int i = 0; i < list.Count; i++)
+            // A placeholder run is cells of one row, which is in the range just read.
+            for (int i = placeholderRuns; i < list.Count; i++)
             {
                 LineSize lineSize = GetLineSizeAbsolute(list[i].CellY);
                 if (lineSize != LineSize.SingleWidth) list[i] = list[i] with { LineSize = lineSize };

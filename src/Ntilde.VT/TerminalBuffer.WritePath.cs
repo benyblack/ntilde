@@ -604,6 +604,14 @@ namespace Ntilde.VT
                 // This copies the cell array into the page-based store;
                 // No TerminalRow object is stored in scrollback anymore.
                 var evictingRow = _viewport[0];
+                // The row takes its line attribute into history. An image anchored on it records the attribute now, while
+                // it costs one comparison: once history is trimmed past the row there is nothing left to read it from.
+                if (_images.Count > 0)
+                {
+                    int anchorRow = _scrollback.Count;
+                    foreach (TerminalImage image in _images)
+                        if (!image.IsAltScreenImage && image.CellY == anchorRow) image.AnchorLineSize = evictingRow.LineSize;
+                }
                 _scrollback.AppendRow(evictingRow);
 
 
@@ -650,6 +658,7 @@ namespace Ntilde.VT
                     // Accurate overlap: Ends after top AND Starts before bottom.
                     if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY <= absBottom)
                     {
+                        RememberImageLineSizeNoLock(img);
                         img.CellY--;
                         if (ClipSixelImage(img, absTop, absBottom))
                         {
@@ -726,6 +735,7 @@ namespace Ntilde.VT
                 // If image overlaps with the scrolling region, it moves.
                 if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY < absBottom)
                 {
+                    RememberImageLineSizeNoLock(img);
                     img.CellY++;
                     bool clipped = ClipSixelImage(img, absTop, absBottom);
                     // If the image moves below the region, remove it

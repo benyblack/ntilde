@@ -777,6 +777,57 @@ public sealed class LineSizeTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    private static LineSize[] ImageLineSizes(TerminalBuffer buffer, int start, int rows)
+    {
+        buffer.Lock.EnterReadLock();
+        try { return buffer.GetVisibleImagesSnapshot(start, rows).Select(image => image.LineSize).ToArray(); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void An_image_keeps_its_line_attribute_after_its_anchor_row_scrolls_off_the_alternate_screen()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 4);
+        parser.Process($"{Esc}[?1049h{Dwl}a");
+        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 3));
+        parser.Process($"{Esc}[4;1H\n");
+        Assert.Equal(-1, buffer.Images[0].CellY);
+        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
+    }
+
+    [Fact]
+    public void An_image_keeps_its_line_attribute_after_its_anchor_row_is_trimmed_from_history()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 4);
+        parser.Process($"{Dwl}a");
+        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 3));
+        parser.Process($"{Esc}[4;1H\n{Esc}[3J");
+        Assert.Equal(-1, buffer.Images[0].CellY);
+        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
+    }
+
+    [Fact]
+    public void An_image_keeps_its_line_attribute_after_history_evicts_its_anchor_row()
+    {
+        var buffer = new TerminalBuffer(12, 4) { MaxScrollbackBytes = 1 };
+        var parser = new AnsiParser(buffer);
+        parser.Process($"{Dwl}a");
+        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 400));
+        for (int i = 0; i < 300 && buffer.Images[0].CellY >= 0; i++) parser.Process($"{Esc}[4;1H\n");
+        Assert.True(buffer.Images[0].CellY < 0);
+        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
+    }
+
+    [Fact]
+    public void An_image_takes_a_new_line_attribute_from_its_anchor_row_while_that_row_exists()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 4);
+        buffer.AddImage(new TerminalImage(new object(), 2, 0, 1, 1));
+        Assert.Equal(new[] { LineSize.SingleWidth }, ImageLineSizes(buffer, 0, 4));
+        parser.Process(Dwl);
+        Assert.Equal(new[] { LineSize.DoubleWidth }, ImageLineSizes(buffer, 0, 4));
+    }
+
     [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {

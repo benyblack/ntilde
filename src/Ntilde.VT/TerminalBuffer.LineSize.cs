@@ -144,6 +144,33 @@ public partial class TerminalBuffer
         row.LineSize = size;
     }
 
+    /// <summary>
+    /// The line attribute of the row an image is anchored on: its columns are that row's columns. Read off the row
+    /// while it exists; once the row is gone (scrolled off the alternate screen, trimmed from history) or belongs to
+    /// the screen not showing, the attribute it last had.
+    /// </summary>
+    private LineSize ImageLineSizeNoLock(TerminalImage image)
+    {
+        bool anchorRowExists = image.IsAltScreenImage == _isAltScreen && image.CellY >= 0
+            && image.CellY < (_isAltScreen ? Rows : _scrollback.Count + Rows);
+        return anchorRowExists ? GetLineSizeAbsolute(image.CellY) : image.AnchorLineSize;
+    }
+
+    /// <summary>Records <see cref="ImageLineSizeNoLock"/> on the image. Called before anything moves the image or switches the screen.</summary>
+    private void RememberImageLineSizeNoLock(TerminalImage image) => image.AnchorLineSize = ImageLineSizeNoLock(image);
+
+    private void RememberImageLineSizesNoLock()
+    {
+        foreach (TerminalImage image in _images) RememberImageLineSizeNoLock(image);
+    }
+
+    /// <summary>An image's left and right edge in single-width columns, the unit two images on rows of different attributes share.</summary>
+    private (int Left, int Right) ImagePageColumnsNoLock(TerminalImage image)
+    {
+        int scale = ImageLineSizeNoLock(image) == LineSize.SingleWidth ? 1 : 2;
+        return (image.CellX * scale, (image.CellX + image.CellWidth - image.ClipRightColumns) * scale);
+    }
+
     private void ReturnRowToSingleWidthForSizedTextNoLock(int viewportRow)
     {
         if (viewportRow < 0 || viewportRow >= Rows || _viewport[viewportRow].LineSize == LineSize.SingleWidth) return;

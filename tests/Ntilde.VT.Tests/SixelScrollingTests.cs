@@ -247,6 +247,32 @@ public sealed class SixelScrollingTests
     }
 
     [Fact]
+    public void Page_origin_replacement_keeps_an_image_on_a_double_width_row_that_reaches_past_it()
+    {
+        var buffer = new TerminalBuffer(20, 5);
+        var parser = new AnsiParser(buffer) { ImageDecoder = new FixedSizeImageDecoder(20, 20) };
+        // Two columns of a double-width row, from its column 2: page columns 4 to 8.
+        parser.Process("\x1b[2;1H\x1b#6\x1b[2;3H" + Image);
+        var doubled = Assert.Single(buffer.Images);
+        Assert.Equal((2, 1), (doubled.CellX, doubled.CellY));
+        int cellsPerImage = doubled.CellWidth;
+        parser.ImageDecoder = new FixedSizeImageDecoder(40, 60);
+        parser.Process("\x1b[?80h" + Image);
+        var page = buffer.Images[^1];
+        // In its own columns the older image lies inside the new one; on the page it reaches twice as far right.
+        Assert.True(doubled.CellX + cellsPerImage <= page.CellWidth && (doubled.CellX + cellsPerImage) * 2 > page.CellWidth);
+        Assert.Equal(2, buffer.Images.Count);
+
+        // The same placement on a single-width row is fully covered and retired.
+        var plain = new TerminalBuffer(20, 5);
+        var plainParser = new AnsiParser(plain) { ImageDecoder = new FixedSizeImageDecoder(20, 20) };
+        plainParser.Process("\x1b[2;3H" + Image);
+        plainParser.ImageDecoder = new FixedSizeImageDecoder(40, 60);
+        plainParser.Process("\x1b[?80h" + Image);
+        Assert.Single(plain.Images);
+    }
+
+    [Fact]
     public void Page_origin_replacement_preserves_uncovered_pixels_and_other_screen_images()
     {
         var buffer = new TerminalBuffer(10, 5);

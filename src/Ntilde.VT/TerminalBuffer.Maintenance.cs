@@ -43,6 +43,7 @@ namespace Ntilde.VT
                 // though both live in the same list.
                 image.IsAltScreenImage = _isAltScreen;
                 _images.Add(image);
+                RememberImageLineSizeNoLock(image);
             }
             finally
             {
@@ -258,6 +259,8 @@ namespace Ntilde.VT
             try
             {
                 int clearedRows = _scrollback.Count;
+                // While the alternate screen shows, main-screen images keep what they recorded when it was entered.
+                RememberImageLineSizesNoLock();
                 _scrollback.Clear();
 
                 // Main-screen image CellY is absolute (scrollback + viewport), so removing
