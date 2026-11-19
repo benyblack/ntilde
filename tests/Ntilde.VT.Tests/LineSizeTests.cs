@@ -599,6 +599,19 @@ public sealed class LineSizeTests
         Assert.Equal("abcdef", line.Text);
     }
 
+    [Theory]
+    [InlineData(47)]
+    [InlineData(1047)]
+    [InlineData(1049)]
+    public void The_main_screens_cursor_follows_its_double_line_through_a_resize_behind_the_alternate_screen(int mode)
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abcde{Esc}[?{mode}h");
+        buffer.Resize(6, 6);
+        parser.Process($"{Esc}[?{mode}lX");
+        Assert.Equal(new[] { "abc", "deX" }, Lines(buffer).Take(2));
+    }
+
     [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {

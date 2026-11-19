@@ -75,11 +75,14 @@ namespace Ntilde.VT
                 _source = source;
                 _isAltScreen = source._isAltScreen;
                 Theme = source.Theme;
-                _cursorRow = source._cursorRow;
-                _cursorCol = source._cursorCol;
-                _cursorPendingWrap = !source._isAltScreen && source._isPendingWrap;
-                _oldCursorRow = source._cursorRow;
-                _oldCursorCol = source._cursorCol;
+                // The reflow rebuilds the main screen. While the alternate screen is showing, the main screen's
+                // cursor is the one kept aside for the way back, not the live one.
+                var mainCursor = source._screenCursorStates.Main;
+                _cursorRow = _isAltScreen ? Math.Clamp(mainCursor.Row, 0, Math.Max(0, _viewport.Length - 1)) : source._cursorRow;
+                _cursorCol = _isAltScreen ? Math.Max(0, mainCursor.Col) : source._cursorCol;
+                _cursorPendingWrap = _isAltScreen ? mainCursor.IsPendingWrap : source._isPendingWrap;
+                _oldCursorRow = _cursorRow;
+                _oldCursorCol = _cursorCol;
                 // Lambda, not a method group: GetGraphemeWidth takes a span now (#165) and does not
                 // match Func<string, int> directly. The reflow engine works in strings throughout.
                 _getGraphemeWidth = text => source.GetGraphemeWidth(text);
@@ -94,8 +97,20 @@ namespace Ntilde.VT
             {
                 target._viewport = _viewport;
                 target._scrollback = _scrollback;
-                target._cursorRow = _cursorRow;
-                target._cursorCol = _cursorCol;
+                bool pendingWrapAtRowEnd = _cursorWaitsAtDoubleRowEnd && (_cursorPendingWrap || target.Modes.IsAutoWrapMode);
+                if (_isAltScreen)
+                {
+                    var mainCursor = target._screenCursorStates.Main;
+                    mainCursor.Row = _cursorRow;
+                    mainCursor.Col = _cursorCol;
+                    if (_cursorOnDoubleLine) mainCursor.IsPendingWrap = pendingWrapAtRowEnd;
+                }
+                else
+                {
+                    target._cursorRow = _cursorRow;
+                    target._cursorCol = _cursorCol;
+                    if (_cursorOnDoubleLine) target._isPendingWrap = pendingWrapAtRowEnd;
+                }
                 if (_lastCharOnDoubleLine)
                 {
                     target._lastCharRow = _lastCharRow;
@@ -109,7 +124,6 @@ namespace Ntilde.VT
                     target._lastCharRow = _cursorRow;
                     target._lastCharCol = col >= 0 && col <= _cursorCol ? col : -1;
                 }
-                if (_cursorOnDoubleLine && !_isAltScreen) target._isPendingWrap = _cursorWaitsAtDoubleRowEnd && (_cursorPendingWrap || target.Modes.IsAutoWrapMode);
                 if (target.CommandStartMark == _observedCommandStartMark)
                 {
                     target.CommandStartMark = _commandStartMark;
