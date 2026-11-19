@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "a3dbc8f2fae3c4ceb06a322051b70e7b407167b0b6e70934ece6386704281ebd",
+  "matrixSha256": "2fc6c0580b209258ce337c71186ce7e45311a91383702a1f770726731745b689",
   "summary": {
     "totalRows": 153,
     "supportedCount": 73,
@@ -1016,7 +1016,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Whole-block line edits and regional scrolling have regression coverage; arbitrary mixed line-edit/margin/resize sequences are not comprehensively qualified.",
+      "knownDeviations": "Whole-block line edits and regional scrolling have regression coverage. Inserted and deleted lines fill with the active background, as do the lines SU, SD, and a scrolling LF/IND/NEL bring in (\u0060tests/Ntilde.VT.Tests/ScrollBackgroundColorEraseTests.cs\u0060); arbitrary mixed line-edit/margin/resize sequences are not comprehensively qualified.",
       "sourceLine": 111
     },
     {
@@ -1587,7 +1587,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Regional index/reverse-index and bottom-margin wrap are tested. Reverse index fills vacated cells with the active background (\u0060tests/Ntilde.VT.Tests/LeftRightMarginTests.cs\u0060); arbitrary combinations with resize and retained scrollback are not comprehensively qualified.",
+      "knownDeviations": "Regional index/reverse-index and bottom-margin wrap are tested. Reverse index and a scrolling index fill vacated cells with the active background (\u0060tests/Ntilde.VT.Tests/LeftRightMarginTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/ScrollBackgroundColorEraseTests.cs\u0060); arbitrary combinations with resize and retained scrollback are not comprehensively qualified.",
       "sourceLine": 138
     },
     {
