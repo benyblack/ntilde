@@ -701,6 +701,16 @@ namespace Ntilde.VT
                                 col = offset - chunks[k].Start;
                                 break;
                             }
+                            // A cursor at the start of a row the line wrapped into stands just as well at the end of the
+                            // full row before it, waiting to wrap: there it stays on the row of the character before it,
+                            // which a combining mark has to find.
+                            bool cursorHadPendingWrap = kind == 0 ? _cursorPendingWrap : _savedCursors.Main.IsPendingWrap;
+                            if (kind <= 1 && col == 0 && chunk > 0 && chunks[chunk - 1].Take == half
+                                && (cursorHadPendingWrap || _source.Modes.IsAutoWrapMode))
+                            {
+                                chunk--;
+                                col = half;
+                            }
                             bool pastLastColumn = col >= half;
                             if (pastLastColumn) col = half - 1;
                             int flowRow = startFlowIndex + (doubleLine.HasSecondRun ? chunk * 2 + stream : chunk);

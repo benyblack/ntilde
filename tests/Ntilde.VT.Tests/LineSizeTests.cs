@@ -622,6 +622,24 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_combining_mark_finds_its_character_when_the_cursor_falls_on_a_row_boundary()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process(Dwl + "abcde\rabc");
+        buffer.Resize(6, 8);
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("c\u0301", buffer.GetGraphemeAbsolute(2, 0));
+            Assert.Equal("d", buffer.GetGraphemeAbsolute(0, 1));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+        parser.Process("X");
+        Assert.Equal(new[] { "abc\u0301", "Xe" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);
