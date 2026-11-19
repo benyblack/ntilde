@@ -103,6 +103,21 @@ public sealed class KittyTransportFileTests : IDisposable
     }
 
     [Fact]
+    public void Dot_dot_after_a_link_means_the_parent_of_the_links_target_as_the_kernel_resolves_it()
+    {
+        // d/jump -> sub/deep, d/image -> jump/../frame.png: the kernel reads d/sub/frame.png, not d/frame.png (what collapsing ".." before the link would give).
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows normalises .. lexically; creating links needs a privilege there");
+        Directory.CreateDirectory(Path.Combine(_dir, "sub", "deep"));
+        Write(Path.Combine("sub", "frame.png"), [1, 1]);
+        Write("frame.png", [2, 2]);
+        File.CreateSymbolicLink(Path.Combine(_dir, "jump"), Path.Combine("sub", "deep"));
+        File.CreateSymbolicLink(Path.Combine(_dir, "image"), Path.Combine("jump", "..", "frame.png"));
+        Assert.Equal([1, 1], ReadOrFail(Path.Combine(_dir, "image")));
+        Assert.Equal([1, 1], ReadOrFail(Path.Combine(_dir, "jump", "..", "frame.png")));      // the same with the ".." written in the path itself
+        Assert.Equal([2, 2], ReadOrFail(Path.Combine(_dir, "sub", "..", "frame.png")));       // no link before it: an ordinary lexical ".."
+    }
+
+    [Fact]
     public void A_loop_of_links_is_refused_and_not_followed_forever()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "creating symbolic links needs a privilege on Windows");

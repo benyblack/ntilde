@@ -39,7 +39,9 @@ public static class KittyTransportFile
             // is a different directory from /tmp/frame.rgba, and accepting it as "under temp" would let a case-variant path escape the confinement boundary.
             StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             // Refused before the file system is touched at all: on Windows a UNC or device path would start network or device operations on the parser's thread just to be probed.
-            string full = Path.GetFullPath(path), temp = Path.GetFullPath(Path.GetTempPath());
+            // On Unix the path is NOT normalised first: the kernel resolves ".." after the link that precedes it (jump/.. is the parent of jump's target), and Path.GetFullPath would
+            // collapse it before the link is looked at and open another file than the program meant. Canonicalize applies "." and ".." as it resolves. Windows normalises lexically.
+            string full = Normalize(path), temp = Path.GetFullPath(Path.GetTempPath());
             if (IsNetworkOrDevicePath(full) || !full.StartsWith(temp, comparison)) return null;
             string? root = Canonicalize(temp), real = Canonicalize(full);
             if (root is null || real is null) return null;
@@ -134,7 +136,7 @@ public static class KittyTransportFile
             }
 
             if (++hops > MaxLinkHops) return null;
-            string next = Path.GetFullPath(Path.IsPathRooted(target) ? target : Path.Combine(parent, target));
+            string next = Normalize(Path.IsPathRooted(target) ? target : Path.Combine(parent, target));
             if (IsNetworkOrDevicePath(next)) return null; // a link must not send the walk to a share or a device
             // Resolve the link's target from the start, then whatever followed the link on the original path.
             root = Path.GetPathRoot(next) ?? string.Empty;
@@ -144,6 +146,9 @@ public static class KittyTransportFile
 
         return Join(root, resolved);
     }
+
+    /// <summary>Windows normalises a path lexically (as its file system does); Unix leaves it for <see cref="Canonicalize"/>, which resolves "." and ".." the way the kernel does.</summary>
+    private static string Normalize(string path) => OperatingSystem.IsWindows() ? Path.GetFullPath(path) : path;
 
     /// <summary>A Windows UNC share or device namespace path (<c>\\host\share</c>, <c>\\.\COM1</c>, <c>\\?\...</c>); never a path on a Unix filesystem.</summary>
     private static bool IsNetworkOrDevicePath(string full) => OperatingSystem.IsWindows() && full.StartsWith(@"\\", StringComparison.Ordinal);

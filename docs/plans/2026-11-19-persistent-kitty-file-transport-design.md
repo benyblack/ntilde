@@ -24,7 +24,7 @@ chunk** that completed the command. Clients never read a file and never guess.
   image like any retained source) and never sees that chunk's frames; one that is already subscribed gets frames and output together.
 - **Client.** `MuxClientSession.DeliverFile` keeps the entries of the next output frame. While `OnOutputReceived` runs (parsing is synchronous in the
   pane and in the text client), the parser's `ReadFileBytes` takes the first entry whose path equals the requested one (bytes, or null for
-  "unavailable"); an unclaimed entry is dropped when the output frame has been delivered, and an entry for another offset is dropped as stale.
+  "unavailable"); an unclaimed entry is dropped when the output frame has been delivered, and an entry for any offset but the next expected one (the output frame it precedes) is a protocol error, so a peer cannot park file bytes at offsets that never arrive.
   A path with no entry is "unavailable": the client does what the daemon's refusal did, so a mismatch can only cost an image, never place a different one.
 - **Retention.** The parser keeps the bytes as the image's source (`ImageSourceBudget`), so snapshots, reattach and a second client restore a `t=f`
   image exactly like a `t=d` one. The raw output recording holds the command (a path) and not the file, as in a direct pane: replay still cannot show it.
