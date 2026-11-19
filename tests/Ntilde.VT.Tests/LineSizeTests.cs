@@ -640,6 +640,45 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Returning_a_re_wrapped_double_width_line_to_single_width_leaves_its_rows_as_separate_lines()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process(Dwl + "abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[?69h");
+        buffer.Resize(12, 8);
+        Assert.Equal(new[] { "abc", "def" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
+    public void A_cursor_on_a_row_boundary_of_a_double_height_line_stays_in_its_own_half()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef{Esc}[1;4H");
+        buffer.Resize(6, 8);
+        parser.Process("X");
+        Assert.Equal(new[] { "abc", "abc", "Xef", "def" }, Lines(buffer).Take(4));
+    }
+
+    [Fact]
+    public void A_combining_mark_does_not_reach_for_a_character_that_left_the_screen()
+    {
+        // Autowrap off, so the cursor stays at the start of the second row while the character before it goes into history.
+        var (buffer, parser) = Create(cols: 12, rows: 1);
+        parser.Process($"{Dwl}{Esc}[?7labcd\rab");
+        buffer.Resize(4, 1);
+        Assert.Equal("ab\ncd", AllText(buffer));
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try
+        {
+            Assert.Equal("b", buffer.GetGraphemeAbsolute(1, 0));
+            Assert.Equal("d", buffer.GetGraphemeAbsolute(1, 1));
+        }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

@@ -106,7 +106,7 @@ public partial class TerminalBuffer
     private static void ChangeLineSizeNoLock(TerminalRow row, LineSize size)
     {
         if (row.LineSize == size) return;
-        if (IsDoubleHeight(row.LineSize)) row.IsWrapped = false;
+        if (row.LineSize != LineSize.SingleWidth) row.IsWrapped = false;
         row.LineSize = size;
     }
 

@@ -705,7 +705,8 @@ namespace Ntilde.VT
                             // full row before it, waiting to wrap: there it stays on the row of the character before it,
                             // which a combining mark has to find.
                             bool cursorHadPendingWrap = kind == 0 ? _cursorPendingWrap : _savedCursors.Main.IsPendingWrap;
-                            if (kind <= 1 && col == 0 && chunk > 0 && chunks[chunk - 1].Take == half
+                            // Not on a double-height line with both halves: a wrap there leads into the other half.
+                            if (kind <= 1 && !doubleLine.HasSecondRun && col == 0 && chunk > 0 && chunks[chunk - 1].Take == half
                                 && (cursorHadPendingWrap || _source.Modes.IsAutoWrapMode))
                             {
                                 chunk--;
@@ -1240,7 +1241,7 @@ namespace Ntilde.VT
                     if (newLastCharPhysRow != -1)
                     {
                         _lastCharOnDoubleLine = true;
-                        _lastCharRow = Math.Max(0, newLastCharPhysRow - sbCount);
+                        _lastCharRow = newLastCharPhysRow >= sbCount ? newLastCharPhysRow - sbCount : -1;
                         _lastCharCol = newLastCharPhysRow >= sbCount ? newLastCharPhysCol : -1;
                     }
 
