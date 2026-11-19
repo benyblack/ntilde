@@ -41,6 +41,8 @@ namespace Ntilde.VT
             // The character a combining mark would attach to, when it was on a double-size line: where it is now
             // (a viewport row, or column -1 once it has left the screen).
             private bool _lastCharOnDoubleLine;
+            private readonly int _oldCursorRow;
+            private readonly int _oldCursorCol;
             private int _lastCharRow;
             private int _lastCharCol = -1;
             private readonly bool _cursorPendingWrap;
@@ -76,6 +78,8 @@ namespace Ntilde.VT
                 _cursorRow = source._cursorRow;
                 _cursorCol = source._cursorCol;
                 _cursorPendingWrap = !source._isAltScreen && source._isPendingWrap;
+                _oldCursorRow = source._cursorRow;
+                _oldCursorCol = source._cursorCol;
                 // Lambda, not a method group: GetGraphemeWidth takes a span now (#165) and does not
                 // match Func<string, int> directly. The reflow engine works in strings throughout.
                 _getGraphemeWidth = text => source.GetGraphemeWidth(text);
@@ -96,6 +100,14 @@ namespace Ntilde.VT
                 {
                     target._lastCharRow = _lastCharRow;
                     target._lastCharCol = _lastCharCol;
+                }
+                else if (!_isAltScreen && target._lastCharCol >= 0 && target._lastCharRow == _oldCursorRow && _cursorRow != _oldCursorRow)
+                {
+                    // The cursor's row moved (a line above it re-wrapped into more or fewer rows) and the character
+                    // just written moved with it: it is still as far left of the cursor as it was.
+                    int col = _cursorCol - (_oldCursorCol - target._lastCharCol);
+                    target._lastCharRow = _cursorRow;
+                    target._lastCharCol = col >= 0 && col <= _cursorCol ? col : -1;
                 }
                 if (_cursorOnDoubleLine && !_isAltScreen) target._isPendingWrap = _cursorWaitsAtDoubleRowEnd && (_cursorPendingWrap || target.Modes.IsAutoWrapMode);
                 if (target.CommandStartMark == _observedCommandStartMark)

@@ -218,6 +218,10 @@ namespace Ntilde.VT
                     // We temporarily swap current viewport to MainScreen to let Resize process it.
                     var activeAlt = _viewport;
                     _viewport = _mainScreen;
+                    // The live cursor is the alternate screen's. Re-wrapping the main screen moves the main screen's
+                    // own saved cursor; it must not carry this one along with the main screen's text.
+                    int altCursorRow = _cursorRow;
+                    int altCursorCol = _cursorCol;
                     try
                     {
                         if (oldCols == newCols && oldRows != newRows)
@@ -233,6 +237,8 @@ namespace Ntilde.VT
                     finally
                     {
                         _viewport = activeAlt; // Restore Alt Screen
+                        _cursorRow = altCursorRow;
+                        _cursorCol = altCursorCol;
                     }
                 }
                 else

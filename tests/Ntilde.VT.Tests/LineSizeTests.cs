@@ -530,6 +530,30 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_combining_mark_attaches_to_a_character_on_a_row_the_re_wrap_pushed_down()
+    {
+        var (buffer, parser) = Create(rows: 8);
+        parser.Process(Dwl + "abcde\r\nz");
+        buffer.Resize(6, 8);
+        parser.Process("\u0301");
+        buffer.Lock.EnterReadLock();
+        try { Assert.Equal("z\u0301", buffer.GetGraphemeAbsolute(0, 2)); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
+    public void The_alternate_screens_cursor_stays_put_while_the_main_screens_double_line_re_wraps()
+    {
+        var (buffer, parser) = Create(rows: 8);
+        parser.Process($"{Dwl}abcde{Esc}[?1049h{Esc}[1;4H");
+        buffer.Resize(6, 8);
+        Assert.Equal(0, buffer.CursorRow);
+        Assert.Equal(3, buffer.CursorCol);
+        parser.Process($"{Esc}[?1049l");
+        Assert.Equal(new[] { "abc", "de" }, Lines(buffer).Take(2));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);
