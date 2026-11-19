@@ -13,6 +13,9 @@ This document is the central hub for all testing activities. It links to special
 ---
 
 ## 2. Regression & Stress Testing
+
+- [vttest regression rerun for #1056–#1061 (2026-11-19)](vttest/2026-11-19-1056-1061/README.md)
+
 ### 2.1 Critical Regressions
 - **Midnight Commander (MC)**: Verify no compacted view or screen wipes on resize.
 - **Oh-My-Posh**: Ensure right-aligned segments reposition correctly without ghosting.
