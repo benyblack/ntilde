@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Ntilde.VT.Tests.StateTransfer;
 
 namespace Ntilde.VT.Tests;
@@ -28,7 +29,24 @@ public sealed class Osc13Osc14PointerColorTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
-    private static (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string?> Shapes) Start(string input)
+    /// <summary>The runtime colour resources as exported (what <c>TerminalStateAssert</c> leaves out), asserted non-empty so two empty states cannot compare equal.</summary>
+    private static string Colors(TerminalBuffer buffer)
+    {
+        var colors = buffer.ExportRuntimeColors();
+        Assert.NotNull(colors);
+        Assert.NotNull(colors.Current.Foreground);
+        return JsonSerializer.Serialize(colors);
+    }
+
+    private static void AssertSameState(string where, (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string?> Shapes) expected, (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string?> Shapes) actual)
+    {
+        TerminalStateAssert.AssertEquivalent(where, expected.Buffer, expected.Parser, actual.Buffer, actual.Parser);
+        Assert.Equal(Colors(expected.Buffer), Colors(actual.Buffer)); // the colour overrides, the palette and the special colors
+        Assert.Equal("ABCtail", Row(actual.Buffer));
+    }
+
+    /// <summary>A parser that has processed <see cref="Setup"/> and nothing else; replies and shape requests are collected from here on.</summary>
+    private static (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string?> Shapes) Start()
     {
         var buffer = new TerminalBuffer(20, 5);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
@@ -36,7 +54,7 @@ public sealed class Osc13Osc14PointerColorTests
         var shapes = new List<string?>();
         parser.OnResponse = replies.Add;
         parser.OnPointerShapeRequested = (shape, _) => shapes.Add(shape);
-        parser.Process(input);
+        parser.Process(Setup);
         replies.Clear();
         shapes.Clear();
         return (buffer, parser, replies, shapes);
@@ -63,13 +81,14 @@ public sealed class Osc13Osc14PointerColorTests
     [MemberData(nameof(Cases))]
     public void A_pointer_colour_sequence_is_not_answered_and_leaves_the_state_as_the_same_stream_without_it(string sequence, string terminator)
     {
-        var without = Start(Setup + "tail");
-        var with = Start(Setup + Osc(sequence, terminator) + "tail");
+        var without = Start();
+        without.Parser.Process("tail");
+        var with = Start();
+        with.Parser.Process(Osc(sequence, terminator) + "tail");
 
         Assert.Empty(with.Replies);   // never a reply, not even to a query
         Assert.Empty(with.Shapes);    // the pointer shape (OSC 22) is a different resource
-        TerminalStateAssert.AssertEquivalent(sequence, without.Buffer, without.Parser, with.Buffer, with.Parser);
-        Assert.Equal("ABCtail", Row(with.Buffer));
+        AssertSameState(sequence, without, with);
     }
 
     [Theory]
@@ -79,7 +98,7 @@ public sealed class Osc13Osc14PointerColorTests
     [InlineData("114")]
     public void The_other_colour_resources_still_answer_after_a_pointer_sequence_and_keep_what_was_set(string code)
     {
-        var (_, parser, replies, _) = Start(Setup);
+        var (_, parser, replies, _) = Start();
         string payload = code.Length == 2 ? code + ";?" : code;
         parser.Process(Osc(payload, "\u0007") + Osc("10;?", "\u0007") + Osc("11;?", "\u0007") + Osc("12;?", "\u0007") + Osc("17;?", "\u0007") + Osc("19;?", "\u0007") +
             Osc("4;9;?", "\u0007") + Osc("5;1;?", "\u0007"));
@@ -100,7 +119,7 @@ public sealed class Osc13Osc14PointerColorTests
     public void The_neighbouring_reset_still_resets_so_the_pointer_resets_are_not_hiding_behind_a_dead_path()
     {
         // Positive control: a reset that is supported does change the state the tests above leave alone.
-        var (_, parser, replies, _) = Start(Setup);
+        var (_, parser, replies, _) = Start();
         parser.Process(Osc("113", "\u0007") + Osc("114", "\u0007") + Osc("10;?", "\u0007"));
         Assert.Equal(new[] { Reply("10;rgb:1010/2020/3030") }, replies);
 
@@ -135,7 +154,7 @@ public sealed class Osc13Osc14PointerColorTests
     [Fact]
     public void A_query_chain_across_the_pointer_slots_replies_only_for_the_resources_that_exist()
     {
-        var (_, parser, replies, _) = Start(Setup);
+        var (_, parser, replies, _) = Start();
         parser.Process(Osc("12;?;?;?;?;?;?", "\u0007")); // 12, 13, 14, 15, 16, 17
 
         Assert.Equal(new[] { Reply("12;rgb:7070/8080/9090"), Reply("17;rgb:a0a0/b0b0/c0c0") }, replies);
@@ -144,13 +163,14 @@ public sealed class Osc13Osc14PointerColorTests
     [Fact]
     public void Pointer_colour_sequences_split_across_chunks_are_ignored_the_same_way()
     {
-        var without = Start(Setup + "tail");
-        var split = Start(Setup);
+        var without = Start();
+        without.Parser.Process("tail");
+        var split = Start();
         foreach (char c in Reply("13;rgb:11/22/33") + Osc("14;?", Esc + "\\") + Osc("113", "\u0007") + Osc("114", Esc + "\\") + "tail")
             split.Parser.Process(c.ToString());
 
         Assert.Empty(split.Replies);
         Assert.Empty(split.Shapes);
-        TerminalStateAssert.AssertEquivalent("split", without.Buffer, without.Parser, split.Buffer, split.Parser);
+        AssertSameState("split", without, split);
     }
 }
