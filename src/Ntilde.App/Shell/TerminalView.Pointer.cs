@@ -444,7 +444,11 @@ namespace Ntilde.Shell
 
         private static int PixelOffset(double logical, double scale, int extent)
         {
-            double pixels = Math.Floor(logical * scale);
+            double exact = logical * scale;
+            // A pointer exactly on a pixel boundary must land on the pixel that starts there: the product of a ratio and a position can fall a few ulps below the integer it stands for
+            // (11 x 15/11 is 14.999999999999998), which a plain floor would report one pixel early. Only a product within a billionth of a pixel of a whole pixel is snapped.
+            double nearest = Math.Round(exact);
+            double pixels = Math.Abs(exact - nearest) < 1e-9 ? nearest : Math.Floor(exact);
             return double.IsNaN(pixels) ? 0 : (int)Math.Clamp(pixels, 0, extent - 1);
         }
 

@@ -236,6 +236,18 @@ namespace Ntilde.Tests.Input
             Assert.Equal((80 * 13, 458), view.ToMouseReportPixel(new Point(100000, 100000)));
         }
 
+        [Theory]
+        [InlineData(11f, 15f, 11, 16)]
+        [InlineData(11f, 15f, 22, 31)]
+        [InlineData(7f, 10f, 7, 11)]
+        [InlineData(9f, 13f, 9, 14)]
+        [InlineData(13f, 27f, 13, 28)]
+        public void A_pointer_on_a_cell_boundary_lands_on_the_first_pixel_of_the_next_cell_of_the_session(float logicalCell, float sessionCell, int logicalX, int expectedX)
+        {
+            double scale = Math.Max(1.0, sessionCell) / (double)logicalCell;
+            Assert.Equal(expectedX, TerminalView.ToMouseReportPixel(new Point(logicalX, 0), scale, scale, logicalCell, logicalCell, 80, 24).X);
+        }
+
         [AvaloniaFact]
         public void A_session_cell_under_one_pixel_is_one_pixel_as_the_parser_reports_it()
         {
