@@ -16,20 +16,27 @@ const iso = ms => new Date(animationEpoch + ms).toISOString();
 /** The frame the timeline gives at the middle of a capture span (tests keep the span well inside one window). */
 const timelineFrame = (startedAt, span) => ['root', 'second', 'third'][Math.floor(Math.max(0, (span[0] + span[1]) / 2 - startedAt) / 5000) % 3];
 
+/** Paints one appearance onto the capture: the two-cell tile row of a placeholder appearance, or the 32x32 aspect-fit square of one frame color. Returns the tiles drawn, or null for a square or nothing. */
+function paintAppearance(rgba, width, appearance) {
+    if (!appearance || appearance === 'absent') return null;
+    const tiles = Object.hasOwn(placeholderAppearances, appearance) ? placeholderAppearances[appearance] : null;
+    if (!tiles) {
+        const color = animationAppearanceColor(appearance).color;
+        for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) rgba.set(color, ((72 + y) * width + 24 + x) * 4);
+        return null;
+    }
+    tiles.forEach((name, cell) => {
+        if (name !== 'absent') for (let y = 0; y < 16; y++) for (let x = 0; x < 8; x++) rgba.set(placeholderColors[name], ((72 + y) * width + 24 + cell * 8 + x) * 4);
+    });
+    return tiles;
+}
+
 /** A 32x32 aspect-fit square of one frame color at the controlled anchor, or blank; optional bleed outside it. A placeholder appearance (#989) is instead one 8x16 band per cell of the two-cell row. */
 export function syntheticAnimationCapture(screen, appearance, { bleed = false } = {}) {
     const capture = pixelCapture(screen), width = screen.cols * 8, height = screen.rows * 18;
     const rgba = Buffer.alloc(width * height * 4), background = screen.bufferState.alternateScreen ? 16 : 0;
     for (let i = 0; i < rgba.length; i += 4) rgba.set([background, background, background, 255], i);
-    const tiles = appearance && appearance !== 'absent' && Object.hasOwn(placeholderAppearances, appearance) ? placeholderAppearances[appearance] : null;
-    if (tiles) {
-        tiles.forEach((name, cell) => {
-            if (name !== 'absent') for (let y = 0; y < 16; y++) for (let x = 0; x < 8; x++) rgba.set(placeholderColors[name], ((72 + y) * width + 24 + cell * 8 + x) * 4);
-        });
-    } else if (appearance && appearance !== 'absent') {
-        const color = animationAppearanceColor(appearance).color;
-        for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) rgba.set(color, ((72 + y) * width + 24 + x) * 4);
-    }
+    const tiles = paintAppearance(rgba, width, appearance);
     if (bleed) rgba.set([255, 0, 0, 255], 0);
     const bytes = rgbaPng(width, height, rgba);
     Object.assign(capture, { width, height, byteCount: bytes.length, pngBase64: bytes.toString('base64') });

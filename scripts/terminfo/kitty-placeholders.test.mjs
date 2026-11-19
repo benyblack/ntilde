@@ -212,3 +212,38 @@ test('the cell grid must hold exactly the placeholder cells a stage printed: mis
         assert.deepEqual(placeholderStageCells('wrong-image', 5, 3).map(cell => cell.imageId), [6, 6]);
     } finally { rmSync(output, { recursive: true, force: true }); }
 });
+
+test('the cells each printing stage leaves on the screen are these literal graphemes and cell runs, not what the helper that feeds the expectation says', () => {
+    // Written from the placeholder definitions: U+10EEEE, kitty's diacritics 0 (U+0305) and 1 (U+030D), a 24-bit foreground naming the image id, anchor column 3 of row 4, a 60-column screen.
+    const pl = '\u{10EEEE}', m0 = '\u0305', m1 = '\u030D', cell = (row, column) => pl + [m0, m1][row] + [m0, m1][column];
+    const pair = (a, b) => cell(...a) + cell(...b);
+    const output = mkdtempSync(join(tmpdir(), 'nt-kpl-literal-'));
+    try {
+        const { frames } = syntheticAnimationJournal(output, { version });
+        const screenOf = (caseId, stageId) => frames.find(frame => frame.caseId === caseId && frame.stageId === stageId).screen;
+        const total = 10 * 60, blankFlags = 256, cellFlags = 8192;
+        // [case, stage, expected text of row 4, image id the colour names (cases get 4000, 4001, 4002 in order), the column the first cell sits in]
+        const stages = [
+            [tiles, 'show', '   ' + pair([0, 0], [0, 1]), 4000, 3],
+            [mapping, 'swapped', '   ' + pair([0, 1], [0, 0]), 4001, 3],
+            [mapping, 'single', '    ' + cell(0, 0), 4001, 4],
+            [mapping, 'inherit', '   ' + cell(0, 0) + pl, 4001, 3],
+            [unbound, 'wrong-image', '   ' + pair([0, 0], [0, 1]), 4003, 3],
+            [unbound, 'stale-placement', '   ' + pair([0, 0], [0, 1]), 4002, 3],
+            [unbound, 'outside-grid', '   ' + pair([1, 0], [1, 1]), 4002, 3],
+            [unbound, 'valid', '   ' + pair([0, 0], [0, 1]), 4002, 3],
+            [unbound, 'deleted', '   ' + pair([0, 0], [0, 1]), 4002, 3],
+        ];
+        for (const [caseId, stageId, text, id, column] of stages) {
+            const screen = screenOf(caseId, stageId), count = stageId === 'single' ? 1 : 2, before = 4 * 60 + column;
+            assert.equal(screen.lines[4], text, `${caseId}.${stageId}`);
+            assert.deepEqual(screen.cellDetails.map(run => [run.count, run.flags, run.foregroundArgb]),
+                [[before, blankFlags, null], [count, cellFlags, (0xff000000 + id) >>> 0], [total - before - count, blankFlags, null]], `${caseId}.${stageId}`);
+        }
+        // The stages that leave the row blank hold the blank screen exactly.
+        for (const [caseId, stageId] of [[tiles, 'blank'], [tiles, 'build'], [tiles, 'erase'], [tiles, 'clear'], [mapping, 'build'], [unbound, 'build'], [unbound, 'clear']]) {
+            const screen = screenOf(caseId, stageId);
+            assert.equal(screen.lines[4], '', `${caseId}.${stageId}`); assert.equal(screen.cellDetails.length, 1, `${caseId}.${stageId}`);
+        }
+    } finally { rmSync(output, { recursive: true, force: true }); }
+});
