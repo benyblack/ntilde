@@ -401,10 +401,10 @@ namespace Ntilde
                 return;
             }
 
-            FanOutBroadcastText(text, SiblingReceivers(tabItem), _broadcastTextGate);
+            FanOutBroadcastText(text, SiblingReceivers(tabItem, keyboardText: true), _broadcastTextGate);
         }
 
-        private List<BroadcastReceiver> SiblingReceivers(TabItem tabItem)
+        private List<BroadcastReceiver> SiblingReceivers(TabItem tabItem, bool keyboardText = false)
         {
             var receivers = new List<BroadcastReceiver>();
             foreach (var pane in EnumeratePanes(tabItem.Content as Control))
@@ -416,8 +416,12 @@ namespace Ntilde
                     // Broadcast bytes never went through the receiving pane's key handling, so its
                     // markless submission accumulator cannot model them.
                     target.NotifyExternalInputSent();
-                    target.ScrollToInputLine();
-                    target.Session?.SendInput(sequence);
+                    if (keyboardText) target.TermView.SendKeyboardText(sequence);
+                    else
+                    {
+                        target.ScrollToInputLine();
+                        target.Session?.SendInput(sequence);
+                    }
                 }));
             }
             return receivers;

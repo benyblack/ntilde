@@ -415,6 +415,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 HandleRequest(MuxFrames.ParseJson(frame.Payload, MuxJsonContext.Default.MuxRequest));
                 break;
             case MuxFrameKind.Input:
+            case MuxFrameKind.KeyboardText:
                 if (!MuxFrames.TryParseInput(frame.Payload, out Guid id, out ReadOnlySpan<byte> utf8))
                 {
                     throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "Input frame shorter than its session id.");
@@ -426,18 +427,18 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     break;
                 }
 
-                ForwardInput(id, utf8);
+                ForwardInput(id, utf8, frame.Kind == MuxFrameKind.KeyboardText);
                 break;
             default:
                 throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"A client may not send {frame.Kind} frames.");
         }
     }
 
-    private void ForwardInput(Guid id, ReadOnlySpan<byte> input)
+    private void ForwardInput(Guid id, ReadOnlySpan<byte> input, bool keyboardText)
     {
         if (!_server.TryGetSession(id, out HeadlessTerminalSession? session)) return;
-        if (_byteInput) session.TrySendInputBytes(input);
-        else session.SendInput(Encoding.UTF8.GetString(input));
+        if (_byteInput) session.TrySendInputBytes(input, keyboardText);
+        else session.SendInput(Encoding.UTF8.GetString(input), keyboardText);
     }
 
     private int _maxSixelRasterPolicy;
@@ -490,6 +491,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             LoginSessionEnded = loginSessionEnded ? true : null,
             SupportsPresentationOnly = true,
             SupportsByteInput = _byteInput,
+            SupportsKeyboardText = true,
             HistoryLimits = new MuxHistoryLimits { MaxRows = o.MaxSessionHistoryRows, MaxBytes = o.MaxSessionScrollbackBytes, MaxAttachRows = o.MaxAttachScrollbackRows },
         }, MuxJsonContext.Default.WelcomeResult);
     }

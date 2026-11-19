@@ -226,7 +226,7 @@ internal static class TerminalStateAssert
         $"sgrMouse={modes.MouseModeSGR} utf8Mouse={modes.MouseModeUtf8 ?? false} urxvtMouse={modes.MouseModeUrxvt ?? false} pixelMouse={modes.MouseModePixel ?? false} ckm={modes.IsApplicationCursorKeys} kap={modes.IsApplicationKeypad} bkm={modes.IsBackarrowKeyMode} awm={modes.IsAutoWrapMode} rwm={modes.IsReverseWrapMode} " +
         $"sixelDisplay={modes.IsSixelDisplayMode} decom={modes.IsOriginMode} decscnm={modes.IsReverseVideo} focus={modes.IsFocusEventReporting} bp={modes.IsBracketedPasteMode} " +
         $"cv={modes.IsCursorVisible} cblink={modes.IsCursorBlinkEnabled} cstyle={modes.CursorStyle} cdefault={modes.CursorStyleIsDefault} " +
-        $"irm={modes.IsInsertMode} lnm={modes.IsLineFeedNewLineMode} srm={modes.IsEchoEnabled} altScroll={modes.AlternateScrollOverride?.ToString() ?? "default"} " +
+        $"irm={modes.IsInsertMode} lnm={modes.IsLineFeedNewLineMode} srm={modes.IsEchoEnabled} localEcho={modes.IsLocalEchoEnabled} altScroll={modes.AlternateScrollOverride?.ToString() ?? "default"} " +
         $"mok={modes.ModifyOtherKeysMain}/{modes.ModifyOtherKeysAlt}";
 
     private static string Describe(TerminalKittyKeyboardState kitty) =>

@@ -715,6 +715,7 @@ namespace Ntilde.Controls
             // They are content for one narrow purpose, added in V2 Phase 1 task 7: the markless
             // submission accumulator, which supplies Enter-time history capture for the sessions
             // the grid cannot serve. See NotifyTypedTextObserved and friends.
+            TermView.LocalKeyboardEcho = EchoKeyboardText;
             TermView.TextInputObserved += NotifyTypedTextObserved;
             TermView.BackspaceObserved += NotifyBackspaceObserved;
             TermView.EnterObserving += OnCommandAssistEnterObserving;
