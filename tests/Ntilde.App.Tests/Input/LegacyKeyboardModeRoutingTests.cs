@@ -9,11 +9,9 @@ namespace Ntilde.Tests.Input;
 
 public sealed class LegacyKeyboardModeRoutingTests
 {
-    [AvaloniaFact]
-    public void Return_sends_crlf_only_while_new_line_mode_is_set()
+    private static (TerminalView View, AnsiParser Parser, List<string> Sent) CreateView()
     {
         var buffer = new TerminalBuffer(80, 24);
-        var parser = new AnsiParser(buffer);
         var sent = new List<string>();
         var session = new Mock<ITerminalSession>();
         session.SetupGet(x => x.IsProcessRunning).Returns(true);
@@ -21,6 +19,13 @@ public sealed class LegacyKeyboardModeRoutingTests
         var view = new TerminalView();
         view.SetBuffer(buffer);
         view.SetSession(session.Object);
+        return (view, new AnsiParser(buffer), sent);
+    }
+
+    [AvaloniaFact]
+    public void Return_sends_crlf_only_while_new_line_mode_is_set()
+    {
+        var (view, parser, sent) = CreateView();
 
         Assert.True(view.HandleKeyDownCore(Key.Enter, KeyModifiers.None, PhysicalKey.Enter));
         parser.Process("\u001b[20h");
@@ -43,6 +48,38 @@ public sealed class LegacyKeyboardModeRoutingTests
         new AnsiParser(buffer).Process(modeSequence);
 
         Assert.True(MainWindow.TryMapBroadcastKey(Key.Enter, KeyModifiers.None, PhysicalKey.Enter, null,
+            buffer, kittyFlags: 0, focusedConsumesText: false, out string? sequence));
+        Assert.Equal(expected, sequence);
+    }
+
+    [AvaloniaFact]
+    public void Backspace_sends_bs_only_while_backarrow_key_mode_is_set()
+    {
+        var (view, parser, sent) = CreateView();
+        int observed = 0;
+        view.BackspaceObserved += () => observed++;
+
+        Assert.True(view.HandleKeyDownCore(Key.Back, KeyModifiers.None));
+        parser.Process("\u001b[?67h");
+        Assert.True(view.HandleKeyDownCore(Key.Back, KeyModifiers.None));
+        parser.Process("\u001b[?67l");
+        Assert.True(view.HandleKeyDownCore(Key.Back, KeyModifiers.None));
+        parser.Process("\u001b[?67h\u001bc");
+        Assert.True(view.HandleKeyDownCore(Key.Back, KeyModifiers.None));
+
+        Assert.Equal(new[] { "\x7f", "\b", "\x7f", "\x7f" }, sent);
+        Assert.Equal(4, observed);
+    }
+
+    [Theory]
+    [InlineData("\u001b[?67h", "\b")]
+    [InlineData("\u001b[?67h\u001b[?67l", "\x7f")]
+    public void Broadcast_backspace_uses_the_receiving_panes_backarrow_mode(string modeSequence, string expected)
+    {
+        var buffer = new TerminalBuffer(80, 24);
+        new AnsiParser(buffer).Process(modeSequence);
+
+        Assert.True(MainWindow.TryMapBroadcastKey(Key.Back, KeyModifiers.None, PhysicalKey.None, null,
             buffer, kittyFlags: 0, focusedConsumesText: false, out string? sequence));
         Assert.Equal(expected, sequence);
     }

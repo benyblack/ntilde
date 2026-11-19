@@ -361,6 +361,9 @@ namespace Ntilde.Shell
         internal static string EncodeLegacyReturn(ModeState? modes)
             => modes?.IsLineFeedNewLineMode == true ? "\r\n" : "\r";
 
+        internal static string EncodeLegacyBackspace(ModeState? modes)
+            => modes?.IsBackarrowKeyMode == true ? "\b" : "\x7f";
+
         /// <summary>
         /// Encodes an Alt/Meta + printable key as an ESC-prefixed sequence, matching the
         /// standard xterm "metaSendsEscape" behavior (e.g. Alt+V -> ESC v). This restores

@@ -21,6 +21,9 @@ namespace Ntilde.VT
         /// <summary>DECKPAM / DECKPNM and DECNKM (?66): application auxiliary keypad.</summary>
         public bool IsApplicationKeypad { get; set; }
 
+        /// <summary>DECBKM (?67): set sends BS for legacy Backspace, reset sends DEL.</summary>
+        public bool IsBackarrowKeyMode { get; set; }
+
         // Cursor and display modes
         public bool IsApplicationCursorKeys { get; set; } // ?1 - DECCKM (Application Cursor Keys)
         public bool IsAutoWrapMode { get; set; } = true;  // ?7 - DECAWM (Auto Wrap Mode)
@@ -196,6 +199,7 @@ namespace Ntilde.VT
                 MouseModePixel = this.MouseModePixel,
                 IsApplicationCursorKeys = this.IsApplicationCursorKeys,
                 IsApplicationKeypad = this.IsApplicationKeypad,
+                IsBackarrowKeyMode = this.IsBackarrowKeyMode,
                 IsAutoWrapMode = this.IsAutoWrapMode,
                 IsReverseWrapMode = this.IsReverseWrapMode,
                 IsOriginMode = this.IsOriginMode,

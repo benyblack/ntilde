@@ -1059,6 +1059,7 @@ namespace Ntilde.VT
                 case 45: return _buffer.Modes.IsReverseWrapMode ? 1 : 2;         // Reverse-wraparound (xterm)
                 case 47: return _buffer.IsAltScreenActive ? 1 : 2;               // Alt screen (legacy)
                 case 66: return _buffer.Modes.IsApplicationKeypad ? 1 : 2;        // DECNKM
+                case 67: return _buffer.Modes.IsBackarrowKeyMode ? 1 : 2;         // DECBKM
                 case 80: return _buffer.Modes.IsSixelDisplayMode ? 1 : 2;        // DECSDM
                 case 1000: return _buffer.Modes.MouseModeX10 ? 1 : 2;
                 case 1002: return _buffer.Modes.MouseModeButtonEvent ? 1 : 2;
@@ -1132,6 +1133,9 @@ namespace Ntilde.VT
                         break;
                     case 66: // DECNKM - Numeric/application keypad
                         _buffer.Modes.IsApplicationKeypad = enable;
+                        break;
+                    case 67: // DECBKM - Backarrow Key Mode
+                        _buffer.Modes.IsBackarrowKeyMode = enable;
                         break;
                     case 80: // DECSDM: set disables SIXEL scrolling, matching xterm.
                         _buffer.Modes.IsSixelDisplayMode = enable;

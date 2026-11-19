@@ -382,7 +382,7 @@ namespace Ntilde.Shell
                     if (_session?.IsProcessRunning != true) return false;
                     return SendEnterKey(keyModifiers, physicalKey, TerminalInputModeEncoder.EncodeLegacyReturn(_buffer?.Modes));
                 case Key.Back:
-                    SendKeyInput(key, keyModifiers, physicalKey, "\x7f");
+                    SendKeyInput(key, keyModifiers, physicalKey, TerminalInputModeEncoder.EncodeLegacyBackspace(_buffer?.Modes));
                     BackspaceObserved?.Invoke();
                     return true;
                 case Key.Tab:
