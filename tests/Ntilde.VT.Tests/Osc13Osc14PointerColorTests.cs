@@ -38,7 +38,7 @@ public sealed class Osc13Osc14PointerColorTests
         return JsonSerializer.Serialize(colors);
     }
 
-    private static void AssertSameState(string where, (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string?> Shapes) expected, (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string?> Shapes) actual)
+    private static void AssertSameState(string where, (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string> Shapes) expected, (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string> Shapes) actual)
     {
         TerminalStateAssert.AssertEquivalent(where, expected.Buffer, expected.Parser, actual.Buffer, actual.Parser);
         Assert.Equal(Colors(expected.Buffer), Colors(actual.Buffer)); // the colour overrides, the palette and the special colors
@@ -46,14 +46,16 @@ public sealed class Osc13Osc14PointerColorTests
     }
 
     /// <summary>A parser that has processed <see cref="Setup"/> and nothing else; replies and shape requests are collected from here on.</summary>
-    private static (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string?> Shapes) Start()
+    private static (TerminalBuffer Buffer, AnsiParser Parser, List<string> Replies, List<string> Shapes) Start()
     {
         var buffer = new TerminalBuffer(20, 5);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false);
         var replies = new List<string>();
-        var shapes = new List<string?>();
+        var shapes = new List<string>();
         parser.OnResponse = replies.Add;
-        parser.OnPointerShapeRequested = (shape, _) => shapes.Add(shape);
+        // Both pointer-shape callbacks, as distinct non-null observations (an empty-payload request is a request, not a reset).
+        parser.OnPointerShapeRequested = (shape, _) => shapes.Add("request:" + (shape ?? "(empty)"));
+        parser.OnPointerShapeReset = () => shapes.Add("reset");
         parser.Process(Setup);
         replies.Clear();
         shapes.Clear();
