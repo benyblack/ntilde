@@ -151,6 +151,128 @@ namespace Ntilde.Tests.Input
         }
 
         [Theory]
+        [InlineData(0.0, 0.0, 1, 1)]
+        [InlineData(36.0, 376.0, 59, 635)]
+        [InlineData(7.99, 15.99, 13, 27)]
+        [InlineData(8.0, 16.0, 14, 28)]
+        public void A_session_cell_size_scales_each_axis_to_its_own_unit(double x, double y, int expectedX, int expectedY)
+        {
+            // Logical cell 8 x 16, the session reports 13 x 27 pixels: 1.625 and 1.6875 device pixels per logical pixel.
+            Assert.Equal((expectedX, expectedY), TerminalView.ToMouseReportPixel(new Point(x, y), 13 / 8.0, 27 / 16.0, CellWidth, CellHeight, 80, 24));
+        }
+
+        [Fact]
+        public void A_session_cell_size_bounds_the_text_area_it_reports()
+        {
+            Assert.Equal((80 * 13, 24 * 27), TerminalView.ToMouseReportPixel(new Point(100000, 100000), 13 / 8.0, 27 / 16.0, CellWidth, CellHeight, 80, 24));
+            Assert.Equal((1, 1), TerminalView.ToMouseReportPixel(new Point(-5, -5), 13 / 8.0, 27 / 16.0, CellWidth, CellHeight, 80, 24));
+        }
+
+        [AvaloniaFact]
+        public void A_mux_pane_reports_in_the_session_cell_size_whatever_its_own_scaling()
+        {
+            var (view, session, buffer) = CreateView(scale: 2);
+            buffer.Modes.MouseModeX10 = true;
+            buffer.Modes.MouseModePixel = true;
+            SixelCellSize? reported = new SixelCellSize(13, 27);
+            view.SessionPixelCellProvider = () => reported;
+
+            view.HandleMousePressAt(new Point(36, 376), TerminalMouseButton.Left, KeyModifiers.None);
+            session.Verify(x => x.SendInput("\x1b[<0;59;635M"), Times.Once);
+
+            // Another client became the active one with other metrics: the next frame is in the new unit, with no change to this view.
+            reported = new SixelCellSize(20, 40);
+            view.HandleMousePressAt(new Point(36, 376), TerminalMouseButton.Left, KeyModifiers.None);
+            session.Verify(x => x.SendInput("\x1b[<0;91;941M"), Times.Once);
+
+            // No session size (a direct pane, or none reported yet): the view's own scaling, as before.
+            reported = null;
+            view.HandleMousePressAt(new Point(36, 376), TerminalMouseButton.Left, KeyModifiers.None);
+            session.Verify(x => x.SendInput("\x1b[<0;73;753M"), Times.Once);
+        }
+
+        [AvaloniaTheory]
+        [InlineData(0f, 27f)]
+        [InlineData(13f, 0f)]
+        [InlineData(float.NaN, 27f)]
+        [InlineData(13f, float.PositiveInfinity)]
+        [InlineData(-13f, 27f)]
+        public void An_unusable_session_cell_size_falls_back_to_the_views_own_scaling(float width, float height)
+        {
+            var (view, _, _) = CreateView(scale: 2);
+            view.SessionPixelCellProvider = () => new SixelCellSize(width, height);
+            Assert.Equal((73, 753), view.ToMouseReportPixel(new Point(36, 376)));
+        }
+
+        [AvaloniaFact]
+        public void A_mux_pane_reports_every_new_pixel_of_the_session_unit_and_coalesces_the_same_one()
+        {
+            var (view, session, buffer) = CreateView();
+            buffer.Modes.MouseModeAnyEvent = true;
+            buffer.Modes.MouseModePixel = true;
+            view.SessionPixelCellProvider = () => new SixelCellSize(13, 27);
+
+            // All three positions are in column 5 and in one device pixel of this view, but the session's unit tells the first two from the third.
+            view.HandleMouseMoveAt(new Point(32.0, 100.0), TerminalMouseButton.None, KeyModifiers.None);
+            view.HandleMouseMoveAt(new Point(32.4, 100.0), TerminalMouseButton.None, KeyModifiers.None);
+            view.HandleMouseMoveAt(new Point(32.62, 100.0), TerminalMouseButton.None, KeyModifiers.None);
+
+            session.Verify(x => x.SendInput("\x1b[<35;53;169M"), Times.Once);
+            session.Verify(x => x.SendInput("\x1b[<35;54;169M"), Times.Once);
+            session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Exactly(2));
+        }
+
+        [AvaloniaFact]
+        public void The_session_unit_is_computed_in_double_so_a_cell_boundary_and_the_extent_agree_with_the_reply()
+        {
+            var (view, _, buffer) = CreateView();
+            view.SetMetricsForTest(9f, 13f);
+            buffer.Resize(80, 30);
+            view.SessionPixelCellProvider = () => new SixelCellSize(13f, 15.25f);
+
+            // The 10th logical pixel column starts the 10th session pixel of a 13-pixel cell over a 9-pixel one: 9 x 13/9 is 13, not 12.99999976.
+            Assert.Equal(14, view.ToMouseReportPixel(new Point(9, 0)).X);
+            // 30 rows of 15.25 pixels are 457.5, which CSI 14 t reports as 458 (the text area bound).
+            Assert.Equal((80 * 13, 458), view.ToMouseReportPixel(new Point(100000, 100000)));
+        }
+
+        [Theory]
+        [InlineData(11f, 15f, 11, 16)]
+        [InlineData(11f, 15f, 22, 31)]
+        [InlineData(7f, 10f, 7, 11)]
+        [InlineData(9f, 13f, 9, 14)]
+        [InlineData(13f, 27f, 13, 28)]
+        public void A_pointer_on_a_cell_boundary_lands_on_the_first_pixel_of_the_next_cell_of_the_session(float logicalCell, float sessionCell, int logicalX, int expectedX)
+        {
+            double scale = Math.Max(1.0, sessionCell) / (double)logicalCell;
+            Assert.Equal(expectedX, TerminalView.ToMouseReportPixel(new Point(logicalX, 0), scale, scale, logicalCell, logicalCell, 80, 24).X);
+        }
+
+        [AvaloniaFact]
+        public void A_session_cell_under_one_pixel_is_one_pixel_as_the_parser_reports_it()
+        {
+            var (view, _, _) = CreateView();
+            view.SessionPixelCellProvider = () => new SixelCellSize(0.5f, 0.25f);
+            // CSI 14 t reports 80 x 24 cells of 1 x 1 pixel: the text area is 80 x 24 pixels.
+            Assert.Equal((80, 24), view.ToMouseReportPixel(new Point(100000, 100000)));
+        }
+
+        [AvaloniaFact]
+        public void A_declared_pixel_in_the_session_unit_is_routed_at_its_centre_and_reports_back_as_itself()
+        {
+            var (view, _, _) = CreateView(scale: 2);
+            view.SessionPixelCellProvider = () => new SixelCellSize(13, 27);
+            foreach (var (pixelX, pixelY) in new[] { (0, 0), (12, 26), (13, 27), (500, 321), (80 * 13 - 1, 24 * 27 - 1) })
+            {
+                Assert.True(view.TryGetPixelPosition(pixelX, pixelY, out var position));
+                Assert.Equal((pixelX + 1, pixelY + 1), view.ToMouseReportPixel(position));
+            }
+
+            Assert.False(view.TryGetPixelPosition(80 * 13, 0, out _));
+            Assert.False(view.TryGetPixelPosition(0, 24 * 27, out _));
+        }
+
+        [Theory]
         [InlineData(1.25, 7.2, 80, 720)]
         [InlineData(1.0, 7.36, 80, 589)]
         public void The_text_area_extent_is_what_the_geometry_reply_rounds_to(double scale, double cellWidth, int cols, int expectedWidth)

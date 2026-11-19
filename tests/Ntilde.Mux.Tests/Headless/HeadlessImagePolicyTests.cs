@@ -207,6 +207,8 @@ public sealed class HeadlessImagePolicyTests
             host.Fake(id).Emit(command[split..] + "\r\n" + Kitty("a=T,i=2,t=f,f=100", Utf8Base64(outside)) + Kitty("a=q,i=31,t=f,s=1,v=1,a=q", "AAAA") + "tail");
             await host.SettleAsync(id, first, second);
 
+            // Replies reach the child on the session's input writer thread, after the parse thread the settle flushed.
+            await TestWait.UntilAsync(() => host.Fake(id).SentInput.Count >= 3, "the three Kitty replies reached the child writer");
             string[] replies = host.Fake(id).SentInput.ToArray();
             Assert.Contains("\x1b_Gi=1;OK\x1b\\", replies);                                               // the file was read and placed
             Assert.Contains(replies, reply => reply.StartsWith("\x1b_Gi=2;EINVAL:", StringComparison.Ordinal));   // a path outside temp is refused
@@ -264,6 +266,7 @@ public sealed class HeadlessImagePolicyTests
             host.Fake(id).Emit(Kitty("a=T,i=500,t=f,f=100", Utf8Base64(overlong)) + string.Concat(Enumerable.Range(1, total).Select(n => Kitty($"a=T,i={n},t=f,f=100", Utf8Base64(temp)))) + "tail");
             await host.SettleAsync(id, first);
 
+            await TestWait.UntilAsync(() => host.Fake(id).SentInput.Count >= total + 1, "every reply reached the child writer"); // on the input writer thread, after the flush
             string[] replies = host.Fake(id).SentInput.ToArray();
             Assert.StartsWith("\x1b_Gi=500;EINVAL:", replies[0], StringComparison.Ordinal);
             Assert.Equal(MuxFrames.MaxFileTransfersPerChunk, replies.Count(reply => reply.EndsWith(";OK\x1b\\", StringComparison.Ordinal)));

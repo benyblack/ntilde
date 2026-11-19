@@ -716,6 +716,8 @@ namespace Ntilde.Controls
             // submission accumulator, which supplies Enter-time history capture for the sessions
             // the grid cannot serve. See NotifyTypedTextObserved and friends.
             TermView.LocalKeyboardEcho = EchoKeyboardText;
+            // SGR-Pixels (?1016) from a mux client is in the session's cell size (the one its CSI 14 t / 16 t replies use), not this client's own scaling (#1005).
+            TermView.SessionPixelCellProvider = () => Session is MuxClientSession ? Parser?.SixelCellSizeOverride : null;
             TermView.TextInputObserved += NotifyTypedTextObserved;
             TermView.BackspaceObserved += NotifyBackspaceObserved;
             TermView.EnterObserving += OnCommandAssistEnterObserving;
