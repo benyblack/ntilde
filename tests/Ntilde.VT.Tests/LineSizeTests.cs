@@ -301,6 +301,17 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Sized_text_that_wraps_away_from_a_full_double_size_line_leaves_that_line_alone()
+    {
+        var (buffer, parser) = Create();
+        parser.Process($"{Dwl}abcde{Esc}]66;w=7;ABCDEFG\a");
+        Assert.Equal(LineSize.DoubleWidth, buffer.GetLineSize(0));
+        Assert.Equal("abcde", Lines(buffer)[0]);
+        Assert.False(IsWrapped(buffer, 0));
+        Assert.Equal(1, buffer.CursorRow);
+    }
+
+    [Fact]
     public void Making_a_line_double_retires_a_sized_rectangle_that_touches_it()
     {
         var (buffer, parser) = Create();
