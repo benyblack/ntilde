@@ -200,6 +200,10 @@ public static class KittyTransportFile
             string next = Normalize(Path.IsPathRooted(target) ? target : Path.Combine(parent, target));
             return IsNetworkOrDevicePath(next) ? null : next;
         }
+
+        private static string[] Split(string path) => path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+
+        private static string Join(string root, List<string> parts) => parts.Count == 0 ? root : Path.Combine(root, Path.Combine(parts.ToArray()));
     }
 
     /// <summary>Windows normalises a path lexically (as its file system does); Unix leaves it for <see cref="Canonicalize"/>, which resolves "." and ".." the way the kernel does.</summary>
@@ -207,8 +211,4 @@ public static class KittyTransportFile
 
     /// <summary>A Windows UNC share or device namespace path (<c>\\host\share</c>, <c>\\.\COM1</c>, <c>\\?\...</c>); never a path on a Unix filesystem.</summary>
     private static bool IsNetworkOrDevicePath(string full) => OperatingSystem.IsWindows() && full.StartsWith(@"\\", StringComparison.Ordinal);
-
-    private static string[] Split(string path) => path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
-
-    private static string Join(string root, List<string> parts) => parts.Count == 0 ? root : Path.Combine(root, Path.Combine(parts.ToArray()));
 }
