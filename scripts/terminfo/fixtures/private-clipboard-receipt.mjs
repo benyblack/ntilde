@@ -1,10 +1,11 @@
 // Synthetic suffix over untouched real v11 prefix DATA. No archive module executes.
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { historicalArchive } from './captured-sources.mjs';
+import { linkedTemplate } from './linked-template.mjs';
 import { privateClipboardFixture } from './private-clipboard-owned.mjs';
 import { original as originalCollector } from './private-clipboard-upstream.mjs';
 import { capturedV41SourceFiles, capturedV44SourceFiles, ownedSourcePath } from '../owned-sources.mjs';
@@ -966,7 +967,8 @@ async function buildFixture(output, { routed = false, modifyOtherKeys = false, m
 }
 
 /** The fixture is deterministic and expensive (every synthetic suite is built and graded), so one process builds it once into a template
- * directory and every test receives its own copy of the files and a deep clone of the state; the template is removed when the process exits. */
+ * directory and every test receives its own directory of the files and a deep clone of the state; the template is removed when the process exits.
+ * The private directory holds hard links, not copies (see linked-template.mjs, which also keeps a test's in-place write out of the next test). */
 const templates = new Map();
 function fixtureTemplate(opts) {
     const key = JSON.stringify(opts);
@@ -976,7 +978,9 @@ function fixtureTemplate(opts) {
         try {
             const state = await buildFixture(output, opts);
             if (JSON.stringify(state).includes(output)) throw new Error('The fixture state names its template directory; it cannot be copied.');
-            return { output, state };
+            const links = linkedTemplate(output);
+            process.once('exit', links.remove);
+            return { links, state };
         } catch (error) {
             // A failed build is reported to every test of this process; its directory is not kept until exit.
             rmSync(output, { recursive: true, force: true });
@@ -988,10 +992,11 @@ function fixtureTemplate(opts) {
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
 export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false, osc22 = false, osc720 = false, caps = false } = {}) {
-    const { output: source, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex, pxm });
+    const { links, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex, pxm });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
+    let release = () => {};
     try {
-        cpSync(source, output, { recursive: true, verbatimSymlinks: true });
+        release = links.materialize(output);
         const { context, proof, report, evidence, raw, manifest, old } = structuredClone(state);
         // The title-stack suffix is opt-in, so every other layer's receipt tests keep their own newest schema; it is added to this test's private copy.
         if (titleStack || xtgettcap) {
@@ -1047,7 +1052,9 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008 || osc720 || osc22 || caps) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
-    } finally { rmSync(output, { recursive: true, force: true }); }
+    } finally {
+        try { release(); } finally { rmSync(output, { recursive: true, force: true }); }
+    }
 }
 
 /** The opt-in OSC 9 suffix: synthetic frames from the suite's own oracle (never collected ones), layered over the left/right-margin bytes the title-stack suffix also uses. */
