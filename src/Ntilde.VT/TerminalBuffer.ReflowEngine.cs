@@ -556,12 +556,15 @@ namespace Ntilde.VT
                     // halves of a double-height line re-wrap side by side and are laid out top, bottom, top, bottom,
                     // so every top half stays directly above its bottom half.
                     var doubleStreams = new[] { new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>(), new List<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink, CellUnderline? Underline, bool Protected)>() };
-                    var doubleChunks = new[] { new List<(int Start, int Take)>(), new List<(int Start, int Take)>() };
+                    // Where each line of text starts in a stream: one line, unless a row in it started a new one.
+                    var doubleSegments = new[] { new List<int>(), new List<int>() };
+                    // Soft: the text carries on in the stream's next chunk.
+                    var doubleChunks = new[] { new List<(int Segment, int Start, int Take, bool Soft)>(), new List<(int Segment, int Start, int Take, bool Soft)>() };
                     // What sits on the line and has to be found again: 0 cursor, 1 the main saved cursor, 3 and 4 the shell marks,
                     // 5 an image, 6 the character a combining mark attaches to.
                     int newLastCharPhysRow = -1;
                     int newLastCharPhysCol = -1;
-                    var doubleTracked = new List<(int Kind, int Stream, int Offset, TerminalImage? Image)>();
+                    var doubleTracked = new List<(int Kind, int Stream, int Segment, int Offset, TerminalImage? Image)>();
                     int doubleStartPhys = -1;
                     var doubleLine = default(DoubleSizeLineRows);
                     // How many of the line's rows were history.
@@ -582,10 +585,12 @@ namespace Ntilde.VT
                     // Where a cursor stands in its row's text. A wrap pending on its column puts it after that column's character.
                     static int DoubleLineOffset(int col, bool pendingWrap, int lastCol) => Math.Min(col, lastCol) + (pendingWrap ? 1 : 0);
 
-                    void AddDoubleRow(TerminalRow row, int phys, int stream)
+                    void AddDoubleRow(TerminalRow row, int phys, int stream, bool startsNewLine)
                     {
                         var target = doubleStreams[stream];
                         int start = target.Count;
+                        if (doubleSegments[stream].Count == 0 || startsNewLine) doubleSegments[stream].Add(start);
+                        int segment = doubleSegments[stream].Count - 1;
                         int lastCol = Math.Max(1, oldCols / 2) - 1;
                         // Only the left half is the line. What an erase with a background colour painted past it was never shown.
                         int shown = Math.Min(lastCol + 1, row.Cells.Length);
@@ -616,21 +621,23 @@ namespace Ntilde.VT
                             if (phys == absMainSavedIdx) len = Math.Max(len, DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol));
                             if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark csPad) len = Math.Max(len, Math.Min(csPad.Column, lastCol + 1));
                             if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark osPad) len = Math.Max(len, Math.Min(osPad.Column, lastCol + 1));
+                            foreach (var image in unanchoredImages)
+                                if (image.CellY == phys) len = Math.Max(len, Math.Clamp(image.CellX, 0, lastCol));
                             len = Math.Min(len, row.Cells.Length);
                         }
 
-                        if (phys == absCursorPhysicalIdx) doubleTracked.Add((0, stream, start + Math.Min(DoubleLineOffset(_cursorCol, _cursorPendingWrap, lastCol), len), null));
-                        if (phys == absMainSavedIdx) doubleTracked.Add((1, stream, start + Math.Min(DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol), len), null));
+                        if (phys == absCursorPhysicalIdx) doubleTracked.Add((0, stream, segment, start + Math.Min(DoubleLineOffset(_cursorCol, _cursorPendingWrap, lastCol), len), null));
+                        if (phys == absMainSavedIdx) doubleTracked.Add((1, stream, segment, start + Math.Min(DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol), len), null));
                         // The alternate screen's saved cursor names a place on that screen, not in this text: it stays as it is.
                         if (!_isAltScreen && _source._lastCharCol >= 0 && phys == oldScrollbackCount + _source._lastCharRow)
-                            doubleTracked.Add((6, stream, start + Math.Min(_source._lastCharCol, Math.Max(0, len - 1)), null));
+                            doubleTracked.Add((6, stream, segment, start + Math.Min(_source._lastCharCol, Math.Max(0, len - 1)), null));
                         if (phys < splitPhysIndex) doubleHistoryRows++;
-                        if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark cs) doubleTracked.Add((3, stream, start + Math.Min(cs.Column, len), null));
-                        if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark os) doubleTracked.Add((4, stream, start + Math.Min(os.Column, len), null));
+                        if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark cs) doubleTracked.Add((3, stream, segment, start + Math.Min(cs.Column, len), null));
+                        if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark os) doubleTracked.Add((4, stream, segment, start + Math.Min(os.Column, len), null));
                         for (int k = unanchoredImages.Count - 1; k >= 0; k--)
                         {
                             if (unanchoredImages[k].CellY != phys) continue;
-                            doubleTracked.Add((5, stream, start + Math.Clamp(unanchoredImages[k].CellX, 0, len), unanchoredImages[k]));
+                            doubleTracked.Add((5, stream, segment, start + Math.Clamp(unanchoredImages[k].CellX, 0, len), unanchoredImages[k]));
                             unanchoredImages.RemoveAt(k);
                         }
 
@@ -639,10 +646,13 @@ namespace Ntilde.VT
 
                     }
 
-                    void EmitDoubleRow(int stream, int chunk, LineSize size, bool wrapped, bool isHistory)
+                    void EmitDoubleRow(int stream, int chunk, LineSize size, bool lastRowOfHalf, bool isHistory)
                     {
                         var chunks = doubleChunks[stream];
-                        var (start, take) = chunk < chunks.Count ? chunks[chunk] : (0, 0);
+                        var (_, start, take, soft) = chunk < chunks.Count ? chunks[chunk] : (0, 0, 0, false);
+                        // The last chunk of the stream carries on into the blank rows that keep it level with a
+                        // longer other half, so a wider page takes them back. A line that ends inside the stream does not.
+                        bool wrapped = chunk + 1 < chunks.Count ? soft : !lastRowOfHalf;
                         var source = doubleStreams[stream];
                         var row = isHistory ? historyRow : new TerminalRow(newCols, Theme.Foreground, Theme.Background);
                         for (int c = 0; c < take; c++)
@@ -672,16 +682,22 @@ namespace Ntilde.VT
                         {
                             var source = doubleStreams[s];
                             var chunks = doubleChunks[s];
+                            var segments = doubleSegments[s];
                             chunks.Clear();
-                            int processed = 0;
-                            while (processed < source.Count)
+                            for (int segment = 0; segment < segments.Count; segment++)
                             {
-                                int remaining = source.Count - processed;
-                                int take = Math.Min(remaining, half);
-                                if (take < remaining && take > 0 && source[processed + take - 1].Cell.IsWide) take--;
-                                if (take == 0) take = 1;
-                                chunks.Add((processed, take));
-                                processed += take;
+                                int processed = segments[segment];
+                                int segmentEnd = segment + 1 < segments.Count ? segments[segment + 1] : source.Count;
+                                if (processed == segmentEnd) chunks.Add((segment, processed, 0, false)); // an empty line still has its row
+                                while (processed < segmentEnd)
+                                {
+                                    int remaining = segmentEnd - processed;
+                                    int take = Math.Min(remaining, half);
+                                    if (take < remaining && take > 0 && source[processed + take - 1].Cell.IsWide) take--;
+                                    if (take == 0) take = 1;
+                                    chunks.Add((segment, processed, take, processed + take < segmentEnd));
+                                    processed += take;
+                                }
                             }
                         }
 
@@ -689,14 +705,14 @@ namespace Ntilde.VT
                         // A line that lies in history stays there however many rows it becomes. One that straddles
                         // the top of the screen keeps as many rows in history as it had there.
                         int historyRows = doubleHistoryRows == doubleLine.Count ? int.MaxValue : doubleHistoryRows;
-                        foreach (var (kind, stream, offset, image) in doubleTracked)
+                        foreach (var (kind, stream, segment, offset, image) in doubleTracked)
                         {
                             var chunks = doubleChunks[stream];
                             int chunk = 0;
                             int col = 0;
                             for (int k = chunks.Count - 1; k >= 0; k--)
                             {
-                                if (chunks[k].Start > offset) continue;
+                                if (chunks[k].Segment != segment || chunks[k].Start > offset) continue;
                                 chunk = k;
                                 col = offset - chunks[k].Start;
                                 break;
@@ -719,9 +735,9 @@ namespace Ntilde.VT
 
                         for (int r = 0; r < rowsPerHalf; r++)
                         {
-                            bool wrapped = r < rowsPerHalf - 1;
-                            EmitDoubleRow(0, r, doubleLine.Size0, wrapped, flowedRows - startFlowIndex < historyRows);
-                            if (doubleLine.HasSecondRun) EmitDoubleRow(1, r, doubleLine.Size1, wrapped, flowedRows - startFlowIndex < historyRows);
+                            bool lastRowOfHalf = r == rowsPerHalf - 1;
+                            EmitDoubleRow(0, r, doubleLine.Size0, lastRowOfHalf, flowedRows - startFlowIndex < historyRows);
+                            if (doubleLine.HasSecondRun) EmitDoubleRow(1, r, doubleLine.Size1, lastRowOfHalf, flowedRows - startFlowIndex < historyRows);
                         }
 
                         historyRowCount += Math.Min(flowedRows - startFlowIndex, historyRows);
@@ -729,6 +745,8 @@ namespace Ntilde.VT
                         logicalIdx++;
                         doubleStreams[0].Clear();
                         doubleStreams[1].Clear();
+                        doubleSegments[0].Clear();
+                        doubleSegments[1].Clear();
                         doubleTracked.Clear();
                         doubleStartPhys = -1;
                         doubleLine.Reset();
@@ -774,7 +792,7 @@ namespace Ntilde.VT
                                 stream = doubleLine.Add(i, physRow.LineSize, physRow.IsWrapped, below, twoBelow);
                             }
                             if (doubleStartPhys == -1) doubleStartPhys = i;
-                            AddDoubleRow(physRow, i, stream);
+                            AddDoubleRow(physRow, i, stream, doubleLine.LastRowStartsNewLine);
                             if (i < oldScrollbackCount && i - oldRowsReleased + 1 == _scrollback.OldestPageRowCount)
                                 oldRowsReleased += _scrollback.ReleaseOldestPage();
                             continue;

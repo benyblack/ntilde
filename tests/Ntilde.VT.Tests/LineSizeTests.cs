@@ -736,6 +736,29 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Erasing_one_row_of_a_re_wrapped_half_leaves_the_other_half_one_line()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Top}abcdef\r\n{Bottom}abcdef");
+        buffer.Resize(6, 8);
+        parser.Process($"{Esc}[1;1H{Esc}[2K");
+        Assert.Single(buffer.FindMatches("abcdef", false, true));
+        buffer.Resize(12, 8);
+        Assert.Equal(new[] { "", "abcdef", "def", "" }, Lines(buffer).Take(4));
+        Assert.Single(buffer.FindMatches("abcdef", false, true));
+    }
+
+    [Fact]
+    public void An_image_past_the_text_of_a_double_line_keeps_its_column_through_a_widening()
+    {
+        var (buffer, parser) = Create(cols: 12, rows: 8);
+        parser.Process($"{Dwl}a{Esc}[3;1H");
+        buffer.AddImage(new TerminalImage(new object(), 4, 0, 1, 1));
+        buffer.Resize(14, 8);
+        Assert.Equal((4, 0), (buffer.Images[0].CellX, buffer.Images[0].CellY));
+    }
+
+    [Fact]
     public void A_double_line_in_history_re_wraps_too_and_keeps_its_text()
     {
         var (buffer, parser) = Create(cols: 20, rows: 2);

@@ -8,7 +8,8 @@ namespace Ntilde.VT;
 /// A resize re-wraps a double-size line into rows that keep its attribute and marks each row but the last as
 /// wrapped. A double-width line, or a lone half of a double-height line, carries on in the row below. The two halves
 /// of a double-height line are laid out top, bottom, top, bottom, so there each half carries on two rows down, past a
-/// row of the other half. A line therefore has one run of rows, or two interleaved ones.
+/// row of the other half. A line therefore has one run of rows, or two interleaved ones. A run can hold more than one
+/// line of text: a row whose predecessor in the same half did not wrap into it starts a new one.
 /// </remarks>
 internal struct DoubleSizeLineRows
 {
@@ -25,6 +26,12 @@ internal struct DoubleSizeLineRows
     public LineSize Size1 { get; private set; }
     public bool HasSecondRun { get; private set; }
 
+    /// <summary>
+    /// Whether the row just taken starts a new line inside its run: it sits between two rows of the other half, which
+    /// carries on past it, but the row before it in its own half did not wrap into it (it was erased, say).
+    /// </summary>
+    public bool LastRowStartsNewLine { get; private set; }
+
     public static bool IsDoubleHeight(LineSize size) => size is LineSize.DoubleHeightTop or LineSize.DoubleHeightBottom;
 
     /// <summary>
@@ -38,6 +45,7 @@ internal struct DoubleSizeLineRows
     public int Add(int index, LineSize size, bool wrapped, LineSize below, LineSize twoBelow)
     {
         int run;
+        LastRowStartsNewLine = false;
         if (_rows == 0)
         {
             run = 0;
@@ -57,6 +65,16 @@ internal struct DoubleSizeLineRows
             run = 1;
             Size1 = size;
             HasSecondRun = true;
+        }
+        else if (HasSecondRun && _next0 == index + 1 && size == Size1)
+        {
+            run = 1;
+            LastRowStartsNewLine = true;
+        }
+        else if (HasSecondRun && _next1 == index + 1 && size == Size0)
+        {
+            run = 0;
+            LastRowStartsNewLine = true;
         }
         else return -1;
 

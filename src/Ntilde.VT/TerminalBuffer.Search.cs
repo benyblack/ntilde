@@ -75,15 +75,21 @@ public partial class TerminalBuffer
                             end + 1 < totalRows ? GetLineSizeAbsolute(end + 1) : LineSize.SingleWidth,
                             end + 2 < totalRows ? GetLineSizeAbsolute(end + 2) : LineSize.SingleWidth);
                         if (run < 0) break;
-                        doubleRuns[run].Add(end);
+                        doubleRuns[run].Add(line.LastRowStartsNewLine ? ~end : end);
                     }
 
                     int firstMatch = matches.Count;
                     foreach (var run in doubleRuns)
                     {
                         if (run.Count == 0) continue;
-                        foreach (int runRow in run) AppendSearchRow(runRow, history, text, columns, rows, pattern.SizedEnds);
-                        if (SearchAssembledLine()) continue;
+                        bool completed = true;
+                        foreach (int entry in run)
+                        {
+                            // A complemented index is a row that starts a new line within its half.
+                            if (entry < 0) completed &= SearchAssembledLine();
+                            AppendSearchRow(entry < 0 ? ~entry : entry, history, text, columns, rows, pattern.SizedEnds);
+                        }
+                        if (completed && SearchAssembledLine()) continue;
                         matches.Clear();
                         return matches;
                     }
