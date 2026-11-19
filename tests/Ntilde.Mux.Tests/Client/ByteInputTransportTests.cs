@@ -8,6 +8,56 @@ public sealed class ByteInputTransportTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Keyboard_text_echoes_once_on_the_daemon_without_entering_the_recording(bool childSupportsBytes)
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        ScriptedTerminalSession child = host.Fake(id);
+        child.SupportsByteInput = childSupportsBytes;
+        child.StartRecording("scripted.rec");
+        child.Emit("\u001b[12l");
+        await host.Mux(id).FlushAsync();
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(client, id);
+        using MuxClientSession session = pane.Session;
+        await host.SettleAsync(id, client);
+
+        session.SendKeyboardText("1");
+        session.SendInput("paste");
+        session.SendKeyboardText("1");
+        session.SendKeyboardText("\u001b[2J");
+        await TestWait.UntilAsync(() => child.WireInput.Count == 4, "all input reaches the child");
+        await host.SettleAsync(id, client);
+
+        Assert.Equal(new[] { "1", "paste", "1", "\u001b[2J" }, child.WireInput.Select(bytes => Encoding.UTF8.GetString(bytes)));
+        Assert.Equal(new[] { "out:1", "out:1" }, pane.Events.Where(e => e.StartsWith("out:", StringComparison.Ordinal)));
+        Assert.Equal(2, pane.Buffer.CursorCol);
+        host.AssertPaneMatchesMux(id, pane, "keyboard text is applied to both views of the stream");
+
+        child.Emit(new byte[] { 0xE2, 0x82 }); // A pending UTF-8 prefix cannot take an inserted echo.
+        await host.SettleAsync(id, client);
+        session.SendKeyboardText("8");
+        await TestWait.UntilAsync(() => child.WireInput.Count == 5, "the key is forwarded even at a split code point");
+        await host.SettleAsync(id, client);
+        child.Emit(new byte[] { 0xAC });
+        child.Emit("\u001b[12h");
+        await host.SettleAsync(id, client);
+        Assert.Equal('€', pane.Buffer.ViewportRows[0].Cells[2].Character);
+
+        session.SendKeyboardText("2");
+        await TestWait.UntilAsync(() => child.WireInput.Count == 6, "send/receive mode still forwards keys");
+        await host.SettleAsync(id, client);
+        Assert.Equal(3, pane.Buffer.CursorCol);
+        child.Emit("2");
+        await host.SettleAsync(id, client);
+        Assert.Equal('2', pane.Buffer.ViewportRows[0].Cells[3].Character);
+        host.AssertPaneMatchesMux(id, pane, "split output and child echo remain intact");
+        Assert.Equal("\u001b[12l€\u001b[12h2", Encoding.UTF8.GetString(child.RecordedOutput.SelectMany(bytes => bytes).ToArray()));
+    }
+
     [Fact]
     public async Task Negotiated_input_preserves_every_octet_and_copies_caller_memory()
     {
@@ -164,7 +214,7 @@ public sealed class ByteInputTransportTests
         Guid id = Guid.NewGuid();
         using MuxClientSession session = client.OpenSession(id);
         Assert.False(session.TrySendInputBytes(new byte[] { 128, 255 }));
-        session.SendInput("legacy €");
+        session.SendKeyboardText("legacy €");
         using MuxInboundFrame frame = await fake.Raw.ReadAsync() ?? throw new EndOfStreamException();
         Assert.Equal(MuxFrameKind.Input, frame.Kind);
         Assert.True(MuxFrames.TryParseInput(frame.Payload, out Guid received, out ReadOnlySpan<byte> payload));

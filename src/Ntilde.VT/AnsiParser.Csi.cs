@@ -1091,10 +1091,8 @@ namespace Ntilde.VT
             switch (mode)
             {
                 case 4: return _buffer.Modes.IsInsertMode ? 1 : 2;              // IRM
-                // SRM: "set" (h) turns local echo OFF, "reset" (l) turns it ON. IsEchoEnabled
-                // tracks the echo interpretation, so it is inverted here to report the MODE
-                // flag DECRQM asks about, not the echo state directly.
-                case 12: return _buffer.Modes.IsEchoEnabled ? 2 : 1;            // SRM
+                // SRM set sends input to the child for echo; SRM reset echoes it here.
+                case 12: return _buffer.Modes.IsLocalEchoEnabled ? 2 : 1;       // SRM
                 case 20: return _buffer.Modes.IsLineFeedNewLineMode ? 1 : 2;     // LNM
                 default: return 0; // Not recognized
             }

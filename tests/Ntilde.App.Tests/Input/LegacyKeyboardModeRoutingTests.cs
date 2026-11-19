@@ -86,4 +86,34 @@ public sealed class LegacyKeyboardModeRoutingTests
             buffer, kittyFlags: 0, focusedConsumesText: false, out string? sequence));
         Assert.Equal(expected, sequence);
     }
+
+    [AvaloniaFact]
+    public void Srm_reset_echoes_typed_text_and_set_restores_child_echo()
+    {
+        var (view, parser, sent) = CreateView();
+        var buffer = view.Buffer!;
+        void Type(string text) => view.RaiseEvent(new TextInputEventArgs { Text = text, RoutedEvent = TerminalView.TextInputEvent });
+
+        Type("0");
+        Assert.Equal(0, buffer.CursorCol);
+
+        parser.Process("\u001b[12l");
+        Type("1");
+        Type("1");
+        Type("\u001b[2J");
+        Assert.Equal(2, buffer.CursorCol);
+        Assert.Equal('1', buffer.ViewportRows[0].Cells[0].Character);
+        Assert.Equal('1', buffer.ViewportRows[0].Cells[1].Character);
+
+        parser.Process("\u001b[12h");
+        Type("2");
+        Assert.Equal(2, buffer.CursorCol);
+        parser.Process("2");
+        Assert.Equal('2', buffer.ViewportRows[0].Cells[2].Character);
+
+        parser.Process("\u001b[12l\u001bc");
+        Type("3");
+        Assert.Equal(0, buffer.CursorCol);
+        Assert.Equal(new[] { "0", "1", "1", "\u001b[2J", "2", "3" }, sent);
+    }
 }

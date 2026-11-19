@@ -602,6 +602,10 @@ namespace Ntilde.VT
             return c > '\x7f';
         }
 
+        /// <summary>Whether committed keyboard text can join the output stream without splitting an escape sequence.</summary>
+        public bool CanEchoKeyboardText(string text) =>
+            _state == State.Normal && _buffer.Modes.IsLocalEchoEnabled && TerminalBuffer.IsEchoableKeyboardText(text);
+
         public void Process(string input)
         {
             if (string.IsNullOrEmpty(input)) return;

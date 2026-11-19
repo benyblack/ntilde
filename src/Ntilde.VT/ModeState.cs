@@ -64,7 +64,25 @@ namespace Ntilde.VT
         public bool CursorStyleIsDefault { get; set; } = true;
         public bool IsInsertMode { get; set; }            //  4 - IRM (Insert Replacement Mode)
         public bool IsLineFeedNewLineMode { get; set; }   // 20 - LNM (Line Feed New Line Mode)
-        public bool IsEchoEnabled { get; set; } = true;   // 12 - SRM (Send/Receive Mode)
+        private enum EchoSetting : byte { Default, Child, Local }
+        private volatile EchoSetting _echoSetting;
+
+        /// <summary>Echo hint used by drag and drop. Before SRM is negotiated the hint permits drops.</summary>
+        public bool IsEchoEnabled
+        {
+            get => _echoSetting != EchoSetting.Child;
+            set => SetLocalEcho(value);
+        }
+
+        /// <summary>ANSI mode 12 enables local keyboard echo only after an explicit reset (CSI 12 l).</summary>
+        public bool IsLocalEchoEnabled => _echoSetting == EchoSetting.Local;
+
+        internal void SetLocalEcho(bool? enabled) => _echoSetting = enabled switch
+        {
+            true => EchoSetting.Local,
+            false => EchoSetting.Child,
+            null => EchoSetting.Default,
+        };
 
         /// <summary>
         /// ?1007 alternate scroll as the application last set it: <c>true</c> after DECSET,
@@ -216,7 +234,7 @@ namespace Ntilde.VT
                 CursorStyleIsDefault = this.CursorStyleIsDefault,
                 IsInsertMode = this.IsInsertMode,
                 IsLineFeedNewLineMode = this.IsLineFeedNewLineMode,
-                IsEchoEnabled = this.IsEchoEnabled,
+                _echoSetting = this._echoSetting,
                 AlternateScrollOverride = this.AlternateScrollOverride,
                 AlternateScrollDefault = this.AlternateScrollDefault,
                 KittyKeyboard = this.KittyKeyboard.Clone(),

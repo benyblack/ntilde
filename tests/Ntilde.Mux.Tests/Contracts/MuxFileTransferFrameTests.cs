@@ -39,7 +39,7 @@ public sealed class MuxFileTransferFrameTests
     {
         Assert.True(MuxFrameCodec.IsKnownKind((byte)MuxFrameKind.FileTransfer));
         Assert.Equal(0x14, (byte)MuxFrameKind.FileTransfer);
-        Assert.False(MuxFrameCodec.IsKnownKind(0x15));
+        Assert.False(MuxFrameCodec.IsKnownKind(0x16));
         MuxOutboundFrame frame = MuxFrames.FileTransfer(Id, 0, "/p", [7], hasData: true);
         Assert.Equal(MuxFrameKind.FileTransfer, frame.Kind);
         Assert.Equal(MuxFrames.FileTransferHeaderBytes + 2 + 1, frame.Payload.Length);

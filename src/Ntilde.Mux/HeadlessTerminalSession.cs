@@ -21,7 +21,7 @@ namespace Ntilde.Mux;
 /// order. Never the thread pool: see the #81 history in RustPtySession.
 /// </para>
 /// <para>
-/// <b>Stream offset.</b> <see cref="StreamPosition"/> counts raw bytes fed to the decoder. An Output
+/// <b>Stream offset.</b> <see cref="StreamPosition"/> counts bytes fed to the decoder. An Output
 /// frame carries the offset before its chunk; a ResizeEvent the offset it applies at; a snapshot
 /// <c>StreamSeq = ConsumedBytes</c> with <c>StreamSeq + DecoderTail.Length == StreamPosition</c>.
 /// </para>
@@ -104,7 +104,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     // reading stdin would otherwise stall every session sharing that connection. One thread per
     // session keeps per-session order; the byte cap keeps a wedged child from growing the queue
     // without bound. Never the thread pool (a blocked write would pin a pool thread).
-    private readonly record struct QueuedInput(string? Text, byte[]? Bytes)
+    private readonly record struct QueuedInput(string? Text, byte[]? Bytes, bool KeyboardText = false)
     {
         public long Charge => ((long)(Text?.Length ?? 0) * sizeof(char)) + (Bytes?.LongLength ?? 0);
     }
@@ -113,6 +113,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly Thread _inputThread;
     private readonly long _maxQueuedInputBytes;
     private long _queuedInputBytes;
+    private long _queuedKeyboardEchoBytes;
     private long _exitedAtMs;
     private int _inputDropLogged;
 
@@ -324,14 +325,16 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// of the output stream). Past <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/> of
     /// unwritten input, further input is dropped - the child has stopped reading stdin.
     /// </summary>
-    public void SendInput(string text)
+    public void SendInput(string text) => SendInput(text, keyboardText: false);
+
+    internal void SendInput(string text, bool keyboardText)
     {
         if (IsExited || Volatile.Read(ref _disposed) != 0 || string.IsNullOrEmpty(text)) return;
-        EnqueueInput(text);
+        EnqueueInput(text, keyboardText);
     }
 
     /// <summary>Queues an owned byte copy. Acceptance is not acknowledgement from the child.</summary>
-    internal bool TrySendInputBytes(ReadOnlySpan<byte> input)
+    internal bool TrySendInputBytes(ReadOnlySpan<byte> input, bool keyboardText = false)
     {
         if (IsExited || Volatile.Read(ref _disposed) != 0 || input.IsEmpty) return false;
         if (_session is not ITerminalByteInput { SupportsByteInput: true })
@@ -344,15 +347,16 @@ public sealed class HeadlessTerminalSession : IDisposable
                 // still fits a 2-byte string budget. Count without materializing it.
                 long decodedBytes = (long)StrictInputUtf8.GetCharCount(input) * sizeof(char);
                 if (decodedBytes > MaxQueuedInputBytes - Interlocked.Read(ref _queuedInputBytes)) return false;
-                return EnqueueInput(StrictInputUtf8.GetString(input));
+                return EnqueueInput(StrictInputUtf8.GetString(input), keyboardText);
             }
             catch (System.Text.DecoderFallbackException) { return false; }
         }
         if (input.Length > MaxQueuedInputBytes) return false;
-        return EnqueueInput(new QueuedInput(null, input.ToArray()));
+        return EnqueueInput(new QueuedInput(null, input.ToArray(), keyboardText));
     }
 
-    private bool EnqueueInput(string text) => !string.IsNullOrEmpty(text) && EnqueueInput(new QueuedInput(text, null));
+    private bool EnqueueInput(string text, bool keyboardText = false) =>
+        !string.IsNullOrEmpty(text) && EnqueueInput(new QueuedInput(text, null, keyboardText));
 
     private bool EnqueueInput(QueuedInput input)
     {
@@ -379,6 +383,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     private void WriteQueuedInput(QueuedInput input)
     {
+        if (input.KeyboardText && _buffer.Modes.IsLocalEchoEnabled) QueueKeyboardEcho(input);
         if (input.Text is { } text)
         {
             _session.SendInput(text);
@@ -921,11 +926,45 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
-    private void ProcessChunk(byte[] data)
+    // Put echo ahead of the child's response in the ordered data lane. Echo cannot stall stdin.
+    private void QueueKeyboardEcho(QueuedInput input)
+    {
+        long charge = input.Charge;
+        void Release() => Interlocked.Add(ref _queuedKeyboardEchoBytes, -charge);
+        if (Interlocked.Add(ref _queuedKeyboardEchoBytes, charge) <= MaxQueuedInputBytes)
+        {
+            var item = WorkItem.ForAction(() =>
+            {
+                try { EchoKeyboardText(input); }
+                finally { Release(); }
+            }, Release);
+
+            try
+            {
+                if (_data.TryAdd(item)) return;
+            }
+            catch (InvalidOperationException) { /* Teardown closed the data queue. */ }
+        }
+        Release();
+    }
+
+    private void EchoKeyboardText(QueuedInput input)
+    {
+        if (!_decoder.PendingTail.IsEmpty || !_buffer.Modes.IsLocalEchoEnabled) return;
+
+        string text;
+        try { text = input.Text ?? StrictInputUtf8.GetString(input.Bytes!); }
+        catch (System.Text.DecoderFallbackException) { return; }
+
+        if (_parser.CanEchoKeyboardText(text))
+            ProcessChunk(input.Bytes ?? StrictInputUtf8.GetBytes(text), childOutput: false);
+    }
+
+    private void ProcessChunk(byte[] data, bool childOutput = true)
     {
         long seq = Interlocked.Read(ref _rawOffset);
         Interlocked.Exchange(ref _rawOffset, seq + data.Length);
-        Volatile.Write(ref _lastOutputUnixMs, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        if (childOutput) Volatile.Write(ref _lastOutputUnixMs, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
         // A faulted parser no longer tracks the child; feeding clients a stream the mux cannot
         // vouch for would only make them diverge from something that is itself wrong.
@@ -933,7 +972,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         _fileReads.Clear();
         _fileReadBytes = 0;
-        (_session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(data);
+        if (childOutput) (_session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(data);
         int maxChars = Utf8ChunkDecoder.GetMaxCharCount(data.Length);
         if (_chars.Length < maxChars) _chars = new char[maxChars];
         int charCount = _decoder.Decode(data, _chars);

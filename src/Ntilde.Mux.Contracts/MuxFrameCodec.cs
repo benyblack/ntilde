@@ -4,7 +4,7 @@ namespace Ntilde.Mux.Contracts;
 
 public static class MuxFrameCodec
 {
-    public static bool IsKnownKind(byte kind) => kind is 0x01 or 0x02 or 0x03 or 0x10 or 0x11 or 0x12 or 0x13 or 0x14;
+    public static bool IsKnownKind(byte kind) => kind is 0x01 or 0x02 or 0x03 or 0x10 or 0x11 or 0x12 or 0x13 or 0x14 or 0x15;
 
     public static void WriteHeader(Span<byte> destination, MuxFrameKind kind, int payloadLength)
     {

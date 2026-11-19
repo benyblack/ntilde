@@ -268,10 +268,15 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         return _client.TrySendInputBytes(Id, input);
     }
 
-    public void SendInput(string input)
+    public void SendInput(string input) => SendInput(input, keyboardText: false);
+
+    /// <summary>Sends committed keyboard text so the daemon can apply Send/Receive Mode.</summary>
+    public void SendKeyboardText(string text) => SendInput(text, keyboardText: true);
+
+    private void SendInput(string text, bool keyboardText)
     {
-        if (string.IsNullOrEmpty(input) || Volatile.Read(ref _disposed) != 0) return;
-        _client.SendInput(Id, input);
+        if (string.IsNullOrEmpty(text) || Volatile.Read(ref _disposed) != 0) return;
+        _client.SendInput(Id, text, keyboardText);
     }
 
     /// <summary>Requests a resize. Does not raise <see cref="StreamResize"/>: that comes back in-stream.</summary>

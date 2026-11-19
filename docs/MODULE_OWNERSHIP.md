@@ -662,6 +662,10 @@ invariant changes.
 - A slow client is disconnected, never waited for (stream frames against the send budget, snapshots against their own separate bound)
 - Attach limits are rejection ceilings, never clamps (#473)
 - **Endpoints are current-user only and never TCP:** a `CurrentUserOnly` pipe on Windows (the client checks it too); a `0600` socket in a `0700` directory elsewhere, and the listener refuses a directory with any other mode or a live socket at the path. The protocol has no authentication by design
+- Committed GUI keyboard text uses the optional keyboard-text frame. The daemon queues local
+  echo on its ordered output lane when ANSI SRM is reset and the stream is at a complete character
+  boundary. It forwards the keyboard bytes through the usual input writer and excludes synthetic
+  echo from manual and flight recordings. Older daemons receive the existing input frame.
 - Per-session input writer: text, negotiated byte input and parser replies share one
   byte-capped (16 MiB) queue per session, so a child that stops reading stdin cannot
   stall the shared connection. Retained text is charged by UTF-16 storage and raw

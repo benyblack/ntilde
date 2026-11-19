@@ -116,13 +116,39 @@ public class DecrqmTests
         // here corresponds to IsEchoEnabled == false.
         var (buffer, parser, responses) = CreateTerminal();
 
+        Assert.True(buffer.Modes.IsEchoEnabled); // Default hint for drag and drop.
+        Assert.False(buffer.Modes.IsLocalEchoEnabled);
+        Assert.Equal("\u001b[12;1$y", QueryAnsi(parser, responses, 12));
+
         parser.Process("\u001b[12h");
         Assert.False(buffer.Modes.IsEchoEnabled);
         Assert.Equal("\u001b[12;1$y", QueryAnsi(parser, responses, 12));
 
         parser.Process("\u001b[12l");
         Assert.True(buffer.Modes.IsEchoEnabled);
+        Assert.True(buffer.Modes.IsLocalEchoEnabled);
         Assert.Equal("\u001b[12;2$y", QueryAnsi(parser, responses, 12));
+    }
+
+    [Fact]
+    public void Only_an_explicit_local_echo_marker_enables_echo_after_state_transfer()
+    {
+        var (source, parser, _) = CreateTerminal();
+        var (target, targetParser, responses) = CreateTerminal();
+        string withoutLocalEcho = JsonSerializer.Serialize(source.ExportState(0));
+        Assert.DoesNotContain("\"local_echo\"", withoutLocalEcho, StringComparison.Ordinal);
+
+        parser.Process("\u001b[12l");
+        string withLocalEcho = JsonSerializer.Serialize(source.ExportState(0));
+        target.ImportState(JsonSerializer.Deserialize<TerminalStateSnapshot>(withLocalEcho)!);
+        Assert.True(target.Modes.IsLocalEchoEnabled);
+        Assert.True(target.Modes.Clone().IsLocalEchoEnabled);
+        Assert.Equal("\u001b[12;2$y", QueryAnsi(targetParser, responses, 12));
+
+        target.ImportState(JsonSerializer.Deserialize<TerminalStateSnapshot>(withoutLocalEcho)!);
+        Assert.False(target.Modes.IsLocalEchoEnabled);
+        Assert.True(target.Modes.IsEchoEnabled);
+        Assert.Equal("\u001b[12;1$y", QueryAnsi(targetParser, responses, 12));
     }
 
     [Fact]

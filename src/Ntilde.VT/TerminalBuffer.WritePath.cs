@@ -173,6 +173,22 @@ namespace Ntilde.VT
             return true;
         }
 
+        /// <summary>Displays committed keyboard text while ANSI Send/Receive Mode is reset.</summary>
+        public void EchoKeyboardText(string text)
+        {
+            if (!Modes.IsLocalEchoEnabled || !IsEchoableKeyboardText(text)) return;
+            bool lockTaken = EnterWriteLockIfNeeded();
+            try
+            {
+                if (!Modes.IsLocalEchoEnabled) return;
+                WriteContentCore(text);
+            }
+            finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
+            Invalidate();
+        }
+
+        internal static bool IsEchoableKeyboardText(string text) => text.Length > 0 && !text.Any(char.IsControl);
+
         public void WriteContent(string text, bool ignored = false)
         {
             if (string.IsNullOrEmpty(text)) return;

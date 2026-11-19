@@ -1,4 +1,5 @@
 using Avalonia.Input;
+using Ntilde.Mux;
 
 namespace Ntilde.Shell
 {
@@ -29,7 +30,7 @@ namespace Ntilde.Shell
                     return;
                 }
                 ResetCursorBlink();
-                SendUserInput(e.Text);
+                SendKeyboardText(e.Text);
                 if (!_generatedInputInProgress) TextInputObserved?.Invoke(e.Text);
                 e.Handled = true;
             }
@@ -512,17 +513,26 @@ namespace Ntilde.Shell
         public event Action? EnterObserved;
         public event Action<string>? PasteObserved;
 
+        internal void SendKeyboardText(string text) => SendUserInput(text, keyboardText: true);
+
         /// <summary>
         /// Sends user-originated input (keystroke, typed text, pasted or dropped text) to
         /// the PTY after returning the viewport to the live line, so what the user is
         /// writing stays visible even when they had scrolled up into scrollback.
         /// </summary>
-        private void SendUserInput(string text)
+        private void SendUserInput(string text, bool keyboardText = false)
         {
             ScrollToInputLine();
             if (_session is { } session)
             {
-                session.SendInput(text);
+                if (keyboardText && session is MuxClientSession mux)
+                    mux.SendKeyboardText(text);
+                else
+                {
+                    if (keyboardText && _buffer?.Modes.IsLocalEchoEnabled == true && session.IsProcessRunning)
+                        _buffer.EchoKeyboardText(text);
+                    session.SendInput(text);
+                }
                 NoteGeneratedInputSubmitted();
             }
         }
