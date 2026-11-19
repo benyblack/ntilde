@@ -137,7 +137,7 @@ public static class KittyTransportFile
 
             string? next = ++hops > MaxLinkHops ? null : FollowTarget(parent, target);
             if (next is null) return null;
-            if (pending.Count == 0) mustBeDirectory = EndsWithSeparator(next); // the target is the tail of the path: its own trailing separator applies
+            if (pending.Count == 0) mustBeDirectory |= EndsWithSeparator(next); // the target is the tail of the path: its own trailing separator applies too, and an earlier one is kept
             root = Restart(next, pending, resolved);
         }
 

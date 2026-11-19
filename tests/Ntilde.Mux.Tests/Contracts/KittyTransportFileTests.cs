@@ -135,6 +135,10 @@ public sealed class KittyTransportFileTests : IDisposable
         File.CreateSymbolicLink(Path.Combine(_dir, "slash-image"), "frame.png" + Path.DirectorySeparatorChar);
         Assert.Null(KittyTransportFile.Read(Path.Combine(_dir, "dot-image")));
         Assert.Null(KittyTransportFile.Read(Path.Combine(_dir, "slash-image")));
+        // Following a final link keeps an earlier trailing separator: alias/ with alias -> frame.png is still ENOTDIR.
+        File.CreateSymbolicLink(Path.Combine(_dir, "alias"), "frame.png");
+        Assert.Null(KittyTransportFile.Read(Path.Combine(_dir, "alias") + Path.DirectorySeparatorChar));
+        Assert.Equal([1], ReadOrFail(Path.Combine(_dir, "alias")));
         Directory.CreateDirectory(Path.Combine(_dir, "real-dir"));
         Assert.Equal([2], ReadOrFail(Path.Combine(_dir, "real-dir", ".", "..", "other.png")));  // "." in a directory is that directory
         Assert.Equal([2], ReadOrFail(Path.Combine(_dir, "real-dir", "..", "other.png")));      // an existing directory in front of ".." is an ordinary parent
