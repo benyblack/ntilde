@@ -1,13 +1,14 @@
 // Planned protocol variants and the independent playback timeline only; importing performs no terminal I/O.
-import { animationFrameInput, animationPngInput } from './kitty-animation-inputs.mjs';
+import { animationFrameInput, animationPngInput, placeholderHalvesInput } from './kitty-animation-inputs.mjs';
 
 /**
  * Suite versions: 1 is the three-case suite that retained runs still carry (#988); 2 adds PNG and root-frame composition (#1015) and is what full collections produce;
  * 3 (#1030) is the restore suite: the same animation state is read again after the App is terminated with SIGTERM and started again on the same persistent session, so it only runs in the
  * persistent-restore collection (a direct tab has nothing to reattach to).
  * 4 (#1027) is the frame-composition suite (`a=c`): full-frame compositions and refused ones, only in the persistent-compose collection (persistent image policy 4); full collections stay on 2.
+ * 5 (#989) is the Unicode placeholder suite (`U=1` virtual placements and U+10EEEE cells): one image shown through placeholder cells, in the placeholder collections only (an ordinary tab and a persistent tab, image policy 5).
  */
-export const animationSuiteIds = Object.freeze({ 1: 'ntilde-owned-kitty-animation-v1', 2: 'ntilde-owned-kitty-animation-v2', 3: 'ntilde-owned-kitty-animation-restore-v1', 4: 'ntilde-owned-kitty-animation-compose-v1' });
+export const animationSuiteIds = Object.freeze({ 1: 'ntilde-owned-kitty-animation-v1', 2: 'ntilde-owned-kitty-animation-v2', 3: 'ntilde-owned-kitty-animation-restore-v1', 4: 'ntilde-owned-kitty-animation-compose-v1', 5: 'ntilde-owned-kitty-placeholders-v1' });
 /** The one suite version whose stages relaunch the App (#1030); every other version runs without one. */
 export const restoreAnimationVersion = 3;
 export const currentAnimationVersion = 2;
@@ -90,7 +91,25 @@ const composeCases = Object.freeze([
         stage('refuse', 'root', { reply: 'refuse', expect: replies('enoent', 'einval', 'einval') }),
         stage('intact', 'second', { reply: 'intact', expect: replies('ok') }), clear]) }),
 ]);
-export const animationCasesByVersion = Object.freeze({ 1: timedCases, 2: Object.freeze([...timedCases, compositionCase]), 3: restoreCases, 4: composeCases });
+// The placeholder cases (#989). One 16x16 image whose left half is red and right half blue is transmitted (a=t), then given a virtual placement (a=p,U=1) of a 2 x 1 cell grid: that draws nothing. Cells printing U+10EEEE then
+// show the image, each its own tile, so the pair of cells the stage reads is [left, right] (appearance ids name the two tile colors, see kitty-animation-inputs.mjs). Every command is the protocol's own: the foreground colour names
+// the image (a 24-bit colour, so ids stay below 2^24 and need no third mark), the underline colour (SGR 58) names the placement, and combining marks from kitty's rowcolumn-diacritics table give the row and column.
+// tiles: the virtual placement alone paints nothing, the cells then show the two halves in order, and erasing the cells removes the image again.
+// cell-mapping: the marks, not the screen position, choose the tile (swapped columns swap the colors; a lone cell shows its own tile wherever it is printed), and a cell without marks inherits row and column plus one from the cell to its left.
+// unbound: cells that name no image, no such placement or a tile outside the grid paint nothing; the valid cells (the positive control) then paint; deleting the image's placements (a=d,d=i) makes the very same cells paint nothing again.
+export const placeholderAnimationVersion = 5;
+export const placeholderCellEnvelope = Object.freeze({ cols: 2, rows: 1 });
+const placeholderBuild = stage('build', 'absent', { reply: 'build', expect: replies('ok', 'placed') });
+const placeholderCases = Object.freeze([
+    Object.freeze({ id: 'kitty.placeholders.tiles', stages: Object.freeze([stage('blank', 'absent'), placeholderBuild,
+        stage('show', 'redBlue', { reply: 'show' }), stage('erase', 'absent', { reply: 'erase' }), clear]) }),
+    Object.freeze({ id: 'kitty.placeholders.cell-mapping', stages: Object.freeze([stage('blank', 'absent'), placeholderBuild,
+        stage('swapped', 'blueRed', { reply: 'swapped' }), stage('single', 'absentRed', { reply: 'single' }), stage('inherit', 'redBlue', { reply: 'inherit' }), clear]) }),
+    Object.freeze({ id: 'kitty.placeholders.unbound', stages: Object.freeze([stage('blank', 'absent'), placeholderBuild,
+        stage('wrong-image', 'absent', { reply: 'wrong-image' }), stage('stale-placement', 'absent', { reply: 'stale-placement' }), stage('outside-grid', 'absent', { reply: 'outside-grid' }),
+        stage('valid', 'redBlue', { reply: 'valid' }), stage('deleted', 'absent', { reply: 'delete' }), clear]) }),
+]);
+export const animationCasesByVersion = Object.freeze({ 1: timedCases, 2: Object.freeze([...timedCases, compositionCase]), 3: restoreCases, 4: composeCases, 5: placeholderCases });
 export const animationCases = animationCasesByVersion[currentAnimationVersion];
 
 const uint = value => Number.isSafeInteger(value) && value >= 1 && value <= 0xffffffff;
@@ -117,6 +136,28 @@ const composeCommands = Object.freeze({
     intact: imageId => apc(`a=a,i=${imageId},c=2`),
 });
 
+// Placeholder commands (#989). These literals are the protocol's, written out here and not taken from the App: U+10EEEE, and kitty's row/column diacritics numbers 0, 1 and 2 (U+0305, U+030D, U+030E).
+const placeholderChar = '\u{10EEEE}', placeholderMarks = Object.freeze(['\u0305', '\u030D', '\u030E']);
+/** The largest image id a placeholder stage may use: it is carried by a 24-bit foreground colour (no third mark), and the wrong-image stage names the next id. */
+export const placeholderMaxImageId = 0xfffffe;
+const placeholderCell = (row, column) => placeholderChar + (row === undefined ? '' : placeholderMarks[row] + placeholderMarks[column]);
+const foreground = id => `\x1b[38;2;${(id >>> 16) & 255};${(id >>> 8) & 255};${id & 255}m`;
+/** The cells in one run: the image id as the foreground colour and the placement id as the underline colour (SGR 58, palette form), then both colours reset (the cell background stays the controlled one). */
+const placeholderRun = (imageId, placement, ...cells) => foreground(imageId) + `\x1b[58;5;${placement}m` + cells.join('') + '\x1b[39m\x1b[59m';
+const placeholderCommands = Object.freeze({
+    build: imageId => apc(`a=t,${frameControls},i=${imageId};` + placeholderHalvesInput().bytes.toString('base64')) + apc(`a=p,U=1,i=${imageId},p=1,c=2,r=1`),
+    show: imageId => placeholderRun(imageId, 1, placeholderCell(0, 0), placeholderCell(0, 1)),
+    erase: () => '\x1b[2J',
+    swapped: imageId => placeholderRun(imageId, 1, placeholderCell(0, 1), placeholderCell(0, 0)),
+    single: imageId => '\x1b[C' + placeholderRun(imageId, 1, placeholderCell(0, 0)),
+    inherit: imageId => placeholderRun(imageId, 1, placeholderCell(0, 0), placeholderCell()),
+    'wrong-image': imageId => placeholderRun(imageId + 1, 1, placeholderCell(0, 0), placeholderCell(0, 1)),
+    'stale-placement': imageId => placeholderRun(imageId, 2, placeholderCell(0, 0), placeholderCell(0, 1)),
+    'outside-grid': imageId => placeholderRun(imageId, 1, placeholderCell(1, 0), placeholderCell(1, 1)),
+    valid: imageId => placeholderRun(imageId, 1, placeholderCell(0, 0), placeholderCell(0, 1)),
+    delete: imageId => apc(`a=d,d=i,i=${imageId}`),
+});
+
 /** Exact bounded bytes; the image id is parent-chosen per case, never guessed from a reply. */
 export function animationCommand(caseId, stageId, { imageId } = {}, version = currentAnimationVersion) {
     const spec = animationCasesByVersion[version].find(item => item.id === caseId);
@@ -124,6 +165,13 @@ export function animationCommand(caseId, stageId, { imageId } = {}, version = cu
     if (!entry) throw new Error('Unknown animation stage.');
     if (stageId === 'blank' || entry.relaunch || (entry.waitMs && !entry.reply)) return '';
     if (!uint(imageId)) throw new Error('Animation image id must be an explicit positive uint32.');
+    if (version === placeholderAnimationVersion) {
+        if (imageId > placeholderMaxImageId) throw new Error('A placeholder image id must fit a 24-bit foreground colour with room for the next id.');
+        if (stageId === 'clear') return apc(`a=d,d=I,i=${imageId}`) + clearScreen;
+        const command = placeholderCommands[entry.reply === 'delete' ? 'delete' : stageId];
+        if (!command) throw new Error('Unknown placeholder stage.');
+        return command(imageId);
+    }
     const root = apc(`a=T,${frameControls},i=${imageId},p=1,c=4,r=2,C=1;` + frameData('root'));
     const composition = [compositionCaseId, restoreFramesCaseId].includes(caseId) ? compositionCommands[stageId] : undefined;
     if (composition) return composition(imageId, root);

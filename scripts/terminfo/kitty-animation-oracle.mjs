@@ -1,6 +1,6 @@
 // Pure bounded comparisons and the independent playback timeline; no rendering, I/O or ownership inference.
 import { staticImageEnvelope } from './static-images-oracle.mjs';
-import { animationBackground, animationFrameIds, animationAppearanceIds, animationAppearanceColor, animationComposedIds } from './kitty-animation-inputs.mjs';
+import { animationBackground, animationFrameIds, animationAppearanceIds, animationAppearanceColor, animationComposedIds, placeholderAppearances, placeholderColors } from './kitty-animation-inputs.mjs';
 import { animationHoldCycle, animationHoldMs } from './kitty-animation-cases.mjs';
 
 const invalid = () => new Error('Invalid animation comparison.');
@@ -69,6 +69,44 @@ export function inspectAnimationPixels({ baseline, observed, grid, anchor, cells
     return { scope: 'bounded animation-frame pixel comparison only; no ownership, freshness, timing or stock grade',
         controls, assertions: [assertion], classification: { kind: classification.kind, frameId: classification.frameId, geometryOk: classification.geometryOk },
         measurement: { envelope, contentBounds: classification.bounds } };
+}
+
+/**
+ * The placeholder suite's reading (#989): the row of cells the stage reads, one color per cell. A cell showing a tile is a band of the image's own color as wide as the cell and as tall as the undistorted
+ * fit of the 16x16 source into the grid (its shorter side), with an unpainted strip below or above it; a cell showing nothing is the controlled background throughout. Where the band sits inside the
+ * cell is the App's own policy and not asserted, but every painted cell of one row must agree on it.
+ */
+export function inspectPlaceholderPixels({ baseline, observed, grid, anchor, cells, appearance }) {
+    validateImage(baseline); validateImage(observed);
+    if (baseline.width !== observed.width || baseline.height !== observed.height || !Object.hasOwn(placeholderAppearances, appearance)) throw invalid();
+    const envelope = staticImageEnvelope(observed, grid, anchor, cells), expected = placeholderAppearances[appearance];
+    if (expected.length !== cells.cols) throw invalid();
+    const cellWidth = grid.cellWidthPx, side = Math.min(cells.cols * cellWidth, cells.rows * grid.cellHeightPx);
+    const rects = expected.map((_, index) => ({ x: envelope.x + index * cellWidth, y: envelope.y, width: cellWidth, height: envelope.height }));
+    const shown = rects.map(rect => {
+        const bounds = contentBounds(observed, rect);
+        if (!bounds) return { color: 'absent', bounds: null, geometryOk: true };
+        const inset = 1, interior = { x: bounds.x + inset, y: bounds.y + inset, width: bounds.width - 2 * inset, height: bounds.height - 2 * inset };
+        const color = interior.width > 0 && interior.height > 0 ? regionUniform(observed, interior) : null;
+        const name = color ? Object.keys(placeholderColors).find(id => same(placeholderColors[id], color)) : undefined;
+        return { color: name ?? 'mixed', bounds, geometryOk: bounds.width === cellWidth && bounds.height === side };
+    });
+    const painted = shown.filter(item => item.bounds);
+    const aligned = painted.every(item => item.bounds.y === painted[0].bounds.y && item.bounds.height === painted[0].bounds.height);
+    const baselineBlank = contentBounds(baseline, envelope) === null;
+    let outsideUnchanged = true;
+    for (let y = 0; y < baseline.height && outsideUnchanged; y++)
+        for (let x = 0; x < baseline.width; x++) if (!inside(envelope, x, y) && !same(pixelAt(baseline, x, y), pixelAt(observed, x, y))) { outsideUnchanged = false; break; }
+    const controls = [check('reference target is independently blank with the known background', baselineBlank),
+        check('all non-target capture pixels remain unchanged', outsideUnchanged)];
+    const matches = shown.every((item, index) => item.color === expected[index] && (item.color === 'absent' || item.geometryOk)) && aligned;
+    const assertion = check(`the placeholder cells show [${expected.join(', ')}], each painted tile an undistorted band of its own color`, matches);
+    const kind = shown.every(item => item.color === 'absent') ? 'background' : (shown.some(item => item.color === 'mixed') ? 'mixed' : 'tiles');
+    const union = painted.length ? { x: Math.min(...painted.map(item => item.bounds.x)), y: Math.min(...painted.map(item => item.bounds.y)),
+        width: Math.max(...painted.map(item => item.bounds.x + item.bounds.width)) - Math.min(...painted.map(item => item.bounds.x)), height: painted[0].bounds.height } : null;
+    return { scope: 'bounded placeholder-tile pixel comparison only; no ownership, freshness, timing or stock grade',
+        controls, assertions: [assertion], classification: { kind, frameId: null, tiles: shown.map(item => item.color), geometryOk: shown.every(item => item.geometryOk) && aligned },
+        measurement: { envelope, contentBounds: union, cells: shown.map((item, index) => ({ rect: rects[index], color: item.color, bounds: item.bounds })) } };
 }
 
 const cycleMs = animationHoldCycle.length * animationHoldMs;

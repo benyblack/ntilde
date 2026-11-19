@@ -139,3 +139,19 @@ test('the animation-only scopes are exact, distinct, and only the compose suite 
     assert.equal(isAnimationOnlyScope({ ...directComposeScope, deadlineMs: directComposeScope.deadlineMs + 1 }), false);
     assert.equal(isAnimationOnlyScope(undefined), false);
 });
+
+test('the placeholder scopes are exact, distinct, and one runs in each kind of tab', async () => {
+    const scopes = await import('./collection-scope.mjs');
+    const { directPlaceholdersScope, persistentPlaceholdersScope, directComposeScope, persistentComposeScope, isAnimationOnlyScope, isDirectPlaceholdersScope, isPersistentPlaceholdersScope, isPersistentAnimationScope } = scopes;
+    assert.equal(directPlaceholdersScope.persistence, 'Off'); assert.equal(persistentPlaceholdersScope.persistence, 'KeepOnClose');
+    assert.equal(directPlaceholdersScope.suiteVersion, 5); assert.equal(persistentPlaceholdersScope.suiteVersion, 5);
+    assert.deepEqual(directPlaceholdersScope.suites, persistentPlaceholdersScope.suites); assert.notEqual(directPlaceholdersScope.id, persistentPlaceholdersScope.id);
+    assert.equal(new Set([directPlaceholdersScope.id, persistentPlaceholdersScope.id, directComposeScope.id, persistentComposeScope.id]).size, 4);
+    for (const scope of [directPlaceholdersScope, persistentPlaceholdersScope]) assert.equal(isAnimationOnlyScope(scope), true, scope.id);
+    assert.equal(isPersistentAnimationScope(persistentPlaceholdersScope), true); assert.equal(isPersistentAnimationScope(directPlaceholdersScope), false);
+    assert.equal(isDirectPlaceholdersScope(directPlaceholdersScope), true); assert.equal(isDirectPlaceholdersScope(persistentPlaceholdersScope), false); assert.equal(isDirectPlaceholdersScope(directComposeScope), false);
+    assert.equal(isPersistentPlaceholdersScope(persistentPlaceholdersScope), true); assert.equal(isPersistentPlaceholdersScope(persistentComposeScope), false);
+    assert.equal(isAnimationOnlyScope({ ...directPlaceholdersScope, persistence: 'KeepOnClose' }), false);
+    assert.equal(isAnimationOnlyScope({ ...persistentPlaceholdersScope, suiteVersion: 4 }), false);
+    assert.equal(isAnimationOnlyScope({ ...directPlaceholdersScope, deadlineMs: directPlaceholdersScope.deadlineMs + 1 }), false);
+});

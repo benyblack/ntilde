@@ -128,7 +128,7 @@ import { colorResetContractsVersion, colorResetSuiteId } from './terminfo/color-
 import { buildColorResetGradingReport } from './terminfo/color-reset-grading.mjs';
 import { colorResetCounts } from './terminfo/color-reset-receipt.mjs';
 import { adaptOsc133Collector, osc133AdapterId } from './terminfo/osc133-grading-collector.mjs';
-import { legacyScope, osc633Scope, persistentAnimationScope, persistentRestoreScope, persistentComposeScope, directComposeScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
+import { legacyScope, osc633Scope, persistentAnimationScope, persistentRestoreScope, persistentComposeScope, directComposeScope, persistentPlaceholdersScope, directPlaceholdersScope, isOsc633Scope, verifyScopePredecessor } from './terminfo/collection-scope.mjs';
 import { adaptOsc633Collector, osc633AdapterId } from './terminfo/osc633-grading-collector.mjs';
 import { osc633ContractsVersion, osc633Prefix, osc633SuiteId } from './terminfo/osc633-contracts.mjs';
 import { buildOsc633GradingReport, osc633Counts, osc633ObserverPlan } from './terminfo/osc633-grading.mjs';
@@ -405,7 +405,7 @@ function retainFailedMetadataAttempt(output, request, error, observer, file = 'm
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2165,7 +2165,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2184,6 +2184,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     if (args[5] === 'persistent-restore') return persistentAnimationMain(args, executable, snapshot, persistentRestoreScope);
     if (args[5] === 'persistent-compose') return persistentAnimationMain(args, executable, snapshot, persistentComposeScope);
     if (args[5] === 'direct-compose') return persistentAnimationMain(args, executable, snapshot, directComposeScope);
+    if (args[5] === 'persistent-placeholders') return persistentAnimationMain(args, executable, snapshot, persistentPlaceholdersScope);
+    if (args[5] === 'direct-placeholders') return persistentAnimationMain(args, executable, snapshot, directPlaceholdersScope);
     const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
@@ -4520,8 +4522,11 @@ export const persistentAnimationReceiptSuiteId = 'ntilde-owned-kitty-animation-p
 export const persistentRestoreReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-restore-receipt-v1';
 export const persistentComposeReceiptSuiteId = 'ntilde-owned-kitty-animation-persistent-compose-receipt-v1';
 export const directComposeReceiptSuiteId = 'ntilde-owned-kitty-animation-direct-compose-receipt-v1';
-// By scope, not suite version: the compose suite (4) runs in a persistent and in an ordinary tab, each with its own receipt.
-const animationReceiptSuiteIds = { [persistentRestoreScope.id]: persistentRestoreReceiptSuiteId, [persistentComposeScope.id]: persistentComposeReceiptSuiteId, [directComposeScope.id]: directComposeReceiptSuiteId };
+export const persistentPlaceholdersReceiptSuiteId = 'ntilde-owned-kitty-placeholders-persistent-receipt-v1';
+export const directPlaceholdersReceiptSuiteId = 'ntilde-owned-kitty-placeholders-direct-receipt-v1';
+// By scope, not suite version: the compose (4) and placeholder (5) suites each run in a persistent and in an ordinary tab, each with its own receipt.
+const animationReceiptSuiteIds = { [persistentRestoreScope.id]: persistentRestoreReceiptSuiteId, [persistentComposeScope.id]: persistentComposeReceiptSuiteId, [directComposeScope.id]: directComposeReceiptSuiteId,
+    [persistentPlaceholdersScope.id]: persistentPlaceholdersReceiptSuiteId, [directPlaceholdersScope.id]: directPlaceholdersReceiptSuiteId };
 
 /**
  * The receipt of a persistent-tab animation collection. It binds the one retained suite report, the ownership proof (which records the

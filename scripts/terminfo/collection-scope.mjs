@@ -61,11 +61,19 @@ export const isPersistentComposeScope = value => JSON.stringify(value) === JSON.
  */
 export const directComposeScope = Object.freeze({ id: 'owned-kitty-animation-direct-compose-v1', persistence: 'Off', suites: Object.freeze(['kitty-animation-compose']), suiteVersion: 4, deadlineMs: 300000 });
 export const isDirectComposeScope = value => JSON.stringify(value) === JSON.stringify(directComposeScope);
-export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope) || isPersistentRestoreScope(value) || isPersistentComposeScope(value);
+/**
+ * The Unicode placeholder collections (#989): the version 5 placeholder suite alone, in a persistent tab (image policy 5, a multiplexer daemon hosting the worker) and in an ordinary tab (no daemon, the worker the App's
+ * own child). Each has its own receipt, like the other animation-only collections.
+ */
+export const persistentPlaceholdersScope = Object.freeze({ id: 'owned-kitty-placeholders-persistent-v1', persistence: 'KeepOnClose', suites: Object.freeze(['kitty-placeholders']), suiteVersion: 5, deadlineMs: 300000 });
+export const directPlaceholdersScope = Object.freeze({ id: 'owned-kitty-placeholders-direct-v1', persistence: 'Off', suites: Object.freeze(['kitty-placeholders']), suiteVersion: 5, deadlineMs: 300000 });
+export const isPersistentPlaceholdersScope = value => JSON.stringify(value) === JSON.stringify(persistentPlaceholdersScope);
+export const isDirectPlaceholdersScope = value => JSON.stringify(value) === JSON.stringify(directPlaceholdersScope);
+export const isPersistentAnimationScope = value => JSON.stringify(value) === JSON.stringify(persistentAnimationScope) || isPersistentRestoreScope(value) || isPersistentComposeScope(value) || isPersistentPlaceholdersScope(value);
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
-/** Every animation-only collection: the persistent ones and the ordinary-tab composition one. */
-export const isAnimationOnlyScope = value => isPersistentAnimationScope(value) || isDirectComposeScope(value);
+/** Every animation-only collection: the persistent ones and the ordinary-tab composition and placeholder ones. */
+export const isAnimationOnlyScope = value => isPersistentAnimationScope(value) || isDirectComposeScope(value) || isDirectPlaceholdersScope(value);
 export const isOsc633Scope = value => same(value, osc633Scope) || same(value, osc633ScopeV4) || same(value, osc5Osc633ScopeV4) || same(value, osc633ScopeV3) || same(value, integratedOsc633Scope) || same(value, historicOsc633Scope);
 export const isLegacyScope = value => same(value, legacyScope) || same(value, legacyScopeV4) || same(value, osc5LegacyScopeV4) || same(value, legacyScopeV3) || same(value, integratedLegacyScope) || same(value, historicLegacyScope);
 export const isHistoricOsc633Scope = value => same(value, historicOsc633Scope) || same(value, historicLegacyScope);
