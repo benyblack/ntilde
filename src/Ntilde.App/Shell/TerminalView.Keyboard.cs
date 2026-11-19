@@ -380,7 +380,7 @@ namespace Ntilde.Shell
                 case Key.Enter:
                     // Let the pane's reconnect-on-Enter binding handle an exited session.
                     if (_session?.IsProcessRunning != true) return false;
-                    return SendEnterKey(keyModifiers, physicalKey);
+                    return SendEnterKey(keyModifiers, physicalKey, TerminalInputModeEncoder.EncodeLegacyReturn(_buffer?.Modes));
                 case Key.Back:
                     SendKeyInput(key, keyModifiers, physicalKey, "\x7f");
                     BackspaceObserved?.Invoke();
@@ -399,7 +399,7 @@ namespace Ntilde.Shell
         }
 
         /// <summary>Preserves command-history reads before Enter's input bytes, and persistence after them.</summary>
-        private bool SendEnterKey(KeyModifiers keyModifiers, PhysicalKey physicalKey, string sequence = "\r", KittyKeyIdentity identity = default)
+        private bool SendEnterKey(KeyModifiers keyModifiers, PhysicalKey physicalKey, string sequence, KittyKeyIdentity identity = default)
         {
             // Two phases around the carriage return, and which side each lands on is
             // load-bearing (Codex P1 and P2 on #448).
