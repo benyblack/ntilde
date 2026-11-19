@@ -28,7 +28,8 @@ public partial class TerminalBuffer
                 IsSixelImage = true,
                 SixelPlacement = provenance,
                 SixelSource = source,
-                ClipRightColumns = Math.Max(0, col + widthCells - Cols),
+                // In the row's own columns: a double-size row holds half as many, each two cells wide.
+                ClipRightColumns = Math.Max(0, col + widthCells - ColumnsForLineSize(_viewport[row].LineSize, Cols)),
                 IsAltScreenImage = _isAltScreen,
             };
             if (!TryAddSixelPlacement(image)) return false;
@@ -166,17 +167,19 @@ public partial class TerminalBuffer
 
     private void RetireCoveredSixelImages(TerminalImage current)
     {
-        int right = current.CellX + current.CellWidth - current.ClipRightColumns;
+        // Compared in single-width columns: an image on a double-size row is drawn twice as wide.
+        (int left, int right) = ImagePageColumnsNoLock(current);
         int top = current.CellY + current.ClipTopRows;
         int bottom = current.CellY + current.CellHeight - current.ClipBottomRows;
-        if (right <= current.CellX || bottom <= top) return;
+        if (right <= left || bottom <= top) return;
         // The SIXEL draw path clears this rectangle before painting. Fully covered older
         // SIXELs cannot reappear; retire them through the existing snapshot-session gate.
         for (int i = _images.Count - 1; i >= 0; i--)
         {
             TerminalImage old = _images[i];
             if (!old.IsSixelImage || ReferenceEquals(old, current) || old.IsAltScreenImage != current.IsAltScreenImage) continue;
-            if (old.CellX >= current.CellX && old.CellX + old.CellWidth - old.ClipRightColumns <= right &&
+            (int oldLeft, int oldRight) = ImagePageColumnsNoLock(old);
+            if (oldLeft >= left && oldRight <= right &&
                 old.CellY + old.ClipTopRows >= top && old.CellY + old.CellHeight - old.ClipBottomRows <= bottom)
             {
                 RetireImage(old, disposeImmediately: true);

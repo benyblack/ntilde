@@ -831,8 +831,9 @@ namespace Ntilde.Shell
                         int visualY = img.CellY - absDisplayStart;
                         if (visualY + img.CellHeight > 0 && visualY < bufferRows)
                         {
-                            float x = GetColEdge(colEdges, img.CellX, paddingLeft);
-                            float x2 = GetColEdge(colEdges, img.CellX + img.CellWidth, paddingLeft);
+                            // The image's columns are its anchor row's: twice as wide on a double-size row.
+                            float x = LineSizeX(GetColEdge(colEdges, img.CellX, paddingLeft), img.LineSize);
+                            float x2 = LineSizeX(GetColEdge(colEdges, img.CellX + img.CellWidth, paddingLeft), img.LineSize);
                             float y = GetRowEdge(rowEdges, visualY, paddingTop);
                             float y2 = GetRowEdge(rowEdges, visualY + img.CellHeight, paddingTop);
                             float w = x2 - x;
@@ -849,7 +850,7 @@ namespace Ntilde.Shell
                             {
                                 canvas.ClipRect(new SKRect(x,
                                     GetRowEdge(rowEdges, visualY + img.ClipTopRows, paddingTop),
-                                    GetColEdge(colEdges, img.CellX + img.CellWidth - img.ClipRightColumns, paddingLeft),
+                                    LineSizeX(GetColEdge(colEdges, img.CellX + img.CellWidth - img.ClipRightColumns, paddingLeft), img.LineSize),
                                     GetRowEdge(rowEdges, visualY + img.CellHeight - img.ClipBottomRows, paddingTop)));
                             }
                             // Clear image target region first so transparent/semi-transparent
@@ -873,6 +874,11 @@ namespace Ntilde.Shell
                             {
                                 SKRect fitArea = isPlaceholderRun ? PlaceholderGrid(img, visualY, colEdges, rowEdges, paddingLeft, paddingTop) : rect;
                                 SKRect destination = isPlaceholderRun || img.PreserveAspectRatio ? FitImageWithin(fitArea, bmp.Width, bmp.Height) : rect;
+                                // Every run of a placement fits the bitmap into the same single-width grid, so the runs
+                                // sample it alike; a run on a double-size row then shows its part twice as wide.
+                                if (isPlaceholderRun && img.LineSize != LineSize.SingleWidth)
+                                    destination = new SKRect(LineSizeX(destination.Left, img.LineSize), destination.Top,
+                                        LineSizeX(destination.Right, img.LineSize), destination.Bottom);
                                 canvas.DrawBitmap(bmp, destination, imagePaint);
                                 if (imageFacts is { Complete: true })
                                     imageFacts.Placements[imageIndex] = imageFacts.Placements[imageIndex] with

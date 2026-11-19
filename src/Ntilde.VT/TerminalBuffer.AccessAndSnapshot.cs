@@ -1082,6 +1082,7 @@ namespace Ntilde.VT
                         CellY = img.CellY,
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
+                        LineSize = ImageLineSizeNoLock(img),
                         ImageHandle = img.ImageHandle,
                         PreserveAspectRatio = img.KittyImageId.HasValue || img.PreserveAspectRatio,
                         Source = img.SixelSource ?? (img.ImageHandle as IDeferredSixelImage)?.Source,
@@ -1092,7 +1093,14 @@ namespace Ntilde.VT
                     });
                 }
             }
+            int placeholderRuns = list.Count;
             AppendPlaceholderImages(list, absDisplayStart, absEnd);
+            // A placeholder run is cells of one row, which is in the range just read.
+            for (int i = placeholderRuns; i < list.Count; i++)
+            {
+                LineSize lineSize = GetLineSizeAbsolute(list[i].CellY);
+                if (lineSize != LineSize.SingleWidth) list[i] = list[i] with { LineSize = lineSize };
+            }
             return list;
         }
 

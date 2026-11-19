@@ -144,6 +144,21 @@ public partial class TerminalBuffer
         row.LineSize = size;
     }
 
+    /// <summary>
+    /// The line attribute an image is laid out in: that of the row at its origin, whose columns its own columns are.
+    /// Nothing is stored on the image, so it always agrees with the row; an image whose origin row is gone (scrolled
+    /// off the alternate screen, trimmed from history) or belongs to the screen not showing is single width.
+    /// </summary>
+    private LineSize ImageLineSizeNoLock(TerminalImage image) =>
+        image.IsAltScreenImage == _isAltScreen ? GetLineSizeAbsolute(image.CellY) : LineSize.SingleWidth;
+
+    /// <summary>An image's left and right edge in single-width columns, the unit two images on rows of different attributes share.</summary>
+    private (int Left, int Right) ImagePageColumnsNoLock(TerminalImage image)
+    {
+        int scale = ImageLineSizeNoLock(image) == LineSize.SingleWidth ? 1 : 2;
+        return (image.CellX * scale, (image.CellX + image.CellWidth - image.ClipRightColumns) * scale);
+    }
+
     private void ReturnRowToSingleWidthForSizedTextNoLock(int viewportRow)
     {
         if (viewportRow < 0 || viewportRow >= Rows || _viewport[viewportRow].LineSize == LineSize.SingleWidth) return;

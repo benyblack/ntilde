@@ -97,6 +97,34 @@ public sealed class LineSizeRenderTests
         Assert.NotEqual(topOnly, bottomOnly);
     }
 
+    private static byte[] RenderImage(string sequence, int imageRow, int imageRows)
+    {
+        using var harness = new DrawPathHarness(Cols, Rows, withRowCache: false);
+        harness.Parser.Process(sequence);
+        using var bitmap = new SKBitmap(4, 4);
+        bitmap.Erase(SKColors.White);
+        harness.Buffer.AddImage(new Ntilde.VT.TerminalImage(bitmap, 2, imageRow, 3, imageRows));
+        harness.DrawFrame();
+        return harness.Pixels();
+    }
+
+    [AvaloniaFact]
+    public void An_image_on_a_double_width_line_sits_in_that_lines_columns()
+    {
+        SKRectI single = Ink(RenderImage(HideCursor, imageRow: 0, imageRows: 1));
+        SKRectI doubled = Ink(RenderImage(HideCursor + Dwl, imageRow: 0, imageRows: 1));
+        Assert.Equal(new SKRectI(Origin + (2 * CellWidth), 0, Origin + (5 * CellWidth), CellHeight), single);
+        Assert.Equal(new SKRectI(Origin + (4 * CellWidth), 0, Origin + (10 * CellWidth), CellHeight), doubled);
+    }
+
+    [AvaloniaFact]
+    public void An_image_follows_its_anchor_row_not_the_rows_it_runs_down_into()
+    {
+        // Anchored on a single-width row and running down into a double-width one: one rectangle, in single-width columns.
+        SKRectI image = Ink(RenderImage(HideCursor + "\r\n" + Dwl, imageRow: 0, imageRows: 2));
+        Assert.Equal(new SKRectI(Origin + (2 * CellWidth), 0, Origin + (5 * CellWidth), 2 * CellHeight), image);
+    }
+
     [AvaloniaFact]
     public void A_cell_background_on_a_double_width_line_covers_two_cells()
     {
