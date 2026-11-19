@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { syntheticAnimationJournal } from './fixtures/kitty-animation-journal.mjs';
 import { buildAnimationReport, animationInputs, animationSuites, animationVersionOfPolicy, ownedAnimationPolicies } from './kitty-animation.mjs';
-import { animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, placeholderAnimationVersion, placeholderCellEnvelope, placeholderMaxImageId } from './kitty-animation-cases.mjs';
+import { animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, placeholderAnimationVersion, placeholderCellEnvelope, placeholderMaxImageId, placeholderStageCells } from './kitty-animation-cases.mjs';
 import { placeholderAppearances, placeholderColors, placeholderHalvesInput, placeholderInputPin } from './kitty-animation-inputs.mjs';
 import { inspectPlaceholderPixels } from './kitty-animation-oracle.mjs';
 import { inputRunId } from './fixtures/input-journal.mjs';
@@ -57,14 +57,14 @@ test('commands are the protocol\'s own bytes from an explicit 24-bit image id, w
     assert.equal(build.length, 2);
     assert.match(build[0], new RegExp(`^\\x1b_Ga=t,f=32,s=16,v=16,t=d,i=${id};`)); assert.equal(build[1], `\x1b_Ga=p,U=1,i=${id},p=1,c=2,r=1`);
     assert.equal(Buffer.from(build[0].split(';')[1], 'base64').equals(placeholderHalvesInput().bytes), true);
-    const run = (placement, ...cells) => color + `\x1b[58;5;${placement}m` + cells.join('') + '\x1b[39m\x1b[59m';
+    const run = (placement, ...cells) => '\x1b[2K' + color + `\x1b[58;5;${placement}m` + cells.join('') + '\x1b[39m\x1b[59m';
     const cell = (row, column) => placeholder + (row === undefined ? '' : ['̅', '̍', '̎'][row] + ['̅', '̍', '̎'][column]);
     assert.equal(command(tiles, 'show'), run(1, cell(0, 0), cell(0, 1)));
     assert.equal(command(tiles, 'erase'), '\x1b[2J');
     assert.equal(command(mapping, 'swapped'), run(1, cell(0, 1), cell(0, 0)));
-    assert.equal(command(mapping, 'single'), '\x1b[C' + run(1, cell(0, 0)));
+    assert.equal(command(mapping, 'single'), '\x1b[2K\x1b[C' + run(1, cell(0, 0)).slice(4));
     assert.equal(command(mapping, 'inherit'), run(1, cell(0, 0), cell()));
-    assert.equal(command(unbound, 'wrong-image'), '\x1b[38;2;1;2;172m' + `\x1b[58;5;1m` + cell(0, 0) + cell(0, 1) + '\x1b[39m\x1b[59m');
+    assert.equal(command(unbound, 'wrong-image'), '\x1b[2K\x1b[38;2;1;2;172m' + `\x1b[58;5;1m` + cell(0, 0) + cell(0, 1) + '\x1b[39m\x1b[59m');
     assert.equal(command(unbound, 'stale-placement'), run(2, cell(0, 0), cell(0, 1)));
     assert.equal(command(unbound, 'outside-grid'), run(1, cell(1, 0), cell(1, 1)));
     assert.equal(command(unbound, 'valid'), command(tiles, 'show'));
@@ -190,4 +190,25 @@ test('a refused virtual placement or transmission fails its stage on the reply, 
         assert.deepEqual(report.observations.find(item => item.featureId === tiles + '.build').reply.passed, false);
         assert.deepEqual(report.caseResults.map(item => item.result), ['failed', 'failed', 'failed']);
     });
+});
+
+test('the cell grid must hold exactly the placeholder cells a stage printed: missing, extra or wrongly coloured cells are refused', () => {
+    const output = mkdtempSync(join(tmpdir(), 'nt-kpl-screen-'));
+    try {
+        const journal = syntheticAnimationJournal(output, { version });
+        const rebuild = frames => buildAnimationReport(frames, journal.actions, journal.seal, inputRunId, output, [], version);
+        assert.doesNotThrow(() => rebuild(journal.frames));
+        const show = journal.frames.findIndex(frame => frame.caseId === tiles && frame.stageId === 'show');
+        const tampered = change => { const frames = structuredClone(journal.frames); change(frames[show]); return frames; };
+        for (const change of [
+            frame => { frame.screen.lines[4] = ''; },                                                         // the cells were never written
+            frame => { frame.screen.lines[4] += '\u{10EEEE}'; },                                             // a third cell
+            frame => { frame.screen.cellDetails[1].foregroundArgb ^= 1; },                                   // the colours name another image
+            frame => { frame.screen.cellDetails[1].count = 1; },                                             // only one cell carries the colour
+        ]) assert.throws(() => rebuild(tampered(change)));
+        const sameAsBlank = placeholderStageCells('build', 5, 3); assert.deepEqual(sameAsBlank, []);
+        assert.deepEqual(placeholderStageCells('deleted', 5, 3), placeholderStageCells('valid', 5, 3));
+        assert.deepEqual(placeholderStageCells('single', 5, 3).map(cell => cell.column), [4]);
+        assert.deepEqual(placeholderStageCells('wrong-image', 5, 3).map(cell => cell.imageId), [6, 6]);
+    } finally { rmSync(output, { recursive: true, force: true }); }
 });

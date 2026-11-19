@@ -144,19 +144,35 @@ const placeholderCell = (row, column) => placeholderChar + (row === undefined ? 
 const foreground = id => `\x1b[38;2;${(id >>> 16) & 255};${(id >>> 8) & 255};${id & 255}m`;
 /** The cells in one run: the image id as the foreground colour and the placement id as the underline colour (SGR 58, palette form), then both colours reset (the cell background stays the controlled one). */
 const placeholderRun = (imageId, placement, ...cells) => foreground(imageId) + `\x1b[58;5;${placement}m` + cells.join('') + '\x1b[39m\x1b[59m';
+// What each printing stage writes into the anchor row: how many columns the cursor skips, which image id and placement the colours name, and the (row, column) marks of each cell ([] is a bare placeholder, inheriting from its left neighbour).
+// The row is erased first, so a stage never sees the cells an earlier one printed; the `deleted` stage prints nothing and leaves the `valid` stage's cells in place.
+const placeholderPrints = Object.freeze({
+    show: { cells: [[0, 0], [0, 1]] },
+    swapped: { cells: [[0, 1], [0, 0]] },
+    single: { skip: 1, cells: [[0, 0]] },
+    inherit: { cells: [[0, 0], []] },
+    'wrong-image': { idOffset: 1, cells: [[0, 0], [0, 1]] },
+    'stale-placement': { placement: 2, cells: [[0, 0], [0, 1]] },
+    'outside-grid': { cells: [[1, 0], [1, 1]] },
+    valid: { cells: [[0, 0], [0, 1]] },
+});
+const printCommand = (print, imageId) => '\x1b[2K' + '\x1b[C'.repeat(print.skip ?? 0)
+    + placeholderRun(imageId + (print.idOffset ?? 0), print.placement ?? 1, ...print.cells.map(marks => placeholderCell(...marks)));
 const placeholderCommands = Object.freeze({
     build: imageId => apc(`a=t,${frameControls},i=${imageId};` + placeholderHalvesInput().bytes.toString('base64')) + apc(`a=p,U=1,i=${imageId},p=1,c=2,r=1`),
-    show: imageId => placeholderRun(imageId, 1, placeholderCell(0, 0), placeholderCell(0, 1)),
     erase: () => '\x1b[2J',
-    swapped: imageId => placeholderRun(imageId, 1, placeholderCell(0, 1), placeholderCell(0, 0)),
-    single: imageId => '\x1b[C' + placeholderRun(imageId, 1, placeholderCell(0, 0)),
-    inherit: imageId => placeholderRun(imageId, 1, placeholderCell(0, 0), placeholderCell()),
-    'wrong-image': imageId => placeholderRun(imageId + 1, 1, placeholderCell(0, 0), placeholderCell(0, 1)),
-    'stale-placement': imageId => placeholderRun(imageId, 2, placeholderCell(0, 0), placeholderCell(0, 1)),
-    'outside-grid': imageId => placeholderRun(imageId, 1, placeholderCell(1, 0), placeholderCell(1, 1)),
-    valid: imageId => placeholderRun(imageId, 1, placeholderCell(0, 0), placeholderCell(0, 1)),
     delete: imageId => apc(`a=d,d=i,i=${imageId}`),
+    ...Object.fromEntries(Object.entries(placeholderPrints).map(([stageId, print]) => [stageId, imageId => printCommand(print, imageId)])),
 });
+/**
+ * The placeholder cells the anchor row holds once a stage's command has run, as the cell grid reports them: where each one sits (a column of the row) and the grapheme it holds, with the image id its 24-bit foreground names.
+ * Empty for a stage that leaves the row blank (a build, an erase, a clear). The grapheme text is the stage's own command text, so no expectation is read from the App.
+ */
+export function placeholderStageCells(stageId, imageId, anchorCol) {
+    const print = placeholderPrints[stageId === 'deleted' ? 'valid' : stageId];
+    if (!print) return [];
+    return print.cells.map((marks, index) => ({ column: anchorCol + (print.skip ?? 0) + index, text: placeholderCell(...marks), imageId: imageId + (print.idOffset ?? 0) }));
+}
 
 /** Exact bounded bytes; the image id is parent-chosen per case, never guessed from a reply. */
 export function animationCommand(caseId, stageId, { imageId } = {}, version = currentAnimationVersion) {

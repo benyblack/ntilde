@@ -3,7 +3,7 @@ import { readFileSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { inputPriorCaptureCap } from './input-plan.mjs';
-import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, currentAnimationVersion, animationAnchor, animationCellEnvelope, animationHoldMs, placeholderAnimationVersion, placeholderCellEnvelope, placeholderMaxImageId } from './kitty-animation-cases.mjs';
+import { animationCases, animationCasesByVersion, animationCommand, animationExpectedReplies, animationSuiteIds, currentAnimationVersion, animationAnchor, animationCellEnvelope, animationHoldMs, placeholderAnimationVersion, placeholderCellEnvelope, placeholderMaxImageId, placeholderStageCells } from './kitty-animation-cases.mjs';
 import { animationFrameInput, animationFrameIds, animationPngIds, animationPngInput, placeholderHalvesInput } from './kitty-animation-inputs.mjs';
 import { inspectAnimationPixels, inspectPlaceholderPixels, evaluateAnimationTiming, timelineAppearance } from './kitty-animation-oracle.mjs';
 import { checkImages, imagePlan, imageSetup, imageRestore, imagePosition, imageBoundScreen, StaticImageReport, validateImageCapture } from './static-images.mjs';
@@ -125,6 +125,32 @@ export function buildAnimationReport(frames, actions, seal, runId, output, prior
         caseResults: builder.caseResults(), observations: builder.observations };
 }
 
+// The cell grid's own reporting of a placeholder cell (#989): the default foreground flag cleared (the cell has an explicit 24-bit foreground) and the extended-text flag set (it holds a grapheme of
+// more than one UTF-16 unit: the supplementary-plane placeholder, with or without combining marks). Only these two bits differ from a blank cell; the rest of a cell run is the controlled blank cell's.
+const defaultForegroundFlag = 1 << 8, extendedTextFlag = 1 << 13;
+
+/**
+ * The screen the cell grid must show once a placeholder stage's command has run: the bound blank screen with the anchor row holding exactly the cells the stage printed (their graphemes as text, their
+ * image id as a 24-bit foreground, every other attribute the blank cell's). Placeholders are cells, so unlike every other image carrier the screen changes. Built from the stage's own command text.
+ */
+export function placeholderScreen(bound, entry, state) {
+    if (entry.kind !== 'read') return bound;
+    const cells = placeholderStageCells(entry.stageId, state?.imageId, animationAnchor.col);
+    if (!cells.length) return bound;
+    checkImages(uint(state?.imageId) && bound.cellDetails.length === 1);
+    const screen = structuredClone(bound), [blank] = bound.cellDetails, before = animationAnchor.row * bound.cols + cells[0].column;
+    screen.lines[animationAnchor.row] = ' '.repeat(cells[0].column) + cells.map(cell => cell.text).join('');
+    const runs = [{ ...blank, count: before }];
+    for (const cell of cells) {
+        const run = { ...blank, count: 1, flags: (blank.flags & ~defaultForegroundFlag) | extendedTextFlag, foregroundArgb: (0xff000000 | cell.imageId) >>> 0 };
+        const last = runs.at(-1);
+        if (last.flags === run.flags && last.foregroundArgb === run.foregroundArgb) last.count++; else runs.push(run);
+    }
+    runs.push({ ...blank, count: blank.count - before - cells.length });
+    screen.cellDetails = runs.filter(run => run.count > 0);
+    return screen;
+}
+
 /** What the shared image-carrier observer and report need to know about one suite version. */
 function suiteOf(version) {
     const cases = animationCasesByVersion[version], stageOfEntry = entry => cases.find(value => value.id === entry.caseId).stages.find(value => value.id === entry.stageId);
@@ -146,6 +172,7 @@ function suiteOf(version) {
             return { imageId: action.imageId };
         },
         factsMatch: (action, state) => action.imageId === (state.imageId ?? null),
+        ...(version === placeholderAnimationVersion ? { screenAfter: (entry, state, bound) => placeholderScreen(bound, entry, state) } : {}),
     });
 }
 export const animationSuites = Object.freeze({ 1: suiteOf(1), 2: suiteOf(2), 3: suiteOf(3), 4: suiteOf(4), 5: suiteOf(5) });
