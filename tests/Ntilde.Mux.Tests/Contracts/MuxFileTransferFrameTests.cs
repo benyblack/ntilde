@@ -47,6 +47,17 @@ public sealed class MuxFileTransferFrameTests
     }
 
     [Fact]
+    public void A_file_frame_is_accounted_as_bulk_so_it_cannot_make_the_output_behind_it_a_slow_client()
+    {
+        MuxOutboundFrame frame = MuxFrames.FileTransfer(Id, 0, "/p", new byte[1024], hasData: true);
+        Assert.True(frame.IsBulk);
+        frame.Release();
+        MuxOutboundFrame output = MuxFrames.Output(Id, 0, [1]);
+        Assert.False(output.IsBulk);
+        output.Release();
+    }
+
+    [Fact]
     public void A_payload_no_correct_daemon_sends_is_refused()
     {
         byte[] good = Payload(MuxFrames.FileTransfer(Id, 1, "/tmp/a", [1, 2], hasData: true));

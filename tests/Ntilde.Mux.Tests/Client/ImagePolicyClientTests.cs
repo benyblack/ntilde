@@ -200,6 +200,12 @@ public sealed class ImagePolicyClientTests
         Assert.Equal("none", reads["thr"]);
         Assert.Equal("none", reads["fou"]);
         Assert.Equal("07,08", reads["fiv"]);
+
+        // A daemon forwards at most MaxFileTransfersPerChunk entries (and MaxFileTransferBytes) for one chunk: a client that is sent more is not following a daemon it understands.
+        for (int i = 0; i < MuxFrames.MaxFileTransfersPerChunk; i++) session.DeliverFile(15, "/tmp/many", [1]);
+        Assert.Throws<MuxProtocolException>(() => session.DeliverFile(15, "/tmp/many", [1]));
+        session.DeliverFile(16, "/tmp/other-chunk", [1]);                                   // another offset has its own budget
+        Assert.Throws<MuxProtocolException>(() => session.DeliverFile(16, "/tmp/big", new byte[MuxFrames.MaxFileTransferBytes]));
     }
 
     /// <summary>The packed form of one opaque pixel, written out so the test needs no VT internals (a literal of one pixel).</summary>

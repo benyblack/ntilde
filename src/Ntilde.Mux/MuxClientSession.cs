@@ -635,7 +635,15 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     internal void DeliverFile(long seq, string path, byte[]? data)
     {
         if (Interlocked.Read(ref _expectedOffset) < 0) return;
-        lock (_fileGate) _files.Add((seq, path, data));
+        lock (_fileGate)
+        {
+            // A daemon stages at most this much for one chunk (HeadlessTerminalSession); more is not a daemon this client can follow.
+            long bytes = data?.Length ?? 0;
+            foreach ((long entrySeq, _, byte[]? entry) in _files) if (entrySeq == seq) bytes += entry?.Length ?? 0;
+            if (_files.Count(entry => entry.Seq == seq) >= MuxFrames.MaxFileTransfersPerChunk || bytes > MuxFrames.MaxFileTransferBytes)
+                throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Session {Id}: more file transfers at stream offset {seq} than a daemon forwards for one chunk.");
+            _files.Add((seq, path, data));
+        }
     }
 
     /// <summary>

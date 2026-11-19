@@ -84,6 +84,52 @@ public sealed class KittyTransportFileTests : IDisposable
     }
 
     [Fact]
+    public void A_chain_of_links_whose_middle_directory_leaves_temp_is_refused()
+    {
+        // /tmp/dir/image -> /tmp/dir/escape/hosts, with /tmp/dir/escape -> /etc: following only the final link would read /etc/hosts.
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "creating symbolic links needs a privilege on Windows");
+        Assert.SkipUnless(File.Exists("/etc/hosts"), "no /etc/hosts to point a link at");
+        string escape = Path.Combine(_dir, "escape"), image = Path.Combine(_dir, "image.rgba");
+        Directory.CreateSymbolicLink(escape, "/etc");
+        File.CreateSymbolicLink(image, Path.Combine(escape, "hosts"));
+        Assert.Null(KittyTransportFile.Read(image));
+        // A relative link that climbs out of temp, and one that climbs and comes back inside, are told apart.
+        string up = Path.Combine(_dir, "up.rgba"), back = Path.Combine(_dir, "back.rgba");
+        File.CreateSymbolicLink(up, Path.Combine("..", "..", "..", "..", "etc", "hosts"));
+        Assert.Null(KittyTransportFile.Read(up));
+        string real = Write("real2.rgba", [1, 2]);
+        File.CreateSymbolicLink(back, Path.Combine("..", Path.GetFileName(_dir), "real2.rgba"));
+        Assert.Equal([1, 2], ReadOrFail(back));
+    }
+
+    [Fact]
+    public void A_loop_of_links_is_refused_and_not_followed_forever()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "creating symbolic links needs a privilege on Windows");
+        string a = Path.Combine(_dir, "a.rgba"), b = Path.Combine(_dir, "b.rgba");
+        File.CreateSymbolicLink(a, b);
+        File.CreateSymbolicLink(b, a);
+        Assert.Null(KittyTransportFile.Read(a));
+    }
+
+    [Fact]
+    public void A_FIFO_with_no_writer_is_refused_at_once_instead_of_blocking_the_reader()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "no FIFOs on Windows");
+        string fifo = Path.Combine(_dir, "pipe.rgba");
+        using (var make = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("mkfifo", fifo) { UseShellExecute = false }))
+        {
+            Assert.NotNull(make);
+            make!.WaitForExit();
+            Assert.SkipUnless(make.ExitCode == 0, "mkfifo is not available");
+        }
+
+        Task<byte[]?> read = Task.Run(() => KittyTransportFile.Read(fifo));
+        Assert.True(read.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), "the reader blocked on a FIFO that has no writer");
+        Assert.Null(read.Result);
+    }
+
+    [Fact]
     public void A_symbolic_link_that_stays_inside_temp_is_followed()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "creating symbolic links needs a privilege on Windows");

@@ -27,6 +27,9 @@ public static class MuxFrames
     /// <summary>The largest file a FileTransfer frame can carry: what a frame may hold once its header and the longest path are counted.</summary>
     public const int MaxFileTransferBytes = MuxProtocol.MaxFrameBytes - FileTransferHeaderBytes - MaxFileTransferPathBytes;
 
+    /// <summary>The most FileTransfer frames, and (with <see cref="MaxFileTransferBytes"/>) the most file bytes, the daemon forwards for one output chunk; a read past either is unavailable for everyone.</summary>
+    public const int MaxFileTransfersPerChunk = 32;
+
     private const byte FileTransferHasBytes = 1;
 
     public static MuxOutboundFrame Request(MuxRequest request) =>
@@ -92,7 +95,8 @@ public static class MuxFrames
         BinaryPrimitives.WriteInt32LittleEndian(p.Slice(SessionIdBytes + 9, 4), pathBytes);
         System.Text.Encoding.UTF8.GetBytes(path, p[FileTransferHeaderBytes..]);
         data.CopyTo(p[(FileTransferHeaderBytes + pathBytes)..]);
-        return frame;
+        // Accounted as a snapshot is: a file can be far larger than the stream budget a client's pending output is held to, and the small output frame that follows must not read as a slow client.
+        return frame.MarkBulk();
     }
 
     public static MuxOutboundFrame Snapshot(long requestId, Guid sessionId, long seq, ReadOnlySpan<byte> snapshotJson)

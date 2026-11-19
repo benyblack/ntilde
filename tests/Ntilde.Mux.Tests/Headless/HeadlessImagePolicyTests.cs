@@ -243,6 +243,63 @@ public sealed class HeadlessImagePolicyTests
         finally { File.Delete(temp); }
     }
 
+    [Fact]
+    public async Task A_policy_six_session_bounds_what_one_chunk_stages_and_an_overlong_path_neither_faults_it_nor_reaches_a_client()
+    {
+        string temp = Path.Combine(Path.GetTempPath(), "ntilde-tf-" + Guid.NewGuid().ToString("N") + ".png");
+        File.WriteAllBytes(temp, Convert.FromBase64String(TestImages.PngBase64(8, 8)));
+        try
+        {
+            using var host = new MuxTestHost();
+            var options = new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion };
+            MuxClient first = await host.ConnectClientAsync(options);
+            int policy = PersistentImagePolicy.FileTransportImagesVersion;
+            Guid id = await first.SpawnAsync(new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "t", RequiredImagePolicy = policy }, Ct);
+            ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(first, id, imagePolicy: policy);
+
+            // An overlong path (past what a frame carries) is refused like any unreadable one, with a client attached, and the session goes on.
+            string overlong = "/tmp/" + new string('a', MuxFrames.MaxFileTransferPathBytes + 10);
+            // More reads in one chunk than a daemon stages: the first MaxFileTransfersPerChunk are read, the rest are unavailable for everyone.
+            int total = MuxFrames.MaxFileTransfersPerChunk + 5;
+            host.Fake(id).Emit(Kitty("a=T,i=500,t=f,f=100", Utf8Base64(overlong)) + string.Concat(Enumerable.Range(1, total).Select(n => Kitty($"a=T,i={n},t=f,f=100", Utf8Base64(temp)))) + "tail");
+            await host.SettleAsync(id, first);
+
+            string[] replies = host.Fake(id).SentInput.ToArray();
+            Assert.StartsWith("\x1b_Gi=500;EINVAL:", replies[0], StringComparison.Ordinal);
+            Assert.Equal(MuxFrames.MaxFileTransfersPerChunk, replies.Count(reply => reply.EndsWith(";OK\x1b\\", StringComparison.Ordinal)));
+            Assert.Equal(5, replies.Count(reply => reply.Contains(";EINVAL:", StringComparison.Ordinal)) - 1);
+            Assert.Equal(MuxFrames.MaxFileTransfersPerChunk, host.Mux(id).Buffer.Images.Count);
+            host.AssertPaneMatchesMux(id, pane, "the client placed exactly what the daemon did");
+            host.Fake(id).Emit("still alive");
+            await host.SettleAsync(id, first);
+            host.AssertPaneMatchesMux(id, pane, "the session was not faulted");
+        }
+        finally { File.Delete(temp); }
+    }
+
+    [Fact]
+    public void One_chunk_cannot_stage_more_file_bytes_than_a_frame_carries()
+    {
+        string a = Path.Combine(Path.GetTempPath(), "ntilde-tf-" + Guid.NewGuid().ToString("N") + "-a.bin"), b = a.Replace("-a.bin", "-b.bin", StringComparison.Ordinal);
+        try
+        {
+            long each = (MuxFrames.MaxFileTransferBytes / 2) + 1024; // two of them do not fit one frame's worth
+            foreach (string file in new[] { a, b })
+            {
+                using var stream = new FileStream(file, FileMode.Create);
+                stream.SetLength(each);
+            }
+
+            (HeadlessTerminalSession mux, _) = NewSession(PersistentImagePolicy.FileTransportImagesVersion, conPtyFiltering: false);
+            using (mux)
+            {
+                Assert.Equal(each, mux.ReadTransportFile(a)!.Length);
+                Assert.Null(mux.ReadTransportFile(b));                                      // what is left of the chunk's room is smaller than this file
+            }
+        }
+        finally { File.Delete(a); File.Delete(b); }
+    }
+
     private const string Placeholder = "\U0010EEEE";
     private static readonly string[] Marks = ["\u0305", "\u030D"]; // kitty's first two row/column diacritics: numbers 0 and 1
     private static string Mark(int number) => Marks[number];

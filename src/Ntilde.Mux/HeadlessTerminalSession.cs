@@ -62,6 +62,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private bool _sixelCellSizePending;
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private readonly List<(string Path, byte[]? Data)> _fileReads = new(); // the t=f files the chunk being parsed read, in command order (parse thread only; #887)
+    private long _fileReadBytes; // what _fileReads holds
     private long _rawOffset;
     private long _lastOutputUnixMs; // 0 until the first chunk; written by the parse thread only, once per chunk
     private string _title;
@@ -931,6 +932,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (IsFaulted) return;
 
         _fileReads.Clear();
+        _fileReadBytes = 0;
         (_session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(data);
         int maxChars = Utf8ChunkDecoder.GetMaxCharCount(data.Length);
         if (_chars.Length < maxChars) _chars = new char[maxChars];
@@ -956,17 +958,21 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
 
         _fileReads.Clear();
+        _fileReadBytes = 0;
     }
 
     /// <summary>
-    /// The parser's reader for <c>t=f</c> (#887), on the parse thread: reads the file as a direct pane would, but only as much as one frame can carry, remembers the result
-    /// for <see cref="ForwardFileReads"/>, and answers the parser with it. A path or a file past what a frame carries is unavailable for everyone.
+    /// The parser's reader for <c>t=f</c> (#887), on the parse thread: reads the file as a direct pane would, remembers the result for <see cref="ForwardFileReads"/>, and answers the
+    /// parser with it. What one chunk may stage is bounded (<see cref="MuxFrames.MaxFileTransfersPerChunk"/> reads, <see cref="MuxFrames.MaxFileTransferBytes"/> bytes in all, each file
+    /// within what is left), so a small output chunk naming one big file again and again cannot hold gigabytes: a read past a bound is unavailable for everyone. A path no frame can
+    /// carry, and a read past the count, are unavailable without an entry: a client that is asked for such a path finds none, which is the same answer.
     /// </summary>
-    private byte[]? ReadTransportFile(string path)
+    internal byte[]? ReadTransportFile(string path)
     {
-        byte[]? data = System.Text.Encoding.UTF8.GetByteCount(path) <= MuxFrames.MaxFileTransferPathBytes
-            ? KittyTransportFile.Read(path, MuxFrames.MaxFileTransferBytes)
-            : null;
+        if (System.Text.Encoding.UTF8.GetByteCount(path) > MuxFrames.MaxFileTransferPathBytes || _fileReads.Count >= MuxFrames.MaxFileTransfersPerChunk) return null;
+        long room = MuxFrames.MaxFileTransferBytes - _fileReadBytes;
+        byte[]? data = room > 0 ? KittyTransportFile.Read(path, room) : null;
+        _fileReadBytes += data?.Length ?? 0;
         _fileReads.Add((path, data));
         return data;
     }

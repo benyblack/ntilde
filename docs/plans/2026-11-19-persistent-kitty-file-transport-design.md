@@ -29,8 +29,16 @@ chunk** that completed the command. Clients never read a file and never guess.
 - **Retention.** The parser keeps the bytes as the image's source (`ImageSourceBudget`), so snapshots, reattach and a second client restore a `t=f`
   image exactly like a `t=d` one. The raw output recording holds the command (a path) and not the file, as in a direct pane: replay still cannot show it.
 - **Confinement and caps.** One reader (`KittyTransportFile`, owned by `Ntilde.Mux` and used by the App's direct panes too): absolute paths only,
-  under the user's temp directory (case rules of the platform), regular files, 64 MiB cap re-checked on the opened handle. In a persistent session the
-  file must also fit a frame (`MaxFrameBytes` minus the header and a 4 KiB path), otherwise it is "unavailable" for everyone.
+  resolved through every symbolic link component by component (a loop is refused) and then required to lie under the user's temp directory (case rules of the
+  platform), the **resolved** path is what is opened, regular files only (on Unix the open is non-blocking and a stream that cannot seek is refused, so a FIFO with no
+  writer cannot block the parse thread), and a 64 MiB cap re-checked on the opened handle. A program that can create links in the user's temp directory could still swap
+  one between the check and the open; it already runs as that user, and the daemon reads for the same user.
+- **Bounds per chunk.** The daemon stages at most 32 reads and `MaxFileTransferBytes` bytes in all for one output chunk, each file within what is left; a read past a bound is
+  unavailable for everyone, so a small chunk naming one big file again and again cannot hold gigabytes. A path longer than a frame carries is unavailable without an entry
+  (a client asked for it finds none, the same answer). A client refuses (a protocol error) more entries or bytes for one offset than a daemon stages. In a persistent session
+  the file must also fit a frame (`MaxFrameBytes` minus the header and a 4 KiB path), otherwise it is "unavailable" for everyone.
+- **Accounting.** A `FileTransfer` frame is accounted as a snapshot is (the bulk account), never against the stream budget that pending output is held to, so a large file does
+  not make the small output frame behind it read as a slow client.
 - **Policy 6.** `PersistentImagePolicy.FileTransportImagesVersion = 6` (`AllowsFileTransport`). The version is fixed per session at spawn like the others;
   a peer that predates it is refused (`version_mismatch`), never downgraded, and below 6 the reader stays null so `t=f` answers `ERR` as today.
 - **Not changed.** `t=t` (the file is deleted after reading) stays unsupported everywhere (the parser skips it): deleting a file on the daemon's host
