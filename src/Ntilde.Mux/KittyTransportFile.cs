@@ -112,36 +112,68 @@ public static class KittyTransportFile
     /// </summary>
     private static string? Canonicalize(string full)
     {
-        string root = Path.GetPathRoot(full) ?? string.Empty;
-        var pending = new Stack<string>(Split(full[root.Length..]).Reverse());
-        var resolved = new List<string>();
-        int hops = 0;
-        bool mustBeDirectory = EndsWithSeparator(full); // a trailing separator names a directory: frame.png/ is ENOTDIR
-        while (pending.Count > 0)
+        var walk = new LinkWalk(full);
+        return walk.Run() ? walk.Result : null;
+    }
+
+    /// <summary>One resolution of a path: the components still to take, the ones already resolved (links gone), and what the kernel's rules for "." and a trailing separator require of the end.</summary>
+    private sealed class LinkWalk
+    {
+        private readonly Stack<string> _pending;
+        private readonly List<string> _resolved = new();
+        private string _root;
+        private int _hops;
+        private bool _mustBeDirectory;
+
+        internal LinkWalk(string full)
         {
-            string part = pending.Pop();
-            if (part is "." or "..")
+            _root = Path.GetPathRoot(full) ?? string.Empty;
+            _pending = new Stack<string>(Split(full[_root.Length..]).Reverse());
+            _mustBeDirectory = EndsWithSeparator(full); // a trailing separator names a directory: frame.png/ is ENOTDIR
+        }
+
+        internal string Result => Join(_root, _resolved);
+
+        /// <summary>Takes every component; false when the kernel would refuse the path (a loop, a share, a "." or ".." after a file, a trailing separator after one).</summary>
+        internal bool Run()
+        {
+            while (_pending.Count > 0)
             {
-                if (!IsDirectoryOrRoot(root, resolved)) return null;
-                if (part == ".." && resolved.Count > 0) resolved.RemoveAt(resolved.Count - 1);
-                continue;
+                string part = _pending.Pop();
+                if (!(part is "." or ".." ? Dot(part) : Name(part))) return false;
             }
 
-            string parent = Join(root, resolved);
+            return !_mustBeDirectory || IsDirectoryOrRoot(_root, _resolved);
+        }
+
+        private bool Dot(string part)
+        {
+            if (!IsDirectoryOrRoot(_root, _resolved)) return false;
+            if (part == ".." && _resolved.Count > 0) _resolved.RemoveAt(_resolved.Count - 1);
+            return true;
+        }
+
+        private bool Name(string part)
+        {
+            string parent = Join(_root, _resolved);
             string? target = LinkTargetOf(Path.Combine(parent, part));
             if (target is null)
             {
-                resolved.Add(part);
-                continue;
+                _resolved.Add(part);
+                return true;
             }
 
-            string? next = ++hops > MaxLinkHops ? null : FollowTarget(parent, target);
-            if (next is null) return null;
-            if (pending.Count == 0) mustBeDirectory |= EndsWithSeparator(next); // the target is the tail of the path: its own trailing separator applies too, and an earlier one is kept
-            root = Restart(next, pending, resolved);
+            return Follow(parent, target);
         }
 
-        return mustBeDirectory && !IsDirectoryOrRoot(root, resolved) ? null : Join(root, resolved);
+        private bool Follow(string parent, string target)
+        {
+            string? next = ++_hops > MaxLinkHops ? null : FollowTarget(parent, target);
+            if (next is null) return false;
+            if (_pending.Count == 0) _mustBeDirectory |= EndsWithSeparator(next); // the target is the tail of the path: its own trailing separator applies too, and an earlier one is kept
+            _root = Restart(next, _pending, _resolved);
+            return true;
+        }
     }
 
     private static bool EndsWithSeparator(string path) => path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar);
