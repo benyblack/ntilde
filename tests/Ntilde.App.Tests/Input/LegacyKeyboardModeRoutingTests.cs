@@ -1,4 +1,5 @@
 using Avalonia.Headless.XUnit;
+using Ntilde.Controls;
 using Avalonia.Input;
 using Moq;
 using Ntilde.Pty;
@@ -9,16 +10,22 @@ namespace Ntilde.Tests.Input;
 
 public sealed class LegacyKeyboardModeRoutingTests
 {
-    private static (TerminalView View, AnsiParser Parser, List<string> Sent) CreateView()
+    private static (ITerminalSession Session, List<string> Sent) CreateSession()
     {
-        var buffer = new TerminalBuffer(80, 24);
         var sent = new List<string>();
         var session = new Mock<ITerminalSession>();
         session.SetupGet(x => x.IsProcessRunning).Returns(true);
         session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(sent.Add);
+        return (session.Object, sent);
+    }
+
+    private static (TerminalView View, AnsiParser Parser, List<string> Sent) CreateView()
+    {
+        var (session, sent) = CreateSession();
+        var buffer = new TerminalBuffer(80, 24);
         var view = new TerminalView();
         view.SetBuffer(buffer);
-        view.SetSession(session.Object);
+        view.SetSession(session);
         return (view, new AnsiParser(buffer), sent);
     }
 
@@ -90,8 +97,14 @@ public sealed class LegacyKeyboardModeRoutingTests
     [AvaloniaFact]
     public void Srm_reset_echoes_typed_text_and_set_restores_child_echo()
     {
-        var (view, parser, sent) = CreateView();
-        var buffer = view.Buffer!;
+        var (session, sent) = CreateSession();
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser(forceConPtyFiltering: false);
+        typeof(TerminalPane).GetProperty(nameof(TerminalPane.Session))!.SetValue(pane, session);
+        TerminalView view = pane.TermView;
+        view.SetSession(session);
+        var buffer = pane.Buffer!;
+        var parser = pane.Parser!;
         void Type(string text) => view.RaiseEvent(new TextInputEventArgs { Text = text, RoutedEvent = TerminalView.TextInputEvent });
 
         Type("0");
@@ -114,6 +127,11 @@ public sealed class LegacyKeyboardModeRoutingTests
         parser.Process("\u001b[12l\u001bc");
         Type("3");
         Assert.Equal(0, buffer.CursorCol);
-        Assert.Equal(new[] { "0", "1", "1", "\u001b[2J", "2", "3" }, sent);
+        parser.Process("\u001b[12l\u001b(0");
+        Type("q");
+        parser.Process("\u001b[2b");
+        Assert.Equal(3, buffer.CursorCol);
+        Assert.All(buffer.ViewportRows[0].Cells.Take(3), cell => Assert.Equal('─', cell.Character));
+        Assert.Equal(new[] { "0", "1", "1", "\u001b[2J", "2", "3", "q" }, sent);
     }
 }

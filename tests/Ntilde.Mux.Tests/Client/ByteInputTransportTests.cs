@@ -59,6 +59,38 @@ public sealed class ByteInputTransportTests
     }
 
     [Fact]
+    public async Task Keyboard_echo_is_ordered_after_an_SRM_reset_waiting_in_the_output_queue()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        ScriptedTerminalSession child = host.Fake(id);
+        HeadlessTerminalSession daemon = host.Mux(id);
+        using MuxClientSession session = client.OpenSession(id);
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        CancellationToken ct = Ct;
+        daemon.Parser.OnTitleChanged += _ =>
+        {
+            entered.Set();
+            release.Wait(ct);
+        };
+        child.Emit("\u001b]0;pause\a");
+
+        try
+        {
+            Assert.True(entered.Wait(TimeSpan.FromSeconds(30), Ct));
+            child.Emit("\u001b[12l");
+            session.SendKeyboardText("1");
+            await TestWait.UntilAsync(() => child.WireInput.Count == 1, "typing reaches stdin while parsing is paused");
+        }
+        finally { release.Set(); }
+
+        await host.SettleAsync(id, client);
+        Assert.Equal('1', daemon.Buffer.ViewportRows[0].Cells[0].Character);
+    }
+
+    [Fact]
     public async Task Negotiated_input_preserves_every_octet_and_copies_caller_memory()
     {
         using var host = new MuxTestHost();

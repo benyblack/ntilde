@@ -383,7 +383,8 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     private void WriteQueuedInput(QueuedInput input)
     {
-        if (input.KeyboardText && _buffer.Modes.IsLocalEchoEnabled) QueueKeyboardEcho(input);
+        // SRM may still be waiting in the data lane, so only the parser can decide whether to echo.
+        if (input.KeyboardText) QueueKeyboardEcho(input);
         if (input.Text is { } text)
         {
             _session.SendInput(text);

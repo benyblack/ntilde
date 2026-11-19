@@ -1,5 +1,6 @@
 using Avalonia.Input;
 using Ntilde.Mux;
+using Ntilde.Pty;
 
 namespace Ntilde.Shell
 {
@@ -513,6 +514,8 @@ namespace Ntilde.Shell
         public event Action? EnterObserved;
         public event Action<string>? PasteObserved;
 
+        internal Action<ITerminalSession, string>? LocalKeyboardEcho { get; set; }
+
         internal void SendKeyboardText(string text) => SendUserInput(text, keyboardText: true);
 
         /// <summary>
@@ -530,7 +533,7 @@ namespace Ntilde.Shell
                 else
                 {
                     if (keyboardText && _buffer?.Modes.IsLocalEchoEnabled == true && session.IsProcessRunning)
-                        _buffer.EchoKeyboardText(text);
+                        LocalKeyboardEcho?.Invoke(session, text);
                     session.SendInput(text);
                 }
                 NoteGeneratedInputSubmitted();
