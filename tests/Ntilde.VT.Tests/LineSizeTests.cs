@@ -302,6 +302,35 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void Typed_spaces_at_the_end_of_a_double_line_re_wrap_with_it()
+    {
+        var (buffer, parser) = Create(cols: 20, rows: 8);
+        parser.Process(Dwl + "abc      \r\nafter");
+        buffer.Resize(6, 8);
+        Assert.Equal(new[] { "abc", "", "", "after" }, Lines(buffer).Take(4));
+        Assert.Equal(new[] { LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.DoubleWidth, LineSize.SingleWidth }, Sizes(buffer).Take(4));
+    }
+
+    [Fact]
+    public void A_shell_mark_after_the_text_is_dropped_when_the_re_wrap_fills_its_row()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abcd{Esc}]133;B{Esc}\\");
+        Assert.NotNull(buffer.CommandStartMark);
+        buffer.Resize(4, 6);
+        Assert.Null(buffer.CommandStartMark);
+    }
+
+    [Fact]
+    public void A_shell_mark_inside_a_double_line_follows_its_character()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process($"{Dwl}abc{Esc}]133;B{Esc}\\de");
+        buffer.Resize(4, 6);
+        Assert.Equal((1, 1), (buffer.CommandStartMark!.Value.Row, buffer.CommandStartMark.Value.Column));
+    }
+
+    [Fact]
     public void The_cursor_stays_on_its_character_when_a_double_line_re_wraps()
     {
         var (buffer, parser) = Create(rows: 6);

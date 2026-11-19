@@ -576,6 +576,9 @@ namespace Ntilde.VT
                                     len = scan + 1;
                                 }
                             }
+                            // Typed spaces at the end are text. A recorded extent says how far they go; an extent of
+                            // the whole row is the default of a row that never recorded one.
+                            if (row.WrittenColumns < row.Cells.Length) len = Math.Max(len, row.WrittenColumns);
                             // Blank cells up to the cursor, a saved cursor or a shell mark are kept, so each stays on its column.
                             if (phys == absCursorPhysicalIdx) len = Math.Max(len, Math.Min(_cursorCol, lastCol));
                             if (phys == absMainSavedIdx) len = Math.Max(len, Math.Min(_savedCursors.Main.Col, lastCol));
@@ -674,8 +677,10 @@ namespace Ntilde.VT
                                 case 0: newCursorPhysRow = flowRow; newCursorPhysCol = col; _cursorWaitsAtDoubleRowEnd = pastLastColumn; break;
                                 case 1: newMainSavedPhysRow = flowRow; newMainSavedPhysCol = col; mainSavedWaitsAtDoubleRowEnd = pastLastColumn; break;
                                 case 2: newAltSavedPhysRow = flowRow; newAltSavedPhysCol = col; altSavedWaitsAtDoubleRowEnd = pastLastColumn; break;
-                                case 3: newCommandStartPhysRow = flowRow; newCommandStartPhysCol = col; break;
-                                case 4: newOutputStartPhysRow = flowRow; newOutputStartPhysCol = col; break;
+                                // A mark just past a filled row has no cell to name: it is dropped, as on an ordinary
+                                // line, rather than moved onto the character before it.
+                                case 3: if (!pastLastColumn) { newCommandStartPhysRow = flowRow; newCommandStartPhysCol = col; } break;
+                                case 4: if (!pastLastColumn) { newOutputStartPhysRow = flowRow; newOutputStartPhysCol = col; } break;
                                 default: imagePlacements.Add((image!, flowRow, Math.Min(col, newCols - 1))); break;
                             }
                         }
