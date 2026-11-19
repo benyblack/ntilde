@@ -35,6 +35,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     public ConcurrentQueue<byte[]> SentInputBytes { get; } = new();
     public ConcurrentQueue<byte[]> WireInput { get; } = new();
     public bool SupportsByteInput { get; set; }
+    public bool SupportsRawC1Replies { get; set; }
     public ConcurrentQueue<(int Cols, int Rows)> Resizes { get; } = new();
     public bool ThrowOnSendInput { get; set; }
 

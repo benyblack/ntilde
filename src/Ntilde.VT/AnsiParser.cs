@@ -8,6 +8,8 @@ namespace Ntilde.VT
         private enum State { Normal, Esc, Csi, Osc, OscEsc, Dcs, DcsEsc, Charset, Apc, ApcEsc, EscHash }
         private State _state = State.Normal;
         private bool _escapeSpacePending;
+        private bool _escapeSpaceHasExtraIntermediate;
+        private volatile bool _send8BitControls;
 
         // Flag to swallow a single newline after an inline image (common in scripts)
         private bool _swallowNextNewline;
@@ -182,11 +184,11 @@ namespace Ntilde.VT
         public bool KittyKeyboardEnabled { get; set; } = true;
 
         /// <summary>
-        /// Terminal-to-host replies (DA, DSR, DECRPM, OSC color answers, ...).
+        /// Terminal-to-host replies (DA, DSR, DECRPM, OSC color answers, ...), in seven-bit
+        /// control notation. Byte-capable hosts use <see cref="Encode8BitReply"/> at the wire boundary.
         ///
-        /// SECURITY: whatever is passed here is written verbatim to the child process's stdin -
-        /// the App layer wires this straight to <c>Session.SendInput</c>, i.e. the pty / ssh
-        /// channel, with no sanitization in between. A reply therefore MUST NEVER contain
+        /// SECURITY: the host writes these replies to the child process's stdin through the
+        /// PTY or SSH channel with no further sanitization. A reply therefore MUST NEVER contain
         /// untrusted bytes, and above all never CR (0x0D) or LF (0x0A): at a shell prompt those
         /// submit the line, so an echoed parameter becomes command execution by anything that
         /// can write to the terminal (a <c>cat</c> of a hostile file, a compromised remote host,
@@ -586,17 +588,25 @@ namespace Ntilde.VT
             {
                 case '\x1b':
                     _escapeSpacePending = false;
+                    _escapeSpaceHasExtraIntermediate = false;
                     return false;
                 case '\x18' or '\x1a':
                     break; // CAN/SUB cancel the sequence.
                 case < '\x20':
                     ExecuteC0Control(c);
                     return false;
-                case <= '\x2f' or '\x7f':
-                    return false; // Additional intermediates and DEL.
+                case '\x7f':
+                    return false; // DEL is ignored.
+                case <= '\x2f':
+                    _escapeSpaceHasExtraIntermediate = true;
+                    return false;
+                case 'F' or 'G' when !_escapeSpaceHasExtraIntermediate:
+                    _send8BitControls = c == 'G';
+                    break;
             }
 
             _escapeSpacePending = false;
+            _escapeSpaceHasExtraIntermediate = false;
             _state = State.Normal;
             // ASCII finals are consumed. A non-ASCII character belongs back in the normal parser.
             return c > '\x7f';
@@ -709,6 +719,7 @@ namespace Ntilde.VT
                                     // must clear it here too: a reset client that never re-enabled
                                     // mode 2048 must not keep receiving resize reports on its
                                     // stdin, and DECRQM must not report the mode as set.
+                                    _send8BitControls = false;
                                     _inBandResizeReportsEnabled = false;
                                     _colorSchemeReportsEnabled = false;
                                     ResetTitleStack();
