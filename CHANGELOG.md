@@ -8,7 +8,8 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 0.14.0 shows Kitty and iTerm2 images in persistent sessions, makes plain `imgcat` work, shows
 notifications sent with OSC 777 and OSC 99, and adds the xterm features that Vim, tmux, `less` and
 ncurses programs expect: modifyOtherKeys, wheel scrolling in pagers, the title stack, the visual
-bell, left and right margins, and rectangle editing.
+bell, left and right margins, and rectangle editing. It also plays Kitty animations, shows images
+placed with Kitty's Unicode placeholders, and draws VT100 double-width and double-height lines.
 
 ### Images
 
@@ -26,6 +27,15 @@ bell, left and right margins, and rectangle editing.
   on a scaled display. Sixel programs also get answers to XTSMGRAPHICS, which they ask at startup.
 - **Kitty graphics:** numbered images (`I=`) get their acknowledgements, transmit-only (`a=t`) no
   longer shows the image, basic deletion works, and payloads whose base64 starts with `G` load.
+- **Kitty animations play.** Programs can send frames (`a=f`, raw pixels or PNG), control playback
+  (`a=a`: stop, run, loop count, frame gap, current frame) and compose one frame onto another
+  (`a=c`). An image holds at most 64 frames, and frames share the 64 MiB image quota. Animations
+  also play in persistent sessions and survive a reattach; a session started by an earlier version
+  keeps refusing them until it ends, so open a new tab. A replay window holds an animation on its
+  current frame.
+- **Kitty Unicode placeholders.** An image sent with `U=1` appears on the cells that print
+  `U+10EEEE`, so it scrolls, reflows and is erased with the text around it. Persistent sessions
+  don't support it yet and tell the program so.
 
 ### Keyboard, mouse and notifications
 
@@ -44,6 +54,12 @@ bell, left and right margins, and rectangle editing.
   sends `SS3 M` while the main Enter key still sends CR.
 - **Mouse:** X10 press-only tracking (mode 9) is supported, and legacy mouse reports past column 95
   reach the program intact, locally, over SSH and in persistent sessions.
+- **More mouse encodings.** Programs can ask for pixel positions (SGR-Pixels, `CSI ? 1016 h`), in
+  the device pixels that `CSI 14 t` reports, and for the older UTF-8 (`CSI ? 1005 h`) and urxvt
+  (`CSI ? 1015 h`) coordinate encodings.
+- **Programs can change the mouse pointer** (OSC 22) to `pointer`, `text`, `crosshair` or
+  `default` in a local tab. The pointer returns to normal when the program exits. Other shapes,
+  and Kitty's pointer stack and queries, are not supported.
 
 ### Terminal compatibility
 
@@ -63,12 +79,31 @@ bell, left and right margins, and rectangle editing.
   (`CSI Ps D`) at the left edge now return to the last column of the previous row when that row
   ended by a soft wrap, as in xterm. It is off by default, never crosses a hard line break, the top
   of the screen or a scrolling region's top margin, and is cleared by RIS and DECSTR.
+- **Double-width and double-height lines** (DECDWL `ESC # 6`, DECDHL `ESC # 3` / `ESC # 4`,
+  DECSWL `ESC # 5`). The cursor, selection, search highlights, links and mouse reports follow the
+  doubled cells, and scrollback keeps the line size. A double-size line holds half the columns.
+- **VS Code shell-integration marks.** OSC 633 `A` to `D` mark prompts, commands and output as
+  OSC 133 `A` to `D` do, so a shell set up for VS Code gets the same command tracking. The other
+  OSC 633 records are ignored.
+- **More VT100.** The UK character set (`ESC ( A`, where `#` shows as `£`), and answers to
+  DECREQTPARM (`CSI 0 x` / `CSI 1 x`) and DECID (`ESC Z`).
+- **xterm's stacks and saved modes.** XTPUSHSGR and XTPOPSGR (`CSI # {` / `CSI # }`) save and
+  restore text attributes, XTPUSHCOLORS, XTPOPCOLORS and XTREPORTCOLORS (`CSI # P` / `# Q` /
+  `# R`) do the same for the palette, and XTSAVE and XTRESTORE (`CSI ? Pm s` / `CSI ? Pm r`) save
+  and restore DEC private modes.
 - **Blinking, overlined and bold text.** Blinking text (`SGR 5`) blinks, overline (`SGR 53`/`55`)
   is drawn, and bold text is drawn bold when it has an explicit RGB color too.
 - **Programs can ask more.** XTGETTCAP answers for what Ntilde adds to `xterm-256color` (truecolor,
   underline styles and colors, synchronized output, cursor shapes, margins), as Neovim asks;
   DECRQSS reports the current SGR, cursor style and margins; `CSI 0 SP q` returns to your
   configured cursor; `CSI 18 t` reports the text area size; and tertiary DA (`CSI = c`) is answered.
+- **More queries are answered:** colors through kitty's OSC 21 (query, set and reset) and rxvt's
+  OSC 5 and OSC 105 special colors, which are stored and reported but not yet used for drawing;
+  the cell size (OSC 1337 `ReportCellSize`, OSC 776 `;?`); the font size (OSC 7770, OSC 7777);
+  iTerm2's feature report (OSC 1337 `RequestCapabilities`); and XTGETXRES for `termName`. The
+  window and icon title reports (`CSI 21 t`, `CSI 20 t`) are off by default, as in xterm, because
+  the answer is typed into the running program's input: `AllowTitleReport` in
+  [the settings file](docs/user/settings.md#settings-with-no-page) turns them on.
 - **An optional `xterm-ntilde` terminfo entry** tells programs that only read terminfo about the
   same extras. Ntilde still sets `TERM=xterm-256color`; install the entry and switch `TERM` where
   you want it. See
@@ -88,12 +123,18 @@ bell, left and right margins, and rectangle editing.
   palette colors and followed the theme.
 - **The SSH connection editor's Port Forwards tab** is a labelled form (*Listen on*, *Forward to*)
   with a hint for each forward type, and Dynamic forwards no longer show a destination.
+- **The oldest scrollback line is drawn.** Scrolled all the way back, the top row was blank until
+  the history was long enough to start dropping lines.
+- **The tab dropdown no longer shakes** or moves while it is open.
+- Clearing the screen (`CSI 2 J`) no longer leaves the erased rows marked as wrapped, which made a
+  later change of width join lines that were separate.
 - Widening a pane no longer pushes padded columns (a `printf` table, say) to the right edge as if
   they were a right prompt, and a pane that grows keeps its cursor on the prompt row.
 - Nerd Font glyphs show in tab titles and the vertical tab preview instead of boxes.
 - RIS shows the cursor again and clears both screens; mode 1047 clears the alternate screen when a
   program leaves it, not when it enters; `CSI ? 3 J` no longer deletes scrollback; and `CSI 0 X`,
-  `CSI 0 L` and `CSI 0 M` act on one character or line, as in xterm.
+  `CSI 0 L` and `CSI 0 M` act on one character or line, as in xterm. `ESC - A` no longer replaces
+  the G0 character set.
 - A native SSH port forward no longer leaves a channel open when its connection closes.
 
 The other changes in 0.14.0 are listed in its GitHub release notes.
