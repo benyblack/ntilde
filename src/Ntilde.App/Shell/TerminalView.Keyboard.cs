@@ -393,9 +393,6 @@ namespace Ntilde.Shell
                     return true;
                 case Key.C:
                     return HandleLegacyControlC(keyModifiers, physicalKey, identity);
-                case Key.V:
-                    // Paste belongs to MainWindow's tunnel handler.
-                    return false;
                 default:
                     return SendLegacyControlKey(key, keyModifiers, physicalKey, identity);
             }
