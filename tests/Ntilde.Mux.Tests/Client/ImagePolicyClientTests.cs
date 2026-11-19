@@ -151,6 +151,57 @@ public sealed class ImagePolicyClientTests
         }
     }
 
+    [Fact]
+    public async Task A_file_the_daemon_read_answers_only_the_command_in_the_output_frame_that_follows_it()
+    {
+        // #887: a client never opens a file. The daemon's FileTransfer frame precedes the output frame that names the file; while the client parses that output, the parser's reader
+        // takes the first unclaimed entry for the path it was asked about, and an entry nobody claimed (or one for another offset) never reaches a later chunk.
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, Ct);
+        MuxRequest hello = await fake.ReadRequestAsync();
+        fake.Reply(hello.Id, new WelcomeResult { Version = 2, MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, MuxJsonContext.Default.WelcomeResult);
+        using var client = await connect;
+        Guid id = Guid.NewGuid();
+        using var session = client.OpenSession(id, requiredImagePolicy: PersistentImagePolicy.FileTransportImagesVersion);
+        var reads = new Dictionary<string, string>();
+        session.OnOutputReceived += text =>
+        {
+            string Read(string path) => session.ReadTransportFile(path) is { } bytes ? Convert.ToHexString(bytes) : "none";
+            reads[text] = text switch
+            {
+                "one" => string.Join(",", Read("/tmp/b"), Read("/tmp/a"), Read("/tmp/a"), Read("/tmp/c")),   // an unavailable read, a file, the same file again (consumed), a path nobody sent
+                "two" => "no read",                                                                           // its entry is dropped unclaimed
+                "thr" => Read("/tmp/a"),                                                                      // so the next chunk finds nothing
+                "fou" => Read("/tmp/a"),                                                                      // an entry for another offset is stale
+                _ => string.Join(",", Read("/tmp/a"), Read("/tmp/a")),                                        // two entries for one path are taken in order
+            };
+        };
+        Task attach = session.AttachAsync(0, MuxTestHost.DefaultPresentation, Ct);
+        MuxRequest request = await fake.ReadRequestAsync();
+        fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, 0, FakeMuxServerEnd.SnapshotJson()));
+        await attach;
+
+        void Send(long seq, string output, params (string Path, byte[]? Data)[] files)
+        {
+            foreach ((string path, byte[]? data) in files) fake.Raw.Send(MuxFrames.FileTransfer(id, seq, path, data ?? [], data is not null));
+            fake.Raw.Send(MuxFrames.Output(id, seq, System.Text.Encoding.UTF8.GetBytes(output)));
+        }
+
+        Send(0, "one", ("/tmp/b", null), ("/tmp/a", [1, 2]));
+        Send(3, "two", ("/tmp/a", [3]));
+        Send(6, "thr");
+        fake.Raw.Send(MuxFrames.FileTransfer(id, 100, "/tmp/a", [5], hasData: true));
+        Send(9, "fou");
+        Send(12, "fiv", ("/tmp/a", [7]), ("/tmp/a", [8]));
+        await TestWait.UntilAsync(() => reads.Count == 5, "every output frame was parsed");
+
+        Assert.Equal("none,0102,none,none", reads["one"]);
+        Assert.Equal("no read", reads["two"]);
+        Assert.Equal("none", reads["thr"]);
+        Assert.Equal("none", reads["fou"]);
+        Assert.Equal("07,08", reads["fiv"]);
+    }
+
     /// <summary>The packed form of one opaque pixel, written out so the test needs no VT internals (a literal of one pixel).</summary>
     private static class KittyFrameCodecProbe
     {

@@ -259,14 +259,14 @@ public sealed class MuxPaneTests : IDisposable
             new MuxClientOptions { MaxImagePolicy = PersistentImagePolicy.EnabledVersion }, ct), "test", null);
         MuxClientSession s = StartPane(factory: new MuxTerminalSessionFactory(_imageHost, new RecordingSessionFactory(new FakeTerminalSession()), null));
 
-        Assert.Equal(PersistentImagePolicy.PlaceholderImagesVersion, s.RequiredImagePolicy);   // the negotiated maximum, which now carries Kitty animation (#1017), frame composition (#1027) and Unicode placeholders (#989)
+        Assert.Equal(PersistentImagePolicy.FileTransportImagesVersion, s.RequiredImagePolicy);   // the negotiated maximum, which now carries Kitty animation (#1017), frame composition (#1027), Unicode placeholders (#989) and file transport (#887)
         Assert.Equal(s.RequiredImagePolicy, _mux.Mux(s.Id).RequiredImagePolicy);
         Assert.True(_pane!.Parser!.AllowNonSixelImages);
         Assert.True(_pane.Parser.RetainImageSources);
         Assert.True(_pane.Parser.AllowNativeKittyGraphics);
         Assert.True(_pane.Parser.AllowITerm2Multipart);
         Assert.True(_pane.Parser.RetainedAnimation);
-        Assert.Null(_pane.Parser.ReadFileBytes); // t=f stays unavailable in persistent panes
+        Assert.NotNull(_pane.Parser.ReadFileBytes); // t=f: the pane takes what the daemon read for it, it never opens the path itself (#887)
 
         string png = TestImages.PngBase64(12, 12);
         _mux.Fake(s.Id).Emit("\x1b_Ga=T,i=1,f=100;" + TestImages.PngBase64(20, 20) + "\x1b\\\r\n"
@@ -274,6 +274,17 @@ public sealed class MuxPaneTests : IDisposable
             + "\x1b]1337;MultipartFile=inline=1;width=3\a\x1b]1337;FilePart=" + png[..20] + "\a\x1b]1337;FilePart=" + png[20..] + "\a\x1b]1337;FileEnd\a");
         SettleAndAssertEqual(s.Id, "after Kitty and iTerm2 images");
         Assert.Equal(3, _pane.Buffer!.Images.Count);
+
+        // #887: a Kitty file transmit. Only the daemon reads the file; the pane places the very image it was told the daemon read.
+        string file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ntilde-mux-pane-" + Guid.NewGuid().ToString("N") + ".png");
+        System.IO.File.WriteAllBytes(file, Convert.FromBase64String(TestImages.PngBase64(16, 16)));
+        try
+        {
+            _mux.Fake(s.Id).Emit("\x1b_Ga=T,i=7,t=f,f=100;" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(file)) + "\x1b\\\r\n");
+            SettleAndAssertEqual(s.Id, "after a Kitty file transmit");
+            Assert.Equal(4, _pane.Buffer.Images.Count);
+        }
+        finally { System.IO.File.Delete(file); }
     }
 
     [AvaloniaFact]

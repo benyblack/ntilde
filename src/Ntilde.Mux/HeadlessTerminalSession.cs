@@ -61,6 +61,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly HashSet<IMuxFrameSink> _sixelLayoutSinks = new();
     private bool _sixelCellSizePending;
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
+    private readonly List<(string Path, byte[]? Data)> _fileReads = new(); // the t=f files the chunk being parsed read, in command order (parse thread only; #887)
     private long _rawOffset;
     private long _lastOutputUnixMs; // 0 until the first chunk; written by the parse thread only, once per chunk
     private string _title;
@@ -177,6 +178,9 @@ public sealed class HeadlessTerminalSession : IDisposable
         // every client of the session places them (#838); SIXEL only otherwise.
         RequiredImagePolicy = options.RequiredImagePolicy;
         PersistentImagePolicy.Apply(_parser, RequiredImagePolicy);
+        // Kitty file transport (#887): only this daemon can read the file, so it reads under the direct pane's confinement and tells every client what it read, in order
+        // (ForwardFileReads). Below the policy the reader stays null: a t=f probe answers ERR and a t=f transmit is refused, as before.
+        if (PersistentImagePolicy.AllowsFileTransport(RequiredImagePolicy)) _parser.ReadFileBytes = ReadTransportFile;
         ApplyHostColors(options.DefaultFg, options.DefaultBg, options.CursorColor,
             options.SelectionFg, options.SelectionBg, options.AnsiPalette);
         (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
@@ -926,6 +930,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         // vouch for would only make them diverge from something that is itself wrong.
         if (IsFaulted) return;
 
+        _fileReads.Clear();
         (_session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(data);
         int maxChars = Utf8ChunkDecoder.GetMaxCharCount(data.Length);
         if (_chars.Length < maxChars) _chars = new char[maxChars];
@@ -944,7 +949,36 @@ public sealed class HeadlessTerminalSession : IDisposable
             }
         }
 
-        if (_subscribers.Count > 0) Broadcast(MuxFrames.Output(Id, seq, data));
+        if (_subscribers.Count > 0)
+        {
+            ForwardFileReads(seq);
+            Broadcast(MuxFrames.Output(Id, seq, data));
+        }
+
+        _fileReads.Clear();
+    }
+
+    /// <summary>
+    /// The parser's reader for <c>t=f</c> (#887), on the parse thread: reads the file as a direct pane would, but only as much as one frame can carry, remembers the result
+    /// for <see cref="ForwardFileReads"/>, and answers the parser with it. A path or a file past what a frame carries is unavailable for everyone.
+    /// </summary>
+    private byte[]? ReadTransportFile(string path)
+    {
+        byte[]? data = System.Text.Encoding.UTF8.GetByteCount(path) <= MuxFrames.MaxFileTransferPathBytes
+            ? KittyTransportFile.Read(path, MuxFrames.MaxFileTransferBytes)
+            : null;
+        _fileReads.Add((path, data));
+        return data;
+    }
+
+    /// <summary>Tells every subscriber what the chunk's <c>t=f</c> commands read, before the chunk's output frame (the client uses each result at exactly that point of the stream).</summary>
+    private void ForwardFileReads(long seq)
+    {
+        foreach ((string path, byte[]? data) in _fileReads)
+        {
+            if (_subscribers.Count == 0) return;
+            Broadcast(MuxFrames.FileTransfer(Id, seq, path, data ?? ReadOnlySpan<byte>.Empty, data is not null));
+        }
     }
 
     private void ProcessExit(int? code, bool terminal)

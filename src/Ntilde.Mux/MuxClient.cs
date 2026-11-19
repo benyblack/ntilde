@@ -662,6 +662,13 @@ public sealed class MuxClient : IDisposable
                     break;
                 }
 
+            case MuxFrameKind.FileTransfer:
+                {
+                    if (!MuxFrames.TryParseFileTransfer(frame.Payload, out Guid id, out long seq, out string path, out bool hasData, out ReadOnlySpan<byte> data)) throw Malformed(frame.Kind);
+                    if (_sessions.TryGetValue(id, out MuxClientSession? session)) session.DeliverFile(seq, path, hasData ? data.ToArray() : null);
+                    break;
+                }
+
             case MuxFrameKind.Snapshot:
                 OnSnapshot(frame.Payload);
                 break;

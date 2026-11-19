@@ -18,6 +18,17 @@ public static class MuxFrames
     public const int ResizeEventPayloadBytes = SessionIdBytes + sizeof(long) + (2 * sizeof(int));
     public const int SnapshotHeaderBytes = sizeof(long) + SessionIdBytes + sizeof(long);
 
+    /// <summary>FileTransfer = id[16] + seq i64 + flags u8 + pathLength i32 + path utf8 + bytes (#887).</summary>
+    public const int FileTransferHeaderBytes = SessionIdBytes + sizeof(long) + sizeof(byte) + sizeof(int);
+
+    /// <summary>The longest <c>t=f</c> path a frame carries (UTF-8 bytes); a longer one is reported unavailable.</summary>
+    public const int MaxFileTransferPathBytes = 4096;
+
+    /// <summary>The largest file a FileTransfer frame can carry: what a frame may hold once its header and the longest path are counted.</summary>
+    public const int MaxFileTransferBytes = MuxProtocol.MaxFrameBytes - FileTransferHeaderBytes - MaxFileTransferPathBytes;
+
+    private const byte FileTransferHasBytes = 1;
+
     public static MuxOutboundFrame Request(MuxRequest request) =>
         Json(MuxFrameKind.Request, request, MuxJsonContext.Default.MuxRequest);
 
@@ -65,6 +76,25 @@ public static class MuxFrames
         return frame;
     }
 
+    /// <summary>
+    /// The result of one <c>t=f</c> read, for the output frame that follows at <paramref name="seq"/>. A null <paramref name="data"/> says the daemon could not read the file.
+    /// </summary>
+    public static MuxOutboundFrame FileTransfer(Guid sessionId, long seq, string path, ReadOnlySpan<byte> data, bool hasData)
+    {
+        int pathBytes = System.Text.Encoding.UTF8.GetByteCount(path);
+        if (pathBytes > MaxFileTransferPathBytes || data.Length > MaxFileTransferBytes || (!hasData && data.Length != 0))
+            throw new ArgumentOutOfRangeException(nameof(path), "A file transfer path or file is past what a frame carries.");
+        MuxOutboundFrame frame = MuxOutboundFrame.Rent(MuxFrameKind.FileTransfer, FileTransferHeaderBytes + pathBytes + data.Length);
+        Span<byte> p = frame.Payload;
+        WriteGuid(p, sessionId);
+        BinaryPrimitives.WriteInt64LittleEndian(p.Slice(SessionIdBytes, 8), seq);
+        p[SessionIdBytes + 8] = hasData ? FileTransferHasBytes : (byte)0;
+        BinaryPrimitives.WriteInt32LittleEndian(p.Slice(SessionIdBytes + 9, 4), pathBytes);
+        System.Text.Encoding.UTF8.GetBytes(path, p[FileTransferHeaderBytes..]);
+        data.CopyTo(p[(FileTransferHeaderBytes + pathBytes)..]);
+        return frame;
+    }
+
     public static MuxOutboundFrame Snapshot(long requestId, Guid sessionId, long seq, ReadOnlySpan<byte> snapshotJson)
     {
         MuxOutboundFrame frame = MuxOutboundFrame.Rent(MuxFrameKind.Snapshot, SnapshotHeaderBytes + snapshotJson.Length);
@@ -90,6 +120,25 @@ public static class MuxFrames
         sessionId = new Guid(payload[..SessionIdBytes]);
         seq = BinaryPrimitives.ReadInt64LittleEndian(payload.Slice(SessionIdBytes, 8));
         data = payload[OutputHeaderBytes..];
+        return true;
+    }
+
+    /// <summary>Parses a FileTransfer payload; false for any length, flag or path that no correct daemon sends (a path that is not UTF-8 included).</summary>
+    public static bool TryParseFileTransfer(ReadOnlySpan<byte> payload, out Guid sessionId, out long seq, out string path, out bool hasData, out ReadOnlySpan<byte> data)
+    {
+        sessionId = default; seq = 0; path = string.Empty; hasData = false; data = default;
+        if (payload.Length < FileTransferHeaderBytes) return false;
+        byte flags = payload[SessionIdBytes + 8];
+        int pathBytes = BinaryPrimitives.ReadInt32LittleEndian(payload.Slice(SessionIdBytes + 9, 4));
+        if (flags > FileTransferHasBytes || pathBytes < 0 || pathBytes > MaxFileTransferPathBytes || pathBytes > payload.Length - FileTransferHeaderBytes) return false;
+        ReadOnlySpan<byte> rest = payload[(FileTransferHeaderBytes + pathBytes)..];
+        if (flags == 0 && rest.Length != 0) return false;
+        try { path = new System.Text.UTF8Encoding(false, true).GetString(payload.Slice(FileTransferHeaderBytes, pathBytes)); }
+        catch (System.Text.DecoderFallbackException) { return false; }
+        sessionId = new Guid(payload[..SessionIdBytes]);
+        seq = BinaryPrimitives.ReadInt64LittleEndian(payload.Slice(SessionIdBytes, 8));
+        hasData = flags == FileTransferHasBytes;
+        data = rest;
         return true;
     }
 
