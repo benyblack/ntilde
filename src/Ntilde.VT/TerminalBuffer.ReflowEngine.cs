@@ -570,7 +570,7 @@ namespace Ntilde.VT
                             {
                                 var cell = row.Cells[scan];
                                 if ((cell.Character != ' ' && cell.Character != '\0') || !cell.IsDefaultBackground || cell.HasExtendedText
-                                    || cell.IsUnderline || cell.IsInverse || cell.IsStrikethrough
+                                    || cell.IsWideContinuation || cell.IsUnderline || cell.IsInverse || cell.IsStrikethrough
                                     || row.GetHyperlink(scan) != null || row.GetUnderline(scan) != null || row.IsProtected(scan))
                                 {
                                     len = scan + 1;

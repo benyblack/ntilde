@@ -288,6 +288,20 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_wide_glyph_ending_a_double_line_keeps_both_its_cells_through_a_width_change()
+    {
+        var (buffer, parser) = Create(rows: 6);
+        parser.Process(Dwl + "a\u6f22\r\nnext");
+        buffer.Resize(4, 6);
+        Assert.Equal(new[] { "a", "\u6f22", "next" }, Lines(buffer).Take(3));
+        buffer.Resize(10, 6);
+        Assert.Equal(new[] { "a\u6f22", "next" }, Lines(buffer).Take(2));
+        buffer.Lock.EnterReadLock();
+        try { Assert.True(buffer.GetCellAbsolute(2, 0).IsWideContinuation); }
+        finally { buffer.Lock.ExitReadLock(); }
+    }
+
+    [Fact]
     public void The_cursor_stays_on_its_character_when_a_double_line_re_wraps()
     {
         var (buffer, parser) = Create(rows: 6);
