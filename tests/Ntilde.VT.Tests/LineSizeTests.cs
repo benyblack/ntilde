@@ -860,6 +860,20 @@ public sealed class LineSizeTests
     }
 
     [Fact]
+    public void A_margin_band_scroll_keeps_a_SIXEL_whose_clipped_columns_alone_reach_the_band()
+    {
+        var buffer = new TerminalBuffer(20, 4);
+        var parser = new AnsiParser(buffer) { ImageDecoder = new FixedSizeImageDecoder(160, 20) };
+        // Placed on a double-width row, the SIXEL keeps the ten columns that row holds; the rest is clipped for good.
+        parser.Process($"{Dwl}{Esc}Pq!30~-~{Esc}\\");
+        var image = Assert.Single(buffer.Images);
+        Assert.Equal(10, image.CellWidth - image.ClipRightColumns);
+        // DECLRMM returns the row to single width: the image shows page columns 0 to 9, left of the band 15 to 16.
+        parser.Process($"{Esc}[?69h{Esc}[15;16s{Esc}[1;1H{Esc}[S");
+        Assert.Single(buffer.Images);
+    }
+
+    [Fact]
     public void A_margin_band_scroll_keeps_a_double_width_image_drawn_beside_the_band()
     {
         var (buffer, parser) = Create(cols: 20, rows: 4);
