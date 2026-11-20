@@ -1061,6 +1061,7 @@ namespace Ntilde.VT
                 case 7: return _buffer.Modes.IsAutoWrapMode ? 1 : 2;             // DECAWM
                 case 9: return _buffer.Modes.MouseModeX10PressOnly ? 1 : 2;     // X10 compatibility
                 case 25: return _buffer.Modes.IsCursorVisible ? 1 : 2;           // DECTCEM
+                case 42: return _nationalCharset ? 1 : 2;                     // DECNRCM
                 case 45: return _buffer.Modes.IsReverseWrapMode ? 1 : 2;         // Reverse-wraparound (xterm)
                 case 47: return _buffer.IsAltScreenActive ? 1 : 2;               // Alt screen (legacy)
                 case 66: return _buffer.Modes.IsApplicationKeypad ? 1 : 2;        // DECNKM
@@ -1137,6 +1138,9 @@ namespace Ntilde.VT
                         break;
                     case 7: // DECAWM - Auto Wrap Mode
                         _buffer.Modes.IsAutoWrapMode = enable;
+                        break;
+                    case 42: // DECNRCM - National replacement character set mode
+                        _nationalCharset = enable;
                         break;
                     case 45: // Reverse-wraparound (xterm): BS may cross a soft wrap while ?7 is also set
                         _buffer.Modes.IsReverseWrapMode = enable;

@@ -191,6 +191,13 @@ invariant changes.
   explicitly; importing zero rows cannot prove an empty daemon history. The projection
   does not alter parser state or enable acting methods. The opt-in `includeProtection`
   adds a `protected` boolean to run-length cell details (stored DECSCA protection); off by default.
+- **VT interprets original terminal output bytes.** App feeds its ordered PTY
+  delivery, and mux peers feed the same output frames. VT accepts valid UTF-8 in
+  its default coding and interprets legacy octets when instructed by character
+  set shifts or ESC % @. Explicit output coding applies in both ANSI and VT52
+  modes. Complete snapshots carry the decoder tail and GL/GR invocation, and
+  recordings retain the raw bytes and the same snapshot state.
+  Transport string subscribers receive the existing UTF-8 view.
 - **VT owns VT52 stream dispatch and App encodes its keys.** DECANM selects the
   dispatch shared by direct panes and mux hosts. Complete snapshots carry the
   active mode, graphics selection and partial cursor address. The VT100 control

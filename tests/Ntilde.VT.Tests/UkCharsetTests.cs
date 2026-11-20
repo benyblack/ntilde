@@ -80,12 +80,11 @@ public sealed class UkCharsetTests
     }
 
     [Fact]
-    public void The_96_character_introducer_does_not_select_the_UK_set_or_touch_a_slot()
+    public void The_96_character_introducer_selects_Latin1_into_G1_without_touching_G0()
     {
         var (buffer, parser) = Create();
-        parser.Process($"{Esc}(0{Esc}-A#q");
-        Assert.Equal("#─", Line(buffer));
-        Assert.Equal(new[] { Graphics, Ascii, Ascii, Ascii }, parser.ExportState().Charsets);
+        parser.Process($"{Esc}(0{Esc}-A#q\u000e#q\u000f#q");
+        Assert.Equal("#─£ñ#─", Line(buffer));
     }
 
     [Fact]

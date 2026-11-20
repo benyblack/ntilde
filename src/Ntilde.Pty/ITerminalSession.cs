@@ -71,6 +71,8 @@ namespace Ntilde.Pty
     {
         void UseHostRecordingBoundary();
         void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler);
+        void SubscribeTerminalOutput(Action<string, TerminalOutputChunk> handler) =>
+            SubscribeRecordingOutput((text, bytes) => handler(text, new(bytes, RecordAtHost: true)));
         void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output);
     }
 

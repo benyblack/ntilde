@@ -218,10 +218,12 @@ namespace Ntilde.Replay
                     {
                         state = buffer.ExportState(maxScrollbackRows: 0);
                         state.Parser = parser.ExportState();
+                        state.DecoderTail = parser.PendingOutputBytes.ToArray();
                     }
                     snapshot = new ReplaySnapshot
                     {
                         State = state,
+                        HasDecoderTail = state is not null,
                         TextSizing = LegacyTextSizing(buffer, state),
                         Cols = cols,
                         Rows = rowCount,
