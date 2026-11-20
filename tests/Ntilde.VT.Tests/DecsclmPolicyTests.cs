@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Ntilde.VT.Tests.StateTransfer;
 
 namespace Ntilde.VT.Tests;
@@ -36,6 +37,9 @@ public sealed class DecsclmPolicyTests
         finally { buffer.Lock.ExitReadLock(); }
     }
 
+    /// <summary>The saved-mode slots as exported. <c>TerminalStateAssert</c> does not compare them, and XTSAVE is where a stray mode 4 slot would show.</summary>
+    private static string SavedModes(TerminalBuffer buffer) => JsonSerializer.Serialize(buffer.ExportState(0).SavedModes);
+
     public static TheoryData<string> Sequences => new()
     {
         { Esc + "[?4h" },
@@ -57,7 +61,18 @@ public sealed class DecsclmPolicyTests
 
         Assert.Empty(with.Replies);
         TerminalStateAssert.AssertEquivalent(sequence, without.Buffer, without.Parser, with.Buffer, with.Parser);
+        Assert.Equal(SavedModes(without.Buffer), SavedModes(with.Buffer)); // no saved slot for mode 4 either
         Assert.Equal("ABCtail", Row(with.Buffer));
+    }
+
+    [Fact]
+    public void The_saved_mode_comparison_is_not_blind_to_a_mode_that_does_have_a_slot()
+    {
+        // Positive control: XTSAVE of a tracked mode (?7, autowrap) does change the exported saved modes, so the equality above can fail.
+        var plain = Start();
+        var saved = Start();
+        saved.Parser.Process(Esc + "[?7s");
+        Assert.NotEqual(SavedModes(plain.Buffer), SavedModes(saved.Buffer));
     }
 
     [Fact]
@@ -71,10 +86,10 @@ public sealed class DecsclmPolicyTests
     }
 
     [Fact]
-    public void Output_scrolls_at_full_speed_whatever_the_mode_is()
+    public void A_burst_of_output_is_applied_the_same_with_the_mode_set_or_not()
     {
-        // No timing can be measured in a parser test, but a rate-limited scroll would leave lines unwritten when Process returns: a burst of output is fully
-        // applied, scrolled into history and identical to the same burst with the mode off, in one call.
+        // A parity test, not a timing measurement (none is possible here): a burst of output is fully applied, scrolled into history and identical to the same
+        // burst with the mode off. That rules out dropped, deferred or reordered lines; it cannot show the absence of a delay.
         string burst = string.Concat(Enumerable.Range(0, 200).Select(i => $"line {i}\r\n"));
         var without = Start(cols: 20, rows: 5);
         without.Parser.Process(Esc + "[r" + Esc + "[2J" + Esc + "[H" + burst);
@@ -131,6 +146,7 @@ public sealed class DecsclmPolicyTests
 
         Assert.Empty(split.Replies);
         TerminalStateAssert.AssertEquivalent("split", without.Buffer, without.Parser, split.Buffer, split.Parser);
+        Assert.Equal(SavedModes(without.Buffer), SavedModes(split.Buffer));
         Assert.Equal("ABCtail", Row(split.Buffer));
     }
 }
