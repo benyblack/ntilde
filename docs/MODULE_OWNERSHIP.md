@@ -191,16 +191,18 @@ invariant changes.
   explicitly; importing zero rows cannot prove an empty daemon history. The projection
   does not alter parser state or enable acting methods. The opt-in `includeProtection`
   adds a `protected` boolean to run-length cell details (stored DECSCA protection); off by default.
-- **DECRQSS margin reports use exact complete requests.** VT answers only `$qr`
+- **DECRQSS margin reports use exact complete requests.** VT answers `$qr` and `$qs`
   with standard ST, validated absolute one-based current margins and xterm's
   1-success/0-failure status. The existing batch write lock protects the read;
   origin mode does not relativize values. Truncated/unknown legacy input, BEL
-  recovery and invalid margins remain negative without altering state. Other
-  settings/names stay negative; source/scripted delivery is not a runtime grade.
+  recovery and invalid margins remain negative without altering state.
 - **DECRQSS `m` and `SP q` report owned VT state only.** The SGR report reads the
   active pen and starts with `0`; the cursor report says `0` for the host default
   (VT never guesses the host's configured shape) and 1-6 for an override. Same
   exact-request, standard-ST and completeness rules as `r`.
+- **DECRQSS `"q` and `*x` read the live DECSCA pen and DECSACE extent.** VT reports
+  0/1 for erasable/protected and 0/2 for stream/rectangle. The replies encode
+  the effective settings so clients can replay them as CSI setters.
 - **The capability table belongs to VT; the clipboard gate belongs to the host.**
   `TerminalCapabilities` lists what Ntilde advertises beyond `xterm-256color`, each
   entry with the tests that pin it, and XTGETTCAP answers only from it. The

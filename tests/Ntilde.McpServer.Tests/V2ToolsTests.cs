@@ -371,7 +371,11 @@ public class ExplainEscapeSequenceTests
     [InlineData("\x1bP$q q\x1b\\", "DECRQSS cursor style report")]
     [InlineData("\\x1bP$q q\\x1b\\", "DECRQSS cursor style report")]
     [InlineData("ESCP$q qESC\\", "DECRQSS cursor style report")]
-    public void Exact_sgr_and_cursor_style_queries_explain_their_reports(string sequence, string mnemonic)
+    [InlineData("DCS $q\"q", "DECRQSS character protection report")]
+    [InlineData("\x1bP$q\"q\x1b\\", "DECRQSS character protection report")]
+    [InlineData("DCS $q*x", "DECRQSS attribute change extent report")]
+    [InlineData("\u0090$q*x\u009c", "DECRQSS attribute change extent report")]
+    public void Exact_DECRQSS_queries_explain_their_reports(string sequence, string mnemonic)
     {
         Assert.Contains(mnemonic, VtTools.ExplainEscapeSequence(sequence), StringComparison.Ordinal);
     }
@@ -384,11 +388,16 @@ public class ExplainEscapeSequenceTests
     [InlineData("\x1bP$q q")]
     [InlineData("ESC P$qm")]
     [InlineData("\x1bP$q q\\e\\")]
-    public void Inexact_sgr_or_cursor_style_queries_claim_no_report(string sequence)
+    [InlineData("DCS $q* x")]
+    [InlineData("\x1bP$q\"q\a")]
+    [InlineData("\x1bP$q2*x\x1b\\")]
+    public void Inexact_DECRQSS_queries_claim_no_report(string sequence)
     {
         string result = VtTools.ExplainEscapeSequence(sequence);
         Assert.DoesNotContain("DECRQSS SGR report", result, StringComparison.Ordinal);
         Assert.DoesNotContain("DECRQSS cursor style report", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("DECRQSS character protection report", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("DECRQSS attribute change extent report", result, StringComparison.Ordinal);
     }
 
     [Theory]

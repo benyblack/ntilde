@@ -46,11 +46,9 @@ public sealed class QueryVariantAuditTests
 
     [Theory]
     [InlineData("\"p")] // conformance level
-    [InlineData("\"q")] // character protection
     [InlineData("t")] // lines per page
     [InlineData("$|")] // columns per page
     [InlineData("*|")] // lines per page
-    [InlineData("*x")] // rectangular change extent
     [InlineData("unknown")]
     [InlineData("")]
     public void Each_unimplemented_DECRQSS_setting_has_a_bounded_negative_reply(string setting)
