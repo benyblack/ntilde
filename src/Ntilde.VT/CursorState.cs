@@ -12,6 +12,8 @@ namespace Ntilde.VT
         public bool? OriginMode { get; set; } = false;
         public int[]? Charsets { get; set; } = [0, 0, 0, 0];
         public int Gl { get; set; }
+        public int Gr { get; set; }
+        public int SingleShift { get; set; }
 
         // SGR attributes
         public TermColor Foreground { get; set; } = TermColor.LightGray;
@@ -44,6 +46,8 @@ namespace Ntilde.VT
                 OriginMode = this.OriginMode,
                 Charsets = this.Charsets is null ? null : (int[])this.Charsets.Clone(),
                 Gl = this.Gl,
+                Gr = this.Gr,
+                SingleShift = this.SingleShift,
                 Foreground = this.Foreground,
                 Background = this.Background,
                 FgIndex = this.FgIndex,

@@ -749,6 +749,8 @@ namespace Ntilde.VT
             OriginMode = cursor.OriginMode,
             Charsets = cursor.Charsets is null ? null : (int[])cursor.Charsets.Clone(),
             Gl = cursor.Gl,
+            Gr = cursor.Gr,
+            SingleShift = cursor.SingleShift,
             Row = cursor.Row,
             Col = cursor.Col,
             IsPendingWrap = cursor.IsPendingWrap,
@@ -782,6 +784,8 @@ namespace Ntilde.VT
             target.OriginMode = source.OriginMode;
             target.Charsets = source.Charsets is null ? null : (int[])source.Charsets.Clone();
             target.Gl = source.Gl;
+            target.Gr = source.Gr;
+            target.SingleShift = source.SingleShift;
             target.Row = source.Row;
             target.Col = source.Col;
             target.IsPendingWrap = source.IsPendingWrap;
@@ -1244,8 +1248,11 @@ namespace Ntilde.VT
             {
                 if (charsets.Length != 4) throw StateTransferValidation.Reject(what, "saved charset count must be four");
                 foreach (int charset in charsets)
-                    StateTransferValidation.RequireInRange(charset, 0, 2, $"{what} charset"); // AnsiParser.Charset ordinals
+                    if (!Enum.IsDefined((AnsiParser.Charset)charset))
+                        throw StateTransferValidation.Reject(what, $"unknown charset {charset}");
                 StateTransferValidation.RequireInRange(present.Gl, 0, 3, $"{what} GL slot");
+                StateTransferValidation.RequireInRange(present.Gr, 0, 3, $"{what} GR slot");
+                AnsiParser.ValidateSingleShift(present.SingleShift);
             }
         }
 

@@ -249,7 +249,7 @@ namespace Ntilde.Pty
         private Task? _powerShellInitTask;
 
         // Bounded queue for back-pressure - prevents OOM on high-throughput output
-        private readonly BlockingCollection<(string Text, byte[]? RecordingBytes, Action? OutputAction)> _outputQueue = new(boundedCapacity: 100);
+        private readonly BlockingCollection<(string Text, TerminalOutputChunk Output, Action? OutputAction)> _outputQueue = new(boundedCapacity: 100);
         private readonly TaskCompletionSource _outputConsumerStopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal int QueuedOutputCount => _outputQueue.Count;
 
@@ -315,7 +315,7 @@ namespace Ntilde.Pty
                 // only the gate), so there is no inversion.
                 lock (_outputInvocationLock)
                 {
-                    string[]? replay = null;
+                    (string Text, TerminalOutputChunk Output)[]? replay = null;
                     lock (_outputHandlerGate)
                     {
                         if (!_hasOutputSubscriberEver)
@@ -324,7 +324,7 @@ namespace Ntilde.Pty
                             _rawOutput.StopRetaining();
                             if (_pendingOutputReplay != null)
                             {
-                                replay = _pendingOutputReplay.ToArray();
+                                replay = _pendingOutputReplay.TakeChunks();
                                 _pendingOutputReplay = null;
                             }
                         }
@@ -333,9 +333,12 @@ namespace Ntilde.Pty
 
                     if (replay != null)
                     {
-                        foreach (var text in replay)
+                        foreach (var chunk in replay)
                         {
-                            value(text);
+                            if (chunk.Text.Length == 0 && _recordingDelivery.Mode != 2) continue;
+                            _recordingDelivery.Chunk = chunk.Output;
+                            try { value(chunk.Text); }
+                            finally { _recordingDelivery.Chunk = default; }
                         }
                     }
                 }
@@ -366,12 +369,12 @@ namespace Ntilde.Pty
                     if (!_hasOutputSubscriberEver && handler == null)
                     {
                         _pendingOutputReplay ??= new PendingOutputReplay();
-                        _pendingOutputReplay.Add(text);
+                        _pendingOutputReplay.Add(text, _recordingDelivery.Chunk);
                         return;
                     }
                 }
 
-                handler?.Invoke(text);
+                if (text.Length != 0 || _recordingDelivery.Mode == 2) handler?.Invoke(text);
             }
         }
 
@@ -996,6 +999,12 @@ namespace Ntilde.Pty
             }
         }
 
+        public void SubscribeTerminalOutput(Action<string, TerminalOutputChunk> handler)
+        {
+            lock (_outputInvocationLock)
+                OnOutputReceived += _recordingDelivery.CreateTerminalHost(handler);
+        }
+
         public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) =>
             Ntilde.Replay.PtyRecorder.RecordOutputAtBoundary(_recorder, _flightRecorder, _recordingDelivery.CellMetrics, output);
 
@@ -1030,7 +1039,7 @@ namespace Ntilde.Pty
         {
             ArgumentNullException.ThrowIfNull(action);
             if (_cts.IsCancellationRequested || _outputConsumerStopped.Task.IsCompleted) return false;
-            try { return _outputQueue.TryAdd((string.Empty, null, action)); }
+            try { return _outputQueue.TryAdd((string.Empty, default, action)); }
             catch (InvalidOperationException) { return false; }
         }
 
@@ -1040,7 +1049,7 @@ namespace Ntilde.Pty
             {
                 while (!_outputConsumerStopped.Task.IsCompleted)
                 {
-                    if (_outputQueue.TryAdd((string.Empty, null, apply), 50, _cts.Token)) return true;
+                    if (_outputQueue.TryAdd((string.Empty, default, apply), 50, _cts.Token)) return true;
                 }
             }
             catch (OperationCanceledException) { /* Session teardown cancels blocked producers. */ }
@@ -1096,6 +1105,7 @@ namespace Ntilde.Pty
             // Set when the loop gives up after repeated read failures, so the exit is
             // reported as a failure rather than the clean 0 ProcessLoop would send.
             bool readFailed = false;
+            bool decoderReset = false;
             int consecutiveReadErrors = 0;
 
             try
@@ -1109,22 +1119,25 @@ namespace Ntilde.Pty
 
                         // A parser host records at its own ordering boundary; retain original bytes
                         // in decoded-host mode, since recording may start before queued delivery.
+                        bool hadSubscriber = Volatile.Read(ref _hasOutputSubscriberEver);
                         int recordingMode = _recordingDelivery.Mode;
                         if (recordingMode == 0) RecordOutputAtHostBoundary(buffer.AsMemory(0, read));
-                        byte[]? recordingBytes = recordingMode == 2
+                        byte[]? outputBytes = recordingMode == 2 || (recordingMode == 0 && !hadSubscriber)
                             ? buffer.AsSpan(0, read).ToArray() : null;
                         _rawOutput.Publish(buffer.AsSpan(0, read));
 
                         // Use the stateful decoder - it will hold incomplete multi-byte sequences
                         // until more bytes arrive, preventing U+FFFD replacement characters
                         int charCount = _utf8Decoder.Decode(buffer.AsSpan(0, read), charBuffer);
-                        if (charCount > 0 || recordingBytes is not null)
+                        if (charCount > 0 || outputBytes is not null)
                         {
                             string text = charCount > 0 ? new string(charBuffer, 0, charCount) : string.Empty;
                             try
                             {
                                 // Block when the queue is full so we apply back-pressure instead of dropping output.
-                                _outputQueue.Add((text, recordingBytes, null), _cts.Token);
+                                var output = new TerminalOutputChunk(outputBytes, recordingMode == 2, decoderReset);
+                                _outputQueue.Add((text, output, null), _cts.Token);
+                                decoderReset = false;
                             }
                             catch (OperationCanceledException)
                             {
@@ -1148,6 +1161,7 @@ namespace Ntilde.Pty
                     {
                         // Reset decoder state on error to prevent corruption
                         _utf8Decoder.Reset();
+                        decoderReset = true;
 
                         if (TryCaptureChildExit())
                         {
@@ -1314,9 +1328,9 @@ namespace Ntilde.Pty
                             catch (Exception ex) { PtyLogger.Error($"[RustPtySession] Output action failed: {ex}"); }
                             continue;
                         }
-                        _recordingDelivery.Bytes = chunk.RecordingBytes;
+                        _recordingDelivery.Chunk = chunk.Output;
                         try { EmitOutput(chunk.Text); }
-                        finally { _recordingDelivery.Bytes = default; }
+                        finally { _recordingDelivery.Chunk = default; }
                     }
                 }
             }

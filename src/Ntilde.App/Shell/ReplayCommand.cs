@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text;
 using Ntilde.Replay;
 using Ntilde.VT;
 
@@ -49,7 +48,6 @@ internal static class ReplayCommand
         // v1 files have no header, so 80x24 is the fallback start geometry.
         var buffer = new TerminalBuffer(80, 24);
         var parser = new AnsiParser(buffer);
-        var decoder = Encoding.UTF8.GetDecoder();
 
         ReplayRunResult result;
         try
@@ -60,22 +58,7 @@ internal static class ReplayCommand
             result = runner.RunWithResultAsync(
                 onDataCallback: data =>
                 {
-                    // Pooled decode buffer: one rent/return per chunk instead of a
-                    // fresh array — large replays would otherwise churn the GC.
-                    int maxCharCount = Encoding.UTF8.GetMaxCharCount(data.Length);
-                    char[] chars = System.Buffers.ArrayPool<char>.Shared.Rent(maxCharCount);
-                    try
-                    {
-                        int charCount = decoder.GetChars(data, 0, data.Length, chars, 0);
-                        if (charCount > 0)
-                        {
-                            parser.Process(new string(chars, 0, charCount));
-                        }
-                    }
-                    finally
-                    {
-                        System.Buffers.ArrayPool<char>.Shared.Return(chars);
-                    }
+                    parser.ProcessBytes(data);
                     return System.Threading.Tasks.Task.CompletedTask;
                 },
                 onResizeCallback: (cols, rows) =>
@@ -85,7 +68,9 @@ internal static class ReplayCommand
                 },
                 onSnapshotCallback: snapshot =>
                 {
+                    byte[]? legacyTail = snapshot.State?.DecoderTail is null ? parser.PendingOutputBytes.ToArray() : null;
                     ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
+                    if (legacyTail is not null) parser.RestoreOutputTail(legacyTail);
                     return System.Threading.Tasks.Task.CompletedTask;
                 },
                 options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual },

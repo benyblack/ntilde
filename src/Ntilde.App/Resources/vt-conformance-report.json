@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "ec5c066e96cf0d2ed4ad6b6dd270a063b030f33490b31cd62ae8fda48c155c3e",
+  "matrixSha256": "0180a8f13594c254e4356bc29ece1294b4ef2f268fd1dd4d4236fbcd16155e37",
   "summary": {
     "totalRows": 157,
     "supportedCount": 75,
@@ -145,20 +145,21 @@
     },
     {
       "section": "1) Input parsing \u0026 state machine",
-      "feature": "SCS character sets (ESC ( ) * \u002B Dscs)",
+      "feature": "SCS character sets and shifts",
       "status": "\u26A0 Partial",
-      "specOrNotes": "G0\u2013G3 designation, SO/SI",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/UkCharsetTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs\u0060; Parity: \u0060tests/Ntilde.VT.Tests/StateTransfer/ParityCorpus.cs\u0060",
+      "specOrNotes": "G0\u2013G3 designation, SI/SO, LS2/LS3, LS1R/LS2R/LS3R, SS2/SS3",
+      "evidenceText": "Unit/Replay: \u0060tests/Ntilde.VT.Tests/Latin1ShiftTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/UkCharsetTests.cs\u0060; Mux: \u0060tests/Ntilde.Mux.Tests/Headless/HeadlessTerminalSessionTests.cs\u0060",
       "evidenceKinds": [
+        "replay",
         "unit"
       ],
       "evidenceLinks": [
         {
-          "path": "tests/Ntilde.VT.Tests/SavedStateQualificationTests.cs",
+          "path": "tests/Ntilde.Mux.Tests/Headless/HeadlessTerminalSessionTests.cs",
           "exists": true
         },
         {
-          "path": "tests/Ntilde.VT.Tests/StateTransfer/ParityCorpus.cs",
+          "path": "tests/Ntilde.VT.Tests/Latin1ShiftTests.cs",
           "exists": true
         },
         {
@@ -168,8 +169,8 @@
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
-      "ownership": "\u0060src/Ntilde.VT/AnsiParser.cs\u0060",
-      "knownDeviations": "Designators: \u0060B\u0060 ASCII, \u00600\u0060 DEC Special Graphics, \u0060A\u0060 the VT100 UK set (\u0060#\u0060 presents as \u0060\u00A3\u0060, every other code unchanged). The VT100 alternate-ROM designators follow xterm: \u00601\u0060 is ASCII and \u00602\u0060 is DEC Special Graphics. Every other designator is ASCII pass-through. RIS and DECSTR return all four slots to ASCII; DECSC/DECRC, state transfer and recording checkpoints carry the designations. DECFRA reads its fill character through the in-use GL set. Only SO/SI shift: there are no single shifts (SS2/SS3) or locking shifts LS2/LS3, so a set designated into G2/G3 is stored but cannot be invoked. \u0060ESC -\u0060 introduces a 96-character set, where \u0060A\u0060 would be ISO Latin-1 supplemental; none is implemented, so its designator is consumed and no slot changes. The other national replacement sets are not implemented.",
+      "ownership": "Parser\u002BPTY\u002BMux\u002BReplay",
+      "knownDeviations": "ASCII, DEC Special Graphics, UK and ISO Latin-1 are implemented. Exact 96-character \u0060ESC - A\u0060, \u0060ESC . A\u0060 and \u0060ESC / A\u0060 designate Latin-1 in G1\u2013G3. The VT220 94-set A spelling used by vttest supplies Latin-1 for G2/G3 or the right half while NRC is off and VT100 control mode is inactive. SS2/SS3 affect one GL position. Valid UTF-8 takes precedence in the default coding; an active GR designation can consume otherwise invalid graphic octets. ESC % @ selects single-byte coding and ESC % G selects strict UTF-8. Complete snapshots preserve the shift and any incomplete UTF-8. Other NRC and downloadable sets are outside this coverage.",
       "sourceLine": 62
     },
     {

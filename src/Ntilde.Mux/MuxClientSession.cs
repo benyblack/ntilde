@@ -7,7 +7,7 @@ namespace Ntilde.Mux;
 
 /// <summary>
 /// A pane's view of a multiplexed session. The pane keeps its own parser and buffer: restore on
-/// <see cref="SnapshotReceived"/>, parse <see cref="OnOutputReceived"/>, resize on
+/// <see cref="SnapshotReceived"/>, parse <see cref="OutputBytesReceived"/>, resize on
 /// <see cref="StreamResize"/> - exactly where the event sits in the stream, never ahead of it
 /// (<see cref="OrdersResizeInStream"/>). Device queries are answered by the mux
 /// (<see cref="AnswersDeviceQueries"/>).
@@ -206,6 +206,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     public event Action<TerminalStateSnapshot>? SnapshotReceived;
     public event Action<string>? OnOutputReceived;
+
+    /// <summary>Original output for downstream terminal parsers, on the delivery thread.</summary>
+    public event Action<ReadOnlySpan<byte>>? OutputBytesReceived;
     public event Action<int, int>? StreamResize;
     public event Action<int>? OnExit;
     public event Action<string?>? Disconnected;
@@ -706,6 +709,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         DropFiles(seq, unclaimedToo: false); // entries for any other offset are stale
         try
         {
+            OutputBytesReceived?.Invoke(data);
             if (count > 0) OnOutputReceived?.Invoke(new string(_chars, 0, count));
         }
         finally

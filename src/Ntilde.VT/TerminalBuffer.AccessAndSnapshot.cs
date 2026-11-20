@@ -423,6 +423,8 @@ namespace Ntilde.VT
             state.OriginMode = false;
             state.Charsets = [0, 0, 0, 0];
             state.Gl = 0;
+            state.Gr = 0;
+            state.SingleShift = 0;
         }
 
         private void SyncThemeDefaultsInCursorStateNoLock(CursorState state)

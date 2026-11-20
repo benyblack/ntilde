@@ -92,6 +92,7 @@ namespace Ntilde.VT
             // are public and independently callable, not redundancy to optimise away.
             buffer.RequireSixelSessionPolicy(snapshot.RequiredSixelRasterPolicy);
             TerminalBuffer.ValidateBufferState(snapshot);
+            AnsiParser.ValidateOutputTail(snapshot.DecoderTail);
             if (snapshot.Parser is not null)
             {
                 parser.ValidateParserState(snapshot.Parser);
@@ -116,6 +117,7 @@ namespace Ntilde.VT
                 parser.ImportState(snapshot.Parser);
             }
 
+            parser.RestoreOutputTail(snapshot.DecoderTail);
             parser.SeedHyperlinkRegistry(links);
             return links;
         }

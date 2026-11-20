@@ -60,6 +60,40 @@ namespace Ntilde.Tests
 
         [Fact]
         [Trait("Category", "PtySmoke")]
+        public async Task Terminal_host_receives_legacy_bytes_and_utf8_prefix_from_before_subscription()
+        {
+            byte[] before = [.. "\x1b)A\x1b~"u8, 0xff, 0xe2];
+            var reads = new ScriptedReads(before, [0x82, 0xac, 0xa3]);
+            try
+            {
+                using RustPtySession session = NewSession(reads);
+                reads.Gates[0].Release();
+                await WaitAsync(reads.Entered[1]);
+                var chunks = new ConcurrentQueue<TerminalOutputChunk>();
+                var buffer = new Ntilde.VT.TerminalBuffer(80, 24);
+                var parser = new Ntilde.VT.AnsiParser(buffer);
+                session.SubscribeTerminalOutput((_, chunk) =>
+                {
+                    parser.ProcessBytes(chunk.Bytes.Span);
+                    chunks.Enqueue(chunk);
+                });
+                reads.Gates[1].Release();
+
+                await Ntilde.Mux.Tests.Support.TestWait.UntilAsync(() => chunks.Count == 2, "both raw chunks reached the terminal host");
+                var delivered = chunks.ToArray();
+                Assert.Equal(before, delivered[0].Bytes.ToArray());
+                Assert.False(delivered[0].RecordAtHost);
+                Assert.True(delivered[1].RecordAtHost);
+                Assert.StartsWith("ÿ€£", Ntilde.Replay.BufferSnapshot.Capture(buffer).Lines[0], StringComparison.Ordinal);
+            }
+            finally
+            {
+                foreach (var gate in reads.Gates) { if (gate.CurrentCount == 0) gate.Release(); }
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "PtySmoke")]
         public async Task Host_recording_keeps_raw_chunks_with_their_delivery_and_applied_metrics()
         {
             byte[] image = Encoding.UTF8.GetBytes("\x1b[24;1H\x1bPq!35~-~\x1b\\Z");

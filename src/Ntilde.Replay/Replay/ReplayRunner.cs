@@ -497,6 +497,7 @@ namespace Ntilde.Replay
             TerminalBuffer.ValidateReplaySnapshot(snapshot);
             buffer.Resize(snapshot.Cols, snapshot.Rows);
             buffer.ApplySnapshot(snapshot);
+            parser.RestoreOutputTail(default);
             ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
         }
 

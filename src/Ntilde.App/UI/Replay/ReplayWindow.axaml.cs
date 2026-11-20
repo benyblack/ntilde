@@ -9,7 +9,6 @@ using Ntilde.Replay;
 using System;
 using System.Globalization;
 using System.IO;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -241,6 +240,7 @@ namespace Ntilde.UI.Replay
             }
 
             var snapEntry = _viewModel.GetNearestSeekCheckpoint(targetTimeMs);
+            var output = new ReplayOutput(snapEntry?.Snapshot);
             long appliedTime = _displayedTimeMs;
             bool restored = false;
 
@@ -250,12 +250,10 @@ namespace Ntilde.UI.Replay
             try
             {
                 var runner = new ReplayReader(_filePath);
-                var decoder = Encoding.UTF8.GetDecoder();
                 var result = await runner.RunWithResultAsync(
                     onDataCallback: data =>
                     {
-                        string text = DecodeChunk(decoder, data);
-                        return ApplyInSessionAsync(sessionId, () => _parser.Process(text), seekCts.Token);
+                        return ApplyInSessionAsync(sessionId, () => output.Apply(_parser, data), seekCts.Token);
                     },
                     onHeaderCallback: header => ApplyHeaderMetricsAsync(sessionId, header, snapEntry is null, seekCts.Token),
                     onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h, seekCts.Token),
@@ -272,7 +270,7 @@ namespace Ntilde.UI.Replay
                             if (restored) appliedTime = snapEntry?.TimeMs ?? 0;
                             return restored;
                         },
-                        OnSkippedData = data => { _ = DecodeChunk(decoder, data); }
+                        OnSkippedData = output.ObserveSkipped
                     },
                     minTimeMs: snapEntry?.TimeMs ?? 0,
                     ct: seekCts.Token);
@@ -329,7 +327,6 @@ namespace Ntilde.UI.Replay
             try
             {
                 var runner = new ReplayReader(_filePath);
-                var decoder = Encoding.UTF8.GetDecoder();
                 long startTimeMs = _viewModel.CurrentTimeMs;
 
                 var nearest = _viewModel.GetNearestSnapshotEntry(startTimeMs);
@@ -339,13 +336,13 @@ namespace Ntilde.UI.Replay
                     return;
                 }
                 var snapEntry = _viewModel.GetNearestSeekCheckpoint(startTimeMs);
+                var output = new ReplayOutput(snapEntry?.Snapshot);
                 long minTime = snapEntry?.TimeMs ?? 0;
 
                 await runner.RunWithResultAsync(
                     onDataCallback: async (data) =>
                     {
-                        string text = DecodeChunk(decoder, data);
-                        await ApplyInSessionAsync(sessionId, () => _parser.Process(text), ct);
+                        await ApplyInSessionAsync(sessionId, () => output.Apply(_parser, data), ct);
                     },
                     onHeaderCallback: header => ApplyHeaderMetricsAsync(sessionId, header, snapEntry is null, ct),
                     onSixelCellSizeCallback: (w, h) => ApplyCellMetricsAsync(sessionId, w, h, ct),
@@ -375,7 +372,7 @@ namespace Ntilde.UI.Replay
                         ApplyHeaderResize = snapEntry is null,
                         StartAfterLineNumber = snapEntry?.LineNumber ?? 0,
                         OnValidatedStart = token => ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, startTimeMs, token),
-                        OnSkippedData = data => { _ = DecodeChunk(decoder, data); }
+                        OnSkippedData = output.ObserveSkipped
                     },
                     minTimeMs: minTime,
                     fastForwardToMs: startTimeMs,
@@ -394,12 +391,29 @@ namespace Ntilde.UI.Replay
             }
         }
 
-        /// <summary>Retains incomplete UTF-8 characters within one replay pass, never across restarts.</summary>
-        private static string DecodeChunk(Decoder decoder, byte[] data)
+        // Older checkpoints omitted the decoder tail. Observe the skipped prefix
+        // with its original UTF-8 decoding policy, then seed the parser once.
+        private sealed class ReplayOutput(ReplaySnapshot? snapshot)
         {
-            var chars = new char[Encoding.UTF8.GetMaxCharCount(data.Length)];
-            int count = decoder.GetChars(data, 0, data.Length, chars, 0, flush: false);
-            return new string(chars, 0, count);
+            private Ntilde.Pty.Utf8ChunkDecoder? _legacy = snapshot is not null && snapshot.State?.DecoderTail is null ? new() : null;
+
+            public void ObserveSkipped(byte[] data)
+            {
+                if (_legacy is not { } decoder) return;
+                var chars = System.Buffers.ArrayPool<char>.Shared.Rent(Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(data.Length));
+                try { decoder.Decode(data, chars); }
+                finally { System.Buffers.ArrayPool<char>.Shared.Return(chars); }
+            }
+
+            public void Apply(AnsiParser parser, byte[] data)
+            {
+                if (_legacy is { } decoder)
+                {
+                    parser.RestoreOutputTail(decoder.PendingTail);
+                    _legacy = null;
+                }
+                parser.ProcessBytes(data);
+            }
         }
 
         private void StopPlaybackIfCurrent(int sessionId)

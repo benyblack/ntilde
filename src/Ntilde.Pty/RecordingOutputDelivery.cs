@@ -1,5 +1,8 @@
 namespace Ntilde.Pty;
 
+/// <summary>Original bytes, their recording owner, and any preceding transport discontinuity.</summary>
+public readonly record struct TerminalOutputChunk(ReadOnlyMemory<byte> Bytes, bool RecordAtHost, bool ResetDecoder = false);
+
 /// <summary>
 /// Pairs original bytes with decoded output for a single recording host.
 /// Host installation and byte delivery are serialized by the session's output invocation lock.
@@ -11,7 +14,13 @@ public sealed class RecordingOutputDelivery
 
     private int _mode; // 0: transport, 1: external raw host, 2: decoded-output host
     public int Mode => Volatile.Read(ref _mode);
-    public ReadOnlyMemory<byte> Bytes { get; set; }
+    public TerminalOutputChunk Chunk { get; set; }
+
+    public ReadOnlyMemory<byte> Bytes
+    {
+        get => Chunk.Bytes;
+        set => Chunk = new(value, RecordAtHost: true);
+    }
 
     public void SetCellMetrics(float widthPx, float heightPx, Ntilde.Replay.PtyRecorder? recorder, Ntilde.Replay.FlightRecordingBuffer? flight)
     {
@@ -27,8 +36,14 @@ public sealed class RecordingOutputDelivery
     public Action<string> CreateDecodedHost(Action<string, ReadOnlyMemory<byte>> handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
+        return CreateTerminalHost((text, chunk) => handler(text, chunk.RecordAtHost ? chunk.Bytes : default));
+    }
+
+    public Action<string> CreateTerminalHost(Action<string, TerminalOutputChunk> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
         if (Mode == 2) throw new InvalidOperationException("A recording output host is already installed.");
         Volatile.Write(ref _mode, 2);
-        return text => handler(text, Bytes);
+        return text => handler(text, Chunk);
     }
 }

@@ -244,7 +244,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
             // invocation, and a live emit cannot slip ahead of the replay.
             lock (_outputInvocationLock)
             {
-                string[]? replay = null;
+                (string Text, TerminalOutputChunk Output)[]? replay = null;
                 lock (_outputHandlerGate)
                 {
                     if (!_hasOutputSubscriberEver)
@@ -253,7 +253,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
                         _rawOutput.StopRetaining();
                         if (_pendingOutputReplay != null)
                         {
-                            replay = _pendingOutputReplay.ToArray();
+                            replay = _pendingOutputReplay.TakeChunks();
                             _pendingOutputReplay = null;
                         }
                     }
@@ -262,9 +262,12 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
 
                 if (replay != null)
                 {
-                    foreach (string text in replay)
+                    foreach (var chunk in replay)
                     {
-                        value(text);
+                        if (chunk.Text.Length == 0 && _recordingDelivery.Mode != 2) continue;
+                        _recordingDelivery.Chunk = chunk.Output;
+                        try { value(chunk.Text); }
+                        finally { _recordingDelivery.Chunk = default; }
                     }
                 }
             }
@@ -383,6 +386,12 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         {
             OnOutputReceived += _recordingDelivery.CreateDecodedHost(handler);
         }
+    }
+
+    public void SubscribeTerminalOutput(Action<string, TerminalOutputChunk> handler)
+    {
+        lock (_outputInvocationLock)
+            OnOutputReceived += _recordingDelivery.CreateTerminalHost(handler);
     }
 
     public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) =>
@@ -586,13 +595,16 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
     {
         lock (_decodeGate)
         {
-            if (_recordingDelivery.Mode == 0) RecordOutputAtHostBoundary(payload);
+            bool hadSubscriber = Volatile.Read(ref _hasOutputSubscriberEver);
+            int recordingMode = _recordingDelivery.Mode;
+            if (recordingMode == 0) RecordOutputAtHostBoundary(payload);
             _rawOutput.Publish(payload);
             lock (_outputInvocationLock)
             {
-                _recordingDelivery.Bytes = _recordingDelivery.Mode == 2 ? payload : default;
+                _recordingDelivery.Chunk = recordingMode == 2 || (recordingMode == 0 && !hadSubscriber)
+                    ? new(payload, recordingMode == 2) : default;
                 try { EmitDecoded(payload); }
-                finally { _recordingDelivery.Bytes = default; }
+                finally { _recordingDelivery.Chunk = default; }
             }
         }
     }
@@ -605,7 +617,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
 
     // The one place bytes become the string stream. Wire output and session-written text both go
     // through it, so the string stream is always exactly what a UTF-8 decoder makes of the raw
-    // stream - which is what keeps a byte subscriber (the mux) and a string subscriber identical.
+    // stream. A terminal parser can also receive the original bytes at the ordered output boundary.
     private void EmitDecoded(byte[] bytes)
     {
         // One buffer for the session, grown to the largest chunk seen, rather than a new one per chunk (#173).
@@ -617,7 +629,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
         }
 
         int charCount = _utf8Decoder.Decode(bytes, _decodeChars);
-        if (charCount > 0 || (_recordingDelivery.Mode == 2 && (_recorder is not null || _flightRecorder is not null)))
+        if (charCount > 0 || !_recordingDelivery.Chunk.Bytes.IsEmpty)
         {
             EmitText(charCount > 0 ? new string(_decodeChars, 0, charCount) : string.Empty);
         }
@@ -694,7 +706,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
                 if (!_hasOutputSubscriberEver && handler == null)
                 {
                     _pendingOutputReplay ??= new Ntilde.Pty.PendingOutputReplay();
-                    _pendingOutputReplay.Add(text);
+                    _pendingOutputReplay.Add(text, _recordingDelivery.Chunk);
                     return;
                 }
             }
@@ -704,7 +716,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
             // UI thread via Dispatcher.Post, which does not wait). A handler that
             // blocks here — e.g. synchronously awaiting a UI-thread response — would
             // stall the poll loop and any new subscriber.
-            handler?.Invoke(text);
+            if (text.Length != 0 || _recordingDelivery.Mode == 2) handler?.Invoke(text);
         }
     }
 
