@@ -7,7 +7,7 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
-export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v70';
+export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v71';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 // Frozen forks are selected only by valid own-family source digests and absence of every other family's marker.
 const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
@@ -947,11 +947,23 @@ export const capturedV77SourceFiles = Object.freeze({
     capsReceiptSourceSha256: 'caps-receipt.mjs',
 });
 
-/** Bind the private temporary root, exact v77 inventory and manifest environment pin before trusting any captured source. */
+// The xterm pointer-color batch adds its seven suite scripts to the integrated v70 graph; the frozen v77 graph above stays exactly as published.
+export const capturedV78SourceFiles = Object.freeze({
+    ...capturedV77SourceFiles,
+    pclReportSourceSha256: 'pcl-report.mjs',
+    pclContractsSourceSha256: 'pcl-contracts.mjs',
+    pclCaptureSourceSha256: 'pcl-capture.mjs',
+    pclCollectorSourceSha256: 'pcl-collector.mjs',
+    pclGradingSourceSha256: 'pcl-grading.mjs',
+    pclGradingCollectorSourceSha256: 'pcl-grading-collector.mjs',
+    pclReceiptSourceSha256: 'pcl-receipt.mjs',
+});
+
+/** Bind the private temporary root, exact v78 inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV77SourceFiles)) throw new Error('Invalid current v77 source inventory.');
+    if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(capturedV78SourceFiles)) throw new Error('Invalid current v78 source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
     const manifest = JSON.parse(bytes);

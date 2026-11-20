@@ -36,7 +36,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?osc(?:22|720)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?font-size-[a-z-]+\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:caps-[a-z-]+|probe-suite-shared)\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:caps-[a-z-]+|pcl-[a-z-]+|probe-suite-shared)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc(?:133|633|78|9)|title-stack|osc-title)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
@@ -50,7 +50,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?kitty-animation(?:-[a-z-]+)?\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?osc(?:22|720)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?font-size-[a-z-]+\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:caps-[a-z-]+|probe-suite-shared)\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:caps-[a-z-]+|pcl-[a-z-]+|probe-suite-shared)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-text-cursor(?:-receipt)?|(?:osc(?:133|633|78)|title-stack|osc-title)-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
@@ -991,7 +991,7 @@ function fixtureTemplate(opts) {
 }
 
 /** A private copy of the v11 data with every synthetic suffix, which is always removed after `action`. */
-export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false, osc22 = false, osc720 = false, caps = false } = {}) {
+export async function privateClipboardReceiptFixture(action, { routed = false, titleStack = false, xtgettcap = false, modifyOtherKeys = false, osc9 = false, notify = false, devq = false, xcs = false, xss = false, xsv = false, pxm = false, mex = false, kcl = false, osc5 = false, osc3008 = false, osc22 = false, osc720 = false, caps = false, pcl = false } = {}) {
     const { links, state } = await fixtureTemplate({ routed, titleStack, xtgettcap, modifyOtherKeys, mex, pxm });
     const output = mkdtempSync(join(tmpdir(), 'nt-private-receipt-'));
     let release = () => {};
@@ -1043,13 +1043,16 @@ export async function privateClipboardReceiptFixture(action, { routed = false, t
         if (caps) {
             await addCapsEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
+        if (pcl) {
+            await addPclEvidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
+        }
         if (osc720) {
             await addOsc720Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
         if (osc22) {
             await addOsc22Evidence({ output, write: writerFor(output), context, evidence, lrMarginsBytes: readFileSync(join(output, 'collector-lrmm.mjs')) });
         }
-        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008 || osc720 || osc22 || caps) writerFor(output)('context.json', context);
+        if (titleStack || xtgettcap || osc9 || notify || devq || xcs || xss || xsv || kcl || osc5 || osc3008 || osc720 || osc22 || caps || pcl) writerFor(output)('context.json', context);
         await action({ output, write: writerFor(output), context, proof, report, evidence, raw, manifest, old,
             finish: () => completeOwnedReceipt(output, join(output, 'already-removed-fixture'), evidence) });
     } finally {
@@ -1266,6 +1269,26 @@ async function addCapsEvidence({ output, write, context, evidence, lrMarginsByte
     evidence.capsEvidence = { runId: context.runId, suiteId: capsSuiteId, file: 'caps-observations.json', sha256: hash(readFileSync(join(output, 'caps-observations.json'))),
         runFile: 'caps-run.json', runSha256: hash(readFileSync(join(output, 'caps-run.json'))), adapterBundleSha256: hash(capsBytes),
         contractsVersion: capsContractsVersion, counts: capsCounts(capsReport), provisionalUntil: 'cell-receipt.json' };
+}
+
+async function addPclEvidence({ output, write, context, evidence, lrMarginsBytes }) {
+    const { syntheticPclEvidence } = await import('./pcl-evidence.mjs');
+    const { buildPclGradingReport } = await import('../pcl-grading.mjs');
+    const { pclCounts } = await import('../pcl-receipt.mjs');
+    const { adaptPclCollector, pclAdapterId } = await import('../pcl-grading-collector.mjs');
+    const { pclSuiteId, pclContractsVersion } = await import('../pcl-contracts.mjs');
+    const pclBytes = Buffer.from(adaptPclCollector(lrMarginsBytes.toString()));
+    const pcl = syntheticPclEvidence({ runId: context.runId, bundleSha256: hash(pclBytes) });
+    pcl.adapter = { ...pcl.adapter, upstreamBundleSha256: context.upstreamBundleSha256 };
+    const pclReport = buildPclGradingReport(pcl.frames, pcl.run, context.runId, pcl.adapter);
+    write('pcl-observations.json', pclReport);
+    write('pcl-run.json', pcl.run);
+    writeFileSync(join(output, 'pcl-snapshots.jsonl'), pcl.frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+    writeFileSync(join(output, 'collector-pcl.mjs'), pclBytes);
+    Object.assign(context, { pclAdapterId, pclSuiteId, pclBundleSha256: hash(pclBytes), pclContractsVersion });
+    evidence.pclEvidence = { runId: context.runId, suiteId: pclSuiteId, file: 'pcl-observations.json', sha256: hash(readFileSync(join(output, 'pcl-observations.json'))),
+        runFile: 'pcl-run.json', runSha256: hash(readFileSync(join(output, 'pcl-run.json'))), adapterBundleSha256: hash(pclBytes),
+        contractsVersion: pclContractsVersion, counts: pclCounts(pclReport), provisionalUntil: 'cell-receipt.json' };
 }
 
 /** Synthetic OSC 22 receipt evidence, not a runtime measurement. */
