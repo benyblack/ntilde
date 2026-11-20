@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { planFeeds } from '../graded-plan.mjs';
-import { pclContracts, pclContractsVersion, pclObservation, pclSuiteId, gradePclCase, replayPclTermless, replayPclTerminal } from '../pcl-contracts.mjs';
+import { pclSeededBinding, pclContracts, pclContractsVersion, pclObservation, pclSuiteId, gradePclCase, replayPclTermless, replayPclTerminal } from '../pcl-contracts.mjs';
 import { adaptPclCollector, pclAdapterId } from '../pcl-grading-collector.mjs';
 import { syntheticColEditScreen, paletteBinding } from './col-edit-evidence.mjs';
 import { seedRows, frame, alternate } from './devq-evidence.mjs';
@@ -30,10 +30,12 @@ const exchanges = Object.freeze({
 /** The screens and reply lists of every read of the case; `mutate(role, read)` may return a changed read to build negative evidence. */
 export function syntheticPclScreens(contract, binding = paletteBinding(), mutate = null, runId = 'a'.repeat(32)) {
     const nonce = 'NTILDE_PCL_' + runId;
+    // Every case read sits between the color seed and the shared reset: the App's resolved binding carries the seeded OSC 10 / OSC 11 overrides.
+    const seeded = pclSeededBinding(binding);
     // The plan's static reseed homes the cursor: every read (and every exchange) observes it at home over the nonce row.
     return contract.roles.map(role => {
         const fresh = () => {
-            const screen = alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], structuredClone(binding)), nonce);
+            const screen = alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], structuredClone(seeded)), nonce);
             return { screen, replies: [...(exchanges[role] ?? [])] };
         };
         const read = mutate?.(contract.caseId, role, fresh()) ?? fresh();

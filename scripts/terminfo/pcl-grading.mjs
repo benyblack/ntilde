@@ -8,7 +8,7 @@ import { suiteReplyLists, reconcilePinnedWithEffect, suitePinnedResult } from '.
 import { colorBindingHash } from './resolved-colors.mjs';
 import { screenSnapshot } from './agent-observer.mjs';
 import { validatePclExchange } from './pcl-report.mjs';
-import { pclContracts, pclCaseIds, pclContractsVersion, pclNoncePrefix, pclPrefix, pclSuiteId, pclEffectContractId, gradePclCase, pclObservation,
+import { pclSeededBinding, pclContracts, pclCaseIds, pclContractsVersion, pclNoncePrefix, pclPrefix, pclSuiteId, pclEffectContractId, gradePclCase, pclObservation,
     validatePclScreen, replayPclTermless, replayPclTerminal } from './pcl-contracts.mjs';
 import { pclAdapterId } from './pcl-grading-collector.mjs';
 import { pclRecordingContext } from './pcl-collector.mjs';
@@ -34,8 +34,8 @@ const screenOf = value => {
 /** Total read groups across the contracts, plus start, bind and finish frames. */
 const frameCount = () => 3 + pclContracts.reduce((sum, contract) => sum + planReads(contract), 0);
 
-/** Validate journal, run identity, binding stability and restoration. The case changes no color, so every frame must carry the same binding, and only report reads carry a reply list; start, bind and
- *  finish never do. */
+/** Validate journal, run identity, binding stability and restoration. The run starts, binds and finishes on the host's own binding; every case read sits between the color seed and the shared color reset, so it
+ *  must carry exactly the seeded binding (OSC 10 and OSC 11 overrides over the same host palette and theme) and nothing else changed. Only report reads carry a reply list; start, bind and finish never do. */
 export function validatePclEvidence(frames, run, runId, adapter) {
     validateGradedJournal(frames, { frameCount: frameCount(), prefix: pclPrefix, noncePrefix: pclNoncePrefix, runId, label, screenOf });
     const adapterIdentityOk = adapter !== null && adapter !== undefined && adapter.id === pclAdapterId && run.adapterId === pclAdapterId
@@ -43,8 +43,11 @@ export function validatePclEvidence(frames, run, runId, adapter) {
     if (!adapterIdentityOk) throw new Error(`Invalid ${label} adapter identity.`);
     const coversCases = JSON.stringify(run.probeIds) === JSON.stringify([...pclCaseIds]) && Array.isArray(run.cases) && run.cases.length === pclContracts.length;
     if (!coversCases) throw new Error(`${label} run does not cover the contracted cases.`);
-    const edgeBinding = colorBindingHash(frames[0].screen.colorBinding);
-    if (frames.some(frame => colorBindingHash(frame.screen.colorBinding) !== edgeBinding)) throw new Error(`${label} observation saw the palette or theme change.`);
+    const edge = frames[0].screen.colorBinding, edgeHash = colorBindingHash(edge), seededHash = colorBindingHash(pclSeededBinding(edge));
+    const edgeIndexes = new Set([0, 1, frames.length - 1]);
+    for (const [index, frame] of frames.entries()) {
+        if (colorBindingHash(frame.screen.colorBinding) !== (edgeIndexes.has(index) ? edgeHash : seededHash)) throw new Error(`${label} observation saw the palette or theme change.`);
+    }
     for (const edge of [frames[0], frames[1], frames.at(-1)]) {
         if (edge.report !== undefined) throw new Error(`Unexpected ${label} report frame.`);
     }
@@ -69,12 +72,13 @@ const verifyPinnedReplays = (contract, recorded, exchange, { replayModule = null
 const resultOf = suitePinnedResult;
 
 /** Derive one case's published record from its journaled frames, worker record and the graded effect. */
-function derivePclCase(contract, recorded, readFrames, { replies, observation, effect, termless, terminal, contractsVersion }) {
-    const theme = readFrames[0].screen.colorBinding, observed = contract.observed(observation);
+function derivePclCase(contract, recorded, readFrames, { replies, observation, effect, termless, terminal, contractsVersion, edgeBinding }) {
+    const theme = edgeBinding, observed = contract.observed(observation);
     const divergence = reconcile(termless.observation.outcome, effect);
     const reads = recorded.reads.map((read, index) => ({ kind: read.kind, cursor: read.cursor, ...(read.kind === 'report' ? { replies: replies[index] } : {}) }));
     const binding = { reverseVideo: theme.reverseVideo, themeName: theme.themeName, foregroundArgb: theme.foregroundArgb, backgroundArgb: theme.backgroundArgb,
-        minimumContrast: theme.minimumContrast, paletteOverrideIndices: [...theme.paletteOverrideIndices], bindingSha256: colorBindingHash(theme) };
+        minimumContrast: theme.minimumContrast, paletteOverrideIndices: [...theme.paletteOverrideIndices], bindingSha256: colorBindingHash(theme),
+        seededBindingSha256: colorBindingHash(pclSeededBinding(theme)) };
     return { caseId: contract.caseId, pinnedCriterion: contract.pinnedCriterion, pinnedScript: observed.pinnedScript, terminalFixture: contract.terminalFixture,
         feeds: recorded.feeds, barriers: recorded.barriers,
         reads,
@@ -104,7 +108,7 @@ export function buildPclGradingReport(frames, run, runId, adapter, { contractsVe
         const effect = gradePclCase(contract, observation, contractsVersion);
         const exchange = validatePclExchange(readFrames[contract.pinnedRead].report);
         const { termless, terminal } = verifyPinnedReplays(contract, recorded, exchange, { replayModule });
-        cases.push(derivePclCase(contract, recorded, readFrames, { replies, observation, effect, termless, terminal, contractsVersion }));
+        cases.push(derivePclCase(contract, recorded, readFrames, { replies, observation, effect, termless, terminal, contractsVersion, edgeBinding: frames[0].screen.colorBinding }));
     }
     return { schemaVersion: 1, suiteId: pclSuiteId, runId, contractsVersion, adapter, scope, initialSnapshot: 0, restoredSnapshot: frames.length - 1, cases, snapshots: frames };
 }

@@ -21,6 +21,7 @@
 // Limits: raw replies and stored terminal state only; the native pointer image, the OSC 22 shape and any presentation are not claimed; no remote/mux, other-platform, common-harness or score claim.
 import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
 import { selectiveEraseInk } from './selective-erase-contracts.mjs';
+import { opaqueArgb } from './color-reset-model.mjs';
 import { devqColorReset, devqFixture, devqMinimum, devqReseed, devqReset, devqSeed } from './devq-contracts.mjs';
 export { validateDevqScreen as validatePclScreen } from './devq-contracts.mjs';
 
@@ -106,6 +107,9 @@ export function replayPclTerminal(caseId, cursor) {
 /** The five colors a pointer sequence could be mistaken for, seeded to distinguishable values. The seed is plain OSC 10/11/12/17/19 sets, ST-terminated. */
 export const pclSeedColors = Object.freeze([['10', '#102030'], ['11', '#405060'], ['12', '#708090'], ['17', '#a0b0c0'], ['19', '#d0e0f0']]);
 export const pclColorSeed = pclSeedColors.map(([code, value]) => osc(`${code};${value}`, st)).join('');
+/** The App's resolved theme binding while the seed is in force: only OSC 10 and OSC 11 reach it (the foreground and background defaults and their override flags); the cursor, the selection colors and
+ *  everything else about the theme are not part of it. Derived from the binding the run starts on, so the palette, theme name, contrast and reverse video stay exactly the host's. */
+export const pclSeededBinding = edge => ({ ...edge, foregroundArgb: opaqueArgb(0x102030), backgroundArgb: opaqueArgb(0x405060), foregroundOverride: true, backgroundOverride: true });
 /** The exact replies of a color read at the seed: ST-terminated, 16-bit channels (each byte doubled). */
 const reply = (code, [r, g, b]) => osc(`${code};rgb:${r}${r}/${g}${g}/${b}${b}`, st);
 const seededReplies = Object.freeze([

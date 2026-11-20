@@ -69,3 +69,23 @@ test('refuses tampered evidence: restoration, binding stability, adapter identit
     const recolored = syntheticPclEvidence({ finishBinding: paletteBinding({ background: 0xff010203 }) });
     assert.throws(() => buildPclGradingReport(recolored.frames, recolored.run, recolored.runId, recolored.adapter), /fixture was not restored|palette or theme/);
 });
+
+test('the case reads must carry exactly the seeded binding: an unseeded, a re-seeded or a palette-changed read is refused', () => {
+    const edgeEvidence = syntheticPclEvidence();
+    const seededRead = index => edgeEvidence.frames[index].screen.colorBinding;
+    assert.equal(seededRead(2).foregroundOverride, true, 'the fixture reads carry the OSC 10 override');
+    assert.equal(edgeEvidence.frames[0].screen.colorBinding.foregroundOverride, false, 'the edges carry the host binding');
+    for (const [label, mutate] of [
+        ['the seed did not take (host foreground)', binding => { binding.foregroundArgb = edgeEvidence.frames[0].screen.colorBinding.foregroundArgb; binding.foregroundOverride = false; }],
+        ['a different background', binding => { binding.backgroundArgb = 0xff000000; }],
+        ['a palette override', binding => { binding.paletteOverrideIndices = [1]; }],
+        ['a changed palette', binding => { binding.ansiPaletteArgb = binding.ansiPaletteArgb.map(() => 0xff010101); }],
+    ]) {
+        const evidence = syntheticPclEvidence();
+        mutate(evidence.frames[3].screen.colorBinding);
+        assert.throws(() => buildPclGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter), /palette or theme change|snapshot evidence|resolved/, label);
+    }
+    const edgeSeeded = syntheticPclEvidence();
+    edgeSeeded.frames[1].screen.colorBinding = structuredClone(edgeSeeded.frames[2].screen.colorBinding);
+    assert.throws(() => buildPclGradingReport(edgeSeeded.frames, edgeSeeded.run, edgeSeeded.runId, edgeSeeded.adapter), /palette or theme change|snapshot evidence|resolved/, 'the bind frame precedes the seed');
+});
