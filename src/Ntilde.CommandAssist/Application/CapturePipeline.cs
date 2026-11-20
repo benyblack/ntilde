@@ -55,12 +55,39 @@ internal sealed class CapturePipeline
     /// </remarks>
     internal const int CommandNotFoundExitCode = CommandHistoryEntry.CommandNotFoundExitCode;
 
-    private string? _pendingEntryId;
-    private string? _pendingCommandText;
+    /// <summary>
+    /// Guards <see cref="_pending"/> and <see cref="_lastCompleted"/>, which are written by two
+    /// threads: the Enter-time capture runs on whatever thread the pane started it from (the UI
+    /// thread), and the structured capture and the completion patch run on the pane's serialized
+    /// shell-integration dispatcher, which is a thread-pool queue.
+    /// </summary>
+    private readonly object _pendingGate = new();
+
+    /// <summary>
+    /// The entry the next completion patches. Registered <em>before</em> its append starts, never
+    /// after.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The ordering is the whole point. The Enter-time append and the <c>OSC 133;D</c> that finishes
+    /// the same command travel on different queues, and a fast command (<c>true</c>, <c>cd</c>)
+    /// produces its <c>D</c> within milliseconds of Enter - inside the append, which takes the
+    /// store's gate and a cross-process file lease. When the id was assigned only after the append
+    /// returned, a <c>D</c> handled in that window found nothing pending and the exit code and
+    /// duration were silently dropped; a <c>C</c> handled in it missed the double-capture guard and
+    /// the first command of a session was written twice.
+    /// </para>
+    /// <para>
+    /// Registering first closes both. The dedup only needs the text, and the completion awaits
+    /// <see cref="PendingEntry.Appended"/> before it patches, so a patch can never reach the store
+    /// ahead of the entry it patches.
+    /// </para>
+    /// </remarks>
+    private PendingEntry? _pending;
 
     /// <summary>
     /// The entry the most recently finished command was written to, retained after the completion
-    /// patch has cleared <see cref="_pendingEntryId"/>.
+    /// has released <see cref="_pending"/>.
     /// </summary>
     /// <remarks>
     /// It exists for one caller and one ordering problem. The Fix-time recogniser is what identifies a
@@ -69,7 +96,7 @@ internal sealed class CapturePipeline
     /// that was, the classification would arrive with nothing to apply itself to. Cleared when a new
     /// command is captured, so a late classification can never be applied to the wrong entry.
     /// </remarks>
-    private string? _lastCompletedEntryId;
+    private PendingEntry? _lastCompleted;
 
     /// <summary>
     /// Whether the current prompt cycle has already contributed a structured history entry.
@@ -163,13 +190,11 @@ internal sealed class CapturePipeline
                 Source: CommandCaptureSource.Heuristic,
                 DurationMs: null);
 
-            await _historyStore.AppendAsync(entry);
-            _pendingEntryId = entry.Id;
-            _pendingCommandText = NormalizeCommandText(trimmed);
-
-            // A new command supersedes any classification still owed to the previous one. Without
-            // this, a Fix analysis that arrived late could mark the wrong entry as a typo.
-            _lastCompletedEntryId = null;
+            // Registered before the append, not after it - see _pending. Registering also retires
+            // any classification still owed to the previous command: without that, a Fix analysis
+            // that arrived late could mark the wrong entry as a typo.
+            PendingEntry pending = RegisterPending(entry.Id, NormalizeCommandText(trimmed));
+            await AppendPendingAsync(entry, pending);
         }
         catch
         {
@@ -181,30 +206,7 @@ internal sealed class CapturePipeline
     /// Patches the pending entry with an exit code observed outside shell integration (the host's own
     /// command-finished signal).
     /// </summary>
-    public async Task CompleteSubmissionAsync(int? exitCode)
-    {
-        string? pendingEntryId = _pendingEntryId;
-        _pendingEntryId = null;
-        if (string.IsNullOrWhiteSpace(pendingEntryId))
-        {
-            return;
-        }
-
-        _lastCompletedEntryId = pendingEntryId;
-
-        try
-        {
-            await _historyStore.TryUpdateExecutionResultAsync(
-                pendingEntryId,
-                exitCode,
-                durationMs: null,
-                isInvalidCommand: IsCommandNotFoundExit(exitCode));
-        }
-        catch
-        {
-            // History metadata enrichment is best-effort only.
-        }
-    }
+    public Task CompleteSubmissionAsync(int? exitCode) => CompletePendingAsync(exitCode, durationMs: null);
 
     /// <summary>
     /// Records that the command behind the most recent entry was one the shell could not resolve, so
@@ -236,15 +238,25 @@ internal sealed class CapturePipeline
     /// </param>
     public async Task MarkLastCommandInvalidAsync(string? unresolvedCommandToken = null)
     {
-        string? entryId = _lastCompletedEntryId;
-        if (string.IsNullOrWhiteSpace(entryId))
+        PendingEntry? completed;
+        lock (_pendingGate)
+        {
+            completed = _lastCompleted;
+        }
+
+        if (completed is null)
         {
             return;
         }
 
         try
         {
-            await _historyStore.TryMarkInvalidCommandAsync(entryId);
+            // The completion released the entry before waiting for its append (see
+            // CompletePendingAsync), so the append may still be in flight here too. Ordering only,
+            // as there: a failed append may still have persisted the line.
+            await completed.Appended;
+
+            await _historyStore.TryMarkInvalidCommandAsync(completed.Id);
 
             // After the entry itself, and in the same best-effort block: the just-captured entry is the
             // one the user can see the consequence of, so it is flagged first and a failure in the
@@ -351,19 +363,40 @@ internal sealed class CapturePipeline
 
         // The first-command double-capture guard: the heuristic path already wrote this exact command
         // moments ago, so let its entry stand and let CommandFinished patch that one.
+        //
+        // The heuristic entry counts from the moment it is registered, not from when its append
+        // lands: the C for a fast command routinely arrives while that append is still in flight.
         string normalizedCommandText = NormalizeCommandText(commandText);
-        if (!string.IsNullOrWhiteSpace(_pendingEntryId) &&
-            string.Equals(_pendingCommandText, normalizedCommandText, StringComparison.Ordinal))
+        PendingEntry? matchedHeuristic;
+        lock (_pendingGate)
+        {
+            matchedHeuristic = _pending != null &&
+                               string.Equals(_pending.CommandText, normalizedCommandText, StringComparison.Ordinal)
+                ? _pending
+                : null;
+        }
+
+        // But it only stands in for this C once it has actually landed. If that append fails, this C
+        // is the last record of the command, so it falls through and writes its own entry - whether
+        // the C arrived during the failed append or after it, since a failed registration stays.
+        if (matchedHeuristic != null && await matchedHeuristic.Appended)
         {
             _structuredEntryWrittenThisCycle = true;
             return;
         }
 
+        // A failed append does not prove the line is absent: JsonlHistoryStore writes it before it
+        // compacts, and a compaction failure throws afterwards. Taking over the matched entry's id
+        // makes this record supersede it on load (last write wins) rather than sit beside it as a
+        // second copy with no exit code. Only the matched entry - an unmatched pending entry is a
+        // different command, and reusing its id would overwrite it.
+        string entryId = matchedHeuristic?.Id ?? Guid.NewGuid().ToString("N");
+
         try
         {
             RedactionResult redaction = _secretsFilter.Redact(commandText);
             var entry = new CommandHistoryEntry(
-                Id: Guid.NewGuid().ToString("N"),
+                Id: entryId,
                 CommandText: redaction.RedactedText,
                 ExecutedAt: shellEvent.Timestamp,
                 ShellKind: _context.ShellKind ?? "unknown",
@@ -377,14 +410,11 @@ internal sealed class CapturePipeline
                 Source: CommandCaptureSource.ShellIntegration,
                 DurationMs: null);
 
-            await _historyStore.AppendAsync(entry);
-            _pendingEntryId = entry.Id;
-            _pendingCommandText = normalizedCommandText;
+            // See CaptureSubmissionAsync: registered first, and registering retires the previous
+            // command's right to a late classification.
+            PendingEntry pending = RegisterPending(entry.Id, normalizedCommandText);
+            await AppendPendingAsync(entry, pending);
             _structuredEntryWrittenThisCycle = true;
-
-            // See the same line in CaptureSubmissionAsync: a new command retires the previous one's
-            // right to a late classification.
-            _lastCompletedEntryId = null;
         }
         catch
         {
@@ -392,33 +422,127 @@ internal sealed class CapturePipeline
         }
     }
 
-    private async Task CompleteAcceptedCommandAsync(ShellIntegrationEvent shellEvent)
+    private Task CompleteAcceptedCommandAsync(ShellIntegrationEvent shellEvent)
     {
-        string? pendingEntryId = _pendingEntryId;
-        if (string.IsNullOrWhiteSpace(pendingEntryId))
-        {
-            return;
-        }
-
         long? durationMs = shellEvent.Duration.HasValue
             ? (long)Math.Round(shellEvent.Duration.Value.TotalMilliseconds)
             : null;
 
+        return CompletePendingAsync(shellEvent.ExitCode, durationMs);
+    }
+
+    private PendingEntry RegisterPending(string entryId, string normalizedCommandText)
+    {
+        var pending = new PendingEntry(entryId, normalizedCommandText);
+        lock (_pendingGate)
+        {
+            _pending = pending;
+            _lastCompleted = null;
+        }
+
+        return pending;
+    }
+
+    /// <summary>
+    /// Appends <paramref name="entry"/> and resolves <paramref name="pending"/>'s
+    /// <see cref="PendingEntry.Appended"/> either way, so no completion waiting on it can hang.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A failed append leaves the registration in place, deliberately. A failure does not prove the
+    /// line is absent - <c>JsonlHistoryStore</c> writes it before it compacts, and a compaction
+    /// failure throws afterwards - so the id is kept for whatever comes next: a <c>C</c> for the same
+    /// command takes it over (see <see cref="CaptureAcceptedCommandAsync"/>) instead of writing a
+    /// second copy, and a completion still patches it, which is a no-op if the line never landed.
+    /// <see cref="PendingEntry.Appended"/> being <see langword="false"/> is what stops the failed
+    /// entry standing in for that <c>C</c>.
+    /// </para>
+    /// <para>
+    /// Rethrows so the caller's best-effort handler still sees the failure.
+    /// </para>
+    /// </remarks>
+    private async Task AppendPendingAsync(CommandHistoryEntry entry, PendingEntry pending)
+    {
         try
         {
-            await _historyStore.TryUpdateExecutionResultAsync(
-                pendingEntryId,
-                shellEvent.ExitCode,
-                durationMs,
-                isInvalidCommand: IsCommandNotFoundExit(shellEvent.ExitCode));
-            _lastCompletedEntryId = pendingEntryId;
-            _pendingEntryId = null;
-            _pendingCommandText = null;
+            await _historyStore.AppendAsync(entry);
+            pending.MarkAppended(true);
         }
         catch
         {
-            // Structured metadata updates are best-effort only.
+            pending.MarkAppended(false);
+            throw;
         }
+    }
+
+    /// <summary>
+    /// Patches the pending entry with a finished command's result.
+    /// </summary>
+    /// <remarks>
+    /// The entry is claimed - taken out of <see cref="_pending"/> - before anything is awaited, so two
+    /// completions for the same command (the host signal and a <c>D</c>) cannot both patch it, and a
+    /// command captured while this one waits keeps its own registration. Only then does it wait for
+    /// the append, which is what lets a <c>D</c> that overtook the Enter-time write still land.
+    /// </remarks>
+    private async Task CompletePendingAsync(int? exitCode, long? durationMs)
+    {
+        PendingEntry? pending;
+        lock (_pendingGate)
+        {
+            pending = _pending;
+            if (pending is null)
+            {
+                return;
+            }
+
+            _pending = null;
+            _lastCompleted = pending;
+        }
+
+        try
+        {
+            // Waited on for ordering only. A failed append may still have persisted the line (see
+            // AppendPendingAsync); patching an id the store does not have is a no-op.
+            await pending.Appended;
+
+            await _historyStore.TryUpdateExecutionResultAsync(
+                pending.Id,
+                exitCode,
+                durationMs,
+                isInvalidCommand: IsCommandNotFoundExit(exitCode));
+        }
+        catch
+        {
+            // History metadata enrichment is best-effort only.
+        }
+    }
+
+    /// <summary>
+    /// A captured command awaiting its completion patch.
+    /// </summary>
+    private sealed class PendingEntry
+    {
+        private readonly TaskCompletionSource<bool> _appended =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public PendingEntry(string id, string commandText)
+        {
+            Id = id;
+            CommandText = commandText;
+        }
+
+        public string Id { get; }
+
+        /// <summary>The normalized text, for the first-command double-capture guard.</summary>
+        public string CommandText { get; }
+
+        /// <summary>
+        /// Completes once the entry's append has finished: <see langword="true"/> if it reached the
+        /// store, <see langword="false"/> if it failed.
+        /// </summary>
+        public Task<bool> Appended => _appended.Task;
+
+        public void MarkAppended(bool succeeded) => _appended.TrySetResult(succeeded);
     }
 
     private static string NormalizeCommandText(string commandText) => commandText.Trim();
