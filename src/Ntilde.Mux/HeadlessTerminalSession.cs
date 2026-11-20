@@ -960,8 +960,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         try { text = input.Text ?? StrictInputUtf8.GetString(input.Bytes!); }
         catch (System.Text.DecoderFallbackException) { return; }
 
-        if (_parser.CanEchoKeyboardText(text))
-            ProcessChunk(input.Bytes ?? StrictInputUtf8.GetBytes(text), childOutput: false);
+        if (!_parser.CanEchoKeyboardText(text)) return;
+
+        // The same stream feeds the daemon and attached panes. Temporarily select UTF-8
+        // for committed keyboard text, then restore the child's single-byte coding.
+        byte[] echo = _parser.UsesLatin1OutputCoding
+            ? StrictInputUtf8.GetBytes("\u001b%G" + text + "\u001b%@")
+            : input.Bytes ?? StrictInputUtf8.GetBytes(text);
+        ProcessChunk(echo, childOutput: false);
     }
 
     private void ProcessChunk(byte[] data, bool childOutput = true)

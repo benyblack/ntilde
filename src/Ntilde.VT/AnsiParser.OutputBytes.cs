@@ -10,6 +10,9 @@ public partial class AnsiParser
     private readonly byte[] _outputTail = new byte[3];
     private int _outputTailLength;
 
+    /// <summary>Whether the parser is decoding child output as single-byte Latin-1.</summary>
+    public bool UsesLatin1OutputCoding => _outputCoding == OutputCoding.Latin1 && !_buffer.Modes.IsVt52;
+
     /// <summary>Complete snapshots pair these held bytes with the parser and buffer at the same cut.</summary>
     public ReadOnlySpan<byte> PendingOutputBytes => _outputTail.AsSpan(0, _outputTailLength);
 
@@ -43,7 +46,7 @@ public partial class AnsiParser
 
         c = default;
         if (bytes.IsEmpty) return false;
-        if (_outputTailLength == 0 && (bytes[0] < 0x80 || _outputCoding == OutputCoding.Latin1))
+        if (_outputTailLength == 0 && (bytes[0] < 0x80 || UsesLatin1OutputCoding))
         {
             c = (char)bytes[0];
             rawGraphic = bytes[0] >= 0xa0;

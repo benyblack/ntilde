@@ -3,8 +3,8 @@ using Ntilde.VT;
 namespace Ntilde.Mux.Tests.Support;
 
 /// <summary>
-/// What Phase 2's TerminalPane will do with a MuxClientSession: restore on SnapshotReceived, parse
-/// OnOutputReceived, resize on StreamResize - and never send its own parser's replies.
+/// Mirrors TerminalPane: restore on SnapshotReceived, parse OutputBytesReceived, resize on
+/// StreamResize, and never send the viewer parser's replies.
 /// </summary>
 internal sealed class ClientPaneModel
 {
@@ -25,6 +25,7 @@ internal sealed class ClientPaneModel
             Parser.SixelCellSizeOverride = new SixelCellSize(width, height);
         };
         session.SnapshotReceived += OnSnapshot;
+        session.OutputBytesReceived += bytes => Parser.ProcessBytes(bytes);
         session.OnOutputReceived += OnOutput;
         session.StreamResize += OnResize;
     }
@@ -48,7 +49,6 @@ internal sealed class ClientPaneModel
 
     private void OnOutput(string text)
     {
-        Parser.Process(text);
         lock (_gate) _events.Add("out:" + text);
     }
 

@@ -80,6 +80,35 @@ public sealed class ByteInputTransportTests
         Assert.Equal("\u001b[12l€\u001b[12h2", Encoding.UTF8.GetString(child.RecordedOutput.SelectMany(bytes => bytes).ToArray()));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Keyboard_echo_preserves_Unicode_and_the_childs_Latin1_coding(bool vt52)
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        ScriptedTerminalSession child = host.Fake(id);
+        child.SupportsByteInput = true;
+        child.StartRecording("scripted.rec");
+        child.Emit(vt52 ? "\u001b%@\u001b[12l\u001b[?2l" : "\u001b%@\u001b[12l");
+        await host.Mux(id).FlushAsync();
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(client, id);
+        using MuxClientSession session = pane.Session;
+        await host.SettleAsync(id, client);
+
+        session.SendKeyboardText("é€");
+        await TestWait.UntilAsync(() => child.WireInput.Count == 1, "the UTF-8 text reaches stdin");
+        if (vt52) child.Emit("\u001b<");
+        child.Emit([0xff]);
+        await host.SettleAsync(id, client);
+
+        Assert.Equal("é€"u8.ToArray(), child.WireInput.Single());
+        Assert.Equal("é€ÿ", new string(pane.Buffer.ViewportRows[0].Cells.Take(3).Select(cell => cell.Character).ToArray()));
+        Assert.DoesNotContain(child.RecordedOutput, bytes => bytes.AsSpan().IndexOf("é€"u8) >= 0);
+        host.AssertPaneMatchesMux(id, pane, "keyboard echo and subsequent child bytes match across both views");
+    }
+
     [Fact]
     public async Task Keyboard_echo_is_ordered_after_an_SRM_reset_waiting_in_the_output_queue()
     {
