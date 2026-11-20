@@ -35,41 +35,50 @@ export function pclTerminalContext(caseId, cursor) {
     return { context, writes, expectedWrites: script.terminal.filter(call => call[0] === 'write').map(call => call[1]) };
 }
 
+/** Settle one step into a value or an error, so a failed collection can never skip the restoration that follows it. */
+const settle = async step => {
+    try { return { value: await step() }; } catch (error) { return { error }; }
+};
+
 /** Run the work, then the restoration; when both fail, report both instead of dropping either. */
 async function guarded(work, restore) {
-    let result, primary = null, restoreError = null;
-    try { result = await work(); }
-    catch (error) { primary = error; }
-    try { await restore(); }
-    catch (error) { restoreError = error; }
-    if (primary !== null && restoreError !== null) throw new AggregateError([primary, restoreError], `${label} collection and restoration failed.`);
-    if (primary !== null) throw primary;
-    if (restoreError !== null) throw restoreError;
-    return result;
+    const done = await settle(work), restored = await settle(restore);
+    const failures = [done, restored].filter(outcome => 'error' in outcome).map(outcome => outcome.error);
+    if (failures.length === 2) throw new AggregateError(failures, `${label} collection and restoration failed.`);
+    if (failures.length === 1) throw failures[0];
+    return done.value;
 }
 
-/** One plan step of the case. A capture step is a fenced exchange whose replies the next read journals; any other feed clears them. */
-async function runStep(step, record, { fence, owner, caseId }) {
-    if (step.feed === undefined) {
-        if (step.read !== 'report' && step.read !== 'cells') fail(`${caseId} unknown plan step ${step.read}.`);
-        if (step.read === 'report' && record.report === null) fail(`${caseId} report read without an exchange.`);
-        const observed = await owner(`${pclPrefix}-read`, record.barriers.at(-1), step.read === 'report' ? { report: record.report } : {});
-        record.reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol], ...(step.read === 'report' ? { report: record.report } : {}) });
-        record.report = null;
+/** A read step journals the screen the parent observer sees after the last barrier, with the replies of the exchange that preceded it. */
+async function readStep(step, record, { owner, caseId }) {
+    if (step.read !== 'report' && step.read !== 'cells') fail(`${caseId} unknown plan step ${step.read}.`);
+    const wantsReport = step.read === 'report';
+    if (wantsReport && record.report === null) fail(`${caseId} report read without an exchange.`);
+    const observed = await owner(`${pclPrefix}-read`, record.barriers.at(-1), wantsReport ? { report: record.report } : {});
+    const journal = wantsReport ? { report: record.report } : {};
+    record.reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol], ...journal });
+    record.report = null;
+}
+
+/** A feed step writes the plan bytes; a capture step is one fenced exchange whose raw replies the next read journals, any other feed clears them. */
+async function feedStep(step, record, { fence }) {
+    record.feeds.push(step.feed);
+    if (step.capture === true) {
+        record.report = await fence.exchange(step.feed, parsePclFrame);
+        record.barriers.push(record.report.barrier);
         return;
     }
-    const capture = step.capture === true;
-    record.feeds.push(step.feed);
-    record.report = capture ? await fence.exchange(step.feed, parsePclFrame) : null;
-    record.barriers.push(capture ? record.report.barrier : await fence.write(step.feed));
+    record.report = null;
+    record.barriers.push(await fence.write(step.feed));
 }
 
 async function collectCase(contract, io) {
-    const record = { feeds: [], barriers: [], reads: [], report: null };
-    for (const step of contract.plan) await runStep(step, record, { ...io, caseId: contract.caseId }); // NOSONAR - serial by design
+    const record = { feeds: [], barriers: [], reads: [], report: null }, context = { ...io, caseId: contract.caseId };
+    for (const step of contract.plan) await (step.feed === undefined ? readStep : feedStep)(step, record, context); // NOSONAR - serial by design
     if (record.feeds.length !== planFeeds(contract).length || record.reads.length !== planReads(contract)) fail(`Incomplete ${contract.caseId} ${label} fixture.`);
     validateExactFeeds(contract, record.feeds);
-    return { caseId: contract.caseId, feeds: record.feeds, barriers: record.barriers, reads: record.reads };
+    const { feeds, barriers, reads } = record;
+    return { caseId: contract.caseId, feeds, barriers, reads };
 }
 
 /** Replay both pinned paths over the journaled bytes of the pinned request's own exchange, making exactly the contracted calls. */

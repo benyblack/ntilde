@@ -19,12 +19,14 @@ const afterChain = ['\x1b]10;rgb:1010/2020/3030' + st, '\x1b]11;rgb:4040/5050/60
 /** The expected reply list of every report role of each case, written out by hand. */
 const exchanges = Object.freeze({
     seeded,
-    pinned: [], 'query-st': [], set: [], 'query-after-set': [], 'set-hex': [], reset: [], 'reset-st': [], 'reset-argument': [],
+    pinned: [], 'query-st': [], 'query-after-set': [],
+    // Every mutating request carries its own five-color read, so each answers exactly the seeded colors and nothing for the pointer sequence itself.
+    set: seeded, 'set-hex': seeded, reset: seeded, 'reset-st': seeded, 'reset-argument': seeded,
     'colors-after-pointer': seeded,
     'control-move': ['\x1b]12;rgb:e0e0/a0a0/2020' + st],
     chain: [],
     'colors-after-chain': afterChain,
-    recover: [afterChain[2]],
+    recover: [afterChain[2], ...afterChain],
 });
 
 /** The screens and reply lists of every read of the case; `mutate(role, read)` may return a changed read to build negative evidence. */

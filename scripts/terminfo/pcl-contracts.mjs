@@ -8,7 +8,8 @@
 //             this owned run never serves: a reply would end the suite's unsupported contract (see below).
 //   terminal  writes CUP 1;1 and EL 2, then `OSC <reset> BEL` (113 or 114), asks the cursor position and returns unverifiedEffect: inconclusive, reason `insufficient-evidence`, evidence `consumed`,
 //             note "Cursor answered; pointer foreground/background restoration was not measured". It never measures a pointer colour.
-// Neither pinned path can return unsupported, so the pinned verdict stays inconclusive; this contract never promotes or demotes it.
+// While the query stays unanswered neither pinned path can return unsupported (the termless code returns inconclusive without a complete reply and the terminal path is unverifiedEffect), so the pinned verdict
+// stays inconclusive; this contract never promotes or demotes it. A complete reply would let the pinned code continue and can end in unsupported when a mutation succeeds but is not restored: that run is refused, not graded.
 //
 // The authoritative contract is xterm's: OSC 13 and OSC 14 set or query the pointer (mouse) foreground and background colors and OSC 113 / OSC 114 reset them, continuing a chained
 // `OSC 10 ; a ; b ; ...` through 11, 12, 13 (pointer foreground), 14 (pointer background), 15, 16, 17 (highlight background), 18 and 19 (highlight foreground). Ntilde's deliberate policy (#991) is
@@ -80,7 +81,7 @@ export const pclPinnedScripts = Object.freeze(Object.fromEntries(pclCaseIds.map(
 const pinnedCriteria = Object.freeze(Object.fromEntries(pclCaseIds.map(caseId => [caseId,
     `colorResetProbe(${pclPinned[caseId].setCode}, ${pclPinned[caseId].resetCode}) feeds the BEL-spelled query OSC ${pclPinned[caseId].setCode} ; ? and returns oscReplyResult(raw, null, ...) when the captured text holds `
     + `no complete rgb reply (inconclusive, no-response); the terminal path writes CUP, EL and OSC ${pclPinned[caseId].resetCode}, asks the cursor position and returns unverifiedEffect (inconclusive, consumed); `
-    + 'neither path can be unsupported'])));
+    + 'neither path can be unsupported while the query stays unanswered'])));
 
 /** The pinned termless result over the journaled reply text of the case's own exchange. A complete reply would make the pinned code continue (set, query, reset, query), which this owned run never
  *  serves, so the replay refuses it instead of inventing the rest of the fixture. */
@@ -135,21 +136,23 @@ const ask = (role, kind, note, request, demand) => {
 function groupsOf(caseId) {
     const { setCode, resetCode, query } = pclPinned[caseId];
     const silent = (role, note, request) => ask(role, 'protocol', note, request, []);
+    // A mutating request carries its own five-color read, so a color a set changed cannot be restored by a later reset before anything looks: every spelling is judged on its own bytes.
+    const unchanged = (role, note, request) => ask(role, 'protocol', note, request + colorRead, seededReplies);
     return Object.freeze([
         ask('seeded', 'control', 'the five colors read back exactly as seeded before any pointer sequence, so the color read can see a change and a silence is not a dead channel', colorRead, seededReplies),
         silent('pinned', `the exact pinned BEL-terminated OSC ${setCode} query is never answered`, query),
         silent('query-st', `the same OSC ${setCode} query ended by ST is never answered`, osc(`${setCode};?`, st)),
-        silent('set', `an OSC ${setCode} set (rgb: spelling) is ignored and not answered`, osc(`${setCode};rgb:aa/bb/cc`)),
+        unchanged('set', `an OSC ${setCode} set (rgb: spelling) is ignored and not answered: the five colors still read back as seeded`, osc(`${setCode};rgb:aa/bb/cc`)),
         silent('query-after-set', `an OSC ${setCode} query after a set is still not answered: nothing was stored to read back`, query),
-        silent('set-hex', `an OSC ${setCode} set in the # spelling, ST-terminated, is ignored and not answered`, osc(`${setCode};#aabbcc`, st)),
-        silent('reset', `the exact OSC ${resetCode} reset the pinned terminal path writes is ignored and not answered`, osc(String(resetCode))),
-        silent('reset-st', `an OSC ${resetCode} reset ended by ST is ignored and not answered`, osc(String(resetCode), st)),
-        silent('reset-argument', `an OSC ${resetCode} reset with an argument is ignored and not answered`, osc(`${resetCode};1`)),
+        unchanged('set-hex', `an OSC ${setCode} set in the # spelling, ST-terminated, is ignored and not answered: the five colors still read back as seeded`, osc(`${setCode};#aabbcc`, st)),
+        unchanged('reset', `the exact OSC ${resetCode} reset the pinned terminal path writes is ignored and not answered: the five colors still read back as seeded`, osc(String(resetCode))),
+        unchanged('reset-st', `an OSC ${resetCode} reset ended by ST is ignored and not answered: the five colors still read back as seeded`, osc(String(resetCode), st)),
+        unchanged('reset-argument', `an OSC ${resetCode} reset with an argument is ignored and not answered: the five colors still read back as seeded`, osc(`${resetCode};1`)),
         ask('colors-after-pointer', 'protocol', `every pointer sequence above left the five colors exactly as seeded: no OSC ${setCode} or OSC ${resetCode} reached the foreground, background, cursor or selection colors`, colorRead, seededReplies),
         ask('control-move', 'control', 'an OSC 12 change of the cursor color is read back by its own query, so the replies do follow state', osc('12;#e0a020') + osc('12;?'), [movedCursor]),
         silent('chain', 'a chained OSC 12 set through the pointer slots to the highlight background is not answered', chainSet),
         ask('colors-after-chain', 'protocol', 'the chain took effect on the colors that exist (12 and 17) and on nothing else: the pointer slots between them consumed their values, so 17 did not shift', colorRead, afterChain),
-        ask('recover', 'protocol', `after all of them the OSC ${setCode} query is still not answered while the color read still is`, query + osc('12;?') + query, [afterChain[2]]),
+        ask('recover', 'protocol', `after all of them the OSC ${setCode} query is still not answered while the color read still is, and the colors are still the chained values`, query + osc('12;?') + query + colorRead, [afterChain[2], ...afterChain]),
     ]);
 }
 

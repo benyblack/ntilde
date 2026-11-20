@@ -18,8 +18,10 @@ Each case is registered in the bundle as `probe(id, colorResetProbe(setCode, res
 | termless | `feedCapture` of the query `OSC 13 ; ? BEL` (or 14); with no complete `OSC 13 ; rgb:<r>/<g>/<b>` reply it returns `oscReplyResult(raw, null, …)`; only a complete reply makes it continue (set, query, reset, query) | inconclusive `no-response` (or `invalid-reply` when only the prefix arrived); supported only over a full readback |
 | terminal | writes `ESC[1;1H ESC[2K`, `OSC 113 BEL` (or 114), asks the cursor position, returns `unverifiedEffect` | **always inconclusive** (`insufficient-evidence`, evidence `consumed`); the path the stock collector grades |
 
-Neither pinned path can return `unsupported`, so the pinned verdict can only be inconclusive for a terminal that does not answer the pointer query, and this qualification never promotes or demotes it.
-A terminal that *did* answer would need its own supported contract; the contract here refuses to grade such a run `unsupported` and marks it inconclusive instead.
+While the pointer query stays unanswered, neither pinned path can return `unsupported`: the termless function returns inconclusive without a complete reply, and the terminal path is `unverifiedEffect`. The pinned
+`colorResetProbe` *can* return `unsupported` after a complete reply when a mutation succeeds but its restoration fails; that branch is not reachable in this suite, because a complete reply to the pinned query makes the replay
+refuse the run (it would continue past the unsupported contract) instead of producing a report. This qualification therefore never promotes or demotes the pinned verdict, and a terminal that *did* answer would need its
+own supported contract: the contract here marks such a run inconclusive, never `unsupported`.
 
 ## Result
 
@@ -45,19 +47,19 @@ raw replies. The grading oracle is independent: literals written from the seeded
 | `seeded` | control | `OSC 10;? 11;? 12;? 17;? 19;?` | the five colors read back exactly as seeded | held |
 | `pinned` | protocol | `OSC 13;? BEL` (the exact pinned query) | never answered | no reply |
 | `query-st` | protocol | `OSC 13;? ST` | never answered | no reply |
-| `set` | protocol | `OSC 13;rgb:aa/bb/cc BEL` | ignored, not answered | no reply, nothing changed |
+| `set` | protocol | `OSC 13;rgb:aa/bb/cc BEL` + the five-color query | not answered; the five colors read back as seeded | held |
 | `query-after-set` | protocol | `OSC 13;? BEL` | still not answered (nothing was stored) | no reply |
-| `set-hex` | protocol | `OSC 13;#aabbcc ST` | ignored, not answered | no reply, nothing changed |
-| `reset` | protocol | `OSC 113 BEL` (the exact pinned reset) | ignored, not answered | no reply, nothing changed |
-| `reset-st` | protocol | `OSC 113 ST` | ignored, not answered | no reply, nothing changed |
-| `reset-argument` | protocol | `OSC 113;1 BEL` | ignored, not answered | no reply, nothing changed |
+| `set-hex` | protocol | `OSC 13;#aabbcc ST` + the five-color query | not answered; the five colors read back as seeded | held |
+| `reset` | protocol | `OSC 113 BEL` (the exact pinned reset) + the five-color query | not answered; the five colors read back as seeded | held |
+| `reset-st` | protocol | `OSC 113 ST` + the five-color query | not answered; the five colors read back as seeded | held |
+| `reset-argument` | protocol | `OSC 113;1 BEL` + the five-color query | not answered; the five colors read back as seeded | held |
 | `colors-after-pointer` | protocol | the five-color query | colors exactly as seeded | held |
 | `control-move` | control | `OSC 12;#e0a020 BEL OSC 12;? BEL` | a cursor-color change is read back (the replies follow state) | `rgb:e0e0/a0a0/2020` |
 | `chain` | protocol | `OSC 12;#010203;#040506;#070809;#0a0b0c;#0d0e0f;#101112 BEL` | not answered; the pointer slots consume their values | no reply |
 | `colors-after-chain` | protocol | the five-color query | 12 and 17 changed, 10, 11, 19 unchanged, 17 did not shift | held |
-| `recover` | protocol | `OSC 13;? BEL OSC 12;? BEL OSC 13;? BEL` | the pointer query is still silent while the color read still answers | held |
+| `recover` | protocol | `OSC 13;? BEL OSC 12;? BEL OSC 13;? BEL` + the five-color query | the pointer query is still silent, the color read still answers and the colors are still the chained values | held |
 
-Every group of both cases held, controls included. The retained run binds the case reads to the seeded color binding and the snapshot edges to the host binding, so a run in which the seed did not
+Every mutating request carries its own five-color read, so a color a set changed cannot be restored by a later reset before anything looks. Every group of both cases held, controls included. The retained run binds the case reads to the seeded color binding and the snapshot edges to the host binding, so a run in which the seed did not
 take, a palette changed or the restore failed is refused instead of graded.
 
 ## Limits

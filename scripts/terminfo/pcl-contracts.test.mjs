@@ -31,10 +31,18 @@ test('every pointer request demands silence, the colors demand the seeded and ch
     for (const contract of pclContracts) {
         const { setCode, resetCode } = pclPinned[contract.caseId];
         const byRole = Object.fromEntries(contract.groups.map(group => [group.role, group]));
-        for (const role of ['pinned', 'query-st', 'set', 'query-after-set', 'set-hex', 'reset', 'reset-st', 'reset-argument', 'chain']) {
+        for (const role of ['pinned', 'query-st', 'query-after-set', 'chain']) {
             assert.deepEqual(byRole[role].demand, [], role);
             assert.equal(byRole[role].kind, 'protocol');
         }
+        // Every mutating spelling carries its own five-color read: silence for the pointer sequence itself, the seeded colors right after it.
+        for (const role of ['set', 'set-hex', 'reset', 'reset-st', 'reset-argument']) {
+            assert.deepEqual(byRole[role].demand, pclFixture.seededReplies, role);
+            assert.ok(byRole[role].request.endsWith(pclFixture.colorRead), role);
+            assert.equal(byRole[role].kind, 'protocol');
+        }
+        assert.deepEqual(byRole.recover.demand, [pclFixture.afterChain[2], ...pclFixture.afterChain]);
+        assert.ok(byRole.recover.request.endsWith(pclFixture.colorRead));
         assert.deepEqual(byRole.seeded.demand, pclFixture.seededReplies);
         assert.deepEqual(byRole['colors-after-pointer'].demand, pclFixture.seededReplies);
         assert.deepEqual(byRole['colors-after-chain'].demand, pclFixture.afterChain);
@@ -124,4 +132,17 @@ test('observation building and grading refuse missing or malformed reads', () =>
     assert.throws(() => gradePclCase(contract, observation, 2), /Unknown pointer-color contracts revision/);
     assert.deepEqual(Object.keys(syntheticPclExchanges).sort(), ['chain', 'colors-after-chain', 'colors-after-pointer', 'control-move', 'pinned', 'query-after-set', 'query-st', 'recover', 'reset',
         'reset-argument', 'reset-st', 'seeded', 'set', 'set-hex']);
+});
+
+test('a color a set changed and a later reset restored is still caught: every mutating request is judged on its own five-color read', () => {
+    const answered = (caseId, role, reply) => gradeWith(caseId, (item, name, read) => (item === caseId && name === role
+        ? { ...read, replies: [...read.replies.slice(0, 2), reply, ...read.replies.slice(3)] } : null));
+    for (const caseId of pclCaseIds) {
+        for (const role of ['set', 'set-hex', 'reset', 'reset-st', 'reset-argument']) {
+            const changed = answered(caseId, role, '\x1b]12;rgb:0000/0000/0000\x1b\\');
+            assert.equal(changed.outcome, 'inconclusive', `${role}: a cursor-color change right after the request is not hidden by the later reads`);
+        }
+        const chained = gradeWith(caseId, (item, name, read) => (item === caseId && name === 'recover' ? { ...read, replies: [...read.replies.slice(0, 5), '\x1b]19;rgb:0000/0000/0000\x1b\\'] } : null));
+        assert.equal(chained.outcome, 'inconclusive', 'the final color read after the recovery queries is judged too');
+    }
 });
