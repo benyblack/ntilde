@@ -8,7 +8,8 @@ namespace Ntilde.VT
         /// <summary>
         /// Captures every field that survives a <see cref="Process"/> call, so another parser can
         /// resume this one's position in the stream - mid-CSI, mid-OSC, mid-kitty-payload, mid
-        /// charset designation. See <see cref="AnsiParserState"/> for what is deliberately left out.
+        /// charset designation. Byte-oriented callers also capture <see cref="PendingOutputBytes"/>
+        /// in the enclosing terminal snapshot so the decoder can resume at that cut.
         /// </summary>
         public AnsiParserState ExportState()
         {
@@ -36,6 +37,11 @@ namespace Ntilde.VT
                 ITerm2Multipart = ExportITerm2Multipart(),
                 Charsets = new int[4],
                 Gl = _gl,
+                Gr = _gr,
+                SingleShift = _singleShift,
+                PendingCharset96 = _pendingCharset96,
+                NationalCharset = _nationalCharset,
+                OutputCoding = (int)_outputCoding,
                 PendingCharsetSlot = _pendingCharsetSlot,
                 SwallowNextNewline = _swallowNextNewline,
                 VerticalOffset = _verticalOffset,
@@ -80,7 +86,7 @@ namespace Ntilde.VT
             _state = (State)state.State;
             bool inVt52 = _buffer.Modes.IsVt52;
             if (inVt52
-                ? _state is not (State.Normal or State.Esc or State.Vt52AddressRow or State.Vt52AddressColumn)
+                ? _state is not (State.Normal or State.Esc or State.CodingSystem or State.Vt52AddressRow or State.Vt52AddressColumn)
                 : _state is State.Vt52AddressRow or State.Vt52AddressColumn)
                 _state = State.Normal;
             _escapeSpacePending = _state == State.Esc && state.EscapeSpacePending;
@@ -139,6 +145,11 @@ namespace Ntilde.VT
             SixelCellSizeOverride = state.SixelCellWidthPx is float width && state.SixelCellHeightPx is float height ? new SixelCellSize(width, height) : null;
             _gl = state.Gl;
             _pendingCharsetSlot = state.PendingCharsetSlot;
+            _pendingCharset96 = _state == State.Charset && state.PendingCharset96;
+            _gr = state.Gr;
+            _singleShift = state.SingleShift;
+            _nationalCharset = state.NationalCharset;
+            _outputCoding = (OutputCoding)state.OutputCoding;
             _swallowNextNewline = state.SwallowNextNewline;
             _verticalOffset = state.VerticalOffset;
             _lastGraphicChar = string.IsNullOrEmpty(state.LastGraphicChar) ? null : state.LastGraphicChar[0];
@@ -277,6 +288,10 @@ namespace Ntilde.VT
 
             StateTransferValidation.RequireInRange(state.Vt52AddressRow, 0, 0x7f, "parser VT52 address row");
             StateTransferValidation.RequireInRange(state.Gl, 0, _charsets.Length - 1, "parser GL slot");
+            StateTransferValidation.RequireInRange(state.Gr, 0, _charsets.Length - 1, "parser GR slot");
+            ValidateSingleShift(state.SingleShift);
+            if (!Enum.IsDefined((OutputCoding)state.OutputCoding))
+                throw StateTransferValidation.Reject("output coding", "unknown coding system");
             StateTransferValidation.RequireInRange(
                 state.PendingCharsetSlot, -1, _charsets.Length - 1, "parser pending charset slot");
         }

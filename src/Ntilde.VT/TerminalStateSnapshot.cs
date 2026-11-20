@@ -133,13 +133,13 @@ namespace Ntilde.VT
 
         /// <summary>
         /// The partial UTF-8 code point the source's decoder was holding when this was taken;
-        /// feed it to the new decoder before the tail bytes. See <c>Utf8ChunkDecoder.PendingTail</c>.
+        /// restored by terminal state transfer before the next output bytes arrive.
         /// </summary>
         [JsonPropertyName("tail")] public byte[]? DecoderTail { get; set; }
 
         /// <summary>
         /// Byte offset into the session's output stream that this snapshot corresponds to:
-        /// <c>Utf8ChunkDecoder.ConsumedBytes</c>. The next unseen byte is at
+        /// the bytes already interpreted through this cut. The next unseen byte is at
         /// <c>StreamSeq + (DecoderTail?.Length ?? 0)</c>.
         /// </summary>
         [JsonPropertyName("seq")] public long StreamSeq { get; set; }
@@ -382,6 +382,8 @@ namespace Ntilde.VT
         [JsonPropertyName("decom"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? OriginMode { get; set; }
         [JsonPropertyName("gsets"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int[]? Charsets { get; set; }
         [JsonPropertyName("gl")] public int Gl { get; set; }
+        [JsonPropertyName("gr"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int Gr { get; set; }
+        [JsonPropertyName("ss"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int SingleShift { get; set; }
         [JsonPropertyName("row")] public int Row { get; set; }
         [JsonPropertyName("col")] public int Col { get; set; }
         [JsonPropertyName("sgr")] public TerminalSgrState Sgr { get; set; } = new();

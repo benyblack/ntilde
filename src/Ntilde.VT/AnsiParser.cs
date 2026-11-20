@@ -6,7 +6,7 @@ namespace Ntilde.VT
     {
         private TerminalBuffer _buffer;
         // State ordinals are persisted. Append new states at the end.
-        private enum State { Normal, Esc, Csi, Osc, OscEsc, Dcs, DcsEsc, Charset, Apc, ApcEsc, EscHash, Vt52AddressRow, Vt52AddressColumn }
+        private enum State { Normal, Esc, Csi, Osc, OscEsc, Dcs, DcsEsc, Charset, Apc, ApcEsc, EscHash, Vt52AddressRow, Vt52AddressColumn, CodingSystem }
         private State _state = State.Normal;
         private bool _escapeSpacePending;
         private bool _escapeSpaceHasExtraIntermediate;
@@ -15,11 +15,11 @@ namespace Ntilde.VT
         // Flag to swallow a single newline after an inline image (common in scripts)
         private bool _swallowNextNewline;
 
-        // DEC G0..G3 charset designation + GL shift state.
+        // DEC G0..G3 charset designation and invocation state.
         // mc/ncurses draw box characters via terminfo `smacs`/`rmacs` (SO/SI) and `ESC ( 0`
         // to designate G0 as DEC Special Graphics; printable letters then map per the table.
         // Ordinals are persisted (parser state, saved cursors): append, never reorder.
-        private enum Charset { Ascii, DecSpecialGraphics, Uk }
+        internal enum Charset { Ascii, DecSpecialGraphics, Uk, Latin1 }
         private readonly Charset[] _charsets = new Charset[] { Charset.Ascii, Charset.Ascii, Charset.Ascii, Charset.Ascii };
         private int _gl; // 0..3 — index into _charsets currently shifted to GL
         private int _pendingCharsetSlot = -1;
@@ -432,6 +432,7 @@ namespace Ntilde.VT
         {
             Charset.DecSpecialGraphics => MapDecSpecialGraphics(c),
             Charset.Uk => c == '#' ? '£' : c, // The VT100 UK set is ASCII with the pound sign at 2/3.
+            Charset.Latin1 when c is >= '\x20' and <= '\x7f' => (char)(c + 0x80),
             _ => c,
         };
 
@@ -620,8 +621,12 @@ namespace Ntilde.VT
 
         public void Process(string input)
         {
-            if (string.IsNullOrEmpty(input)) return;
+            if (!string.IsNullOrEmpty(input)) ProcessOutput(input, default, fromBytes: false);
+        }
 
+        private bool ProcessOutput(ReadOnlySpan<char> text, ReadOnlySpan<byte> bytes, bool fromBytes)
+        {
+            bool processed = false;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             _sawCursorHideInBatch = false;
             _sawCursorShowAfterHideInBatch = false;
@@ -631,9 +636,22 @@ namespace Ntilde.VT
             _buffer.EnterBatchWrite();
             try
             {
-                for (int i = 0; i < input.Length; i++)
+                char lowSurrogate = '\0';
+                int textIndex = 0;
+                while (true)
                 {
-                    char c = input[i];
+                    char c;
+                    bool rawGraphic = false;
+                    if (fromBytes)
+                    {
+                        if (!TryReadOutputByte(ref bytes, ref lowSurrogate, out c, out rawGraphic)) break;
+                    }
+                    else
+                    {
+                        if (textIndex == text.Length) break;
+                        c = text[textIndex++];
+                    }
+                    processed = true;
                     bool reprocessCurrent;
                     do
                     {
@@ -653,6 +671,10 @@ namespace Ntilde.VT
                                     if (_buffer.Modes.IsVt52) break;
                                     switch (c)
                                     {
+                                        case '\u008E':
+                                        case '\u008F':
+                                            SelectSingleShift(c == '\u008E' ? 2 : 3);
+                                            break;
                                         case '\u009B':
                                             BeginCsi();
                                             break;
@@ -673,18 +695,14 @@ namespace Ntilde.VT
                                             break;
                                     }
                                 }
-                                else if (c < 0x20 || c == 0x7F) // C0 Controls & DEL
+                                else if (c < 0x20 || (c == 0x7F && !IsLatin1LeftGraphic)) // C0 Controls & DEL
                                 {
                                     FlushText();
                                     ExecuteC0Control(c);
                                 }
                                 else
                                 {
-                                    // Printable Characters — translate via active GL charset.
-                                    Charset gl = _buffer.Modes.IsVt52
-                                        ? (_vt52Graphics ? Charset.DecSpecialGraphics : Charset.Ascii)
-                                        : _charsets[_gl];
-                                    _textBuffer.Append(gl == Charset.Ascii ? c : MapCharset(gl, c));
+                                    _textBuffer.Append(TranslateGraphic(c, rawGraphic));
                                 }
                                 break;
 
@@ -695,13 +713,20 @@ namespace Ntilde.VT
                                     break;
                                 }
 
+                                // Coding selection applies to the byte stream in either terminal mode.
+                                if (c == '%')
+                                {
+                                    _state = State.CodingSystem;
+                                    break;
+                                }
+
                                 if (_buffer.Modes.IsVt52)
                                 {
                                     HandleVt52Escape(c);
                                     break;
                                 }
 
-                                if (TryHandle7BitC1(c))
+                                if (TryHandleCharsetShift(c) || TryHandle7BitC1(c))
                                 {
                                     break;
                                 }
@@ -725,23 +750,10 @@ namespace Ntilde.VT
                                     _buffer.Modes.IsApplicationKeypad = c == '=';
                                     _state = State.Normal;
                                 }
-                                else if (c == '(' || c == ')' || c == '*' || c == '+' || c == '-')
+                                else if (c is >= '(' and <= '+' or '-' or '.' or '/')
                                 {
-                                    // G0..G3 charset designation. '(' designates G0, ')' G1,
-                                    // '*' G2, '+' G3. Capture slot, then consume the designator
-                                    // char on the next byte. '-' introduces a 96-character set,
-                                    // where 'A' is ISO Latin-1 supplemental rather than the UK
-                                    // set; no 96-character set is implemented, so its designator
-                                    // is consumed and no slot changes.
-                                    _pendingCharsetSlot = c switch
-                                    {
-                                        '(' => 0,
-                                        '-' => -1,
-                                        ')' => 1,
-                                        '*' => 2,
-                                        '+' => 3,
-                                        _ => 0,
-                                    };
+                                    _pendingCharset96 = c >= '-';
+                                    _pendingCharsetSlot = _pendingCharset96 ? c - '-' + 1 : c - '(';
                                     _state = State.Charset;
                                 }
                                 else if (c == ' ')
@@ -766,14 +778,20 @@ namespace Ntilde.VT
                                 break;
 
                             case State.Charset:
-                                // The designator chooses the table loaded into the slot captured in State.Esc.
-                                // See CharsetForDesignator for the designators that are not ASCII pass-through.
-                                if (_pendingCharsetSlot >= 0 && _pendingCharsetSlot < _charsets.Length)
+                                if (_pendingCharsetSlot >= 0)
                                 {
-                                    _charsets[_pendingCharsetSlot] = CharsetForDesignator(c);
+                                    if (!_pendingCharset96) _charsets[_pendingCharsetSlot] = CharsetForDesignator(c);
+                                    else if (c == 'A') _charsets[_pendingCharsetSlot] = Charset.Latin1;
                                 }
                                 _pendingCharsetSlot = -1;
+                                _pendingCharset96 = false;
                                 _state = State.Normal;
+                                break;
+
+                            case State.CodingSystem:
+                                if (c == '@') _outputCoding = OutputCoding.Latin1;
+                                else if (c == 'G') _outputCoding = OutputCoding.Utf8;
+                                _state = c == '\x1b' ? State.Esc : State.Normal;
                                 break;
 
                             case State.EscHash:
@@ -980,6 +998,7 @@ namespace Ntilde.VT
                 _buffer.ExitBatchWrite();
                 sw.Stop();
             }
+            return processed;
         }
 
         private bool EnsureCsiParamCapacity(int required)

@@ -100,6 +100,31 @@ public sealed class HeadlessTerminalSessionTests
         }
     }
 
+    [Fact]
+    public async Task Latin1_right_shift_and_UTF8_tail_match_when_output_resumes_after_attach()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            byte[] prefix = [.. "\x1b+A\x1b|"u8, 0xff, 0xe2];
+            fake.EmitInChunks(prefix, 1);
+            await mux.FlushAsync();
+            TerminalStateSnapshot snapshot = await mux.InvokeAsync(() => mux.CaptureSnapshot(0));
+            Assert.Equal(prefix.Length - 1, snapshot.StreamSeq);
+            Assert.Equal(new byte[] { 0xe2 }, snapshot.DecoderTail);
+
+            var restored = new TerminalBuffer(80, 24);
+            var parser = new AnsiParser(restored);
+            TerminalStateTransfer.Restore(restored, parser, snapshot);
+            byte[] remaining = [0x82, 0xac, 0xa3];
+            parser.ProcessBytes(remaining);
+            fake.EmitInChunks(remaining, 1);
+            await mux.FlushAsync();
+            Assert.StartsWith("ÿ€£", ScreenText(restored), StringComparison.Ordinal);
+            Assert.Equal(ScreenText(restored), ScreenText(mux.Buffer));
+        }
+    }
+
     [Theory]
     [MemberData(nameof(CorpusNames))]
     public async Task A_captured_snapshot_plus_the_tail_equals_the_mux(string name)

@@ -99,6 +99,7 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITermina
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
     public void UseHostRecordingBoundary() => _inner.UseHostRecordingBoundary();
     public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler) => _inner.SubscribeRecordingOutput(handler);
+    public void SubscribeTerminalOutput(Action<string, TerminalOutputChunk> handler) => _inner.SubscribeTerminalOutput(handler);
     public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) => _inner.RecordOutputAtHostBoundary(output);
     public void SetRecordingCellMetrics(float widthPx, float heightPx) => _inner.SetRecordingCellMetrics(widthPx, heightPx);
 

@@ -284,6 +284,36 @@ public sealed class ReplaySeekIsolationTests
     }
 
     [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Recorded_checkpoint_uses_its_captured_decoder_tail(bool latin1, bool hasMarker)
+    {
+        byte[] prefix = latin1 ? [.. "\u001b%@checkpoint"u8, 0xe9] : [.. "checkpoint"u8, 0xc3];
+        byte[] tail = latin1 ? [(byte)'Z'] : [0xb1, (byte)'Z'];
+        var source = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(source) { SixelCellSizeOverride = new SixelCellSize(10, 20) };
+        parser.ProcessBytes(prefix);
+        var checkpoint = CaptureSnapshot(source, parser);
+        Assert.True(checkpoint.HasDecoderTail);
+        Assert.Equal(latin1 ? [] : new byte[] { 0xc3 }, checkpoint.State!.DecoderTail);
+        checkpoint.HasDecoderTail = hasMarker;
+
+        ReplayEvent[] events = [
+            new() { Type = "data", TimeOffsetMs = 10, Data = Convert.ToBase64String(prefix) },
+            Snapshot(20, checkpoint),
+            new() { Type = "data", TimeOffsetMs = 30, Data = Convert.ToBase64String(tail) }];
+        using var fixture = new SeekFixture(events);
+        await fixture.Ready(30);
+        parser.ProcessBytes(tail);
+        await fixture.Seek(30);
+        AssertPair(source, parser, fixture.Buffer, fixture.Parser);
+        await fixture.PlayFrom(20);
+        AssertPair(source, parser, fixture.Buffer, fixture.Parser);
+    }
+
+    [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Prefix_reconstruction_does_not_publish_times_before_the_requested_playback_position(bool complete)
@@ -326,13 +356,18 @@ public sealed class ReplaySeekIsolationTests
 
     private static ReplaySnapshot CaptureLegacy(TerminalBuffer buffer)
     {
+        var snapshot = CaptureSnapshot(buffer, null);
+        Assert.Null(snapshot.State);
+        return snapshot;
+    }
+
+    private static ReplaySnapshot CaptureSnapshot(TerminalBuffer buffer, AnsiParser? parser)
+    {
         string path = Path.GetTempFileName();
         try
         {
-            using (var recorder = new PtyRecorder(path, buffer.Cols, buffer.Rows)) recorder.RecordSnapshot(buffer);
-            var snapshot = JsonSerializer.Deserialize(File.ReadAllLines(path)[1], ReplayJsonContext.Default.ReplayEvent)!.Snapshot!;
-            Assert.Null(snapshot.State);
-            return snapshot;
+            using (var recorder = new PtyRecorder(path, buffer.Cols, buffer.Rows)) recorder.RecordSnapshot(buffer, parser);
+            return JsonSerializer.Deserialize(File.ReadAllLines(path)[1], ReplayJsonContext.Default.ReplayEvent)!.Snapshot!;
         }
         finally { File.Delete(path); }
     }

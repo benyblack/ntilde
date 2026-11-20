@@ -757,14 +757,22 @@ namespace Ntilde.Controls
         {
             // Wire up Output. CreateAndWireParser, which session start runs first, sets Parser, and nothing
             // sets it back to null.
-            void ApplyOutput(string text, ReadOnlyMemory<byte> recordedBytes)
+            void ApplyOutput(string text, TerminalOutputChunk chunk, ReadOnlySpan<byte> outputBytes)
             {
                 lock (_localSixelRecordingGate)
                 {
                     if (!ReferenceEquals(Session, session)) return;
-                    (session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(recordedBytes);
-                    if (text.Length == 0) return; // Raw UTF-8 prefixes are recorded but have not painted anything yet.
-                    Parser!.Process(text);
+                    if (chunk.RecordAtHost) (session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(chunk.Bytes);
+                    if (chunk.ResetDecoder) Parser!.RestoreOutputTail(default);
+                    if (!outputBytes.IsEmpty)
+                    {
+                        if (!Parser!.ProcessBytes(outputBytes)) return;
+                    }
+                    else
+                    {
+                        if (text.Length == 0) return;
+                        Parser!.Process(text);
+                    }
                 }
                 NoteSessionOutputApplied();
                 QueueOutputUiRefresh();
@@ -796,8 +804,11 @@ namespace Ntilde.Controls
                 };
             }
 
-            if (session is ITerminalRecordingBoundary boundary) boundary.SubscribeRecordingOutput(ApplyOutput);
-            else session.OnOutputReceived += text => ApplyOutput(text, default);
+            if (session is ITerminalRecordingBoundary boundary)
+                boundary.SubscribeTerminalOutput((text, chunk) => ApplyOutput(text, chunk, chunk.Bytes.Span));
+            else if (session is MuxClientSession mux)
+                mux.OutputBytesReceived += bytes => ApplyOutput(string.Empty, default, bytes);
+            else session.OnOutputReceived += text => ApplyOutput(text, default, default);
 
             PublishAgentSessionLifecycle(session);
             WireReusedTermViewHandlers();

@@ -27,7 +27,7 @@ public sealed class TextClientModel : IDisposable
         if (PersistentImagePolicy.AllowsFileTransport(session.RequiredImagePolicy)) Parser.ReadFileBytes = session.ReadTransportFile;
         Parser.OnResponse = static _ => { };
         session.SnapshotReceived += OnSnapshot;
-        session.OnOutputReceived += OnOutput;
+        session.OutputBytesReceived += OnOutput;
         session.StreamResize += OnResize;
         session.SixelCellSizeChanged += OnSixelCellSize;
     }
@@ -43,7 +43,7 @@ public sealed class TextClientModel : IDisposable
     public void Dispose()
     {
         Session.SnapshotReceived -= OnSnapshot;
-        Session.OnOutputReceived -= OnOutput;
+        Session.OutputBytesReceived -= OnOutput;
         Session.StreamResize -= OnResize;
         Session.SixelCellSizeChanged -= OnSixelCellSize;
     }
@@ -54,10 +54,9 @@ public sealed class TextClientModel : IDisposable
         Changed?.Invoke();
     }
 
-    private void OnOutput(string text)
+    private void OnOutput(ReadOnlySpan<byte> bytes)
     {
-        Parser.Process(text);
-        Changed?.Invoke();
+        if (Parser.ProcessBytes(bytes)) Changed?.Invoke();
     }
 
     private void OnSixelCellSize(float width, float height) =>

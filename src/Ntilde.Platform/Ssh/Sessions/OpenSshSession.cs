@@ -105,6 +105,12 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
         if (_inner is ITerminalRecordingBoundary boundary) boundary.SubscribeRecordingOutput(handler);
         else _inner.OnOutputReceived += text => handler(text, default);
     }
+    public void SubscribeTerminalOutput(Action<string, TerminalOutputChunk> handler)
+    {
+        if (_inner is ITerminalRecordingBoundary boundary) boundary.SubscribeTerminalOutput(handler);
+        else _inner.OnOutputReceived += text => handler(text, default);
+    }
+
     public void RecordOutputAtHostBoundary(ReadOnlyMemory<byte> output) =>
         (_inner as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(output);
 

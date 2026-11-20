@@ -10,6 +10,8 @@ namespace Ntilde.VT
             var saved = _buffer.ActiveSavedCursor;
             saved.Charsets = Array.ConvertAll(_charsets, charset => (int)charset);
             saved.Gl = _gl;
+            saved.Gr = _gr;
+            saved.SingleShift = _singleShift;
         }
 
         private void RestoreCursor()
@@ -31,13 +33,18 @@ namespace Ntilde.VT
             if (saved.Charsets is not { } charsets) return; // legacy snapshot lacks this context
             for (int i = 0; i < _charsets.Length; i++) _charsets[i] = (Charset)charsets[i];
             _gl = saved.Gl;
+            _gr = saved.Gr;
+            _singleShift = saved.SingleShift;
         }
 
         private void ResetCharsets()
         {
             Array.Fill(_charsets, Charset.Ascii);
             _gl = 0;
+            _gr = 0;
+            _singleShift = 0;
             _pendingCharsetSlot = -1;
+            _pendingCharset96 = false;
         }
 
         private void HardReset()
@@ -52,6 +59,8 @@ namespace Ntilde.VT
             _vt52Graphics = false;
             _vt52AddressRow = 0;
             _vt100ControlMode = false;
+            _nationalCharset = false;
+            _outputCoding = OutputCoding.Automatic;
             // RIS also disables parser-owned reporting modes.
             _send8BitControls = false;
             _inBandResizeReportsEnabled = false;

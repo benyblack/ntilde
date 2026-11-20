@@ -17,9 +17,10 @@ public sealed class PendingOutputReplay
     /// <summary>About two megabytes of UTF-16: tens of screens of startup output, far more than a prompt.</summary>
     public const int DefaultMaxChars = 1 << 20;
 
-    private readonly Queue<string> _chunks = new();
+    private readonly Queue<(string Text, TerminalOutputChunk Output)> _chunks = new();
     private readonly int _maxChars;
     private long _chars;
+    private long _bytes;
 
     public PendingOutputReplay(int maxChars = DefaultMaxChars)
     {
@@ -34,17 +35,23 @@ public sealed class PendingOutputReplay
     /// <summary>Whether older output has been dropped to stay within <see cref="MaxChars"/>.</summary>
     public bool DroppedOutput { get; private set; }
 
-    public void Add(string text)
+    public void Add(string text, TerminalOutputChunk output = default)
     {
-        _chunks.Enqueue(text);
+        _chunks.Enqueue((text, output));
         _chars += text.Length;
-        while (_chars > _maxChars && _chunks.Count > 1)
+        _bytes += output.Bytes.Length;
+        // UTF-8 takes up to three bytes per UTF-16 code unit.
+        while ((_chars > _maxChars || _bytes > 3L * _maxChars) && _chunks.Count > 1)
         {
-            _chars -= _chunks.Dequeue().Length;
+            var dropped = _chunks.Dequeue();
+            _chars -= dropped.Text.Length;
+            _bytes -= dropped.Output.Bytes.Length;
             DroppedOutput = true;
         }
     }
 
-    /// <summary>The held chunks, oldest first.</summary>
-    public string[] ToArray() => _chunks.ToArray();
+    /// <summary>The held text chunks, oldest first.</summary>
+    public string[] ToArray() => _chunks.Select(chunk => chunk.Text).ToArray();
+
+    internal IEnumerable<(string Text, TerminalOutputChunk Output)> Chunks => _chunks;
 }

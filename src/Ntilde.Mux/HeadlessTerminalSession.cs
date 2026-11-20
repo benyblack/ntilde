@@ -23,7 +23,7 @@ namespace Ntilde.Mux;
 /// <para>
 /// <b>Stream offset.</b> <see cref="StreamPosition"/> counts bytes fed to the decoder. An Output
 /// frame carries the offset before its chunk; a ResizeEvent the offset it applies at; a snapshot
-/// <c>StreamSeq = ConsumedBytes</c> with <c>StreamSeq + DecoderTail.Length == StreamPosition</c>.
+/// <c>StreamSeq + DecoderTail.Length == StreamPosition</c>; the decoder tail lives in the parser.
 /// </para>
 /// <para>
 /// <b>The mux answers device queries</b>: <c>OnResponse</c> goes to the session and nowhere else.
@@ -37,7 +37,6 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly ITerminalByteOutput _byteOutput;
     private readonly TerminalBuffer _buffer;
     private readonly AnsiParser _parser;
-    private readonly Utf8ChunkDecoder _decoder = new();
     private readonly BlockingCollection<WorkItem> _control = new();
     private readonly BlockingCollection<WorkItem> _data = new(DataQueueCapacity);
     private readonly BlockingCollection<WorkItem>[] _queues;
@@ -60,7 +59,6 @@ public sealed class HeadlessTerminalSession : IDisposable
     private bool _keyboardCapabilitiesPending;
     private readonly HashSet<IMuxFrameSink> _sixelLayoutSinks = new();
     private bool _sixelCellSizePending;
-    private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private readonly List<(string Path, byte[]? Data)> _fileReads = new(); // the t=f files the chunk being parsed read, in command order (parse thread only; #887)
     private long _fileReadBytes; // what _fileReads holds
     private long _rawOffset;
@@ -632,10 +630,8 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         TerminalStateSnapshot snapshot = _buffer.ExportState(maxScrollbackRows, includeImages);
         snapshot.Parser = _parser.ExportState();
-        snapshot.DecoderTail = _decoder.PendingTail.ToArray();
-        snapshot.StreamSeq = _decoder.ConsumedBytes;
-        Debug.Assert(snapshot.StreamSeq + snapshot.DecoderTail.Length == Interlocked.Read(ref _rawOffset),
-            "decoder position and raw offset disagree: some byte bypassed the decoder");
+        snapshot.DecoderTail = _parser.PendingOutputBytes.ToArray();
+        snapshot.StreamSeq = Interlocked.Read(ref _rawOffset) - snapshot.DecoderTail.Length;
         return snapshot;
     }
 
@@ -958,14 +954,20 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     private void EchoKeyboardText(QueuedInput input)
     {
-        if (!_decoder.PendingTail.IsEmpty || !_buffer.Modes.IsLocalEchoEnabled) return;
+        if (!_parser.PendingOutputBytes.IsEmpty || !_buffer.Modes.IsLocalEchoEnabled) return;
 
         string text;
         try { text = input.Text ?? StrictInputUtf8.GetString(input.Bytes!); }
         catch (System.Text.DecoderFallbackException) { return; }
 
-        if (_parser.CanEchoKeyboardText(text))
-            ProcessChunk(input.Bytes ?? StrictInputUtf8.GetBytes(text), childOutput: false);
+        if (!_parser.CanEchoKeyboardText(text)) return;
+
+        // The same stream feeds the daemon and attached panes. Temporarily select UTF-8
+        // for committed keyboard text, then restore the child's single-byte coding.
+        byte[] echo = _parser.UsesLatin1OutputCoding
+            ? StrictInputUtf8.GetBytes("\u001b%G" + text + "\u001b%@")
+            : input.Bytes ?? StrictInputUtf8.GetBytes(text);
+        ProcessChunk(echo, childOutput: false);
     }
 
     private void ProcessChunk(byte[] data, bool childOutput = true)
@@ -981,21 +983,15 @@ public sealed class HeadlessTerminalSession : IDisposable
         _fileReads.Clear();
         _fileReadBytes = 0;
         if (childOutput) (_session as ITerminalRecordingBoundary)?.RecordOutputAtHostBoundary(data);
-        int maxChars = Utf8ChunkDecoder.GetMaxCharCount(data.Length);
-        if (_chars.Length < maxChars) _chars = new char[maxChars];
-        int charCount = _decoder.Decode(data, _chars);
-        if (charCount > 0)
+        try
         {
-            try
-            {
-                _parser.Process(new string(_chars, 0, charCount));
-            }
-            catch (Exception ex)
-            {
-                Log($"[Mux] session {Id} faulted: the parser threw at stream offset {seq}: {ex}");
-                EnterFaulted($"The parser threw at stream offset {seq}: {ex.GetType().Name}.");
-                return;
-            }
+            _parser.ProcessBytes(data);
+        }
+        catch (Exception ex)
+        {
+            Log($"[Mux] session {Id} faulted: the parser threw at stream offset {seq}: {ex}");
+            EnterFaulted($"The parser threw at stream offset {seq}: {ex.GetType().Name}.");
+            return;
         }
 
         if (_subscribers.Count > 0)

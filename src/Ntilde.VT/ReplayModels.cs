@@ -83,6 +83,17 @@ namespace Ntilde.VT
         [JsonPropertyName("state"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public TerminalStateSnapshot? State { get; set; }
 
+        /// <summary>The checkpoint captured the decoder tail, including an explicitly empty tail.</summary>
+        // Older recordings could serialize the uncaptured byte array as an empty base64 string.
+        [JsonPropertyName("has_decoder_tail"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool HasDecoderTail { get; set; }
+
+        // A held prefix or explicit byte coding also identifies state captured by the byte decoder.
+        [JsonIgnore]
+        public bool HasCapturedDecoderTail =>
+            State is { Version: TerminalStateSnapshot.CurrentVersion } state
+            && (HasDecoderTail || state.DecoderTail is { Length: > 0 } || state.Parser is { OutputCoding: not 0 });
+
         [JsonPropertyName("cols")] public int Cols { get; set; }
         [JsonPropertyName("rows")] public int Rows { get; set; }
         [JsonPropertyName("cx")] public int CursorCol { get; set; }

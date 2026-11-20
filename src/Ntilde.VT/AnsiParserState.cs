@@ -95,6 +95,12 @@ namespace Ntilde.VT
         /// <summary>Which of <see cref="Charsets"/> is shifted to GL (0..3).</summary>
         [JsonPropertyName("gl")] public int Gl { get; set; }
 
+        [JsonPropertyName("gr"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int Gr { get; set; }
+        [JsonPropertyName("ss"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int SingleShift { get; set; }
+        [JsonPropertyName("charset96"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool PendingCharset96 { get; set; }
+        [JsonPropertyName("nrc"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool NationalCharset { get; set; }
+        [JsonPropertyName("output_coding"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int OutputCoding { get; set; }
+
         /// <summary>Slot awaiting its designation byte, or -1.</summary>
         [JsonPropertyName("pending_charset")] public int PendingCharsetSlot { get; set; } = -1;
 
