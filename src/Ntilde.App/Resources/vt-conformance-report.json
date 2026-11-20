@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "192ad3d9c9b152d083dd8a406694f1d473884594ab0070f0d6165cd38980c5fd",
+  "matrixSha256": "55fe34609d885e22988b1d8514c9cfd861c6aa07cfd7c7b4bafb87651c7c1671",
   "summary": {
     "totalRows": 158,
     "supportedCount": 75,
@@ -9,7 +9,7 @@
     "experimentalCount": 1,
     "notSupportedCount": 8,
     "wontSupportCount": 0,
-    "rowsWithLinkedEvidence": 152,
+    "rowsWithLinkedEvidence": 153,
     "supportedRowsWithLinkedEvidence": 75,
     "errorCount": 0,
     "warningCount": 0
@@ -1812,13 +1812,20 @@
       "feature": "DECSCLM smooth-scroll mode",
       "status": "\u274C Not supported",
       "specOrNotes": "CSI ? 4 h/l",
-      "evidenceText": "\u2014",
-      "evidenceKinds": [],
-      "evidenceLinks": [],
-      "hasAutomatedEvidenceSignal": false,
-      "hasLinkedEvidence": false,
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/DecsclmPolicyTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.VT.Tests/DecsclmPolicyTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
       "ownership": "VT\u002BApp",
-      "knownDeviations": "No tracked private mode 4 or terminal-controlled smooth-scroll behavior. ANSI mode 4 is insert mode (IRM), a separate feature.",
+      "knownDeviations": "Deliberately not implemented (policy, #1001): the mode asks the terminal to rate-limit its own output scrolling, and letting a byte stream throttle the terminal is a product decision nobody has made, so private mode 4 is untracked. \u0060CSI ? 4 h\u0060 / \u0060l\u0060 and XTSAVE/XTRESTORE of it are ignored (other modes in the same list still apply), \u0060CSI ? 4 $ p\u0060 answers Pm 0 (not recognized, never set or reset), and output scrolls at full speed. ANSI mode 4 is insert mode (IRM), a separate feature that is unaffected, and the wheel-scroll animation (the \u0060SmoothScrolling\u0060 setting) is a different feature that a program cannot control. Parser and buffer tests only; no scroll timing has been measured. Any later implementation needs an output-rate contract with a hard cap and a user override, plus elapsed-time scroll captures with a mode-off comparison.",
       "sourceLine": 148
     },
     {
