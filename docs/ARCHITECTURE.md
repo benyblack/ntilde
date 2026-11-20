@@ -238,13 +238,12 @@ Settings update host defaults while preserving an explicit application cursor ov
 New replay snapshots embed the existing complete terminal/parser model without scrollback,
 with legacy viewport fields retained for older readers.
 
-DECRQSS reports only the current top/bottom margins for exact complete `$qr`
+DECRQSS reports the active margins for exact complete `$qr` and `$qs`
 terminated by standard ST. VT returns absolute one-based margin values with xterm's
 1-success/0-failure polarity, preserving its existing failures despite the VT510
 manual's opposite documented status. The parser's batch lock protects the owned
 state read; invalid margins, lost/unknown input and BEL recovery stay negative.
-This query changes no terminal state. DECRQSS settings other than `r`, `m` and
-`SP q` remain negative; no family-wide or fresh runtime support is inferred.
+These reports leave terminal state intact.
 
 DECRQSS `m` and `SP q` (#844) use the same exact-request, standard-ST and
 completeness rules. `m` reports the active pen xterm style, starting with `0` so
@@ -252,6 +251,10 @@ replaying the report reproduces the pen; underline styles use `4:n` and extended
 colors use semicolon forms. `SP q` reports `0` while the host's configured cursor
 is shown and xterm's 1-6 code for an application override. DECSCUSR 0 restores the
 host's configured cursor, so a saved report restores exactly what was shown.
+
+DECRQSS `"q` and `*x` use the same request rules to report the effective VT
+settings. DECSCA returns 1 for a protected pen and 0 otherwise. DECSACE returns 2
+for rectangle and 0 for stream. Both replies can be replayed as CSI setters.
 
 XTGETTCAP (#844) answers from `TerminalCapabilities`, the one table of what Ntilde
 advertises beyond `xterm-256color`; `TerminfoSource` generates the opt-in `xterm-ntilde`

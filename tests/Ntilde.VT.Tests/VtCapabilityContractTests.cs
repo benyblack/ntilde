@@ -65,6 +65,8 @@ public sealed class VtCapabilityContractTests
             ["decrqss-left-right-margins"] = AssertDecrqssLeftRightMargins,
             ["decrqss-sgr"] = AssertDecrqssSgr,
             ["decrqss-cursor-style"] = AssertDecrqssCursorStyle,
+            ["decrqss-character-protection"] = () => AssertDecrqssSetting("\x1b[1\"q", "\"q", "1\"q"),
+            ["decrqss-attribute-change-extent"] = () => AssertDecrqssSetting("\x1b[2*x", "*x", "2*x"),
             ["xtgettcap"] = AssertXtgettcap,
             ["xtsmgraphics"] = AssertXtsmgraphics,
             ["tertiary-device-attributes"] = AssertTertiaryDeviceAttributes,
@@ -156,6 +158,8 @@ public sealed class VtCapabilityContractTests
             ["decrqss-left-right-margins"] = "\x1bP$qs\x1b\\",
             ["decrqss-sgr"] = "\x1bP$qm\x1b\\",
             ["decrqss-cursor-style"] = "\x1bP$q q\x1b\\",
+            ["decrqss-character-protection"] = "\x1bP$q\"q\x1b\\",
+            ["decrqss-attribute-change-extent"] = "\x1bP$q*x\x1b\\",
             ["xtgettcap"] = "\x1bP+q436f;544e\x1b\\",
             ["xtsmgraphics"] = "\x1b[?1;1;0S\x1b[?2;1;0S",
             ["tertiary-device-attributes"] = "\x1b[=0c",
@@ -547,6 +551,14 @@ public sealed class VtCapabilityContractTests
         new AnsiParser(new TerminalBuffer(40, 6)) { OnResponse = responses.Add }
             .Process("\x1bP$q q\x1b\\\x1b[6 q\x1bP$q q\x1b\\");
         Assert.Equal(new[] { "\x1bP1$r0 q\x1b\\", "\x1bP1$r6 q\x1b\\" }, responses);
+    }
+
+    private static void AssertDecrqssSetting(string setter, string request, string setting)
+    {
+        var responses = new List<string>();
+        new AnsiParser(new TerminalBuffer(40, 6)) { OnResponse = responses.Add }
+            .Process(setter + "\x1bP$q" + request + "\x1b\\");
+        Assert.Equal("\x1bP1$r" + setting + "\x1b\\", Assert.Single(responses));
     }
 
     private static void AssertTertiaryDeviceAttributes()

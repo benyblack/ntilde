@@ -238,7 +238,7 @@
       "key": "DCS:$qr",
       "mnemonic": "DECRQSS top/bottom margins",
       "support": "supported",
-      "description": "Report current absolute one-based VT margins with xterm status 1, only for exact complete r requests terminated by standard ST. BEL recovery and incomplete DCS stay negative; other settings are unavailable apart from the separately listed m and SP q reports.",
+      "description": "Report current absolute one-based VT margins with xterm status 1, only for exact complete r requests terminated by standard ST. BEL recovery and incomplete DCS stay negative.",
       "matrixFeature": "DECRQSS top/bottom margin query",
       "evidencePath": "tests/Ntilde.VT.Tests/DecrqssMarginQueryTests.cs",
       "contractCase": "decrqss-top-bottom-margins"
@@ -269,6 +269,24 @@
       "matrixFeature": "DECRQSS cursor style query",
       "evidencePath": "tests/Ntilde.VT.Tests/DecrqssSettingReportTests.cs",
       "contractCase": "decrqss-cursor-style"
+    },
+    {
+      "key": "DCS:$q\"q",
+      "mnemonic": "DECRQSS character protection report",
+      "support": "supported",
+      "description": "Report the live DECSCA pen as 1\"q when protected and 0\"q otherwise. Only exact complete requests terminated by standard ST succeed with status 1.",
+      "matrixFeature": "DECRQSS character protection query",
+      "evidencePath": "tests/Ntilde.VT.Tests/DecrqssSettingReportTests.cs",
+      "contractCase": "decrqss-character-protection"
+    },
+    {
+      "key": "DCS:$q*x",
+      "mnemonic": "DECRQSS attribute change extent report",
+      "support": "supported",
+      "description": "Report the effective DECSACE setting as 2*x for rectangle or 0*x for stream. Only exact complete requests terminated by standard ST succeed with status 1.",
+      "matrixFeature": "DECRQSS attribute change extent query",
+      "evidencePath": "tests/Ntilde.VT.Tests/DecrqssSettingReportTests.cs",
+      "contractCase": "decrqss-attribute-change-extent"
     },
     {
       "key": "DCS:+q",
@@ -353,7 +371,7 @@
       "key": "CSI:*x",
       "mnemonic": "DECSACE",
       "support": "partial",
-      "description": "Select the DECCARA/DECRARA extent: 0 or 1 (default) is the stream from the first to the second position, 2 the rectangle. Other values are ignored. RIS restores the stream; DECSTR keeps the selection; state transfer carries it. DECRQSS for the setting is not implemented.",
+      "description": "Select the DECCARA/DECRARA extent: 0 or 1 (default) is the stream from the first to the second position, 2 the rectangle. Other values are ignored. RIS restores the stream; DECSTR keeps the selection; state transfer carries it. DECRQSS reports 0 for stream or 2 for rectangle.",
       "matrixFeature": "DECSACE (* x)",
       "evidencePath": "tests/Ntilde.VT.Tests/RectangularAttributeTests.cs",
       "contractCase": "select-attribute-change-extent"
