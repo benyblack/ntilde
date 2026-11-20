@@ -48,6 +48,16 @@ namespace Ntilde.VT
         [JsonPropertyName("send_8bit_c1"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool Send8BitControls { get; set; }
 
+        [JsonPropertyName("vt100_c1"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Vt100ControlMode { get; set; }
+
+        [JsonPropertyName("vt52_graphics"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Vt52Graphics { get; set; }
+
+        /// <summary>The encoded row when waiting for the second byte of ESC Y, or zero if invalid.</summary>
+        [JsonPropertyName("vt52_address_row"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Vt52AddressRow { get; set; }
+
         /// <summary>The live CSI parameter/intermediate run, empty when not inside a CSI.</summary>
         [JsonPropertyName("csi")] public string CsiParams { get; set; } = string.Empty;
 

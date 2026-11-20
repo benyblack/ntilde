@@ -75,7 +75,7 @@ public partial class TerminalView
     /// <summary>One actual text callback owns the pending key or becomes a pure text event with code zero.</summary>
     private bool TrySendKittyAssociatedText(string text)
     {
-        int flags = _pendingKittyTextFlags ?? (_enableKittyKeyboardProtocol ? _buffer?.Modes.KittyKeyboard.Flags ?? 0 : 0);
+        int flags = _pendingKittyTextFlags ?? EffectiveKittyKeyboardFlags;
         // Win32 WM_CHAR delivers one UTF-16 unit per callback. Keep at most one high
         // surrogate across adjacent callbacks, never substitute a replacement character.
         if (_pendingKittyHighSurrogate is { } high)

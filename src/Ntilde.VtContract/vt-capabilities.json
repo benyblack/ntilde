@@ -83,6 +83,14 @@
       "contractCase": "pixel-mouse-coordinates"
     },
     {
+      "key": "DEC:2",
+      "mnemonic": "DECANM",
+      "support": "partial",
+      "description": "Reset with CSI ? 2 l to enter VT52. ESC < returns to ANSI with seven-bit replies and RIS restores startup ANSI. In ANSI, DECRQM reports mode 2 set. VT52 has its own display controls, identify reply and GUI key encodings.",
+      "matrixFeature": "VT52 compatibility (DECANM)",
+      "evidencePath": "tests/Ntilde.VT.Tests/Vt52ModeTests.cs"
+    },
+    {
       "key": "DEC:69",
       "mnemonic": "DECLRMM",
       "support": "partial",

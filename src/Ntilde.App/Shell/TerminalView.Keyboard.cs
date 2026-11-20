@@ -92,7 +92,7 @@ namespace Ntilde.Shell
             if (!_enableKittyKeyboardProtocol || _session?.IsProcessRunning != true
                 || !ReferenceEquals(held.State, _buffer?.Modes.KittyKeyboard)
                 || held.Generation != held.State.Generation) return false;
-            string? sequence = TerminalInputModeEncoder.EncodeKittyKey(held.Key, modifiers, _buffer?.Modes, TerminalKeyEventKind.Release, held.Identity);
+            string? sequence = TerminalInputModeEncoder.EncodeKittyKey(held.Key, modifiers, EffectiveKittyKeyboardFlags, TerminalKeyEventKind.Release, held.Identity);
             if (sequence == null) return false;
             // A release reports state, without snapping a scrolled viewport to the live line.
             _session.SendInput(sequence);
@@ -103,8 +103,7 @@ namespace Ntilde.Shell
         private bool? _pendingKittyTextSuppression;
         private (PhysicalKey Physical, Key Logical)? _pendingKittyTextKey;
         private int _kittyTextInputGeneration;
-        private bool ReportAllKeysActive => _enableKittyKeyboardProtocol
-            && ((_buffer?.Modes.KittyKeyboard.Flags ?? 0) & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0;
+        private bool ReportAllKeysActive => (EffectiveKittyKeyboardFlags & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0;
 
         /// <summary>Context resets expire correlation; policy changes retain the original text decision.</summary>
         private void ResetKittyKeyTracking(bool clearPendingText = true)
@@ -146,11 +145,12 @@ namespace Ntilde.Shell
         {
             var session = _session;
             ReportedKittyKey? reported = null;
-            if (trackKittyEvents && (key != Key.None || physical != PhysicalKey.None)
-                && _enableKittyKeyboardProtocol && _buffer?.Modes is { } modes && modes.KittyKeyboard.ReportEventTypes
-                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Repeat, identity) != null))
+            int flags = trackKittyEvents ? EffectiveKittyKeyboardFlags : 0;
+            if ((flags & Ntilde.VT.KittyKeyboardState.FlagReportEventTypes) != 0
+                && (key != Key.None || physical != PhysicalKey.None)
+                && _buffer?.Modes.KittyKeyboard is { } state
+                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, flags, TerminalKeyEventKind.Repeat, identity) != null))
             {
-                var state = modes.KittyKeyboard;
                 reported = new(key, identity, state, state.Generation);
             }
             SendUserInput(sequence);
@@ -201,7 +201,7 @@ namespace Ntilde.Shell
         internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers, PhysicalKey physicalKey = PhysicalKey.None, string? keySymbol = null)
         {
             PrepareKittyTextForKeyDown(key, keySymbol);
-            int flags = _enableKittyKeyboardProtocol ? _buffer?.Modes.KittyKeyboard.Flags ?? 0 : 0;
+            int flags = EffectiveKittyKeyboardFlags;
             bool hasText = _session != null && TerminalInputModeEncoder.MayProduceTextInput(key, keySymbol);
             int generation = _kittyTextInputGeneration;
             if (hasText)
@@ -316,7 +316,7 @@ namespace Ntilde.Shell
         /// </summary>
         private bool TrySendModifyOtherKey(Key key, KeyModifiers modifiers, PhysicalKey physical, string? keySymbol, KittyKeyIdentity identity)
         {
-            int level = _buffer?.Modes.ModifyOtherKeys.Level ?? 0;
+            int level = _buffer?.Modes is { IsVt52: false } modes ? modes.ModifyOtherKeys.Level : 0;
             if (level == 0) return false;
             if (key == Key.Enter && _session?.IsProcessRunning != true) return false;
             if (key == Key.C && (modifiers & KeyModifiers.Control) != 0 && HasSelection() && !UseMacOSClipboardChords) return false;
@@ -495,11 +495,11 @@ namespace Ntilde.Shell
         private bool _enableKittyKeyboardProtocol = true;
 
         /// <summary>
-        /// The kitty flags this view's key path actually honors: zero while the kill switch is off,
-        /// whatever stack the child pushed. Tab broadcast uses it so a receiver is encoded exactly
-        /// as its own view would encode the key (#829).
+        /// The kitty flags this view honors. VT52 uses the legacy key encodings until ANSI resumes.
+        /// Tab broadcast uses the effective flags so a receiver is encoded as its own view would (#829).
         /// </summary>
-        internal int EffectiveKittyKeyboardFlags => _enableKittyKeyboardProtocol ? _buffer?.Modes.KittyKeyboard.Flags ?? 0 : 0;
+        internal int EffectiveKittyKeyboardFlags => _enableKittyKeyboardProtocol && _buffer?.Modes is { IsVt52: false } modes
+            ? modes.KittyKeyboard.Flags : 0;
         public event Action<string>? TextInputObserved;
         public event Action? BackspaceObserved;
         /// <summary>

@@ -191,6 +191,11 @@ invariant changes.
   explicitly; importing zero rows cannot prove an empty daemon history. The projection
   does not alter parser state or enable acting methods. The opt-in `includeProtection`
   adds a `protected` boolean to run-length cell details (stored DECSCA protection); off by default.
+- **VT owns VT52 stream dispatch and App encodes its keys.** DECANM selects the
+  dispatch shared by direct panes and mux hosts. Complete snapshots carry the
+  active mode, graphics selection and partial cursor address. The VT100 control
+  mode selected by ESC < keeps replies seven-bit until a VT220 control selection
+  or RIS. App reads the active mode to encode cursor and auxiliary keypad events.
 - **DECRQSS margin reports use exact complete requests.** VT answers `$qr` and `$qs`
   with standard ST, validated absolute one-based current margins and xterm's
   1-success/0-failure status. The existing batch write lock protects the read;
