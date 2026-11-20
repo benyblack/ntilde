@@ -730,6 +730,50 @@ public sealed class CapturePipelineTests
     }
 
     /// <summary>
+    /// A failed append can still have persisted the line - the real store writes it before it
+    /// compacts, and a compaction failure throws after that. The <c>C</c> that replaces it must
+    /// supersede that record rather than sit beside it as a duplicate with no exit code.
+    /// </summary>
+    [Fact]
+    public async Task CommandAccepted_AfterAHeuristicAppendThatPersistedAndThenThrew_SupersedesIt()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, AssistSessionContext context) = CreatePipeline();
+        context.SetShellIntegrationEnabled(true);
+        TaskCompletionSource heldAppend = store.HoldAppends(recordEvenIfItFails: true);
+
+        Task capture = pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
+        Task accepted = pipeline.HandleShellIntegrationEventAsync(Accepted("git status"));
+
+        heldAppend.SetException(new InvalidOperationException("simulated compaction failure"));
+        await capture;
+        string heuristicId = Assert.Single(store.Entries).Id;
+        await accepted;
+        await pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 2, duration: TimeSpan.FromMilliseconds(40)));
+
+        CommandHistoryEntry entry = Assert.Single(store.Entries);
+        Assert.Equal(heuristicId, entry.Id);
+        Assert.Equal(CommandCaptureSource.ShellIntegration, entry.Source);
+        Assert.Equal(2, entry.ExitCode);
+        Assert.Equal(40, entry.DurationMs);
+    }
+
+    /// <summary>
+    /// The id takeover is for the matched command only. A <c>C</c> for a different command must not
+    /// reuse the pending entry's id, or it would overwrite that entry.
+    /// </summary>
+    [Fact]
+    public async Task CommandAccepted_ForADifferentCommand_NeverTakesOverThePendingEntryId()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, AssistSessionContext context) = CreatePipeline();
+        context.SetShellIntegrationEnabled(true);
+
+        await pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
+        await pipeline.HandleShellIntegrationEventAsync(Accepted("git log"));
+
+        Assert.Equal(2, store.Entries.Select(x => x.Id).Distinct().Count());
+    }
+
+    /// <summary>
     /// A finish waiting on an append that then fails must neither hang nor leave the failed
     /// registration in place for the dedup: the structured path writes its own entry.
     /// </summary>
@@ -824,6 +868,7 @@ public sealed class CapturePipelineTests
         public IReadOnlyList<string> FirstTokenSweeps => _firstTokenSweeps;
 
         private TaskCompletionSource? _heldAppend;
+        private bool _recordHeldAppendEvenIfItFails;
 
         /// <summary>
         /// Makes the next append - only the next one - wait until the returned source completes, and
@@ -833,9 +878,14 @@ public sealed class CapturePipelineTests
         /// Continuations run inline on the thread that completes the source, so the test thread
         /// decides exactly when the held append lands.
         /// </remarks>
-        public TaskCompletionSource HoldAppends()
+        /// <param name="recordEvenIfItFails">
+        /// Store the entry before rethrowing a fault, as <c>JsonlHistoryStore</c> does when the write
+        /// succeeded but the compaction after it threw.
+        /// </param>
+        public TaskCompletionSource HoldAppends(bool recordEvenIfItFails = false)
         {
             _heldAppend = new TaskCompletionSource();
+            _recordHeldAppendEvenIfItFails = recordEvenIfItFails;
             return _heldAppend;
         }
 
@@ -845,12 +895,37 @@ public sealed class CapturePipelineTests
             _heldAppend = null;
             if (held != null)
             {
-                await held.Task;
+                try
+                {
+                    await held.Task;
+                }
+                catch when (_recordHeldAppendEvenIfItFails)
+                {
+                    Upsert(entry);
+                    throw;
+                }
             }
 
+            Upsert(entry);
+        }
+
+        /// <summary>
+        /// Last write wins per id, like the real store's load rule: a record that reuses an id
+        /// supersedes the one before it.
+        /// </summary>
+        private void Upsert(CommandHistoryEntry entry)
+        {
             lock (_sync)
             {
-                _entries.Add(entry);
+                int index = _entries.FindIndex(x => x.Id == entry.Id);
+                if (index < 0)
+                {
+                    _entries.Add(entry);
+                }
+                else
+                {
+                    _entries[index] = entry;
+                }
             }
         }
 

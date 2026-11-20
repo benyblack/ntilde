@@ -369,30 +369,36 @@ internal sealed class CapturePipeline
         // The heuristic entry counts from the moment it is registered, not from when its append
         // lands: the C for a fast command routinely arrives while that append is still in flight.
         string normalizedCommandText = NormalizeCommandText(commandText);
-        PendingEntry? heuristicPending;
+        PendingEntry? matchedHeuristic;
         lock (_pendingGate)
         {
-            heuristicPending = _pending;
+            matchedHeuristic = _pending != null &&
+                               string.Equals(_pending.CommandText, normalizedCommandText, StringComparison.Ordinal)
+                ? _pending
+                : null;
         }
 
-        if (heuristicPending != null &&
-            string.Equals(heuristicPending.CommandText, normalizedCommandText, StringComparison.Ordinal))
+        // But it only stands in for this C once it has actually landed. If that append fails, this C
+        // is the last record of the command, so it falls through and writes its own entry; the
+        // failed append has already withdrawn its registration.
+        if (matchedHeuristic != null && await matchedHeuristic.Appended)
         {
-            // But it only stands in for this C once it has actually landed. If that append fails,
-            // this C is the last record of the command, so it falls through and writes its own
-            // entry; the failed append has already withdrawn its registration.
-            if (await heuristicPending.Appended)
-            {
-                _structuredEntryWrittenThisCycle = true;
-                return;
-            }
+            _structuredEntryWrittenThisCycle = true;
+            return;
         }
+
+        // A failed append does not prove the line is absent: JsonlHistoryStore writes it before it
+        // compacts, and a compaction failure throws afterwards. Taking over the matched entry's id
+        // makes this record supersede it on load (last write wins) rather than sit beside it as a
+        // second copy with no exit code. Only the matched entry - an unmatched pending entry is a
+        // different command, and reusing its id would overwrite it.
+        string entryId = matchedHeuristic?.Id ?? Guid.NewGuid().ToString("N");
 
         try
         {
             RedactionResult redaction = _secretsFilter.Redact(commandText);
             var entry = new CommandHistoryEntry(
-                Id: Guid.NewGuid().ToString("N"),
+                Id: entryId,
                 CommandText: redaction.RedactedText,
                 ExecutedAt: shellEvent.Timestamp,
                 ShellKind: _context.ShellKind ?? "unknown",
