@@ -252,11 +252,9 @@ internal sealed class CapturePipeline
         try
         {
             // The completion released the entry before waiting for its append (see
-            // CompletePendingAsync), so the append may still be in flight here too.
-            if (!await completed.Appended)
-            {
-                return;
-            }
+            // CompletePendingAsync), so the append may still be in flight here too. Ordering only,
+            // as there: a failed append may still have persisted the line.
+            await completed.Appended;
 
             await _historyStore.TryMarkInvalidCommandAsync(completed.Id);
 
@@ -379,8 +377,8 @@ internal sealed class CapturePipeline
         }
 
         // But it only stands in for this C once it has actually landed. If that append fails, this C
-        // is the last record of the command, so it falls through and writes its own entry; the
-        // failed append has already withdrawn its registration.
+        // is the last record of the command, so it falls through and writes its own entry - whether
+        // the C arrived during the failed append or after it, since a failed registration stays.
         if (matchedHeuristic != null && await matchedHeuristic.Appended)
         {
             _structuredEntryWrittenThisCycle = true;
@@ -450,10 +448,18 @@ internal sealed class CapturePipeline
     /// <see cref="PendingEntry.Appended"/> either way, so no completion waiting on it can hang.
     /// </summary>
     /// <remarks>
-    /// A failed append also withdraws the registration, if nothing newer has replaced it: there is no
-    /// entry to patch, and a <c>C</c> for the same command must be free to write its own rather than
-    /// be deduplicated against one that never landed. Rethrows so the caller's best-effort handler
-    /// still sees the failure.
+    /// <para>
+    /// A failed append leaves the registration in place, deliberately. A failure does not prove the
+    /// line is absent - <c>JsonlHistoryStore</c> writes it before it compacts, and a compaction
+    /// failure throws afterwards - so the id is kept for whatever comes next: a <c>C</c> for the same
+    /// command takes it over (see <see cref="CaptureAcceptedCommandAsync"/>) instead of writing a
+    /// second copy, and a completion still patches it, which is a no-op if the line never landed.
+    /// <see cref="PendingEntry.Appended"/> being <see langword="false"/> is what stops the failed
+    /// entry standing in for that <c>C</c>.
+    /// </para>
+    /// <para>
+    /// Rethrows so the caller's best-effort handler still sees the failure.
+    /// </para>
     /// </remarks>
     private async Task AppendPendingAsync(CommandHistoryEntry entry, PendingEntry pending)
     {
@@ -465,14 +471,6 @@ internal sealed class CapturePipeline
         catch
         {
             pending.MarkAppended(false);
-            lock (_pendingGate)
-            {
-                if (ReferenceEquals(_pending, pending))
-                {
-                    _pending = null;
-                }
-            }
-
             throw;
         }
     }
@@ -503,11 +501,9 @@ internal sealed class CapturePipeline
 
         try
         {
-            if (!await pending.Appended)
-            {
-                // The append failed; there is nothing in the store to patch.
-                return;
-            }
+            // Waited on for ordering only. A failed append may still have persisted the line (see
+            // AppendPendingAsync); patching an id the store does not have is a no-op.
+            await pending.Appended;
 
             await _historyStore.TryUpdateExecutionResultAsync(
                 pending.Id,

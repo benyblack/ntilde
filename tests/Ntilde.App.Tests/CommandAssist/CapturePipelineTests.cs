@@ -758,6 +758,73 @@ public sealed class CapturePipelineTests
     }
 
     /// <summary>
+    /// The same takeover when the <c>C</c> arrives only after the failed capture has finished: the
+    /// failed registration stays, so the <c>C</c> still finds it.
+    /// </summary>
+    [Fact]
+    public async Task CommandAccepted_AfterTheFailedHeuristicCaptureFinished_StillSupersedesIt()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, AssistSessionContext context) = CreatePipeline();
+        context.SetShellIntegrationEnabled(true);
+        TaskCompletionSource heldAppend = store.HoldAppends(recordEvenIfItFails: true);
+
+        Task capture = pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
+        heldAppend.SetException(new InvalidOperationException("simulated compaction failure"));
+        await capture;
+        string heuristicId = Assert.Single(store.Entries).Id;
+
+        await pipeline.HandleShellIntegrationEventAsync(Accepted("git status"));
+        await pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 2, duration: TimeSpan.FromMilliseconds(40)));
+
+        CommandHistoryEntry entry = Assert.Single(store.Entries);
+        Assert.Equal(heuristicId, entry.Id);
+        Assert.Equal(CommandCaptureSource.ShellIntegration, entry.Source);
+        Assert.Equal(2, entry.ExitCode);
+        Assert.Equal(40, entry.DurationMs);
+    }
+
+    /// <summary>
+    /// With no <c>C</c> at all - a markless or bare-C session - a heuristic entry that persisted
+    /// despite its append throwing still gets its exit code.
+    /// </summary>
+    [Fact]
+    public async Task CommandFinished_AfterAHeuristicAppendThatPersistedAndThenThrew_StillPatchesIt()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, _) = CreatePipeline();
+        TaskCompletionSource heldAppend = store.HoldAppends(recordEvenIfItFails: true);
+
+        Task capture = pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
+        heldAppend.SetException(new InvalidOperationException("simulated compaction failure"));
+        await capture;
+        await pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 2, duration: TimeSpan.FromMilliseconds(40)));
+
+        CommandHistoryEntry entry = Assert.Single(store.Entries);
+        Assert.Equal(CommandCaptureSource.Heuristic, entry.Source);
+        Assert.Equal(2, entry.ExitCode);
+        Assert.Equal(40, entry.DurationMs);
+    }
+
+    /// <summary>
+    /// A failed registration is kept for the matched command only: a <c>C</c> for a different
+    /// command still gets an id of its own.
+    /// </summary>
+    [Fact]
+    public async Task CommandAccepted_ForADifferentCommandAfterAFailedCapture_NeverTakesOverItsId()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, AssistSessionContext context) = CreatePipeline();
+        context.SetShellIntegrationEnabled(true);
+        TaskCompletionSource heldAppend = store.HoldAppends(recordEvenIfItFails: true);
+
+        Task capture = pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
+        heldAppend.SetException(new InvalidOperationException("simulated compaction failure"));
+        await capture;
+        await pipeline.HandleShellIntegrationEventAsync(Accepted("git log"));
+
+        Assert.Equal(2, store.Entries.Select(x => x.Id).Distinct().Count());
+        Assert.Contains(store.Entries, x => x.CommandText == "git status");
+    }
+
+    /// <summary>
     /// The id takeover is for the matched command only. A <c>C</c> for a different command must not
     /// reuse the pending entry's id, or it would overwrite that entry.
     /// </summary>
@@ -774,8 +841,8 @@ public sealed class CapturePipelineTests
     }
 
     /// <summary>
-    /// A finish waiting on an append that then fails must neither hang nor leave the failed
-    /// registration in place for the dedup: the structured path writes its own entry.
+    /// A finish waiting on an append that then fails must not hang, and its patch finds nothing to
+    /// change. It also consumes the registration, so a later C writes an entry of its own.
     /// </summary>
     [Fact]
     public async Task CommandFinished_WaitingOnAnAppendThatFails_CompletesAndPatchesNothing()
