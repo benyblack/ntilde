@@ -89,5 +89,3 @@ test('the case reads must carry exactly the seeded binding: an unseeded, a re-se
     const unrestored = syntheticPclEvidence({ finishBinding: seeded });
     assert.throws(() => buildPclGradingReport(unrestored.frames, unrestored.run, unrestored.runId, unrestored.adapter), /palette or theme change|fixture was not restored/, 'the finish frame must be back on the host binding');
 });
-    assert.throws(() => buildPclGradingReport(edgeSeeded.frames, edgeSeeded.run, edgeSeeded.runId, edgeSeeded.adapter), /palette or theme change/, 'the start, bind and finish frames must carry the host binding, not the seed');
-});
