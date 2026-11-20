@@ -713,6 +713,13 @@ namespace Ntilde.VT
                                     break;
                                 }
 
+                                // Coding selection applies to the byte stream in either terminal mode.
+                                if (c == '%')
+                                {
+                                    _state = State.CodingSystem;
+                                    break;
+                                }
+
                                 if (_buffer.Modes.IsVt52)
                                 {
                                     HandleVt52Escape(c);
@@ -748,10 +755,6 @@ namespace Ntilde.VT
                                     _pendingCharset96 = c >= '-';
                                     _pendingCharsetSlot = _pendingCharset96 ? c - '-' + 1 : c - '(';
                                     _state = State.Charset;
-                                }
-                                else if (c == '%')
-                                {
-                                    _state = State.CodingSystem;
                                 }
                                 else if (c == ' ')
                                 {

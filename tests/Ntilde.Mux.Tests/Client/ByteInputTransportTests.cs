@@ -92,6 +92,7 @@ public sealed class ByteInputTransportTests
         child.SupportsByteInput = true;
         child.StartRecording("scripted.rec");
         child.Emit(vt52 ? "\u001b%@\u001b[12l\u001b[?2l" : "\u001b%@\u001b[12l");
+        child.Emit([0xff]);
         await host.Mux(id).FlushAsync();
         ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(client, id);
         using MuxClientSession session = pane.Session;
@@ -99,12 +100,12 @@ public sealed class ByteInputTransportTests
 
         session.SendKeyboardText("é€");
         await TestWait.UntilAsync(() => child.WireInput.Count == 1, "the UTF-8 text reaches stdin");
-        if (vt52) child.Emit("\u001b<");
-        child.Emit([0xff]);
+        child.Emit([0xe9]);
         await host.SettleAsync(id, client);
 
         Assert.Equal("é€"u8.ToArray(), child.WireInput.Single());
-        Assert.Equal("é€ÿ", new string(pane.Buffer.ViewportRows[0].Cells.Take(3).Select(cell => cell.Character).ToArray()));
+        Assert.Equal("ÿé€é", new string(pane.Buffer.ViewportRows[0].Cells.Take(4).Select(cell => cell.Character).ToArray()));
+        Assert.Equal(vt52, pane.Buffer.Modes.IsVt52);
         Assert.DoesNotContain(child.RecordedOutput, bytes => bytes.AsSpan().IndexOf("é€"u8) >= 0);
         host.AssertPaneMatchesMux(id, pane, "keyboard echo and subsequent child bytes match across both views");
     }

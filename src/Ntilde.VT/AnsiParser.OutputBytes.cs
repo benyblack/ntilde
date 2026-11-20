@@ -11,7 +11,7 @@ public partial class AnsiParser
     private int _outputTailLength;
 
     /// <summary>Whether the parser is decoding child output as single-byte Latin-1.</summary>
-    public bool UsesLatin1OutputCoding => _outputCoding == OutputCoding.Latin1 && !_buffer.Modes.IsVt52;
+    public bool UsesLatin1OutputCoding => _outputCoding == OutputCoding.Latin1;
 
     /// <summary>Complete snapshots pair these held bytes with the parser and buffer at the same cut.</summary>
     public ReadOnlySpan<byte> PendingOutputBytes => _outputTail.AsSpan(0, _outputTailLength);
