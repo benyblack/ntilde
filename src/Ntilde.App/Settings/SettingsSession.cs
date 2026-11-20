@@ -138,7 +138,14 @@ public sealed class SettingsSession
 
     private void ResetFromSettings()
     {
-        ShortcutDraft = new Dictionary<string, string>(Settings.Keybindings, StringComparer.OrdinalIgnoreCase);
+        // Indexer, not the copy constructor: settings.json is read case-sensitively, so a
+        // hand-edited "settings"/"Settings" pair would make the copy throw. Last one wins.
+        ShortcutDraft = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (KeyValuePair<string, string> binding in Settings.Keybindings)
+        {
+            ShortcutDraft[binding.Key] = binding.Value;
+        }
+
         KeepShellsRunning = Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(Settings.SessionPersistence);
 
         // Seeded from the resolver's output: it alone normalizes hand-edited ids ("Find" vs
