@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "0180a8f13594c254e4356bc29ece1294b4ef2f268fd1dd4d4236fbcd16155e37",
+  "matrixSha256": "19716060dca78b44180bc59beb860d1c4798079cb30ea7d5b0decc18cfb5aa04",
   "summary": {
     "totalRows": 157,
     "supportedCount": 75,
@@ -170,7 +170,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BPTY\u002BMux\u002BReplay",
-      "knownDeviations": "ASCII, DEC Special Graphics, UK and ISO Latin-1 are implemented. Exact 96-character \u0060ESC - A\u0060, \u0060ESC . A\u0060 and \u0060ESC / A\u0060 designate Latin-1 in G1\u2013G3. The VT220 94-set A spelling used by vttest supplies Latin-1 for G2/G3 or the right half while NRC is off and VT100 control mode is inactive. SS2/SS3 affect one GL position. Valid UTF-8 takes precedence in the default coding; an active GR designation can consume otherwise invalid graphic octets. ESC % @ selects single-byte coding and ESC % G selects strict UTF-8. Complete snapshots preserve the shift and any incomplete UTF-8. Other NRC and downloadable sets are outside this coverage.",
+      "knownDeviations": "ASCII, DEC Special Graphics, UK and ISO Latin-1 are implemented. Exact 96-character \u0060ESC - A\u0060, \u0060ESC . A\u0060 and \u0060ESC / A\u0060 designate Latin-1 in G1\u2013G3. The VT220 94-set A spelling used by vttest supplies Latin-1 for G2/G3 or the right half while NRC is off and VT100 control mode is inactive. SS2/SS3 affect one GL position. Valid UTF-8 takes precedence in the default coding; an active GR designation can consume otherwise invalid graphic octets. ESC % @ selects single-byte coding. ESC % G selects strict UTF-8 until a subsequent GR invocation opts into legacy bytes again. Complete snapshots preserve the shift and any incomplete UTF-8. Other NRC and downloadable sets are outside this coverage.",
       "sourceLine": 62
     },
     {

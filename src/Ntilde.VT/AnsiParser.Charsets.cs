@@ -48,14 +48,22 @@ public partial class AnsiParser
             case 'O': SelectSingleShift(3); break;
             case 'n': _gl = 2; break;
             case 'o': _gl = 3; break;
-            case '~': _gr = 1; break;
-            case '}': _gr = 2; break;
-            case '|': _gr = 3; break;
+            case '~': SelectRightShift(1); break;
+            case '}': SelectRightShift(2); break;
+            case '|': SelectRightShift(3); break;
             default: return false;
         }
         _lastGraphicChar = null;
         _state = State.Normal;
         return true;
+    }
+
+    private void SelectRightShift(int slot)
+    {
+        _gr = slot;
+        // A new GR invocation after DOCS UTF-8 requests a legacy right
+        // half again, while valid UTF-8 remains unambiguous.
+        if (_outputCoding == OutputCoding.Utf8) _outputCoding = OutputCoding.Automatic;
     }
 
     internal static void ValidateSingleShift(int slot)

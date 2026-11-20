@@ -16,6 +16,7 @@ public sealed class Latin1ShiftTests
     {
         var buffer = new TerminalBuffer(20, 3);
         var parser = new AnsiParser(buffer);
+        parser.ProcessBytes("\x1b%G"u8); // stock vttest selects UTF-8 during startup
         parser.ProcessBytes(Encoding.ASCII.GetBytes(setup));
         parser.ProcessBytes([0xa1, 0xa3, 0xe9, 0xff]);
         parser.ProcessBytes("€é"u8);
