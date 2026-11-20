@@ -24,6 +24,9 @@ namespace Ntilde.VT
         /// <summary>DECBKM (?67): set sends BS for legacy Backspace, reset sends DEL.</summary>
         public bool IsBackarrowKeyMode { get; set; }
 
+        /// <summary>DECANM reset selects VT52 dispatch and keyboard framing. ANSI is the default.</summary>
+        public bool IsVt52 { get; internal set; }
+
         // Cursor and display modes
         public bool IsApplicationCursorKeys { get; set; } // ?1 - DECCKM (Application Cursor Keys)
         public bool IsAutoWrapMode { get; set; } = true;  // ?7 - DECAWM (Auto Wrap Mode)
@@ -215,6 +218,7 @@ namespace Ntilde.VT
                 MouseModeUtf8 = this.MouseModeUtf8,
                 MouseModeUrxvt = this.MouseModeUrxvt,
                 MouseModePixel = this.MouseModePixel,
+                IsVt52 = this.IsVt52,
                 IsApplicationCursorKeys = this.IsApplicationCursorKeys,
                 IsApplicationKeypad = this.IsApplicationKeypad,
                 IsBackarrowKeyMode = this.IsBackarrowKeyMode,

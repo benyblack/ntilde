@@ -548,7 +548,7 @@ namespace Ntilde.VT
                     // on insert mode.
                     if (intermediates.Length == 0 && isPrivate)
                     {
-                        HandleDECPrivateMode(validArgs, enableMode);
+                        HandleDECPrivateMode(validArgs, enableMode, allowDecanm: !validSeparators.Contains(':'));
                     }
                     else if (bare)
                     {
@@ -676,6 +676,10 @@ namespace Ntilde.VT
                     else if (leader == '\0' && validArgs.Length == 0 && intermediates.SequenceEqual("!"))
                     {
                         SoftReset();
+                    }
+                    else if (leader == '\0' && intermediates.SequenceEqual("\"") && !validSeparators.Contains(':'))
+                    {
+                        SelectAnsiControlMode(validArgs);
                     }
                     break;
                 default:
@@ -1050,6 +1054,7 @@ namespace Ntilde.VT
             switch (mode)
             {
                 case 1: return _buffer.Modes.IsApplicationCursorKeys ? 1 : 2;    // DECCKM
+                case 2: return _buffer.Modes.IsVt52 ? 2 : 1;                    // DECANM
                 case 5: return _buffer.Modes.IsReverseVideo ? 1 : 2;             // DECSCNM
                 case 6: return _buffer.Modes.IsOriginMode ? 1 : 2;               // DECOM
                 case 69: return _buffer.Modes.IsLeftRightMarginMode ? 1 : 2;     // DECLRMM
@@ -1101,7 +1106,7 @@ namespace Ntilde.VT
         /// <summary>
         /// Handles DEC Private Mode sequences (CSI ? Ps h/l)
         /// </summary>
-        private void HandleDECPrivateMode(ReadOnlySpan<int> modes, bool enable)
+        private void HandleDECPrivateMode(ReadOnlySpan<int> modes, bool enable, bool allowDecanm = true)
         {
 
             foreach (int mode in modes)
@@ -1111,6 +1116,13 @@ namespace Ntilde.VT
                 {
                     case 1: // DECCKM - Cursor Keys Mode
                         _buffer.Modes.IsApplicationCursorKeys = enable;
+                        break;
+                    case 2: // DECANM - Once VT52 starts, the rest of this ANSI mode list is ignored.
+                        if (!enable && allowDecanm)
+                        {
+                            EnterVt52();
+                            return;
+                        }
                         break;
                     case 5: // DECSCNM - screen-wide reverse video (terminfo flash / visual bell)
                         _buffer.SetReverseVideo(enable);

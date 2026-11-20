@@ -9,8 +9,8 @@ public partial class TerminalView
 
     /// <summary>This API deliberately excludes deferred associated-text keyboard work and existing pending key correlation.</summary>
     internal bool CanGenerateInputSynchronously(bool keyboard)
-        => !keyboard || !HasPendingInputCorrelation && (!_enableKittyKeyboardProtocol
-            || !TerminalInputModeEncoder.ReportsKittyAssociatedText(_buffer?.Modes.KittyKeyboard.Flags ?? 0));
+        => !keyboard || !HasPendingInputCorrelation
+            && !TerminalInputModeEncoder.ReportsKittyAssociatedText(EffectiveKittyKeyboardFlags);
 
     private bool HasPendingInputCorrelation => _pendingAssociatedKey != null || _pendingKittyTextKey != null
         || _pendingKittyTextSuppression.HasValue || _pendingKittyTextFlags.HasValue

@@ -64,6 +64,24 @@ namespace Ntilde.Shell
         /// </summary>
         public static string? EncodeSpecialKey(Key key, KeyModifiers modifiers, ModeState? modes)
         {
+            if (modes?.IsVt52 == true)
+            {
+                // VT52 cursor and PF keys have no modifier parameter.
+                string? vt52Key = key switch
+                {
+                    Key.Up => "\u001bA",
+                    Key.Down => "\u001bB",
+                    Key.Right => "\u001bC",
+                    Key.Left => "\u001bD",
+                    Key.F1 => "\x1bP",
+                    Key.F2 => "\x1bQ",
+                    Key.F3 => "\x1bR",
+                    Key.F4 => "\x1bS",
+                    _ => null,
+                };
+                if (vt52Key != null) return vt52Key;
+            }
+
             int modifierParameter = GetXtermModifierParameter(modifiers);
             if (modifierParameter > 1)
             {
