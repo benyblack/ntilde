@@ -4391,23 +4391,23 @@
         "extensions.osc114-reset-pointer-bg"
       ],
       "evidence": {
-        "files": 6,
-        "bytes": 23869722,
-        "sha256": "9e807cd113e4cd3789bdbf73850a5d63c0887a7fb6f645e41e0590ec18fd5c11"
+        "files": 9,
+        "bytes": 69161830,
+        "sha256": "dd75b0a4bbb0ed901ab93776ea0805f34bc647d33993879c8ab87a8b50f1ac77"
       },
       "receipt": {
         "schemaVersion": 78,
-        "runId": "a2dc4d0460de690c9514a85e1af5a882",
+        "runId": "3465049c958b3b395345aa08ccf42737",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "a58b8896565cd8777a8cf2025737496dc46217cb5162c26ea22b54aff9951663"
+          "sha256": "b39dd1e2798cd18bf7fabca67f893f80e40a891157184033672a0ae5f74917c4"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-pointer-color-graded-v1",
           "file": "pcl-observations.json",
-          "sha256": "08c08e041bb4eac10e3dc0c34f178a292ce5a042e17130cff414cf0e93919da0",
+          "sha256": "76f086c5d8321889120e906d9ec58ab0cae4882e246326b2e3447f37bdbbf973",
           "runFile": "pcl-run.json",
-          "runSha256": "324bcf0f8b73a37adae92790afa9632e8f5f9b0208f5a8155a677803b5d1a7c0",
+          "runSha256": "c9a1c45c2a6fc29c2d203fd1af180709281001730fc985787030677e9c56763d",
           "counts": {
             "inconclusive": 2
           },
@@ -4415,23 +4415,23 @@
         }
       },
       "run": {
-        "ownedRunId": "a2dc4d0460de690c9514a85e1af5a882",
-        "measuredAt": "2026-11-20T13:51:28.793Z",
+        "ownedRunId": "3465049c958b3b395345aa08ccf42737",
+        "measuredAt": "2026-11-20T17:56:07.421Z",
         "appRevision": "67675feecc6da035338c36dbb8d03198e6f5b271",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "67675feecc6da035338c36dbb8d03198e6f5b271",
+        "scriptsRevision": "b76e6801498aa33311b2b2206ba916724ad81b7e",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "2c2210c0889acc5ba70014bf217ae46d5d9199e6a85eeaf31fe0ec504b72ca87",
+        "collectorAdapterBundleSha256": "b0232242a5395d739c24a8112e3fce2fb27b436f5ce24a844b564d6959d3e9c8",
         "gradingAdapterId": "ntilde-owned-pointer-color-grading-v1",
-        "gradingAdapterBundleSha256": "6d7f5969f121a324b7d9cee9fe027897776351c022197ad8db4f8ac0a5831d24",
+        "gradingAdapterBundleSha256": "1a0bf6734f6f4035fbfbbc3a7a7c4f370ab5a61304a32e321f8406951d3baf60",
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v71",
-        "sourceSnapshotManifestSha256": "5a81c085a5b7e73384322644fd86c1afc292ece0a3bdd4bc04844ec4d2ddc4ef"
+        "sourceSnapshotManifestSha256": "1f7b7476d9f529b4642dd7d61be484edae49a198448816eb3bdac1859ba22408"
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "6de46399efb311127ea110e89b478f67",
+        "runId": "b803944df3892b975da1970488b9a672",
         "counts": {
           "inconclusive": 157,
           "supported": 97,
@@ -4439,14 +4439,14 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "6108343890991d1893308cad2c1cb1e1fcd3e654744ab4b658d60a0e50e24e21",
+        "rawSha256": "8e2c73df74c7e0e831f6d2deb00b58ee98c69ad720f7b41893a446db140fddf0",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": "Stock terminal-path grades from the same owned run; the pointer-color effect does not change the stock score."
       },
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/pcl-publication.test.mjs",
-        "testSha256": "1cc6c0184bb5e143f00577be318dfce6b6a4506a664a1430c085e90558d31f58"
+        "testSha256": "6c9f3c73b7273bda4c20bdd7e4e27766b03ab87646f19854bc672b4c72391689"
       }
     }
   ],

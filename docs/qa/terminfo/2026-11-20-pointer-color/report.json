@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "suiteId": "ntilde-owned-pointer-color-graded-v1",
   "contractsVersion": 1,
-  "runId": "a2dc4d0460de690c9514a85e1af5a882",
+  "runId": "3465049c958b3b395345aa08ccf42737",
   "adapter": {
     "id": "ntilde-owned-pointer-color-grading-v1",
     "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
-    "bundleSha256": "6d7f5969f121a324b7d9cee9fe027897776351c022197ad8db4f8ac0a5831d24",
+    "bundleSha256": "1a0bf6734f6f4035fbfbbc3a7a7c4f370ab5a61304a32e321f8406951d3baf60",
     "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
   },
   "scope": "Pinned terminfo.dev@4.0.0 criteria for extensions.osc113-reset-pointer-fg and extensions.osc114-reset-pointer-bg (colorResetProbe(13, 113) / (14, 114): the termless path queries OSC 13 / OSC 14 and is inconclusive without a complete rgb reply; the terminal path writes the reset, asks the cursor position and returns unverifiedEffect, inconclusive by construction), decided by the unchanged stock collector against the App in this owned run and replayed byte-exactly on both pinned paths over the journaled raw reply and cursor of their own fenced exchange, beside a separately identified effect contract graded by independent literals written from the seeded colors and the xterm chain order: every OSC 13 / OSC 14 query, set and OSC 113 / OSC 114 reset spelling, and a chained OSC 12 set through the pointer slots, is ignored (policy, #991: the App draws the operating system pointer and cannot recolor it), never answered, leaves the complete screen, cursor, rendition, margins and modes unchanged and leaves the foreground, background, cursor and selection colors exactly as seeded, with a cursor-color change read back as a control. Raw replies and stored terminal state, not the operating system pointer image, the OSC 22 shape, painted pixels, remote/mux, Windows/Linux or common-harness behavior; no stock-score claim.",
   "cases": [
     {
       "caseId": "extensions.osc113-reset-pointer-fg",
-      "pinnedCriterion": "colorResetProbe(13, 113) feeds the BEL-spelled query OSC 13 ; ? and returns oscReplyResult(raw, null, ...) when the captured text holds no complete rgb reply (inconclusive, no-response); the terminal path writes CUP, EL and OSC 113, asks the cursor position and returns unverifiedEffect (inconclusive, consumed); neither path can be unsupported",
+      "pinnedCriterion": "colorResetProbe(13, 113) feeds the BEL-spelled query OSC 13 ; ? and returns oscReplyResult(raw, null, ...) when the captured text holds no complete rgb reply (inconclusive, no-response); the terminal path writes CUP, EL and OSC 113, asks the cursor position and returns unverifiedEffect (inconclusive, consumed); neither path can be unsupported while the query stays unanswered",
       "pinnedScript": {
         "termless": [
           [
@@ -72,7 +72,7 @@
           ]
         },
         "seed": {
-          "nonce": "NTILDE_PCL_a2dc4d0460de690c9514a85e1af5a882",
+          "nonce": "NTILDE_PCL_3465049c958b3b395345aa08ccf42737",
           "margins": [
             1,
             5
@@ -123,10 +123,22 @@
           },
           "set": {
             "kind": "protocol",
-            "request": "\\e]13;rgb:aa/bb/cc\\a",
-            "demand": "an OSC 13 set (rgb: spelling) is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]13;rgb:aa/bb/cc\\a\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "an OSC 13 set (rgb: spelling) is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
@@ -141,37 +153,85 @@
           },
           "set-hex": {
             "kind": "protocol",
-            "request": "\\e]13;#aabbcc\\e\\",
-            "demand": "an OSC 13 set in the # spelling, ST-terminated, is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]13;#aabbcc\\e\\\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "an OSC 13 set in the # spelling, ST-terminated, is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
           "reset": {
             "kind": "protocol",
-            "request": "\\e]113\\a",
-            "demand": "the exact OSC 113 reset the pinned terminal path writes is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]113\\a\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "the exact OSC 113 reset the pinned terminal path writes is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
           "reset-st": {
             "kind": "protocol",
-            "request": "\\e]113\\e\\",
-            "demand": "an OSC 113 reset ended by ST is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]113\\e\\\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "an OSC 113 reset ended by ST is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
           "reset-argument": {
             "kind": "protocol",
-            "request": "\\e]113;1\\a",
-            "demand": "an OSC 113 reset with an argument is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]113;1\\a\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "an OSC 113 reset with an argument is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
@@ -241,13 +301,23 @@
           },
           "recover": {
             "kind": "protocol",
-            "request": "\\e]13;?\\a\\e]12;?\\a\\e]13;?\\a",
-            "demand": "after all of them the OSC 13 query is still not answered while the color read still is",
+            "request": "\\e]13;?\\a\\e]12;?\\a\\e]13;?\\a\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "after all of them the OSC 13 query is still not answered while the color read still is, and the colors are still the chained values",
             "demanded": [
-              "\\e]12;rgb:0101/0202/0303\\e\\"
+              "\\e]12;rgb:0101/0202/0303\\e\\",
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:0101/0202/0303\\e\\",
+              "\\e]17;rgb:1010/1111/1212\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
             ],
             "received": [
-              "\\e]12;rgb:0101/0202/0303\\e\\"
+              "\\e]12;rgb:0101/0202/0303\\e\\",
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:0101/0202/0303\\e\\",
+              "\\e]17;rgb:1010/1111/1212\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
             ],
             "matches": true,
             "unchanged": true
@@ -307,7 +377,7 @@
     },
     {
       "caseId": "extensions.osc114-reset-pointer-bg",
-      "pinnedCriterion": "colorResetProbe(14, 114) feeds the BEL-spelled query OSC 14 ; ? and returns oscReplyResult(raw, null, ...) when the captured text holds no complete rgb reply (inconclusive, no-response); the terminal path writes CUP, EL and OSC 114, asks the cursor position and returns unverifiedEffect (inconclusive, consumed); neither path can be unsupported",
+      "pinnedCriterion": "colorResetProbe(14, 114) feeds the BEL-spelled query OSC 14 ; ? and returns oscReplyResult(raw, null, ...) when the captured text holds no complete rgb reply (inconclusive, no-response); the terminal path writes CUP, EL and OSC 114, asks the cursor position and returns unverifiedEffect (inconclusive, consumed); neither path can be unsupported while the query stays unanswered",
       "pinnedScript": {
         "termless": [
           [
@@ -366,7 +436,7 @@
           ]
         },
         "seed": {
-          "nonce": "NTILDE_PCL_a2dc4d0460de690c9514a85e1af5a882",
+          "nonce": "NTILDE_PCL_3465049c958b3b395345aa08ccf42737",
           "margins": [
             1,
             5
@@ -417,10 +487,22 @@
           },
           "set": {
             "kind": "protocol",
-            "request": "\\e]14;rgb:aa/bb/cc\\a",
-            "demand": "an OSC 14 set (rgb: spelling) is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]14;rgb:aa/bb/cc\\a\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "an OSC 14 set (rgb: spelling) is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
@@ -435,37 +517,85 @@
           },
           "set-hex": {
             "kind": "protocol",
-            "request": "\\e]14;#aabbcc\\e\\",
-            "demand": "an OSC 14 set in the # spelling, ST-terminated, is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]14;#aabbcc\\e\\\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "an OSC 14 set in the # spelling, ST-terminated, is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
           "reset": {
             "kind": "protocol",
-            "request": "\\e]114\\a",
-            "demand": "the exact OSC 114 reset the pinned terminal path writes is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]114\\a\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "the exact OSC 114 reset the pinned terminal path writes is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
           "reset-st": {
             "kind": "protocol",
-            "request": "\\e]114\\e\\",
-            "demand": "an OSC 114 reset ended by ST is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]114\\e\\\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "an OSC 114 reset ended by ST is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
           "reset-argument": {
             "kind": "protocol",
-            "request": "\\e]114;1\\a",
-            "demand": "an OSC 114 reset with an argument is ignored and not answered",
-            "demanded": [],
-            "received": [],
+            "request": "\\e]114;1\\a\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "an OSC 114 reset with an argument is ignored and not answered: the five colors still read back as seeded",
+            "demanded": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
+            "received": [
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:7070/8080/9090\\e\\",
+              "\\e]17;rgb:a0a0/b0b0/c0c0\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
+            ],
             "matches": true,
             "unchanged": true
           },
@@ -535,13 +665,23 @@
           },
           "recover": {
             "kind": "protocol",
-            "request": "\\e]14;?\\a\\e]12;?\\a\\e]14;?\\a",
-            "demand": "after all of them the OSC 14 query is still not answered while the color read still is",
+            "request": "\\e]14;?\\a\\e]12;?\\a\\e]14;?\\a\\e]10;?\\a\\e]11;?\\a\\e]12;?\\a\\e]17;?\\a\\e]19;?\\a",
+            "demand": "after all of them the OSC 14 query is still not answered while the color read still is, and the colors are still the chained values",
             "demanded": [
-              "\\e]12;rgb:0101/0202/0303\\e\\"
+              "\\e]12;rgb:0101/0202/0303\\e\\",
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:0101/0202/0303\\e\\",
+              "\\e]17;rgb:1010/1111/1212\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
             ],
             "received": [
-              "\\e]12;rgb:0101/0202/0303\\e\\"
+              "\\e]12;rgb:0101/0202/0303\\e\\",
+              "\\e]10;rgb:1010/2020/3030\\e\\",
+              "\\e]11;rgb:4040/5050/6060\\e\\",
+              "\\e]12;rgb:0101/0202/0303\\e\\",
+              "\\e]17;rgb:1010/1111/1212\\e\\",
+              "\\e]19;rgb:d0d0/e0e0/f0f0\\e\\"
             ],
             "matches": true,
             "unchanged": true

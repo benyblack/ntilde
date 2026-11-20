@@ -33,7 +33,7 @@ own supported contract: the contract here marks such a run inconclusive, never `
 Recorded separately in [report.json](2026-11-20-pointer-color/report.json) as a divergence of kind `pinned-inconclusive-effect-unsupported` for each case: the pinned verdict is inconclusive and the
 independent effect contract is unsupported. They are different claims; neither overwrites the other.
 
-The stock collector, re-run in the same owned run (`a2dc4d0460de690c9514a85e1af5a882`; stock collector run `6de46399efb311127ea110e89b478f67`), still grades both cases inconclusive
+The stock collector, re-run in the same owned run (`3465049c958b3b395345aa08ccf42737`; stock collector run `b803944df3892b975da1970488b9a672`), still grades both cases inconclusive
 (97 supported / 1 unsupported / 157 inconclusive, `suiteComplete=false`): **no stock score, no Core point and no common-harness score is added.**
 
 ## What the App did (disposable direct-local pane, 40×140)
@@ -70,8 +70,9 @@ need its own supported contract.
 
 ## Reproduction
 
-`node scripts/terminfo-owned.mjs --executable <abs>/Ntilde --app-version 0.14.0 --scope osc633` against the Release build of the App commit recorded in
-[summary.json](2026-11-20-pointer-color/summary.json) (`appRevision` = `scriptsRevision` = `67675feec…`). `scripts/terminfo/pcl-publication.test.mjs` extracts the retained
+`node scripts/terminfo-owned.mjs --executable <abs>/Ntilde --app-version 0.14.0 --scope osc633` against the Release build of App commit `67675feec…` (`appRevision` in
+[summary.json](2026-11-20-pointer-color/summary.json); the scripts measured are `scriptsRevision` `b76e6801…`). `scripts/terminfo/pcl-publication.test.mjs` extracts the retained
 [owned-run.zip](2026-11-20-pointer-color/owned-run.zip), reissues the complete receipt with the trusted current independent graders, rebuilds the report byte for byte from the retained journal and
-worker run log, and projects the summary and report. One failed attempt (the App exited before collection because the sidecar had not been restored) is retained under
-[superseded/attempt-1.zip](2026-11-20-pointer-color/superseded/attempt-1.zip) and described in [attempts.json](2026-11-20-pointer-color/attempts.json).
+worker run log, and projects the summary and report. Four earlier attempts are retained under [superseded/](2026-11-20-pointer-color/superseded) and described in
+[attempts.json](2026-11-20-pointer-color/attempts.json): a launch failure (the sidecar had not been restored), the complete first-contract run (superseded when review showed a masked-color gap, now closed
+by the per-request color reads), and two aborts on keyboard input that reached the App window during collection (the harness refuses unexpected input by design).

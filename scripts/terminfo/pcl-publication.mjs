@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { pclCaseIds } from './pcl-contracts.mjs';
 
 /** The measured scripts and App revisions (the App build is stamped into the sidecar assembly; the retained selected-source manifest independently pins the measured scripts). */
-export const measuredScriptsRevision = '67675feecc6da035338c36dbb8d03198e6f5b271';
+export const measuredScriptsRevision = 'b76e6801498aa33311b2b2206ba916724ad81b7e';
 export const measuredAppRevision = '67675feecc6da035338c36dbb8d03198e6f5b271';
 const scope = 'Pinned terminfo.dev@4.0.0 criteria for extensions.osc113-reset-pointer-fg and extensions.osc114-reset-pointer-bg (colorResetProbe(13, 113) / (14, 114): the termless path queries OSC 13 / OSC 14 and '
     + 'is inconclusive without a complete rgb reply; the terminal path writes the reset, asks the cursor position and returns unverifiedEffect, inconclusive by construction), decided by the unchanged stock collector '

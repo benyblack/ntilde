@@ -18,10 +18,13 @@ const read = name => readFileSync(join(dir, name));
 test('retained run independently rederives the complete receipt and published projection', () => {
     const manifestBytes = read('manifest.json');
     const manifest = JSON.parse(manifestBytes);
-    assert.deepEqual(Object.keys(manifest.archives), ['owned-run.zip', 'superseded/attempt-1.zip'], 'the final run and the one retained failed attempt');
+    assert.deepEqual(Object.keys(manifest.archives), ['owned-run.zip', ...[1, 2, 3, 4].map(index => `superseded/attempt-${index}.zip`)], 'the final run, one failed launch, the superseded first-contract run and two refused-input attempts');
     for (const [name, digest] of Object.entries(manifest.archives)) assert.equal(hash(read(name)), digest, name);
     const attempts = JSON.parse(read('attempts.json'));
-    assert.deepEqual(attempts.attempts.map(entry => entry.file), ['superseded/attempt-1.zip']);
+    assert.deepEqual(attempts.attempts.map(entry => entry.file), [1, 2, 3, 4].map(index => `superseded/attempt-${index}.zip`));
+    // The superseded first-contract run is still a complete, independently rederivable run of the earlier contract; it is retained, not re-graded under the current one.
+    const first = new Set(attempts.attempts.filter(entry => /complete run/.test(entry.failedAt)).map(entry => entry.file));
+    assert.deepEqual([...first], ['superseded/attempt-2.zip']);
     const root = mkdtempSync(join(tmpdir(), 'nt-pcl-publication-'));
     try {
         extractOwnedArchive(dir, manifest, root, join(dir, 'owned-run.zip'));
@@ -56,6 +59,6 @@ test('retained run independently rederives the complete receipt and published pr
         assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 157, supported: 97, unsupported: 1 });
         assert.equal(schemaVersion, 78); assert.equal(fixtureRemoved, true);
         assert.match(projected.summary.appRevision, /^[0-9a-f]{40}$/);
-        assert.equal(projected.summary.appRevision, projected.summary.scriptsRevision);
+        assert.match(projected.summary.scriptsRevision, /^[0-9a-f]{40}$/);
     } finally { rmSync(root, { recursive: true, force: true }); }
 });
