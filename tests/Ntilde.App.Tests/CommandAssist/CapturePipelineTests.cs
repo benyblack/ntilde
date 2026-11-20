@@ -689,17 +689,44 @@ public sealed class CapturePipelineTests
         TaskCompletionSource heldAppend = store.HoldAppends();
 
         Task capture = pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
-        await pipeline.HandleShellIntegrationEventAsync(Accepted("git status"));
-        Task finish = pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 0, duration: TimeSpan.FromSeconds(1)));
+        Task accepted = pipeline.HandleShellIntegrationEventAsync(Accepted("git status"));
 
         heldAppend.SetResult();
         await capture;
-        await finish;
+        await accepted;
+        await pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 0, duration: TimeSpan.FromSeconds(1)));
 
         CommandHistoryEntry entry = Assert.Single(store.Entries);
         Assert.Equal(CommandCaptureSource.Heuristic, entry.Source);
         Assert.Equal(0, entry.ExitCode);
         Assert.Equal(1000, entry.DurationMs);
+    }
+
+    /// <summary>
+    /// The dedup only stands a <c>C</c> down once the heuristic entry has landed. A <c>C</c> that
+    /// arrives while that append is in flight, and that append then fails, is the last record of the
+    /// command: it must write its own entry, and the finish must patch that one.
+    /// </summary>
+    [Fact]
+    public async Task CommandAccepted_WhileTheHeuristicAppendIsInFlightAndThenFails_WritesItsOwnEntry()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, AssistSessionContext context) = CreatePipeline();
+        context.SetShellIntegrationEnabled(true);
+        TaskCompletionSource heldAppend = store.HoldAppends();
+
+        Task capture = pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
+        Task accepted = pipeline.HandleShellIntegrationEventAsync(Accepted("git status"));
+
+        heldAppend.SetException(new InvalidOperationException("simulated write failure"));
+        await capture;
+        await accepted;
+        await pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 2, duration: TimeSpan.FromMilliseconds(40)));
+
+        CommandHistoryEntry entry = Assert.Single(store.Entries);
+        Assert.Equal(CommandCaptureSource.ShellIntegration, entry.Source);
+        Assert.Equal("git status", entry.CommandText);
+        Assert.Equal(2, entry.ExitCode);
+        Assert.Equal(40, entry.DurationMs);
     }
 
     /// <summary>
@@ -780,6 +807,12 @@ public sealed class CapturePipelineTests
 
     private sealed class InMemoryHistoryStore : IHistoryStore
     {
+        /// <summary>
+        /// Serializes every read-modify-write of <see cref="_entries"/>. A completion and a Fix
+        /// classification waiting on the same held append resume on separate thread-pool threads,
+        /// and each replaces the entry it read - unlocked, one could restore what the other wrote.
+        /// </summary>
+        private readonly object _sync = new();
         private readonly List<CommandHistoryEntry> _entries = new();
         private readonly List<string> _patchedEntryIds = new();
         private readonly List<string> _firstTokenSweeps = new();
@@ -815,13 +848,19 @@ public sealed class CapturePipelineTests
                 await held.Task;
             }
 
-            _entries.Add(entry);
+            lock (_sync)
+            {
+                _entries.Add(entry);
+            }
         }
 
         public Task ClearAsync(CancellationToken cancellationToken = default)
         {
-            _entries.Clear();
-            return Task.CompletedTask;
+            lock (_sync)
+            {
+                _entries.Clear();
+                return Task.CompletedTask;
+            }
         }
 
         public Task<IReadOnlyList<CommandHistoryEntry>> GetRecentAsync(int maxResults, CancellationToken cancellationToken = default)
@@ -832,57 +871,66 @@ public sealed class CapturePipelineTests
 
         public Task<bool> TryMarkInvalidCommandAsync(string entryId, CancellationToken cancellationToken = default)
         {
-            int index = _entries.FindIndex(x => x.Id == entryId);
-            if (index < 0)
+            lock (_sync)
             {
-                return Task.FromResult(false);
-            }
+                int index = _entries.FindIndex(x => x.Id == entryId);
+                if (index < 0)
+                {
+                    return Task.FromResult(false);
+                }
 
-            _entries[index] = _entries[index] with { IsInvalidCommand = true };
-            return Task.FromResult(true);
+                _entries[index] = _entries[index] with { IsInvalidCommand = true };
+                return Task.FromResult(true);
+            }
         }
 
         public Task<int> TryMarkInvalidCommandsByFirstTokenAsync(string firstToken, CancellationToken cancellationToken = default)
         {
-            _firstTokenSweeps.Add(firstToken);
-
-            int flagged = 0;
-            for (int i = 0; i < _entries.Count; i++)
+            lock (_sync)
             {
-                if (_entries[i].IsInvalidCommand ||
-                    !string.Equals(
-                        CommandHistoryEntry.FirstToken(_entries[i].CommandText),
-                        firstToken,
-                        StringComparison.OrdinalIgnoreCase))
+                _firstTokenSweeps.Add(firstToken);
+
+                int flagged = 0;
+                for (int i = 0; i < _entries.Count; i++)
                 {
-                    continue;
+                    if (_entries[i].IsInvalidCommand ||
+                        !string.Equals(
+                            CommandHistoryEntry.FirstToken(_entries[i].CommandText),
+                            firstToken,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    _entries[i] = _entries[i] with { IsInvalidCommand = true };
+                    flagged++;
                 }
 
-                _entries[i] = _entries[i] with { IsInvalidCommand = true };
-                flagged++;
+                return Task.FromResult(flagged);
             }
-
-            return Task.FromResult(flagged);
         }
 
         public Task<bool> TryUpdateExecutionResultAsync(string entryId, int? exitCode, long? durationMs, bool isInvalidCommand = false, CancellationToken cancellationToken = default)
         {
-            int index = _entries.FindIndex(x => x.Id == entryId);
-            if (index < 0)
+            lock (_sync)
             {
-                return Task.FromResult(false);
+                int index = _entries.FindIndex(x => x.Id == entryId);
+                if (index < 0)
+                {
+                    return Task.FromResult(false);
+                }
+
+                _patchedEntryIds.Add(entryId);
+                _entries[index] = _entries[index] with
+                {
+                    ExitCode = exitCode,
+                    DurationMs = durationMs ?? _entries[index].DurationMs,
+
+                    // Latching, like the real store: see IHistoryStore.TryUpdateExecutionResultAsync.
+                    IsInvalidCommand = _entries[index].IsInvalidCommand || isInvalidCommand
+                };
+                return Task.FromResult(true);
             }
-
-            _patchedEntryIds.Add(entryId);
-            _entries[index] = _entries[index] with
-            {
-                ExitCode = exitCode,
-                DurationMs = durationMs ?? _entries[index].DurationMs,
-
-                // Latching, like the real store: see IHistoryStore.TryUpdateExecutionResultAsync.
-                IsInvalidCommand = _entries[index].IsInvalidCommand || isInvalidCommand
-            };
-            return Task.FromResult(true);
         }
     }
 

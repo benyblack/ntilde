@@ -378,8 +378,14 @@ internal sealed class CapturePipeline
         if (heuristicPending != null &&
             string.Equals(heuristicPending.CommandText, normalizedCommandText, StringComparison.Ordinal))
         {
-            _structuredEntryWrittenThisCycle = true;
-            return;
+            // But it only stands in for this C once it has actually landed. If that append fails,
+            // this C is the last record of the command, so it falls through and writes its own
+            // entry; the failed append has already withdrawn its registration.
+            if (await heuristicPending.Appended)
+            {
+                _structuredEntryWrittenThisCycle = true;
+                return;
+            }
         }
 
         try
