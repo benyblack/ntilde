@@ -58,6 +58,10 @@ public sealed class IdentityPropertyOscPolicyTests
         parser.OnPromptReady = () => events.Add("prompt");
         parser.OnCommandStarted = _ => events.Add("command-started");
         parser.OnCommandFinished = _ => events.Add("command-finished");
+        parser.OnCommandFinishedDetailed = (_, _) => events.Add("command-finished-detailed");
+        parser.OnCommandAccepted = _ => events.Add("command-accepted");
+        parser.OnKittyClipboardPacket = _ => events.Add("kitty-clipboard");
+        parser.OnKittyClipboardReset = () => events.Add("kitty-clipboard-reset");
         parser.Process(Setup);
         Assert.Contains("title:before", events); // the collectors really are wired: a handler that fired would be seen
         replies.Clear();
@@ -161,9 +165,9 @@ public sealed class IdentityPropertyOscPolicyTests
     }
 
     [Fact]
-    public void A_longer_code_that_merely_starts_with_an_identity_code_is_not_mistaken_for_it()
+    public void Look_alike_longer_codes_are_ignored_and_silent_too()
     {
-        // 1760, 6660, 7010 and 7020 are other (here unassigned) codes: ignored too, and equally silent.
+        // 1760, 6660, 7010 and 7020 are other codes sharing a prefix: also ignored and silent. (Same expected behaviour as the exact codes, so this is a guard against a prefix match answering, not proof of exact matching.)
         var without = Start();
         without.Parser.Process("tail");
         var with = Start();
