@@ -18,6 +18,8 @@ namespace Ntilde.VT
                     "$qs" => ReportLeftRightMargins(),
                     "$qm" => ReportGraphicRendition(),
                     "$q q" => ReportCursorStyle(),
+                    "$q\"q" => _buffer.IsCharacterProtected ? "1\"q" : "0\"q",
+                    "$q*x" => _buffer.Modes.IsRectangularAttributeExtent ? "2*x" : "0*x",
                     _ => null,
                 }
                 : null;

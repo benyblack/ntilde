@@ -12,6 +12,8 @@ public sealed class DecrqssSettingReportTests
     private const string Failure = "\x1bP0$r\x1b\\";
     private const string SgrRequest = "\x1bP$qm\x1b\\";
     private const string CursorRequest = "\x1bP$q q\x1b\\";
+    private const string ProtectionRequest = "\x1bP$q\"q\x1b\\";
+    private const string ExtentRequest = "\x1bP$q*x\x1b\\";
 
     [Theory]
     [InlineData("", "0")]
@@ -96,6 +98,49 @@ public sealed class DecrqssSettingReportTests
         Assert.Equal("\x1bP1$r" + expected + " q\x1b\\", Query(setup, CursorRequest));
     }
 
+    [Theory]
+    [InlineData("", "0")]
+    [InlineData("\x1b[1\"q", "1")]
+    [InlineData("\x1b[1\"qA\x1b[0\"q", "0")]
+    [InlineData("\x1b[1\"q\x1b[2\"q", "0")]
+    [InlineData("\x1b[1\"q\x1b[\"q", "0")]
+    [InlineData("\x1b[1\"q\x1b[3\"q\x1b[0m", "1")]
+    [InlineData("\x1b[1\"q\x1b[!p", "0")]
+    [InlineData("\x1b[1\"q\u001bc", "0")]
+    [InlineData("\x1b[1\"q\u001b7\x1b[0\"q\u001b8", "1")]
+    public void Character_protection_report_names_the_live_pen(string setup, string expected)
+    {
+        Assert.Equal("\x1bP1$r" + expected + "\"q\x1b\\", Query(setup, ProtectionRequest));
+    }
+
+    [Theory]
+    [InlineData("", "0")]
+    [InlineData("\x1b[2*x", "2")]
+    [InlineData("\x1b[2*x\x1b[0*x", "0")]
+    [InlineData("\x1b[2*x\x1b[1*x", "0")]
+    [InlineData("\x1b[2*x\x1b[*x", "0")]
+    [InlineData("\x1b[2*x\x1b[3*x", "2")]
+    [InlineData("\x1b[2*x\x1b[!p", "2")]
+    [InlineData("\x1b[2*x\u001bc", "0")]
+    public void Attribute_extent_report_names_the_effective_extent(string setup, string expected)
+    {
+        Assert.Equal("\x1bP1$r" + expected + "*x\x1b\\", Query(setup, ExtentRequest));
+    }
+
+    [Theory]
+    [InlineData(ProtectionRequest, "\x1b[1\"q", "\x1b[0\"q")]
+    [InlineData(ProtectionRequest, "\x1b[0\"q", "\x1b[1\"q")]
+    [InlineData(ExtentRequest, "\x1b[2*x", "\x1b[0*x")]
+    [InlineData(ExtentRequest, "\x1b[0*x", "\x1b[2*x")]
+    public void Replaying_the_report_as_CSI_restores_the_setting(string request, string setter, string change)
+    {
+        string reply = Query(setter, request);
+        Assert.StartsWith("\x1bP1$r", reply, StringComparison.Ordinal);
+        Assert.EndsWith("\x1b\\", reply, StringComparison.Ordinal);
+        string replay = "\x1b[" + reply["\x1bP1$r".Length..^"\x1b\\".Length];
+        Assert.Equal(reply, Query(change + replay, request));
+    }
+
     [Fact]
     public void Decscusr_zero_returns_to_the_host_default_presentation()
     {
@@ -126,10 +171,15 @@ public sealed class DecrqssSettingReportTests
                 replies.Add(reply);
             }
         };
-        parser.Process("\x1b[1;4:3;31;58;5;9mtext\x1b[5 q\x1b[2;4H");
+        parser.Process("\x1b[1;4:3;31;58;5;9mtext\x1b[5 q\x1b[2;4H\x1b[1\"q\x1b[2*x");
         byte[] before = TerminalStateSerializer.ToBytes(buffer.ExportState(0));
-        parser.Process(start + "$qm" + end + start + "$q q" + end);
-        Assert.Equal(new[] { "\x1bP1$r0;1;4:3;31;58;5;9m\x1b\\", "\x1bP1$r5 q\x1b\\" }, replies);
+        foreach (string payload in new[] { "$qm", "$q q", "$q\"q", "$q*x" })
+            parser.Process(start + payload + end);
+        Assert.Equal(new[]
+        {
+            "\x1bP1$r0;1;4:3;31;58;5;9m\x1b\\", "\x1bP1$r5 q\x1b\\",
+            "\x1bP1$r1\"q\x1b\\", "\x1bP1$r2*x\x1b\\",
+        }, replies);
         Assert.Equal(before, TerminalStateSerializer.ToBytes(buffer.ExportState(0)));
     }
 
@@ -146,7 +196,12 @@ public sealed class DecrqssSettingReportTests
     [InlineData("\x1bP$q  q\x1b\\")]
     [InlineData("\x1bP$q q \x1b\\")]
     [InlineData("\x1bP$q1 q\x1b\\")]
-    [InlineData("\x1bP$q\"q\x1b\\")]
+    [InlineData("\x1bP$q\"q\a")]
+    [InlineData("\x1bP$q*x\a")]
+    [InlineData("\x1bP$q1\"q\x1b\\")]
+    [InlineData("\x1bP$q2*x\x1b\\")]
+    [InlineData("\x1bP$q\"q \x1b\\")]
+    [InlineData("\x1bP$q* x\x1b\\")]
     public void Bel_recovery_and_inexact_settings_stay_negative(string request)
     {
         Assert.Equal(Failure, Query("\x1b[1;31m\x1b[4 q", request));
@@ -155,6 +210,8 @@ public sealed class DecrqssSettingReportTests
     [Theory]
     [InlineData("$qm", "\x1bP1$r0;1m\x1b\\")]
     [InlineData("$q q", "\x1bP1$r4 q\x1b\\")]
+    [InlineData("$q\"q", "\x1bP1$r0\"q\x1b\\")]
+    [InlineData("$q*x", "\x1bP1$r0*x\x1b\\")]
     public void A_truncated_valid_prefix_stays_negative_and_an_exact_cap_length_request_succeeds(string payload, string success)
     {
         var replies = new List<string>();
@@ -170,14 +227,16 @@ public sealed class DecrqssSettingReportTests
     }
 
     [Theory]
-    [InlineData("$qm")]
-    [InlineData("$q q")]
+    [InlineData("$qm", "0;3;4:2;38;2;7;8;9;45;58;5;200m")]
+    [InlineData("$q q", "3 q")]
+    [InlineData("$q\"q", "1\"q")]
+    [InlineData("$q*x", "2*x")]
     [Trait("Category", "Replay")]
-    public void Every_split_and_complete_JSON_state_restore_preserve_the_exact_reply(string payload)
+    public void Every_split_and_complete_JSON_state_restore_preserve_the_exact_reply(string payload, string setting)
     {
-        const string Setup = "\x1b[3;4:2;38;2;7;8;9;45;58;5;200m\x1b[3 q";
+        const string Setup = "\x1b[3;4:2;38;2;7;8;9;45;58;5;200m\x1b[3 q\x1b[1\"q\x1b[2*x";
         string request = "\x1bP" + payload + "\x1b\\";
-        string? expected = null;
+        string expected = "\x1bP1$r" + setting + "\x1b\\";
         for (int cut = 0; cut <= request.Length; cut++)
         {
             var buffer = new TerminalBuffer(12, 6);
@@ -195,12 +254,9 @@ public sealed class DecrqssSettingReportTests
             int alreadyReplied = replies.Count; // the complete request answers before the snapshot
             source.Process(request[cut..]);
             target.Process(request[cut..]);
-            string reply = Assert.Single(replies);
-            expected ??= reply;
-            Assert.Equal(expected, reply);
+            Assert.Equal(expected, Assert.Single(replies));
             Assert.Equal(replies.Skip(alreadyReplied), resumed);
         }
-        Assert.Equal(payload == "$qm" ? "\x1bP1$r0;3;4:2;38;2;7;8;9;45;58;5;200m\x1b\\" : "\x1bP1$r3 q\x1b\\", expected);
     }
 
     [Fact]
