@@ -303,7 +303,7 @@ public class ExplainEscapeSequenceTests
         string result = VtTools.ExplainEscapeSequence(sequence);
         Assert.Contains("DECRQSS top/bottom margins", result, StringComparison.Ordinal);
         Assert.Contains("standard ST", result, StringComparison.Ordinal);
-        Assert.Contains("other settings are unavailable", result, StringComparison.Ordinal);
+        Assert.Contains("BEL recovery and incomplete DCS stay negative", result, StringComparison.Ordinal);
     }
 
     [Theory]
