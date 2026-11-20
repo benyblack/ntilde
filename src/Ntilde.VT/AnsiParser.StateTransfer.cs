@@ -21,6 +21,9 @@ namespace Ntilde.VT
                 EscapeSpacePending = _escapeSpacePending,
                 EscapeSpaceHasExtraIntermediate = _escapeSpaceHasExtraIntermediate,
                 Send8BitControls = _send8BitControls,
+                Vt100ControlMode = _vt100ControlMode,
+                Vt52Graphics = _vt52Graphics,
+                Vt52AddressRow = _vt52AddressRow,
                 CsiParams = new string(_paramBuffer, 0, _paramLen),
                 CsiTruncated = _csiTruncated,
                 OscBuffer = new string(_oscStringBuffer.ToArray()),
@@ -75,9 +78,17 @@ namespace Ntilde.VT
             ImportContexts(state.ContextStack, state.EndedContexts);
 
             _state = (State)state.State;
+            bool inVt52 = _buffer.Modes.IsVt52;
+            if (inVt52
+                ? _state is not (State.Normal or State.Esc or State.Vt52AddressRow or State.Vt52AddressColumn)
+                : _state is State.Vt52AddressRow or State.Vt52AddressColumn)
+                _state = State.Normal;
             _escapeSpacePending = _state == State.Esc && state.EscapeSpacePending;
             _escapeSpaceHasExtraIntermediate = _escapeSpacePending && state.EscapeSpaceHasExtraIntermediate;
-            _send8BitControls = state.Send8BitControls;
+            _vt100ControlMode = state.Vt100ControlMode;
+            _vt52Graphics = inVt52 && state.Vt52Graphics;
+            _vt52AddressRow = _state == State.Vt52AddressColumn ? state.Vt52AddressRow : 0;
+            _send8BitControls = !_vt100ControlMode && !inVt52 && state.Send8BitControls;
 
             // The counts half of StateTransferValidation's rule: a parameter run longer than this
             // build's cap is truncated exactly where the accumulation path would have truncated
@@ -264,6 +275,7 @@ namespace Ntilde.VT
                 }
             }
 
+            StateTransferValidation.RequireInRange(state.Vt52AddressRow, 0, 0x7f, "parser VT52 address row");
             StateTransferValidation.RequireInRange(state.Gl, 0, _charsets.Length - 1, "parser GL slot");
             StateTransferValidation.RequireInRange(
                 state.PendingCharsetSlot, -1, _charsets.Length - 1, "parser pending charset slot");

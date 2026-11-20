@@ -6,7 +6,7 @@ namespace Ntilde.Shell;
 internal static partial class TerminalInputModeEncoder
 {
     /// <summary>
-    /// Unmodified VT100/VT220 auxiliary-keypad frames. Logical navigation keys
+    /// Unmodified ANSI or VT52 auxiliary-keypad frames. Logical navigation keys
     /// keep their PC-style mapping; no unavailable native NumLock bit is guessed.
     /// Modified keys retain existing legacy/Kitty routing.
     /// </summary>
@@ -27,6 +27,6 @@ internal static partial class TerminalInputModeEncoder
             Key.OemComma when physical == PhysicalKey.NumPadComma => 'l',
             _ => '\0'
         };
-        return final == '\0' ? null : "\x1bO" + final;
+        return final == '\0' ? null : (modes.IsVt52 ? "\x1b?" : "\x1bO") + final;
     }
 }

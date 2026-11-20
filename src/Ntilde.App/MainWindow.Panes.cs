@@ -320,7 +320,7 @@ namespace Ntilde
 
             if (isAlt) return false;
 
-            int level = kittyFlags == 0 ? buffer?.Modes.ModifyOtherKeys.Level ?? 0 : 0;
+            int level = kittyFlags == 0 && buffer?.Modes is { IsVt52: false } modes ? modes.ModifyOtherKeys.Level : 0;
             if (!ProducesNoTextInput(key, modifiers))
             {
                 if (!focusedConsumesText) return false; // the text broadcast delivers it

@@ -451,6 +451,8 @@ namespace Ntilde.VT
         [JsonPropertyName("m_urxvt"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? MouseModeUrxvt { get; set; }
         /// <summary>SGR-Pixels coordinate encoding (?1016). Absent in older payloads, which reads as off.</summary>
         [JsonPropertyName("m_pixel"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? MouseModePixel { get; set; }
+        [JsonPropertyName("vt52"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IsVt52 { get; set; }
         [JsonPropertyName("ckm")] public bool IsApplicationCursorKeys { get; set; }
         [JsonPropertyName("kap")] public bool IsApplicationKeypad { get; set; }
         [JsonPropertyName("bkm"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

@@ -5,7 +5,8 @@ namespace Ntilde.VT
     public partial class AnsiParser
     {
         private TerminalBuffer _buffer;
-        private enum State { Normal, Esc, Csi, Osc, OscEsc, Dcs, DcsEsc, Charset, Apc, ApcEsc, EscHash }
+        // State ordinals are persisted. Append new states at the end.
+        private enum State { Normal, Esc, Csi, Osc, OscEsc, Dcs, DcsEsc, Charset, Apc, ApcEsc, EscHash, Vt52AddressRow, Vt52AddressColumn }
         private State _state = State.Normal;
         private bool _escapeSpacePending;
         private bool _escapeSpaceHasExtraIntermediate;
@@ -401,11 +402,11 @@ namespace Ntilde.VT
             }
             else if (c == '\x0e') // SO — shift GL to G1
             {
-                _gl = 1;
+                if (!_buffer.Modes.IsVt52) _gl = 1;
             }
             else if (c == '\x0f') // SI — shift GL to G0
             {
-                _gl = 0;
+                if (!_buffer.Modes.IsVt52) _gl = 0;
             }
             else
             {
@@ -600,7 +601,7 @@ namespace Ntilde.VT
                 case <= '\x2f':
                     _escapeSpaceHasExtraIntermediate = true;
                     return false;
-                case 'F' or 'G' when !_escapeSpaceHasExtraIntermediate:
+                case 'F' or 'G' when !_escapeSpaceHasExtraIntermediate && !_buffer.Modes.IsVt52 && !_vt100ControlMode:
                     _send8BitControls = c == 'G';
                     break;
             }
@@ -649,6 +650,7 @@ namespace Ntilde.VT
                                 else if (c >= 0x80 && c <= 0x9F) // C1 Controls
                                 {
                                     FlushText();
+                                    if (_buffer.Modes.IsVt52) break;
                                     switch (c)
                                     {
                                         case '\u009B':
@@ -679,7 +681,9 @@ namespace Ntilde.VT
                                 else
                                 {
                                     // Printable Characters — translate via active GL charset.
-                                    Charset gl = _charsets[_gl];
+                                    Charset gl = _buffer.Modes.IsVt52
+                                        ? (_vt52Graphics ? Charset.DecSpecialGraphics : Charset.Ascii)
+                                        : _charsets[_gl];
                                     _textBuffer.Append(gl == Charset.Ascii ? c : MapCharset(gl, c));
                                 }
                                 break;
@@ -688,6 +692,12 @@ namespace Ntilde.VT
                                 if (_escapeSpacePending)
                                 {
                                     reprocessCurrent = ConsumeEscapeSpace(c);
+                                    break;
+                                }
+
+                                if (_buffer.Modes.IsVt52)
+                                {
+                                    HandleVt52Escape(c);
                                     break;
                                 }
 
@@ -708,23 +718,7 @@ namespace Ntilde.VT
                                 }
                                 else if (c == 'c') // RIS - Reset to Initial State
                                 {
-                                    _buffer.Reset();
-                                    OnKittyClipboardReset?.Invoke();
-                                    OnPointerShapeReset?.Invoke();
-                                    ClearITerm2Multipart();
-                                    ClearPendingOsc99();
-                                    ResetCharsets();
-                                    _verticalOffset = 0;
-                                    // Parser-local mode state does not live in the buffer, so RIS
-                                    // must clear it here too: a reset client that never re-enabled
-                                    // mode 2048 must not keep receiving resize reports on its
-                                    // stdin, and DECRQM must not report the mode as set.
-                                    _send8BitControls = false;
-                                    _inBandResizeReportsEnabled = false;
-                                    _colorSchemeReportsEnabled = false;
-                                    ResetTitleStack();
-                                    RefreshColorScheme(notify: false);
-                                    _state = State.Normal;
+                                    HardReset();
                                 }
                                 else if (c == '=' || c == '>') // DECKPAM / DECKPNM
                                 {
@@ -764,6 +758,11 @@ namespace Ntilde.VT
                                     // Unknown escape sequence: ignore the introducer and current byte.
                                     _state = State.Normal;
                                 }
+                                break;
+
+                            case State.Vt52AddressRow:
+                            case State.Vt52AddressColumn:
+                                ConsumeVt52Address(c);
                                 break;
 
                             case State.Charset:

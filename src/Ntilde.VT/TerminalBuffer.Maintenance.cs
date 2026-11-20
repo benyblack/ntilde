@@ -443,6 +443,7 @@ namespace Ntilde.VT
                 Modes.IsReverseWrapMode = false;
                 Modes.IsApplicationCursorKeys = false;
                 Modes.IsApplicationKeypad = false;
+                Modes.IsVt52 = false;
                 Modes.IsBackarrowKeyMode = false;
                 Modes.IsLineFeedNewLineMode = false;
                 Modes.SetLocalEcho(null);

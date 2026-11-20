@@ -869,6 +869,7 @@ namespace Ntilde.VT
             MouseModeUtf8 = modes.MouseModeUtf8 ? true : null,
             MouseModeUrxvt = modes.MouseModeUrxvt ? true : null,
             MouseModePixel = modes.MouseModePixel ? true : null,
+            IsVt52 = modes.IsVt52,
             IsApplicationCursorKeys = modes.IsApplicationCursorKeys,
             IsApplicationKeypad = modes.IsApplicationKeypad,
             IsBackarrowKeyMode = modes.IsBackarrowKeyMode,
@@ -905,6 +906,7 @@ namespace Ntilde.VT
             target.MouseModeUtf8 = source.MouseModeUtf8 ?? false;
             target.MouseModeUrxvt = source.MouseModeUrxvt ?? false;
             target.MouseModePixel = source.MouseModePixel ?? false;
+            target.IsVt52 = source.IsVt52;
             target.IsApplicationCursorKeys = source.IsApplicationCursorKeys;
             target.IsApplicationKeypad = source.IsApplicationKeypad;
             target.IsBackarrowKeyMode = source.IsBackarrowKeyMode;

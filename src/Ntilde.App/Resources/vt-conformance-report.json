@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "47515466206bc0ce7282d86fac84b6f0a03f71292608d5c4dd1c0d647e5c4ee8",
+  "matrixSha256": "ec5c066e96cf0d2ed4ad6b6dd270a063b030f33490b31cd62ae8fda48c155c3e",
   "summary": {
     "totalRows": 157,
     "supportedCount": 75,
-    "partialCount": 73,
+    "partialCount": 74,
     "experimentalCount": 1,
-    "notSupportedCount": 8,
+    "notSupportedCount": 7,
     "wontSupportCount": 0,
-    "rowsWithLinkedEvidence": 150,
+    "rowsWithLinkedEvidence": 151,
     "supportedRowsWithLinkedEvidence": 75,
     "errorCount": 0,
     "warningCount": 0
@@ -215,7 +215,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "\u0060src/Ntilde.VT/AnsiParser.cs\u0060, \u0060src/Ntilde.VT/AnsiParser.Replies.cs\u0060",
-      "knownDeviations": "Direct and persistent sessions use raw C1 framing after S8C1T when the child transport supports it. Windows ConPTY and text-only transports keep seven-bit framing, as do startup, RIS and S7C1T. Snapshots carry the selected width and any pending space intermediate. Keyboard input and host-generated replies are outside this coverage.",
+      "knownDeviations": "Direct and persistent sessions use raw C1 framing after S8C1T when the child transport supports it. Windows ConPTY and text-only transports keep seven-bit framing, as do startup, RIS, S7C1T and the VT100 control mode entered with ESC \u003C from VT52. Snapshots carry the selected width and any pending space intermediate. Keyboard input and host-generated replies are outside this coverage.",
       "sourceLine": 64
     },
     {
@@ -2135,7 +2135,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput\u002BReplay",
-      "knownDeviations": "VT owns mode state, clone, complete snapshots and legacy replay defaults; DECSTR/RIS restore numeric mode. Kitty reporting takes precedence. Routed Avalonia key/text events pin exact writes and one-shot duplicate-text suppression. Logical PC navigation and modified keys retain existing mappings; unavailable native NumLock state, VT52, extra keypad keys, broadcast mapping and other runtime platforms remain unqualified. A retained macOS run observes normal key/text/up and eighteen application-keypad events through the generated routed-event path into the real local child; hardware input remains separate. See \u0060docs/qa/terminfo/application-keypad.md\u0060.",
+      "knownDeviations": "VT owns mode state, clone, complete snapshots and legacy replay defaults; DECSTR/RIS restore numeric mode. Kitty reporting takes precedence. Routed Avalonia key/text events pin exact writes and one-shot duplicate-text suppression. Logical PC navigation and modified keys retain existing mappings; unavailable native NumLock state, extra keypad keys, broadcast mapping and other runtime platforms remain unqualified. VT52 uses ESC ? in application keypad mode. A retained macOS run observes normal key/text/up and eighteen application-keypad events through the generated routed-event path into the real local child; hardware input remains separate. See \u0060docs/qa/terminfo/application-keypad.md\u0060.",
       "sourceLine": 164
     },
     {
@@ -3106,15 +3106,27 @@
     {
       "section": "5) Screen buffers \u0026 modes (DEC private modes)",
       "feature": "VT52 compatibility (DECANM)",
-      "status": "\u274C Not supported",
-      "specOrNotes": "Enter VT52 mode and return to ANSI mode; VT52 sequence set and key encodings",
-      "evidenceText": "\u2014",
-      "evidenceKinds": [],
-      "evidenceLinks": [],
-      "hasAutomatedEvidenceSignal": false,
-      "hasLinkedEvidence": false,
-      "ownership": "Parser",
-      "knownDeviations": "Private mode 2 is not tracked and there is no VT52 dispatch. Whether to support it at all is undecided. Tracked by [#1038](https://github.com/benyblack/ntilde/issues/1038).",
+      "status": "\u26A0 Partial",
+      "specOrNotes": "VT52 dispatch and keyboard encodings",
+      "evidenceText": "Unit/Replay: \u0060tests/Ntilde.VT.Tests/Vt52ModeTests.cs\u0060; Routed input: \u0060tests/Ntilde.App.Tests/Input/ApplicationKeypadRoutingTests.cs\u0060",
+      "evidenceKinds": [
+        "replay",
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/Input/ApplicationKeypadRoutingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/Vt52ModeTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BInput\u002BReplay",
+      "knownDeviations": "DECANM reset enters VT52. VT52 accepts ESC A/B/C/D/H/I/J/K, F/G (VT100 Special Graphics and ASCII), Y with two ASCII coordinates (each out-of-range axis retains its position), Z (ESC / Z), and =/\u003E. ESC \u003C resumes ANSI with seven-bit replies, and RIS restores startup ANSI. DECRQM reports ?2 set in ANSI. Exact DECSCL 61/62 selects control width without a full conformance-level reset. GUI arrows and PF1\u2013PF4 have bare ESC frames, with ESC ? for application keypad keys. Complete snapshots preserve the mode, graphics selection and pending ESC Y bytes. Text-client keyboard and physical DEC hardware are unqualified.",
       "sourceLine": 193
     },
     {

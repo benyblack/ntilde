@@ -40,6 +40,27 @@ namespace Ntilde.VT
             _pendingCharsetSlot = -1;
         }
 
+        private void HardReset()
+        {
+            _buffer.Reset();
+            OnKittyClipboardReset?.Invoke();
+            OnPointerShapeReset?.Invoke();
+            ClearITerm2Multipart();
+            ClearPendingOsc99();
+            ResetCharsets();
+            _verticalOffset = 0;
+            _vt52Graphics = false;
+            _vt52AddressRow = 0;
+            _vt100ControlMode = false;
+            // RIS also disables parser-owned reporting modes.
+            _send8BitControls = false;
+            _inBandResizeReportsEnabled = false;
+            _colorSchemeReportsEnabled = false;
+            ResetTitleStack();
+            RefreshColorScheme(notify: false);
+            _state = State.Normal;
+        }
+
         // DECSTR is separate from RIS: it leaves both screens and reporting modes intact.
         private void SoftReset()
         {

@@ -1178,6 +1178,7 @@ namespace Ntilde.VT
 
                 Modes.IsAutoWrapMode = snapshot.IsAutoWrapMode;
                 Modes.IsReverseWrapMode = snapshot.IsReverseWrapMode;
+                Modes.IsVt52 = false; // Legacy viewport-only checkpoints have no VT52 parser state.
                 Modes.IsApplicationCursorKeys = snapshot.IsApplicationCursorKeys;
                 Modes.IsApplicationKeypad = snapshot.IsApplicationKeypad;
                 if (snapshot.MouseModeX10PressOnly) Modes.SetMouseTrackingMode(9, true);
