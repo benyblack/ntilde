@@ -104,6 +104,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('osc3008', '2026-11-17-osc3008', '2026-11-17-osc3008-qualification.md'), module: 'osc3008-inventory.mjs', exports: ['osc3008SuiteId', 'osc3008ContractsVersion', 'osc3008CaseIds'], test: 'osc3008-publication.test.mjs' },
     // iTerm2 feature reporting (#995): the pinned query accepts any feature string and the effect contract demands the specification-framed declaration; pinned, effect and stock are all supported.
     { ...directory('caps', '2026-11-17-osc1337-capabilities', '2026-11-17-osc1337-capabilities-qualification.md'), module: 'caps-inventory.mjs', exports: ['capsSuiteId', 'capsContractsVersion', 'capsCaseIds'], test: 'caps-publication.test.mjs' },
+    // xterm pointer colors (#991): the pinned termless probe needs a complete rgb reply and the terminal probe is inconclusive by construction; the effect contract grades every OSC 13/14/113/114 spelling ignored, a recorded divergence.
+    { ...directory('pcl', '2026-11-20-pointer-color', '2026-11-20-pointer-color-qualification.md'), module: 'pcl-inventory.mjs', exports: ['pclSuiteId', 'pclContractsVersion', 'pclCaseIds'], test: 'pcl-publication.test.mjs' },
 ]);
 
 /**

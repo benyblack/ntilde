@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "note": "Failed or superseded owned-collection attempts for #991, retained unchanged. Each ran against the same pinned terminfo.dev@4.0.0 bundle on the same disposable-App setup.",
+  "attempts": [
+    {
+      "file": "superseded/attempt-1.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "uncommitted working tree before 44ea2a6e6 (the pointer-colour suite scripts as first written)",
+      "failedAt": "launch (before the start observation)",
+      "reason": "The owned App exited with status 0 before collection ('Owned app exited before collection (0)'). Cause: the sidecar copy had been built in a worktree whose packages were not yet restored, so the executable was not a runnable build of the App. No pointer-colour sequence was written; the retained journal is empty. The next attempt used the restored Release build of commit 67675feec and completed."
+    }
+  ]
+}

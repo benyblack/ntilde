@@ -7,9 +7,9 @@ import { pclCaseIds } from './pcl-contracts.mjs';
 
 const json = (dir, file) => JSON.parse(readFileSync(join(dir, file)));
 /** The measured scripts revision, recorded after the measurement from the committed final scripts. */
-export const measuredScriptsRevision = '0000000000000000000000000000000000000000';
+export const measuredScriptsRevision = '67675feecc6da035338c36dbb8d03198e6f5b271';
 /** The measured App build revision (stamped into the sidecar assembly). The retained selected-source manifest independently pins the measured scripts; these human-readable labels are not binary-to-source attestation. */
-export const measuredAppRevision = '0000000000000000000000000000000000000000';
+export const measuredAppRevision = '67675feecc6da035338c36dbb8d03198e6f5b271';
 const scope = 'Pinned terminfo.dev@4.0.0 criteria for extensions.osc113-reset-pointer-fg and extensions.osc114-reset-pointer-bg (colorResetProbe(13, 113) / (14, 114): the termless path queries OSC 13 / OSC 14 and '
     + 'is inconclusive without a complete rgb reply; the terminal path writes the reset, asks the cursor position and returns unverifiedEffect, inconclusive by construction), decided by the unchanged stock collector '
     + 'against the App in this owned run and replayed byte-exactly on both pinned paths over the journaled raw reply and cursor of their own fenced exchange, beside a separately identified effect contract graded by '
