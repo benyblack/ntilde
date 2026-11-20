@@ -145,11 +145,12 @@ namespace Ntilde.Shell
         {
             var session = _session;
             ReportedKittyKey? reported = null;
-            if (trackKittyEvents && (key != Key.None || physical != PhysicalKey.None)
-                && _enableKittyKeyboardProtocol && _buffer?.Modes is { } modes && modes.KittyKeyboard.ReportEventTypes
-                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, modes, TerminalKeyEventKind.Repeat, identity) != null))
+            int flags = trackKittyEvents ? EffectiveKittyKeyboardFlags : 0;
+            if ((flags & Ntilde.VT.KittyKeyboardState.FlagReportEventTypes) != 0
+                && (key != Key.None || physical != PhysicalKey.None)
+                && _buffer?.Modes.KittyKeyboard is { } state
+                && (key == Key.Escape || TerminalInputModeEncoder.EncodeKittyKey(key, modifiers, flags, TerminalKeyEventKind.Repeat, identity) != null))
             {
-                var state = modes.KittyKeyboard;
                 reported = new(key, identity, state, state.Generation);
             }
             SendUserInput(sequence);

@@ -48,6 +48,8 @@ public sealed class ApplicationKeypadRoutingTests
         Assert.True(view.Down(Key.NumPad1, physical: PhysicalKey.NumPad1));
         view.Text("1");
         Assert.True(view.Down(Key.Enter, physical: PhysicalKey.NumPadEnter));
+        Assert.True(view.Down(Key.OemComma, physical: PhysicalKey.NumPadComma));
+        view.Text(",");
         parser.Process("\x1b>");
         Assert.False(view.Down(Key.NumPad1, physical: PhysicalKey.NumPad1));
         view.Text("1");
@@ -59,7 +61,7 @@ public sealed class ApplicationKeypadRoutingTests
         Assert.Equal(new[]
         {
             "\u001bA", "\u001bB", "\u001bC", "\u001bD", "\x1bP", "\x1bQ", "\x1bR", "\x1bS",
-            "\x1b?q", "\x1b?M", "1", "\x1bOC", "\x1bOP", "\x1bOq",
+            "\x1b?q", "\x1b?M", "\x1b?l", "1", "\x1bOC", "\x1bOP", "\x1bOq",
         }, sent);
     }
 
@@ -76,6 +78,18 @@ public sealed class ApplicationKeypadRoutingTests
         Assert.True(view.Down(Key.NumPad7, physical: PhysicalKey.NumPad7));
         view.Text("7");
         Assert.Equal(new[] { "\x1b?w", "\x1b[57406u" }, sent);
+    }
+
+    [AvaloniaFact]
+    public void Vt52_press_stays_untracked_when_released_after_returning_to_ansi()
+    {
+        var (view, buffer, sent) = Create(3);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b[?2l");
+        Assert.True(view.Down(Key.Up));
+        parser.Process("\x1b<");
+        view.Up(Key.Up);
+        Assert.Equal("\u001bA", Assert.Single(sent));
     }
 
     [AvaloniaTheory]
