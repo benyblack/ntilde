@@ -244,32 +244,20 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput, IT
             // invocation, and a live emit cannot slip ahead of the replay.
             lock (_outputInvocationLock)
             {
-                (string Text, TerminalOutputChunk Output)[]? replay = null;
+                PendingOutputReplay? replay = null;
                 lock (_outputHandlerGate)
                 {
                     if (!_hasOutputSubscriberEver)
                     {
                         _hasOutputSubscriberEver = true;
                         _rawOutput.StopRetaining();
-                        if (_pendingOutputReplay != null)
-                        {
-                            replay = _pendingOutputReplay.TakeChunks();
-                            _pendingOutputReplay = null;
-                        }
+                        replay = _pendingOutputReplay;
+                        _pendingOutputReplay = null;
                     }
                     _onOutputReceived += value;
                 }
 
-                if (replay != null)
-                {
-                    foreach (var chunk in replay)
-                    {
-                        if (chunk.Text.Length == 0 && _recordingDelivery.Mode != 2) continue;
-                        _recordingDelivery.Chunk = chunk.Output;
-                        try { value(chunk.Text); }
-                        finally { _recordingDelivery.Chunk = default; }
-                    }
-                }
+                _recordingDelivery.ReplayPending(replay, value);
             }
         }
         remove

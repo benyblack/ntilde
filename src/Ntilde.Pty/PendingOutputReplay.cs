@@ -53,5 +53,5 @@ public sealed class PendingOutputReplay
     /// <summary>The held text chunks, oldest first.</summary>
     public string[] ToArray() => _chunks.Select(chunk => chunk.Text).ToArray();
 
-    public (string Text, TerminalOutputChunk Output)[] TakeChunks() => _chunks.ToArray();
+    internal IEnumerable<(string Text, TerminalOutputChunk Output)> Chunks => _chunks;
 }

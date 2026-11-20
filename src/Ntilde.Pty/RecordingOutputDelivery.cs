@@ -31,6 +31,19 @@ public sealed class RecordingOutputDelivery
         flight?.RecordSixelCellSize(widthPx, heightPx);
     }
 
+    /// <summary>Deliver detached startup output while the session holds its output invocation lock.</summary>
+    public void ReplayPending(PendingOutputReplay? pending, Action<string> handler)
+    {
+        if (pending is null) return;
+        foreach (var (text, chunk) in pending.Chunks)
+        {
+            if (text.Length == 0 && Mode != 2) continue;
+            Chunk = chunk;
+            try { handler(text); }
+            finally { Chunk = default; }
+        }
+    }
+
     public void UseRawHost() => Volatile.Write(ref _mode, 1);
 
     public Action<string> CreateDecodedHost(Action<string, ReadOnlyMemory<byte>> handler)
