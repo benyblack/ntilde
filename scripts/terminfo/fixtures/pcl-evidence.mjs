@@ -28,10 +28,10 @@ const exchanges = Object.freeze({
 });
 
 /** The screens and reply lists of every read of the case; `mutate(role, read)` may return a changed read to build negative evidence. */
-export function syntheticPclScreens(contract, binding = paletteBinding(), mutate = null, runId = 'a'.repeat(32)) {
+export function syntheticPclScreens(contract, binding = paletteBinding(), mutate = null, runId = 'a'.repeat(32), readBinding = pclSeededBinding(binding)) {
     const nonce = 'NTILDE_PCL_' + runId;
     // Every case read sits between the color seed and the shared reset: the App's resolved binding carries the seeded OSC 10 / OSC 11 overrides.
-    const seeded = pclSeededBinding(binding);
+    const seeded = readBinding;
     // The plan's static reseed homes the cursor: every read (and every exchange) observes it at home over the nonce row.
     return contract.roles.map(role => {
         const fresh = () => {
@@ -50,7 +50,7 @@ const mainScreen = binding => {
 };
 
 /** A complete, valid synthetic run: frames, worker run log and adapter facts. `mutate(caseId, role, read)` may return a changed read. */
-export function syntheticPclEvidence({ runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64), binding = paletteBinding(), mutate = null, finishBinding = null } = {}) {
+export function syntheticPclEvidence({ runId = 'a'.repeat(32), bundleSha256 = 'f'.repeat(64), binding = paletteBinding(), mutate = null, finishBinding = null, readBinding = pclSeededBinding(binding) } = {}) {
     const nonce = 'NTILDE_PCL_' + runId;
     const bound = alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], structuredClone(binding)), nonce);
     bound.cursorRow = 0;
@@ -58,7 +58,7 @@ export function syntheticPclEvidence({ runId = 'a'.repeat(32), bundleSha256 = 'f
     const frames = [frame(0, 'pcl-start', mainScreen(binding), null), frame(1, 'pcl-bind', bound, deviceAttribute)];
     const cases = [];
     for (const contract of pclContracts) {
-        const reads = syntheticPclScreens(contract, binding, mutate, runId);
+        const reads = syntheticPclScreens(contract, binding, mutate, runId, readBinding);
         const records = reads.map((read, index) => {
             const isReport = contract.roles[index] !== 'initial';
             const exchange = isReport ? { barrier: deviceAttribute, replies: read.replies } : undefined;

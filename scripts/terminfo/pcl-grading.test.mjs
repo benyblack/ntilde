@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { buildPclGradingReport, validatePclEvidence } from './pcl-grading.mjs';
 import { syntheticPclEvidence } from './fixtures/pcl-evidence.mjs';
 import { paletteBinding } from './fixtures/col-edit-evidence.mjs';
-import { pclSuiteId, pclCaseIds } from './pcl-contracts.mjs';
+import { pclSeededBinding, pclSuiteId, pclCaseIds } from './pcl-contracts.mjs';
 
 test('the synthetic evidence builds a report whose pinned verdicts stay inconclusive and whose effect is unsupported, recorded as a divergence', () => {
     const evidence = syntheticPclEvidence();
@@ -71,21 +71,23 @@ test('refuses tampered evidence: restoration, binding stability, adapter identit
 });
 
 test('the case reads must carry exactly the seeded binding: an unseeded, a re-seeded or a palette-changed read is refused', () => {
-    const edgeEvidence = syntheticPclEvidence();
-    const seededRead = index => edgeEvidence.frames[index].screen.colorBinding;
-    assert.equal(seededRead(2).foregroundOverride, true, 'the fixture reads carry the OSC 10 override');
-    assert.equal(edgeEvidence.frames[0].screen.colorBinding.foregroundOverride, false, 'the edges carry the host binding');
-    for (const [label, mutate] of [
-        ['the seed did not take (host foreground)', binding => { binding.foregroundArgb = edgeEvidence.frames[0].screen.colorBinding.foregroundArgb; binding.foregroundOverride = false; }],
-        ['a different background', binding => { binding.backgroundArgb = 0xff000000; }],
-        ['a palette override', binding => { binding.paletteOverrideIndices = [1]; }],
-        ['a changed palette', binding => { binding.ansiPaletteArgb = binding.ansiPaletteArgb.map(() => 0xff010101); }],
+    const host = paletteBinding(), seeded = pclSeededBinding(host);
+    const accepted = syntheticPclEvidence({ readBinding: seeded });
+    assert.equal(accepted.frames[2].screen.colorBinding.foregroundOverride, true, 'the fixture reads carry the OSC 10 override');
+    assert.equal(accepted.frames[0].screen.colorBinding.foregroundOverride, false, 'the edges carry the host binding');
+    // Each read binding below is coherent (the screens are rebuilt with it, hashes and resolved channels included), so only the run-level binding invariant can refuse it.
+    for (const [label, readBinding] of [
+        ['the seed did not take (host binding on every read)', host],
+        ['a different background', { ...seeded, backgroundArgb: 0xff000000 }],
+        ['a palette override', { ...seeded, paletteOverrideIndices: [1] }],
+        ['a changed palette', { ...seeded, ansiPaletteArgb: seeded.ansiPaletteArgb.map(() => 0xff010101) }],
+        ['a foreground override flag without the value', { ...seeded, foregroundOverride: false }],
     ]) {
-        const evidence = syntheticPclEvidence();
-        mutate(evidence.frames[3].screen.colorBinding);
-        assert.throws(() => buildPclGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter), /palette or theme change|snapshot evidence|resolved/, label);
+        const evidence = syntheticPclEvidence({ readBinding });
+        assert.throws(() => buildPclGradingReport(evidence.frames, evidence.run, evidence.runId, evidence.adapter), /palette or theme change/, label);
     }
-    const edgeSeeded = syntheticPclEvidence();
-    edgeSeeded.frames[1].screen.colorBinding = structuredClone(edgeSeeded.frames[2].screen.colorBinding);
-    assert.throws(() => buildPclGradingReport(edgeSeeded.frames, edgeSeeded.run, edgeSeeded.runId, edgeSeeded.adapter), /palette or theme change|snapshot evidence|resolved/, 'the bind frame precedes the seed');
+    const unrestored = syntheticPclEvidence({ finishBinding: seeded });
+    assert.throws(() => buildPclGradingReport(unrestored.frames, unrestored.run, unrestored.runId, unrestored.adapter), /palette or theme change|fixture was not restored/, 'the finish frame must be back on the host binding');
+});
+    assert.throws(() => buildPclGradingReport(edgeSeeded.frames, edgeSeeded.run, edgeSeeded.runId, edgeSeeded.adapter), /palette or theme change/, 'the start, bind and finish frames must carry the host binding, not the seed');
 });
