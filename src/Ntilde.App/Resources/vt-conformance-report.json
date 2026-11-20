@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "55fe34609d885e22988b1d8514c9cfd861c6aa07cfd7c7b4bafb87651c7c1671",
+  "matrixSha256": "fa0ca567e5674d1c13aa6956cbb6f48e2d0b08564c54a38098692040c673a991",
   "summary": {
     "totalRows": 158,
     "supportedCount": 75,
@@ -3623,7 +3623,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BBuffer",
-      "knownDeviations": "Deliberately ignored whole (policy, #991): the App draws the operating system\u0027s pointer and cannot recolor it, so a query is never answered and a set or reset changes nothing, including the cursor color (\u0060OSC 12\u0060), foreground/background (\u0060OSC 10\u0060/\u006011\u0060), selection colors (\u0060OSC 17\u0060/\u006019\u0060), the palette, the special colors and the pointer shape (\u0060OSC 22\u0060). In an \u0060OSC 10\u0060/\u006011\u0060/\u006012\u0060 chain the pointer slots (13, 14) still consume their values, so later slots (17, 19) do not shift. Parser and buffer tests only; the running App has not been measured for these codes. Any later implementation needs App-owned pointer rendering plus readback and restoration tests.",
+      "knownDeviations": "Deliberately ignored whole (policy, #991): the App draws the operating system\u0027s pointer and cannot recolor it, so a query is never answered and a set or reset changes nothing, including the cursor color (\u0060OSC 12\u0060), foreground/background (\u0060OSC 10\u0060/\u006011\u0060), selection colors (\u0060OSC 17\u0060/\u006019\u0060), the palette, the special colors and the pointer shape (\u0060OSC 22\u0060). In an \u0060OSC 10\u0060/\u006011\u0060/\u006012\u0060 chain the pointer slots (13, 14) still consume their values, so later slots (17, 19) do not shift. Parser and buffer tests plus an owned real-App measurement ([qualification](qa/terminfo/2026-11-20-pointer-color-qualification.md)): effect unsupported, pinned inconclusive, no score change. Any later implementation needs App-owned pointer rendering plus readback and restoration tests.",
       "sourceLine": 233
     },
     {

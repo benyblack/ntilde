@@ -377,6 +377,7 @@ jobs:
           scripts/terminfo/osc720-grading-collector.test.mjs
           scripts/terminfo/osc3008-grading-collector.test.mjs
           scripts/terminfo/caps-grading-collector.test.mjs
+          scripts/terminfo/pcl-grading-collector.test.mjs
           scripts/terminfo/modify-other-keys-3-policy.test.mjs
           scripts/terminfo/osc133-p-policy.test.mjs
           scripts/terminfo/osc22-grading-collector.test.mjs
