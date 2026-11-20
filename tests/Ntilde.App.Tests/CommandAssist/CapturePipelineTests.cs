@@ -630,6 +630,125 @@ public sealed class CapturePipelineTests
         Assert.DoesNotContain(store.Entries, x => x.IsInvalidCommand);
     }
 
+    /// <summary>
+    /// The race the Enter-time append used to lose: a fast command's <c>D</c> is handled on the
+    /// pane's shell-integration dispatcher while the heuristic append is still in flight on another
+    /// queue. The finish must wait for the entry rather than find nothing pending and drop the exit
+    /// code and duration.
+    /// </summary>
+    [Fact]
+    public async Task CommandFinished_WhileTheHeuristicAppendIsInFlight_StillPatchesTheEntry()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, _) = CreatePipeline();
+        TaskCompletionSource heldAppend = store.HoldAppends();
+
+        Task capture = pipeline.CaptureSubmissionAsync("true", isSubmissionSuppressed: false);
+        Task finish = pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 100, duration: TimeSpan.FromMilliseconds(3)));
+
+        Assert.False(finish.IsCompleted, "The finish must wait for the append it patches.");
+        Assert.Empty(store.Entries);
+
+        heldAppend.SetResult();
+        await capture;
+        await finish;
+
+        CommandHistoryEntry entry = Assert.Single(store.Entries);
+        Assert.Equal(100, entry.ExitCode);
+        Assert.Equal(3, entry.DurationMs);
+    }
+
+    /// <summary>
+    /// The same race through the host's own command-finished signal.
+    /// </summary>
+    [Fact]
+    public async Task CompleteSubmissionAsync_WhileTheHeuristicAppendIsInFlight_StillPatchesTheEntry()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, _) = CreatePipeline();
+        TaskCompletionSource heldAppend = store.HoldAppends();
+
+        Task capture = pipeline.CaptureSubmissionAsync("true", isSubmissionSuppressed: false);
+        Task finish = pipeline.CompleteSubmissionAsync(23);
+
+        heldAppend.SetResult();
+        await capture;
+        await finish;
+
+        Assert.Equal(23, Assert.Single(store.Entries).ExitCode);
+    }
+
+    /// <summary>
+    /// The double-capture guard has the same dependency: a <c>C</c> handled while the heuristic
+    /// append for the same command is in flight must still recognise it, or the first command of an
+    /// instrumented session is written twice.
+    /// </summary>
+    [Fact]
+    public async Task CommandAccepted_WhileTheHeuristicAppendIsInFlight_IsStillDeduplicated()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, AssistSessionContext context) = CreatePipeline();
+        context.SetShellIntegrationEnabled(true);
+        TaskCompletionSource heldAppend = store.HoldAppends();
+
+        Task capture = pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
+        await pipeline.HandleShellIntegrationEventAsync(Accepted("git status"));
+        Task finish = pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 0, duration: TimeSpan.FromSeconds(1)));
+
+        heldAppend.SetResult();
+        await capture;
+        await finish;
+
+        CommandHistoryEntry entry = Assert.Single(store.Entries);
+        Assert.Equal(CommandCaptureSource.Heuristic, entry.Source);
+        Assert.Equal(0, entry.ExitCode);
+        Assert.Equal(1000, entry.DurationMs);
+    }
+
+    /// <summary>
+    /// A finish waiting on an append that then fails must neither hang nor leave the failed
+    /// registration in place for the dedup: the structured path writes its own entry.
+    /// </summary>
+    [Fact]
+    public async Task CommandFinished_WaitingOnAnAppendThatFails_CompletesAndPatchesNothing()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, AssistSessionContext context) = CreatePipeline();
+        context.SetShellIntegrationEnabled(true);
+        TaskCompletionSource heldAppend = store.HoldAppends();
+
+        Task capture = pipeline.CaptureSubmissionAsync("git status", isSubmissionSuppressed: false);
+        Task finish = pipeline.HandleShellIntegrationEventAsync(Finished(exitCode: 0, duration: null));
+
+        heldAppend.SetException(new InvalidOperationException("simulated write failure"));
+        await capture;
+        await finish;
+
+        Assert.Empty(store.Entries);
+        Assert.Empty(store.PatchedEntryIds);
+
+        await pipeline.HandleShellIntegrationEventAsync(Accepted("git status"));
+        Assert.Equal(CommandCaptureSource.ShellIntegration, Assert.Single(store.Entries).Source);
+    }
+
+    /// <summary>
+    /// The completion releases the entry before its append lands, so a classification that follows
+    /// the completion has to wait for that append too.
+    /// </summary>
+    [Fact]
+    public async Task MarkLastCommandInvalidAsync_WhileTheCompletedEntryIsStillBeingAppended_FlagsIt()
+    {
+        (CapturePipeline pipeline, InMemoryHistoryStore store, _) = CreatePipeline();
+        TaskCompletionSource heldAppend = store.HoldAppends();
+
+        Task capture = pipeline.CaptureSubmissionAsync("gti status", isSubmissionSuppressed: false);
+        Task finish = pipeline.CompleteSubmissionAsync(1);
+        Task mark = pipeline.MarkLastCommandInvalidAsync();
+
+        heldAppend.SetResult();
+        await capture;
+        await finish;
+        await mark;
+
+        Assert.True(Assert.Single(store.Entries).IsInvalidCommand);
+    }
+
     private static (CapturePipeline Pipeline, InMemoryHistoryStore Store, AssistSessionContext Context) CreatePipeline()
     {
         var store = new InMemoryHistoryStore();
@@ -671,10 +790,32 @@ public sealed class CapturePipelineTests
         /// <summary>Every first-token sweep the pipeline asked for, in order.</summary>
         public IReadOnlyList<string> FirstTokenSweeps => _firstTokenSweeps;
 
-        public Task AppendAsync(CommandHistoryEntry entry, CancellationToken cancellationToken = default)
+        private TaskCompletionSource? _heldAppend;
+
+        /// <summary>
+        /// Makes the next append - only the next one - wait until the returned source completes, and
+        /// fail if it faults: an append held in flight, the window the completion race lives in.
+        /// </summary>
+        /// <remarks>
+        /// Continuations run inline on the thread that completes the source, so the test thread
+        /// decides exactly when the held append lands.
+        /// </remarks>
+        public TaskCompletionSource HoldAppends()
         {
+            _heldAppend = new TaskCompletionSource();
+            return _heldAppend;
+        }
+
+        public async Task AppendAsync(CommandHistoryEntry entry, CancellationToken cancellationToken = default)
+        {
+            TaskCompletionSource? held = _heldAppend;
+            _heldAppend = null;
+            if (held != null)
+            {
+                await held.Task;
+            }
+
             _entries.Add(entry);
-            return Task.CompletedTask;
         }
 
         public Task ClearAsync(CancellationToken cancellationToken = default)

@@ -564,6 +564,9 @@ to history twice — once by the heuristic path at `Enter` and once by the struc
 `OSC 133;C` — because `CapturePipeline`'s double-capture guard depends on the heuristic append
 having completed (`_pendingEntryId` set) before `C` is dispatched, and on the first command those
 two race. Reproduced live before and after this change, so it is pre-existing and independent of it.
+*Since fixed:* the pipeline now registers the pending entry before its append starts, and a
+completion that overtakes the append waits for it - the same race also cost fast commands their exit
+code and duration (`CapturePipelineTests.*WhileTheHeuristicAppendIsInFlight*`).
 
 ## Current Limitations
 - shell integration **injection** is local-only; SSH launch plans skip provider injection

@@ -358,6 +358,34 @@ public class PaneRemoteShellIntegrationTests
     }
 
     /// <summary>
+    /// The sibling of the test above with no settle between Enter and the finish: a fast command's
+    /// <c>C</c> and <c>D</c> reach the shell-integration dispatcher while the Enter-time append is
+    /// still in flight on another queue.
+    /// </summary>
+    /// <remarks>
+    /// Before the pending entry was registered ahead of its append, this lost the exit code and the
+    /// duration every time: the <c>D</c> found nothing pending and the entry stayed unpatched.
+    /// </remarks>
+    [AvaloniaFact]
+    public async Task OnAnSshPaneEmittingABareC_AFinishSentImmediatelyAfterEnter_StillGetsItsExitCode()
+    {
+        using var fixture = await Fixture.CreateAsync(ConnectionType.SSH);
+        fixture.Pane.ArmRemoteShellIntegrationTracker();
+        fixture.Pane.CreateAndWireParser();
+
+        await fixture.PromptAsync("true");
+        fixture.PressEnter();
+        fixture.Echo("\x1b]133;C\x07");
+        fixture.Echo("\x1b]133;D;100;800\x07");
+
+        CommandHistoryEntry entry = await fixture.WaitForSingleFinishedEntryAsync();
+        Assert.Equal("true", entry.CommandText);
+        Assert.Equal(CommandCaptureSource.Heuristic, entry.Source);
+        Assert.Equal(100, entry.ExitCode);
+        Assert.Equal(800, entry.DurationMs);
+    }
+
+    /// <summary>
     /// A bare-C shell must not have the heuristic path stood down: it is the only source of history
     /// such a session has. Two commands in a row, both captured.
     /// </summary>
@@ -634,6 +662,26 @@ public class PaneRemoteShellIntegrationTests
                 {
                     throw new TimeoutException(
                         $"Expected {count} history entries; the store has {entries.Count}.");
+                }
+
+                await Task.Delay(10);
+                elapsed += 10;
+            }
+        }
+
+        /// <summary>
+        /// Waits for exactly one entry to carry an exit code, and returns it as it stands at the
+        /// timeout otherwise, so the assertion that follows names what was lost.
+        /// </summary>
+        public async Task<CommandHistoryEntry> WaitForSingleFinishedEntryAsync(int timeoutMs = 2000)
+        {
+            int elapsed = 0;
+            while (true)
+            {
+                IReadOnlyList<CommandHistoryEntry> entries = await _historyStore.GetRecentAsync(10);
+                if ((entries.Count == 1 && entries[0].ExitCode.HasValue) || elapsed >= timeoutMs)
+                {
+                    return Assert.Single(entries);
                 }
 
                 await Task.Delay(10);
