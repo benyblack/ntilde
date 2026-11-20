@@ -86,7 +86,7 @@ namespace Ntilde.VT
             _state = (State)state.State;
             bool inVt52 = _buffer.Modes.IsVt52;
             if (inVt52
-                ? _state is not (State.Normal or State.Esc or State.Vt52AddressRow or State.Vt52AddressColumn)
+                ? _state is not (State.Normal or State.Esc or State.CodingSystem or State.Vt52AddressRow or State.Vt52AddressColumn)
                 : _state is State.Vt52AddressRow or State.Vt52AddressColumn)
                 _state = State.Normal;
             _escapeSpacePending = _state == State.Esc && state.EscapeSpacePending;

@@ -284,9 +284,11 @@ public sealed class ReplaySeekIsolationTests
     }
 
     [AvaloniaTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Recorded_checkpoint_uses_its_captured_decoder_tail(bool latin1)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Recorded_checkpoint_uses_its_captured_decoder_tail(bool latin1, bool hasMarker)
     {
         byte[] prefix = latin1 ? [.. "\u001b%@checkpoint"u8, 0xe9] : [.. "checkpoint"u8, 0xc3];
         byte[] tail = latin1 ? [(byte)'Z'] : [0xb1, (byte)'Z'];
@@ -296,6 +298,7 @@ public sealed class ReplaySeekIsolationTests
         var checkpoint = CaptureSnapshot(source, parser);
         Assert.True(checkpoint.HasDecoderTail);
         Assert.Equal(latin1 ? [] : new byte[] { 0xc3 }, checkpoint.State!.DecoderTail);
+        checkpoint.HasDecoderTail = hasMarker;
 
         ReplayEvent[] events = [
             new() { Type = "data", TimeOffsetMs = 10, Data = Convert.ToBase64String(prefix) },

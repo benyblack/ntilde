@@ -68,7 +68,7 @@ internal static class ReplayCommand
                 },
                 onSnapshotCallback: snapshot =>
                 {
-                    byte[]? legacyTail = snapshot.HasDecoderTail ? null : parser.PendingOutputBytes.ToArray();
+                    byte[]? legacyTail = snapshot.HasCapturedDecoderTail ? null : parser.PendingOutputBytes.ToArray();
                     ReplayRunner.ApplySnapshot(buffer, parser, snapshot);
                     if (legacyTail is not null) parser.RestoreOutputTail(legacyTail);
                     return System.Threading.Tasks.Task.CompletedTask;

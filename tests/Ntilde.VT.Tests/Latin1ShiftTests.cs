@@ -76,11 +76,15 @@ public sealed class Latin1ShiftTests
         Assert.Equal("£�", Line(buffer));
     }
 
-    [Fact]
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     [Trait("Category", "Replay")]
-    public void Every_split_restores_charset_shift_and_pending_raw_output_at_the_same_cut()
+    public void Every_split_restores_charset_shifts_and_output_coding_at_the_same_cut(bool vt52)
     {
-        byte[] bytes = [.. "\x1b.A\x1b}\x1b+A\x1bO\x1b[1m#Q"u8, 0xa3, .. "é€😀\x1bN#B"u8];
+        byte[] bytes = vt52
+            ? [.. "\x1b[?2l\x1b%@"u8, 0xe9, .. "\x1b%Gé"u8]
+            : [.. "\x1b.A\x1b}\x1b+A\x1bO\x1b[1m#Q"u8, 0xa3, .. "é€😀\x1bN#B"u8];
         for (int cut = 0; cut <= bytes.Length; cut++)
         {
             var buffer = new TerminalBuffer(40, 3);
@@ -95,7 +99,7 @@ public sealed class Latin1ShiftTests
             TerminalStateTransfer.Restore(restored, target,
                 TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(snapshot)));
             target.ProcessBytes(bytes.AsSpan(cut));
-            Assert.Equal("£Q£é€😀£B", Line(restored));
+            Assert.Equal(vt52 ? "éé" : "£Q£é€😀£B", Line(restored));
         }
     }
 

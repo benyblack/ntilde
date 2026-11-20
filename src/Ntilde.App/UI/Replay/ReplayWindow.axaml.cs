@@ -395,7 +395,7 @@ namespace Ntilde.UI.Replay
         // with its original UTF-8 decoding policy, then seed the parser once.
         private sealed class ReplayOutput(ReplaySnapshot? snapshot)
         {
-            private Ntilde.Pty.Utf8ChunkDecoder? _legacy = snapshot is { HasDecoderTail: false } ? new() : null;
+            private Ntilde.Pty.Utf8ChunkDecoder? _legacy = snapshot is { HasCapturedDecoderTail: false } ? new() : null;
 
             public void ObserveSkipped(byte[] data)
             {
