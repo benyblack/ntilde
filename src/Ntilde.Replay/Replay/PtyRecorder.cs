@@ -223,6 +223,7 @@ namespace Ntilde.Replay
                     snapshot = new ReplaySnapshot
                     {
                         State = state,
+                        HasDecoderTail = state is not null,
                         TextSizing = LegacyTextSizing(buffer, state),
                         Cols = cols,
                         Rows = rowCount,
