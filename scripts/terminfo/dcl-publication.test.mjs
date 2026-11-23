@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,6 +56,34 @@ test('retained run independently rederives the complete receipt and published pr
             for (const group of Object.values(item.observed.groups)) assert.deepEqual([group.app, group.kernel], [{ rows, cols }, { rows, cols }]);
             assert.ok(Object.entries(item.observed.groups).filter(([, group]) => group.unchanged !== null).every(([, group]) => group.unchanged === true));
         }
+        // The live geometry control is the owned resize suite of the same run: parent-selected App resizes, each followed by the App grid and the kernel PTY grid through the DECCOLM suite's own readers.
+        const control = projected.summary.geometryControl;
+        assert.equal(control.runId, projected.summary.ownedRunId);
+        assert.equal(control.passed, 3);
+        assert.deepEqual(control.baseline, { rows: 40, cols: 140 });
+        assert.deepEqual(control.actions.map(action => [action.caseId, action.stageId]), [['resize.width-roundtrip', 'after'], ['resize.width-roundtrip', 'restored'],
+            ['resize.height-history-roundtrip', 'after'], ['resize.height-history-roundtrip', 'restored'], ['resize.combined-reflow-history-roundtrip', 'after'], ['resize.combined-reflow-history-roundtrip', 'restored']]);
+        const [shrunk, restoredWidth] = control.actions;
+        assert.deepEqual([shrunk.app, shrunk.kernel], [{ rows: 40, cols: 133 }, { rows: 40, cols: 133 }], 'the width moved in the App and in the kernel together');
+        assert.deepEqual([restoredWidth.app, restoredWidth.kernel], [control.baseline, control.baseline], 'and returned to the DECCOLM baseline');
+        assert.ok(control.actions.every(action => JSON.stringify(action.app) === JSON.stringify(action.kernel) && JSON.stringify(action.app) === JSON.stringify(action.target)));
+        // A copy whose control was tampered with is refused rather than projected.
+        const tampered = (mutate, pattern) => {
+            const copy = mkdtempSync(join(tmpdir(), 'nt-dcl-control-'));
+            try {
+                extractOwnedArchive(dir, manifest, copy, join(dir, 'owned-run.zip'));
+                const file = join(copy, 'resize-actions.jsonl');
+                const lines = readFileSync(file, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+                mutate(lines, copy);
+                writeFileSync(file, lines.map(line => JSON.stringify(line)).join('\n') + '\n');
+                assert.throws(() => dclPublication(copy, { appRevision: projected.summary.appRevision, scriptsRevision: projected.summary.scriptsRevision }), pattern);
+            } finally { rmSync(copy, { recursive: true, force: true }); }
+        };
+        tampered(lines => { lines[0].observed.terminalOutput.description = lines[0].observed.terminalOutput.description.replace(' 133 columns', ' 140 columns'); }, /readers disagree with the target/);
+        tampered(lines => { lines[0].observed.app.layoutSettled = false; }, /readers disagree with the target/);
+        tampered(lines => { lines[1].observed.app.cols = 139; lines[1].target.cols = 139; lines[1].observed.terminalOutput.description = lines[1].observed.terminalOutput.description.replace(' 140 columns', ' 139 columns'); }, /does not move and restore the DECCOLM baseline grid/);
+        tampered(lines => { lines.pop(); }, /six parent-selected actions/);
+        tampered(lines => { for (const line of lines) { line.target.cols = 140; line.observed.app.cols = 140; line.observed.terminalOutput.description = line.observed.terminalOutput.description.replace(/ 133 columns/, ' 140 columns'); } }, /does not move and restore/);
         assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 157, supported: 97, unsupported: 1 });
         assert.equal(schemaVersion, 79); assert.equal(fixtureRemoved, true);
         assert.match(projected.summary.appRevision, /^[0-9a-f]{40}$/);

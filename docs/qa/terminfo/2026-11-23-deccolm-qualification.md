@@ -58,10 +58,13 @@ binding, so a run in which the seed did not take, a palette changed or the resto
 
 ## Limits
 
-- **Geometry sensitivity is not re-measured in this run.** There is no live resize control here. The two readers (the App grid from the paired screen, the kernel grid from `/bin/stty -a`) are the reader pair of the retained owned resize
-  measurement ([2026-11-03-resize.md](2026-11-03-resize.md)), where parent-selected App resizes were followed by both readers; that equivalence, not a check in this run, is why an unchanged grid is meaningful. An App grid that
-  did change would not even be gradable: the observer's fixed-size guard and the journal refuse a frame of another grid, so the run would be refused rather than judged. The kernel grid changing alone is a graded disagreement.
-  Adding a parent-selected resize control to the suite would be a follow-up.
+- **Geometry sensitivity is shown by a live control of the same run.** The DECCOLM groups carry no resize of their own, but the owned run that measured them (`31af6e012dd85f4e939799d78fbb20da`) also ran the owned
+  resize suite ([2026-11-03-resize.md](2026-11-03-resize.md)): six parent-selected App resizes, each followed by the App's settled grid and the kernel PTY grid read by the same system `/bin/stty` against the same proved PTY that
+  the DECCOLM groups use. In the width round trip both readers moved together from 40×140 to 40×133 and both returned to 40×140 (the height and combined round trips likewise), and the receipt of the run rederives all three
+  comparisons as passed. The publication projects those six actions into [summary.json](2026-11-23-deccolm/summary.json) (`geometryControl`) and `dcl-publication.test.mjs` refuses a copy in which a reader disagrees with its
+  target, a width never moves, or a restore misses the DECCOLM baseline. So an unchanged grid in the DECCOLM groups is an observation these readers demonstrably can make, on this App build, in this run. The control is the
+  resize suite's, not a step inside the DECCOLM plan: the DECCOLM contract header (a measured source, so left as measured) still describes the equivalence to the 2026-11-03 measurement. An App grid that did change would not even be
+  gradable: the observer's fixed-size guard and the journal refuse a frame of another grid, so the run would be refused rather than judged. The kernel grid changing alone is a graded disagreement.
 - A transition completed after a barrier would still be caught: every later group re-reads both grids, and the last group runs after all of them.
 - Raw replies, stored terminal state and PTY geometry only: not a window-manager size, rendering or painted pixels. Direct-local macOS pane only: no remote/mux, Windows/Linux or common-harness claim. Ignoring the modes is Ntilde's
   recorded policy (the App cannot resize its own pane from a program), not an xterm-conformance claim; an xterm-style implementation would need its own supported contract.
@@ -70,4 +73,4 @@ binding, so a run in which the seed did not take, a palette changed or the resto
 
 `node scripts/terminfo-owned.mjs --executable <abs>/Ntilde --app-version 0.14.0 --scope osc633` against the Release build of App commit `cf5d07ed3…` (`appRevision` in [summary.json](2026-11-23-deccolm/summary.json); the scripts measured are
 `scriptsRevision` `3ec330061…`). `scripts/terminfo/dcl-publication.test.mjs` extracts the retained [owned-run.zip](2026-11-23-deccolm/owned-run.zip), reissues the complete receipt with the trusted current independent graders,
-rebuilds the report byte for byte from the retained journal and worker run log, and projects the summary and report. The first attempt passed, so no run is superseded. Receipt schema 79 and source policy v72 (483 files) bind it.
+rebuilds the report byte for byte from the retained journal and worker run log, and projects the summary and report. The first attempt passed, so no run is superseded. Receipt schema 79 and source policy v72 (483 files) bind it. The same-run resize control was added to the publication afterwards, without a new measurement.

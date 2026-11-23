@@ -4,6 +4,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dclCaseIds } from './dcl-contracts.mjs';
+import { kernelGrid } from './dcl-capture.mjs';
 
 /** The measured scripts and App revisions (the App build is stamped into the sidecar assembly; the retained selected-source manifest independently pins the measured scripts). */
 export const measuredScriptsRevision = '3ec330061f2722b1adf1c9373eda82cddcff7461';
@@ -38,16 +39,40 @@ const publishedCase = (item, raw) => {
     return { caseId, pinnedCriterion, pinnedScript, effectContract, observed, pinned, contractResult, stock, ...(divergence === undefined ? {} : { divergence }), conclusion };
 };
 
+/** The live geometry control, taken from the same retained owned run: its owned resize suite made parent-selected App resizes and read both the App's settled grid and the kernel PTY grid (the same system stty
+ *  and the same proved PTY the DECCOLM suite reads) after each one. Every action must show the App and the kernel at the planned target, a changed width must differ from the DECCOLM baseline and every restore must
+ *  return to it, so an unchanged grid in the DECCOLM groups is shown to be observable by exactly these readers in exactly this run. */
+function geometryControl(dir, { context, receipt, baseline }) {
+    const binding = receipt.resizeEvidence;
+    if (binding?.runId !== context.runId || binding.suiteId !== 'ntilde-owned-resize-reflow-v1' || !isDeepStrictEqual(binding.counts, { passed: 3 })) throw new Error('The retained run carries no complete resize control.');
+    const lines = readFileSync(join(dir, 'resize-actions.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    if (lines.length !== 6) throw new Error('The retained resize control does not hold its six parent-selected actions.');
+    const actions = lines.map(({ caseId, stageId, target, observed }) => {
+        const kernel = kernelGrid(observed.terminalOutput), app = observed.app;
+        const grids = [[app.rows, app.cols], [kernel.rows, kernel.cols], [target.rows, target.cols]];
+        if (app.exact !== true || app.layoutSettled !== true || grids.some(grid => !isDeepStrictEqual(grid, grids[0]))) throw new Error(`The ${caseId} ${stageId} resize control readers disagree with the target.`);
+        return { caseId, stageId, target: { rows: target.rows, cols: target.cols }, app: { rows: app.rows, cols: app.cols }, kernel: { rows: kernel.rows, cols: kernel.cols } };
+    });
+    const moved = actions.filter(action => action.stageId === 'after'), restored = actions.filter(action => action.stageId === 'restored');
+    const widthMoved = moved.some(action => action.app.cols !== baseline.cols && action.kernel.cols !== baseline.cols);
+    const back = restored.every(action => action.app.rows === baseline.rows && action.app.cols === baseline.cols && action.kernel.rows === baseline.rows && action.kernel.cols === baseline.cols);
+    if (moved.length !== 3 || restored.length !== 3 || !widthMoved || !back) throw new Error('The retained resize control does not move and restore the DECCOLM baseline grid.');
+    return { suiteId: binding.suiteId, runId: binding.runId, passed: binding.counts.passed, baseline, actions,
+        note: 'Parent-selected App resizes of the same owned run, each followed by the App grid and the kernel PTY grid through the same readers the DECCOLM groups use: both moved together and both returned.' };
+}
+
 export function dclPublication(dir, { appRevision = measuredAppRevision, scriptsRevision = measuredScriptsRevision } = {}) {
     const [context, stock, measured, raw, receipt] = ['context.json', 'summary.json', 'dcl-observations.json', 'raw.json', 'cell-receipt.json']
         .map(file => JSON.parse(readFileSync(join(dir, file))));
     admit(dir, { context, stock, measured, raw, receipt });
     const cases = measured.cases.map(item => publishedCase(item, raw));
     if (!isDeepStrictEqual(cases.map(item => item.caseId), [...dclCaseIds])) throw new Error('The published cases differ from the contracted cases.');
+    const { geometry } = cases[0].observed;
+    const geometryControlRecord = geometryControl(dir, { context, receipt, baseline: { rows: geometry.rows, cols: geometry.cols } });
     const { suiteId, contractsVersion, runId, adapter } = measured;
     const { counts, suiteComplete, rawSha256, measuredAt } = stock;
     return {
-        summary: { schemaVersion: 1, measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId, appRevision, scriptsRevision, context, receipt,
+        summary: { schemaVersion: 1, measuredAt, ownedRunId: context.runId, stockCollectorRunId: raw.runId, appRevision, scriptsRevision, context, receipt, geometryControl: geometryControlRecord,
             stockCollector: { counts, suiteComplete, rawSha256, probeHash: raw.probeHash, sourceRevision: raw.sourceRevision,
                 note: 'Stock terminal-path grades from the same owned run; the deccolm effect does not change the stock score.' } },
         report: { schemaVersion: 1, suiteId, contractsVersion, runId, adapter, scope, cases },

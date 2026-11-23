@@ -1390,8 +1390,8 @@ The [DECCOLM batch](terminfo/2026-11-23-deccolm-qualification.md) qualifies `mod
 unchanged over the journaled DECRPM exchanges of their own fenced requests, beside a separately identified effect contract (`ntilde-deccolm-unsupported-effect-v1`) graded by independent literals: `CSI ? 3 h/l` alone, with
 `CSI ? 40 h/l`, in a set/reset cycle and after the pinned exchange change no screen, cursor (placed away from home), rendition (witnessed by a rewritten plain character), margin or mode, answer "not recognized" for modes 3 and 40,
 and leave **both the App grid and the independently read kernel PTY grid (`/bin/stty`)** at their baseline 40×140 at every read, beside a recognised-mode control and a clear/home control. All twelve groups held, so the effect is
-**unsupported**, a recorded divergence from the **inconclusive** pinned and stock verdicts; stock stays 97 supported / 157 inconclusive / 1 unsupported. Geometry sensitivity rests on the retained 2026-11-03 resize
-measurement's identical reader pair, not on a resize control in this run. The run uses receipt schema 79 and source policy v72 (483 files) on the `osc633` scope. The inventory adds one measured effect-unsupported id and no pinned, stock,
+**unsupported**, a recorded divergence from the **inconclusive** pinned and stock verdicts; stock stays 97 supported / 157 inconclusive / 1 unsupported. Geometry sensitivity is shown by the same run's owned resize suite (six parent-selected App resizes read by the identical App-grid and kernel-stty
+readers; width 140 to 133 and back in both), projected into the publication and refused if tampered with. The run uses receipt schema 79 and source policy v72 (483 files) on the `osc633` scope. The inventory adds one measured effect-unsupported id and no pinned, stock,
 Core, Modern or common-harness score.
 
 ### OSC 3008 hierarchical contexts
