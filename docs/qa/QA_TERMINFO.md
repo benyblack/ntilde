@@ -1,5 +1,10 @@
 # Optional terminfo.dev desktop baseline
 
+The [four-cursor Modern assessment](terminfo/2026-11-23-modern-cursor-results/report.md)
+adds paired App and fenced cursor-report observations to the same 69 frozen
+criteria. Run `node scripts/terminfo-modern-results.mjs --check --cursor`
+to rederive both evidence sources offline.
+
 The [2026-11-15 Modern assessment](terminfo/2026-11-15-modern-results/report.md)
 freezes all 69 Modern requirements and re-assesses one retained owned run. It gives
 a separate semantic conclusion and exact evidence blocker per requirement; it is

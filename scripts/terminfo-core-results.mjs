@@ -70,7 +70,7 @@ export function verifyOwnedRun(directory, mapping) {
         && context.sourceSnapshotPolicy === m.sourcePolicy && context.coreGapsSuiteId === 'ntilde-owned-core-gaps-v1'
         && proof.completed && receipt.fixtureRemoved, 'stale/incomplete run identity or schema');
     const evidence = { ...receipt };
-    for (const field of ['schemaVersion', 'ownershipProofSha256', 'contextSha256', 'rawSha256', 'fixtureRemoved', 'completedAt']) delete evidence[field];
+    for (const field of ['schemaVersion', 'ownershipProofSha256', 'contextSha256', 'rawSha256', 'collectionScope', 'fixtureRemoved', 'completedAt']) delete evidence[field];
     const receiptPath = join(directory, 'cell-receipt.json'); rmSync(receiptPath);
     completeOwnedReceipt(directory, join(directory, 'absent-original-fixture'), evidence);
     const rederived = read(receiptPath);

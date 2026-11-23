@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "5874ddc4bb4d2d04e1d9edcf09016a06",
+    "sourcePolicy": "readonly-owned-source-graph-v73",
+    "receiptSchema": 80,
+    "appRevision": "88d635619a313b97e5c9afe81bfc6345d572ca3a",
+    "scriptsRevision": "9dcaa0a2e90511d2646530ea172437ed8e3c11ea"
+  },
+  "archives": {
+    "owned-run.zip": "f4a62656abcf858b6f994d069e5af2a57b55f00776a2c3e8dbda1f7ee4db5d6a",
+    "attempt-1.zip": "969ace3809c3097867564dd8ea79d489873e7eb5cf0b91aa47d479252e81bf00"
+  },
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "1042a62c79dcd5efab56fe1ebc46d6d5",
+      "scriptsRevision": "a545d2ba1e839cae5c659026b3347d07671f756f",
+      "reason": "The static-image predecessor validator refused source policy v73. The collection recorded the cursor transitions and verified cleanup, then stopped without a complete receipt. The runner was corrected and the entire collection repeated."
+    }
+  ]
+}

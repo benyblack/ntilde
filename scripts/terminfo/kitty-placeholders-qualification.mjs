@@ -28,8 +28,8 @@ export const directMeasuredAppRevision = '8a2eb2952a7b965c101580093607d3f2681b79
 export const directMeasuredScriptsRevision = 'c46e42c786fc0646443b6d913771c86050b49da5';
 
 const version = 5;
-/** The recognized source policies whose graph carries the placeholder suite's sources (v70 is the first; v72 is the current one). An older graph does not carry them, so a downgraded one is refused rather than validated against its own (smaller) inventory, and an unrecognized later policy is refused too: it would fall back to a historical inventory that never lists those sources. Add a policy here when the graph version advances. */
-export const placeholdersSourcePolicies = Object.freeze(['readonly-owned-source-graph-v70', 'readonly-owned-source-graph-v71', 'readonly-owned-source-graph-v72']);
+/** The recognized source policies whose graph carries the placeholder suite's sources (v70 is the first; v73 is the current one). An older graph does not carry them, so a downgraded one is refused rather than validated against its own (smaller) inventory, and an unrecognized later policy is refused too: it would fall back to a historical inventory that never lists those sources. Add a policy here when the graph version advances. */
+export const placeholdersSourcePolicies = Object.freeze(['readonly-owned-source-graph-v70', 'readonly-owned-source-graph-v71', 'readonly-owned-source-graph-v72', 'readonly-owned-source-graph-v73']);
 /** The suite's own sources the measured graph must capture. */
 const requiredSources = Object.freeze(['kittyAnimationInputsSourceSha256', 'kittyAnimationCasesSourceSha256', 'kittyAnimationOracleSourceSha256', 'kittyAnimationSuiteSourceSha256', 'kittyAnimationCaptureSourceSha256',
     'kittyAnimationCollectorSourceSha256', 'kittyAnimationReceiptSourceSha256']);
