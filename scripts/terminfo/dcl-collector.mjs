@@ -4,7 +4,7 @@
 // exchanges: the termless path over the pinned exchange's captured reply text and the App grid width of the same read, the terminal path over the replies of the pinned mode query. The shared
 // query-probe framing, observer and journal helpers are reused; the pinned replay is the suite's own because its paths ask mode state rather than a framed colour or cursor query.
 import { dclContracts, dclFinish, dclPlanSeed, dclPrefix, pinnedModeState } from './dcl-contracts.mjs';
-import { planFeeds, planReads, validateExactFeeds } from './graded-plan.mjs';
+import { collectPlan, guarded } from './pcl-collector.mjs';
 import { parseDclFrame } from './dcl-report.mjs';
 
 const label = 'deccolm';
@@ -53,51 +53,7 @@ export function dclTerminalContext(contract, exchange) {
     return { context, get askedCount() { return asked; } };
 }
 
-/** Settle one step into a value or an error, so a failed collection can never skip the restoration that follows it. */
-const settle = async step => {
-    try { return { value: await step() }; } catch (error) { return { error }; }
-};
-
-/** Run the work, then the restoration; when both fail, report both instead of dropping either. */
-async function guarded(work, restore) {
-    const done = await settle(work), restored = await settle(restore);
-    const failures = [done, restored].filter(outcome => 'error' in outcome).map(outcome => outcome.error);
-    if (failures.length === 2) throw new AggregateError(failures, `${label} collection and restoration failed.`);
-    if (failures.length === 1) throw failures[0];
-    return done.value;
-}
-
-/** A read step journals the screen the parent observer sees after the last barrier, with the replies of the exchange that preceded it. */
-async function readStep(step, record, { owner, caseId }) {
-    if (step.read !== 'report' && step.read !== 'cells') fail(`${caseId} unknown plan step ${step.read}.`);
-    const wantsReport = step.read === 'report';
-    if (wantsReport && record.report === null) fail(`${caseId} report read without an exchange.`);
-    const observed = await owner(`${dclPrefix}-read`, record.barriers.at(-1), wantsReport ? { report: record.report } : {});
-    const journal = wantsReport ? { report: record.report } : {};
-    record.reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol], size: [observed.screen.rows, observed.screen.cols], ...journal });
-    record.report = null;
-}
-
-/** A feed step writes the plan bytes; a capture step is one fenced exchange whose raw replies the next read journals, any other feed clears them. */
-async function feedStep(step, record, { fence }) {
-    record.feeds.push(step.feed);
-    if (step.capture === true) {
-        record.report = await fence.exchange(step.feed, parseDclFrame);
-        record.barriers.push(record.report.barrier);
-        return;
-    }
-    record.report = null;
-    record.barriers.push(await fence.write(step.feed));
-}
-
-async function collectCase(contract, io) {
-    const record = { feeds: [], barriers: [], reads: [], report: null }, context = { ...io, caseId: contract.caseId };
-    for (const step of contract.plan) await (step.feed === undefined ? readStep : feedStep)(step, record, context); // NOSONAR - serial by design
-    if (record.feeds.length !== planFeeds(contract).length || record.reads.length !== planReads(contract)) fail(`Incomplete ${contract.caseId} ${label} fixture.`);
-    validateExactFeeds(contract, record.feeds);
-    const { feeds, barriers, reads } = record;
-    return { caseId: contract.caseId, feeds, barriers, reads };
-}
+const dclSuite = Object.freeze({ label, prefix: dclPrefix, parseFrame: parseDclFrame, journalSize: true });
 
 /** Replay both pinned paths over the journaled bytes of their own exchanges, making exactly the contracted calls. */
 async function replayPinned(gradingModule, contract, collected) {
@@ -121,10 +77,10 @@ async function collectGrading({ config, fence, owner, gradingModule }) {
         async () => {
             await owner(`${dclPrefix}-bind`, await fence.write('\x1b[?1049h' + dclPlanSeed(config.runId)));
             const done = [];
-            for (const contract of dclContracts) done.push(await collectCase(contract, io)); // NOSONAR - serial by design
+            for (const contract of dclContracts) done.push(await collectPlan(contract, io, dclSuite)); // NOSONAR - serial by design
             return done;
         },
-        async () => { await owner(`${dclPrefix}-finish`, await fence.write(dclFinish(config.runId))); });
+        async () => { await owner(`${dclPrefix}-finish`, await fence.write(dclFinish(config.runId))); }, label);
     const run = { schemaVersion: 1, adapterId: adapter.id, probeIds: [...adapter.probeIds], cases: [] };
     for (const item of collected) {
         const contract = dclContracts.find(entry => entry.caseId === item.caseId); // NOSONAR - serial by design: each pinned replay settles in case order
