@@ -28,9 +28,8 @@ export const directMeasuredAppRevision = '8a2eb2952a7b965c101580093607d3f2681b79
 export const directMeasuredScriptsRevision = 'c46e42c786fc0646443b6d913771c86050b49da5';
 
 const version = 5;
-/** The first source policy whose graph carries the placeholder suite's sources. An older graph does not, so a downgraded one is refused rather than validated against its own (smaller) inventory; a later policy keeps those sources and is accepted (the required sources are still checked below). */
-export const placeholdersMinimumSourcePolicyVersion = 70;
-const sourcePolicyVersion = policy => Number(/^readonly-owned-source-graph-v(\d+)$/.exec(policy ?? '')?.[1] ?? 0);
+/** The recognized source policies whose graph carries the placeholder suite's sources (v70 is the first; v71 is the current one). An older graph does not carry them, so a downgraded one is refused rather than validated against its own (smaller) inventory, and an unrecognized later policy is refused too: it would fall back to a historical inventory that never lists those sources. Add a policy here when the graph version advances. */
+export const placeholdersSourcePolicies = Object.freeze(['readonly-owned-source-graph-v70', 'readonly-owned-source-graph-v71']);
 /** The suite's own sources the measured graph must capture. */
 const requiredSources = Object.freeze(['kittyAnimationInputsSourceSha256', 'kittyAnimationCasesSourceSha256', 'kittyAnimationOracleSourceSha256', 'kittyAnimationSuiteSourceSha256', 'kittyAnimationCaptureSourceSha256',
     'kittyAnimationCollectorSourceSha256', 'kittyAnimationReceiptSourceSha256']);
@@ -81,8 +80,8 @@ export function verifyPlaceholdersRun(dir, kind = 'persistent') {
 /** The same verification for any suite of the placeholder family (the grid suite uses it too): the suite's own version, ids and policy, and the collection scope and receipt of the kind of tab. */
 export function verifyPlaceholderSuiteRun(dir, { scope, receiptSuiteId, noun, version, suiteId, policy }) {
     const recorded = JSON.parse(readFileSync(join(dir, 'context.json')));
-    check(sourcePolicyVersion(recorded.sourceSnapshotPolicy) >= placeholdersMinimumSourcePolicyVersion && requiredSources.every(key => /^[a-f\d]{64}$/.test(recorded[key] ?? '')),
-        `the run was not measured under source policy v${placeholdersMinimumSourcePolicyVersion} or later with the placeholder suite's sources captured`);
+    check(placeholdersSourcePolicies.includes(recorded.sourceSnapshotPolicy) && requiredSources.every(key => /^[a-f\d]{64}$/.test(recorded[key] ?? '')),
+        `the run was not measured under a recognized source policy (${placeholdersSourcePolicies.join(', ')}) with the placeholder suite's sources captured`);
     const run = verifyPersistentSuiteRun(dir, { scope, receiptSuiteId, version, suiteId, policy, noun });
     const { original, context, proof, frames } = run;
     check(!original.relaunches && frames.every(frame => frame.ownership.app.pid === original.app.pid), 'a stage was observed under an App process other than the launched one, or the run relaunched it');

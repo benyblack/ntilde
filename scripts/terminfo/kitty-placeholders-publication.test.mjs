@@ -128,8 +128,8 @@ for (const variant of variants) describe(`placeholders publication: ${variant.la
         for (const limit of variant.limits) assert.ok(report.scope.includes(limit), limit);
     });
 
-    test('the placeholder gate accepts a later source policy than the measured one and leaves its inventory to the persistent-suite check', () => {
-        // The gate names the first policy whose graph carries the suite's sources, not the one the retained run happened to use, so a run captured by later scripts (the current policy) passes it.
+    test('the placeholder gate accepts the current recognized source policy and leaves its inventory to the persistent-suite check', () => {
+        // The gate recognizes every policy whose graph carries the suite's sources, not only the one the retained run happened to use, so a run captured by the current scripts passes it.
         withCopy(context => {
             const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v71'; context.write('source-snapshot.json', manifest);
             rebind(context, 'context.json', value => { value.sourceSnapshotPolicy = manifest.policy; value.sourceSnapshotManifestSha256 = hash(readFileSync(join(context.copy, 'source-snapshot.json'))); });
@@ -159,6 +159,12 @@ for (const variant of variants) describe(`placeholders publication: ${variant.la
         // A downgraded graph (the policy changed consistently in the context, the manifest and the removal record, the receipt re-bound) is refused: it would be validated against its own smaller inventory.
         refuses(context => {
             const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v1'; context.write('source-snapshot.json', manifest);
+            rebind(context, 'context.json', value => { value.sourceSnapshotPolicy = manifest.policy; value.sourceSnapshotManifestSha256 = hash(readFileSync(join(context.copy, 'source-snapshot.json'))); });
+            rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.policy = manifest.policy; });
+        }, /source policy/);
+        // An unrecognized later policy is refused too: it would fall back to a historical inventory that never lists the suite's sources.
+        refuses(context => {
+            const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v72'; context.write('source-snapshot.json', manifest);
             rebind(context, 'context.json', value => { value.sourceSnapshotPolicy = manifest.policy; value.sourceSnapshotManifestSha256 = hash(readFileSync(join(context.copy, 'source-snapshot.json'))); });
             rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.policy = manifest.policy; });
         }, /source policy/);
