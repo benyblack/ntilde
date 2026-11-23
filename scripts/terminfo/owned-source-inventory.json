@@ -481,5 +481,7 @@
   "dclCollectorSourceSha256": "dcl-collector.mjs",
   "dclGradingSourceSha256": "dcl-grading.mjs",
   "dclGradingCollectorSourceSha256": "dcl-grading-collector.mjs",
-  "dclReceiptSourceSha256": "dcl-receipt.mjs"
+  "dclReceiptSourceSha256": "dcl-receipt.mjs",
+  "modernCursorSourceSha256": "modern-cursor.mjs",
+  "modernCursorReceiptSourceSha256": "modern-cursor-receipt.mjs"
 }
