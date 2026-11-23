@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "fa0ca567e5674d1c13aa6956cbb6f48e2d0b08564c54a38098692040c673a991",
+  "matrixSha256": "677b49b0d47a8b68cba0c43af1b7b1fc2875389cbd57bb91abbe3f0b13fea58e",
   "summary": {
     "totalRows": 158,
     "supportedCount": 75,
@@ -3108,7 +3108,7 @@
       "hasAutomatedEvidenceSignal": false,
       "hasLinkedEvidence": false,
       "ownership": "VT\u002BApp",
-      "knownDeviations": "Private mode 3 is not tracked: setting or resetting it changes no width and clears nothing, and DECRQM does not report it. Tracked by [#1000](https://github.com/benyblack/ntilde/issues/1000).",
+      "knownDeviations": "Private mode 3 is not tracked: setting or resetting it changes no width and clears nothing, and DECRQM does not report it. Tracked by [#1000](https://github.com/benyblack/ntilde/issues/1000). Measured on the real App: ignored, with the App and kernel PTY grids unchanged ([qualification](qa/terminfo/2026-11-23-deccolm-qualification.md)).",
       "sourceLine": 192
     },
     {

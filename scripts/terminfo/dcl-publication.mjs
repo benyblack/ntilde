@@ -5,9 +5,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dclCaseIds } from './dcl-contracts.mjs';
 
-/** The measured scripts and App revisions (the App build is stamped into the sidecar assembly; the retained selected-source manifest independently pins the measured scripts). Placeholders until measured. */
-export const measuredScriptsRevision = '0000000000000000000000000000000000000000';
-export const measuredAppRevision = '0000000000000000000000000000000000000000';
+/** The measured scripts and App revisions (the App build is stamped into the sidecar assembly; the retained selected-source manifest independently pins the measured scripts). */
+export const measuredScriptsRevision = '3ec330061f2722b1adf1c9373eda82cddcff7461';
+export const measuredAppRevision = 'cf5d07ed39ae739fbf7592c519e850b711353484';
 const scope = 'Pinned terminfo.dev@4.0.0 criteria for modes.deccolm (decrpmModeProbe("modes.deccolm", 3, ...): the termless path feeds CSI ? 3 h, captures the CSI ? 3 $ p reply and feeds CSI ? 3 l and returns '
     + 'parserStateResult(null, ...), inconclusive by construction; the terminal path asks queryMode(3) and returns decrpmResult, inconclusive while mode 3 is not recognized), decided by the unchanged stock '
     + 'collector against the App in this owned run and replayed byte-exactly on both pinned paths over the journaled replies and App grid width of their own fenced exchanges, beside a separately identified effect '
