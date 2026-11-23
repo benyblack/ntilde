@@ -128,6 +128,17 @@ for (const variant of variants) describe(`placeholders publication: ${variant.la
         for (const limit of variant.limits) assert.ok(report.scope.includes(limit), limit);
     });
 
+    test('the placeholder gate accepts a later source policy than the measured one and leaves its inventory to the persistent-suite check', () => {
+        // The gate names the first policy whose graph carries the suite's sources, not the one the retained run happened to use, so a run captured by later scripts (the current policy) passes it.
+        withCopy(context => {
+            const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v71'; context.write('source-snapshot.json', manifest);
+            rebind(context, 'context.json', value => { value.sourceSnapshotPolicy = manifest.policy; value.sourceSnapshotManifestSha256 = hash(readFileSync(join(context.copy, 'source-snapshot.json'))); });
+            rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.policy = manifest.policy; });
+            // This relabeled copy has no sources of the later graph, so the persistent-suite check of the policy inventory refuses it afterwards; the placeholder gate itself must not.
+            assert.throws(() => verifyPlaceholdersRun(context.copy, variant.kind), error => /does not cover the policy inventory/.test(error.message) && !/not measured under source policy/.test(error.message));
+        });
+    });
+
     test('a downgraded, stripped, relaunched or foreign placeholder run is refused', () => {
         const refuses = (mutation, message) => withCopy(context => {
             mutation(context);
