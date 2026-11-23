@@ -37,7 +37,7 @@ export function legacyPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?osc(?:22|720)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?font-size-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:caps-[a-z-]+|pcl-[a-z-]+|dcl-[a-z-]+|probe-suite-shared)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-gaps(?:-receipt)?|core-text-cursor(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-gaps(?:-receipt)?|(?:core-text-cursor|modern-cursor)(?:-receipt)?|input-plan|routed-input-[a-z-]+|color-reset-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:osc(?:133|633|78|9)|title-stack|osc-title)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
@@ -51,7 +51,7 @@ export function routedPrefixSource(bytes) {
         .replace(/^import .*from '\.\/(?:terminfo\/)?osc(?:22|720)-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?font-size-[a-z-]+\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:caps-[a-z-]+|pcl-[a-z-]+|dcl-[a-z-]+|probe-suite-shared)\.mjs';\n/gm, '')
-        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|core-text-cursor(?:-receipt)?|(?:osc(?:133|633|78)|title-stack|osc-title)-[a-z-]+)\.mjs';\n/gm, '')
+        .replace(/^import .*from '\.\/(?:terminfo\/)?(?:collection-scope|(?:core-text-cursor|modern-cursor)(?:-receipt)?|(?:osc(?:133|633|78)|title-stack|osc-title)-[a-z-]+)\.mjs';\n/gm, '')
         .replace(/^import .*from '\.\/(?:terminfo\/)?(?:insert-replace|xtgettcap|modify-other-keys|osc9|ascii-reflow|notify|selection-colors|devq|cell-size|xcs|xss|xsv|mex|kcl|osc5|osc3008|pxm)-[a-z-]+\.mjs';\n/gm, ''));
 }
 

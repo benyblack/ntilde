@@ -133,18 +133,7 @@ export function readableModern(report) {
             : row.blocker ?? [row.evidence.file, row.evidence.sourceId].join(' — ');
         lines.push(`| \`${row.id}\` | ${row.conclusion} | ${tableText(row.criterionPath)} | ${tableText(detail)} |`);
     }
-    if (cursor) {
-        lines.push('', '## Cursor traces', '', 'The positions below are zero-based. CPR uses one-based coordinates. Each transition has two agreeing App reads and a raw CPR ahead of its DA fence.', '');
-        const traces = new Map(report.rows.filter(row => row.evidence?.runId === cursor.runId)
-            .map(row => [row.evidence.sourceId, row.observed]));
-        for (const [id, trace] of traces) {
-            lines.push(`### ${id}`, '', '| Step | App position | CPR | Journal frame |', '| --- | --- | --- | --- |');
-            for (const step of trace.transitions) {
-                lines.push(`| ${step.role} | (${step.position.join(', ')}) | \`${step.cpr.slice(2, -1)}\` | ${step.frameIndex} |`);
-            }
-            lines.push('');
-        }
-    }
+    if (cursor) lines.push(...readableCursorTraces(report.rows, cursor.runId));
     lines.push('', '## Reproduce', '', 'Requires Node 24+ and Python 3; runs entirely offline without a desktop lease.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check' + (cursor ? ' --cursor' : ''), '```', '',
         cursor
@@ -152,12 +141,27 @@ export function readableModern(report) {
             : '`report.json` retains the full frozen criterion, evidence references, selected observations, original stock verdict and exact per-row blocker. `requirements-v1.json` and `mapping-v1.json` are versioned inputs; future criteria need a new version/publication rather than silently changing this result.', '');
     if (cursor) {
         lines.push('For a fresh capture, build the Release App at the recorded App revision using the repository build wrapper. Prepare the pinned collector at the measured scripts revision using the [QA guide](../../QA_TERMINFO.md). Run the owned collector with the standalone App on an awake macOS desktop.', '',
-            '\`\`\`sh',
+            '```sh',
             'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
             'node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version 0.14.0 --scope osc633',
-            '\`\`\`', '');
+            '```', '');
     }
     return lines.join('\n');
+}
+
+function readableCursorTraces(rows, runId) {
+    const lines = ['', '## Cursor traces', '',
+        'The positions below are zero-based. CPR uses one-based coordinates. Each transition has two agreeing App reads and a raw CPR ahead of its DA fence.', ''];
+    const traces = new Map(rows.filter(row => row.evidence?.runId === runId)
+        .map(row => [row.evidence.sourceId, row.observed]));
+    for (const [id, trace] of traces) {
+        lines.push(`### ${id}`, '', '| Step | App position | CPR | Journal frame |', '| --- | --- | --- | --- |');
+        for (const step of trace.transitions) {
+            lines.push(`| ${step.role} | (${step.position.join(', ')}) | \`${step.cpr.slice(2, -1)}\` | ${step.frameIndex} |`);
+        }
+        lines.push('');
+    }
+    return lines;
 }
 
 function readableCursorMeasurement(cursor) {
