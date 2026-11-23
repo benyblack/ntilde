@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,6 +56,41 @@ test('retained run independently rederives the complete receipt and published pr
             for (const group of Object.values(item.observed.groups)) assert.deepEqual([group.app, group.kernel], [{ rows, cols }, { rows, cols }]);
             assert.ok(Object.entries(item.observed.groups).filter(([, group]) => group.unchanged !== null).every(([, group]) => group.unchanged === true));
         }
+        // The live geometry control is the owned resize suite of the same run: parent-selected App resizes, each followed by the App grid and the kernel PTY grid through the DECCOLM suite's own readers.
+        const control = projected.summary.geometryControl;
+        assert.equal(control.runId, projected.summary.ownedRunId);
+        assert.match(control.paneId, /^[0-9a-f-]{8,}$/i, 'the control ran on the pane the DECCOLM groups ran on');
+        assert.equal(control.passed, 3);
+        assert.deepEqual(control.baseline, { rows: 40, cols: 140 });
+        assert.deepEqual(control.actions.map(action => [action.caseId, action.stageId]), [['resize.width-roundtrip', 'after'], ['resize.width-roundtrip', 'restored'],
+            ['resize.height-history-roundtrip', 'after'], ['resize.height-history-roundtrip', 'restored'], ['resize.combined-reflow-history-roundtrip', 'after'], ['resize.combined-reflow-history-roundtrip', 'restored']]);
+        const [shrunk, restoredWidth] = control.actions;
+        assert.deepEqual([shrunk.app, shrunk.kernel], [{ rows: 40, cols: 133 }, { rows: 40, cols: 133 }], 'the width moved in the App and in the kernel together');
+        assert.deepEqual([restoredWidth.app, restoredWidth.kernel], [control.baseline, control.baseline], 'and returned to the DECCOLM baseline');
+        assert.ok(control.actions.every(action => JSON.stringify(action.app) === JSON.stringify(action.kernel) && JSON.stringify(action.app) === JSON.stringify(action.target)));
+        // A copy whose control was tampered with is refused rather than projected.
+        const tampered = (mutate, pattern) => {
+            const copy = mkdtempSync(join(tmpdir(), 'nt-dcl-control-'));
+            try {
+                extractOwnedArchive(dir, manifest, copy, join(dir, 'owned-run.zip'));
+                const file = join(copy, 'resize-actions.jsonl');
+                const lines = readFileSync(file, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+                mutate(lines, copy);
+                writeFileSync(file, lines.map(line => JSON.stringify(line)).join('\n') + '\n');
+                assert.throws(() => dclPublication(copy, { appRevision: projected.summary.appRevision, scriptsRevision: projected.summary.scriptsRevision }), pattern);
+            } finally { rmSync(copy, { recursive: true, force: true }); }
+        };
+        // The production resize check refuses every one of them: the action stream must be the one the ownership proof and the receipt-bound report validated against the source plan.
+        const refused = /Invalid or incomplete v\d+ owned resize receipt/;
+        tampered(lines => { lines[0].observed.terminalOutput.description = lines[0].observed.terminalOutput.description.replace(' 133 columns', ' 140 columns'); }, refused);
+        tampered(lines => { lines[0].observed.app.layoutSettled = false; }, refused);
+        tampered(lines => { for (const line of lines.slice(0, 2)) { line.target.cols = line.target.cols === 133 ? 129 : line.target.cols; line.observed.app.cols = line.observed.app.cols === 133 ? 129 : line.observed.app.cols; line.observed.terminalOutput.description = line.observed.terminalOutput.description.replace(' 133 columns', ' 129 columns'); } }, refused);
+        tampered(lines => { lines.splice(2, 0, structuredClone(lines[0]), structuredClone(lines[1])); lines.length = 6; }, refused);
+        tampered(lines => { lines.reverse(); }, refused);
+        tampered(lines => { lines[0].error = 'timed out'; }, refused);
+        tampered(lines => { lines[0].observed.runId = 'b'.repeat(32); }, refused);
+        tampered(lines => { lines[0].observed.paneId = 'foreign-pane'; }, refused);
+        tampered(lines => { lines.pop(); }, refused);
         assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 157, supported: 97, unsupported: 1 });
         assert.equal(schemaVersion, 79); assert.equal(fixtureRemoved, true);
         assert.match(projected.summary.appRevision, /^[0-9a-f]{40}$/);

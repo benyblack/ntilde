@@ -4463,8 +4463,8 @@
       ],
       "evidence": {
         "files": 4,
-        "bytes": 17490667,
-        "sha256": "cfbcc8b4b071b7efc6a933a3c8e55953c2496b42234d1ab425c380e996cc7763"
+        "bytes": 17493120,
+        "sha256": "66c1a9d86e80dbdf46bababdbe3ffe84e3484b9e3e9080efaff5155aa68e971b"
       },
       "receipt": {
         "schemaVersion": 79,
@@ -4517,7 +4517,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/dcl-publication.test.mjs",
-        "testSha256": "acadef240ba94bd497871913e9b0992b1c8183723a7c52f5084f609981afc3b4"
+        "testSha256": "3856c5ec9f01be79bd0d3b1c523d5feff4162d77cabd13427c7c855cf3e95847"
       }
     }
   ],

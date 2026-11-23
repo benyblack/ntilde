@@ -1914,6 +1914,115 @@
     "fixtureRemoved": true,
     "completedAt": "2026-11-23T20:10:45.845Z"
   },
+  "geometryControl": {
+    "suiteId": "ntilde-owned-resize-reflow-v1",
+    "runId": "31af6e012dd85f4e939799d78fbb20da",
+    "passed": 3,
+    "paneId": "e7ea1dfa-23ae-47ed-9cd3-7095efbe6a2c",
+    "baseline": {
+      "rows": 40,
+      "cols": 140
+    },
+    "actions": [
+      {
+        "caseId": "resize.width-roundtrip",
+        "stageId": "after",
+        "target": {
+          "rows": 40,
+          "cols": 133
+        },
+        "app": {
+          "rows": 40,
+          "cols": 133
+        },
+        "kernel": {
+          "rows": 40,
+          "cols": 133
+        }
+      },
+      {
+        "caseId": "resize.width-roundtrip",
+        "stageId": "restored",
+        "target": {
+          "rows": 40,
+          "cols": 140
+        },
+        "app": {
+          "rows": 40,
+          "cols": 140
+        },
+        "kernel": {
+          "rows": 40,
+          "cols": 140
+        }
+      },
+      {
+        "caseId": "resize.height-history-roundtrip",
+        "stageId": "after",
+        "target": {
+          "rows": 36,
+          "cols": 140
+        },
+        "app": {
+          "rows": 36,
+          "cols": 140
+        },
+        "kernel": {
+          "rows": 36,
+          "cols": 140
+        }
+      },
+      {
+        "caseId": "resize.height-history-roundtrip",
+        "stageId": "restored",
+        "target": {
+          "rows": 40,
+          "cols": 140
+        },
+        "app": {
+          "rows": 40,
+          "cols": 140
+        },
+        "kernel": {
+          "rows": 40,
+          "cols": 140
+        }
+      },
+      {
+        "caseId": "resize.combined-reflow-history-roundtrip",
+        "stageId": "after",
+        "target": {
+          "rows": 36,
+          "cols": 133
+        },
+        "app": {
+          "rows": 36,
+          "cols": 133
+        },
+        "kernel": {
+          "rows": 36,
+          "cols": 133
+        }
+      },
+      {
+        "caseId": "resize.combined-reflow-history-roundtrip",
+        "stageId": "restored",
+        "target": {
+          "rows": 40,
+          "cols": 140
+        },
+        "app": {
+          "rows": 40,
+          "cols": 140
+        },
+        "kernel": {
+          "rows": 40,
+          "cols": 140
+        }
+      }
+    ],
+    "note": "Parent-selected App resizes of the same owned run, re-derived by the production resize check, each followed by the App grid and the kernel PTY grid through the same readers the DECCOLM groups use: both moved together and both returned."
+  },
   "stockCollector": {
     "counts": {
       "inconclusive": 157,
