@@ -20,7 +20,7 @@ export const defaultQaRoot = fileURLToPath(new URL('../../docs/qa/terminfo/', im
 
 export const verdicts = Object.freeze(['supported', 'unsupported', 'inconclusive']);
 /** Every layer an owned suite can measure; a claim naming anything else is refused. */
-export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels', 'generated-input-child-bytes', 'pane-metadata-and-session-status', 'desktop-backend-reset-api']);
+export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels', 'generated-input-child-bytes', 'pane-metadata-and-session-status', 'desktop-backend-reset-api', 'app-and-kernel-pty-geometry']);
 /** Suites whose ids are terminfo.dev benchmark ids; the two findings are Ntilde-specific and never counted as benchmark ids. */
 const sgrAttrsFile = '2026-11-08-sgr-attributes-qualification.json';
 
@@ -106,6 +106,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('caps', '2026-11-17-osc1337-capabilities', '2026-11-17-osc1337-capabilities-qualification.md'), module: 'caps-inventory.mjs', exports: ['capsSuiteId', 'capsContractsVersion', 'capsCaseIds'], test: 'caps-publication.test.mjs' },
     // xterm pointer colors (#991): the pinned termless probe needs a complete rgb reply and the terminal probe is inconclusive by construction; the effect contract grades every OSC 13/14/113/114 spelling ignored, a recorded divergence.
     { ...directory('pcl', '2026-11-20-pointer-color', '2026-11-20-pointer-color-qualification.md'), module: 'pcl-inventory.mjs', exports: ['pclSuiteId', 'pclContractsVersion', 'pclCaseIds'], test: 'pcl-publication.test.mjs' },
+    // DECCOLM (#1000): the pinned termless probe is inconclusive by construction and the terminal probe is inconclusive while mode 3 is not recognized; the effect contract grades mode 3 and mode 40 ignored on both the App and the kernel PTY grid, a recorded divergence.
+    { ...directory('dcl', '2026-11-23-deccolm', '2026-11-23-deccolm-qualification.md'), module: 'dcl-inventory.mjs', exports: ['dclSuiteId', 'dclContractsVersion', 'dclCaseIds'], test: 'dcl-publication.test.mjs' },
 ]);
 
 /**
@@ -240,6 +242,8 @@ export function measuredLayersOf(evidence, scope) {
     if (/pane-metadata/.test(text)) layers.push('pane-metadata-and-session-status');
     // A case that exercises the desktop collector's own backend reset() API (an asynchronous call whose sequence is retained and graded), beside stored cells.
     if (/backend-reset-api/.test(text)) layers.push('desktop-backend-reset-api');
+    // Complete stored terminal state beside both grid readers: the App's paired screen grid and the kernel PTY grid the parent read with the system stty.
+    if (/pty-geometry/.test(text)) layers.push('stored-state', 'app-and-kernel-pty-geometry');
     if (layers.length === 0) throw new Error(`Cannot classify the measured layer of evidence "${text}".`);
     return layers;
 }

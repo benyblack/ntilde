@@ -131,7 +131,7 @@ for (const variant of variants) describe(`placeholders publication: ${variant.la
     test('the placeholder gate accepts the current recognized source policy and leaves its inventory to the persistent-suite check', () => {
         // The gate recognizes every policy whose graph carries the suite's sources, not only the one the retained run happened to use, so a run captured by the current scripts passes it.
         withCopy(context => {
-            const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v71'; context.write('source-snapshot.json', manifest);
+            const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v72'; context.write('source-snapshot.json', manifest);
             rebind(context, 'context.json', value => { value.sourceSnapshotPolicy = manifest.policy; value.sourceSnapshotManifestSha256 = hash(readFileSync(join(context.copy, 'source-snapshot.json'))); });
             rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.policy = manifest.policy; });
             // This relabeled copy has no sources of the later graph, so the persistent-suite check of the policy inventory refuses it afterwards; the placeholder gate itself must not.
@@ -164,7 +164,7 @@ for (const variant of variants) describe(`placeholders publication: ${variant.la
         }, /source policy/);
         // An unrecognized later policy is refused too: it would fall back to a historical inventory that never lists the suite's sources.
         refuses(context => {
-            const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v72'; context.write('source-snapshot.json', manifest);
+            const manifest = context.json('source-snapshot.json'); manifest.policy = 'readonly-owned-source-graph-v73'; context.write('source-snapshot.json', manifest);
             rebind(context, 'context.json', value => { value.sourceSnapshotPolicy = manifest.policy; value.sourceSnapshotManifestSha256 = hash(readFileSync(join(context.copy, 'source-snapshot.json'))); });
             rebind(context, 'ownership-proof.json', proof => { proof.sourceSnapshot.policy = manifest.policy; });
         }, /source policy/);

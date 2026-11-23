@@ -1383,6 +1383,17 @@ back as a control. A reply to a pointer request makes the effect inconclusive, n
 **inconclusive** pinned and stock verdicts; stock stays 97 supported / 157 inconclusive / 1 unsupported. The run uses receipt schema 78 and source policy v71 on the `osc633` scope. The inventory adds
 two measured effect-unsupported ids and no pinned, stock, Core, Modern or common-harness score. Raw replies and stored state only; the operating system pointer image is not claimed.
 
+### DECCOLM 80/132 columns (mode 3, #1000)
+
+The [DECCOLM batch](terminfo/2026-11-23-deccolm-qualification.md) qualifies `modes.deccolm` without changing terminal behavior (option A of #1000). The pinned termless function is always inconclusive by construction
+(`parserStateResult(null, …)`: "DECRPM state does not establish a width transition") and the pinned terminal path is `decrpmResult` over `queryMode(3)`, inconclusive while mode 3 is not recognized. The owned suite replays both
+unchanged over the journaled DECRPM exchanges of their own fenced requests, beside a separately identified effect contract (`ntilde-deccolm-unsupported-effect-v1`) graded by independent literals: `CSI ? 3 h/l` alone, with
+`CSI ? 40 h/l`, in a set/reset cycle and after the pinned exchange change no screen, cursor (placed away from home), rendition (witnessed by a rewritten plain character), margin or mode, answer "not recognized" for modes 3 and 40,
+and leave **both the App grid and the independently read kernel PTY grid (`/bin/stty`)** at their baseline 40×140 at every read, beside a recognised-mode control and a clear/home control. All twelve groups held, so the effect is
+**unsupported**, a recorded divergence from the **inconclusive** pinned and stock verdicts; stock stays 97 supported / 157 inconclusive / 1 unsupported. Geometry sensitivity rests on the retained 2026-11-03 resize
+measurement's identical reader pair, not on a resize control in this run. The run uses receipt schema 79 and source policy v72 (483 files) on the `osc633` scope. The inventory adds one measured effect-unsupported id and no pinned, stock,
+Core, Modern or common-harness score.
+
 ### OSC 3008 hierarchical contexts
 
 The [OSC 3008 batch](terminfo/2026-11-17-osc3008-qualification.md) implements [UAPI.15](https://uapi-group.org/specifications/specs/osc_context/) context signalling: `OSC 3008;start=<id>[;field=value]...` opens, updates or returns to a context and `OSC 3008;end=<id>` closes it. The App keeps a stack of at most 16 contexts and the 8 most recently ended as **untrusted data**, exposed only through read-only `readPaneMetadata` (`buffer.contexts`); nothing is presented, executed or fed to command assist or an agent, OSC 133/633 neither create nor update a context, a terminal reset leaves the stack alone and the child's exit drops it ([contract](terminfo/osc3008.md)). The pinned probe (`type=test`, a cursor query, `unmeasuredCellResult`) is inconclusive by construction and its payload is not a UAPI.15 sequence, so it stays **inconclusive** with unchanged stock counts (94/1/160); the separately identified effect contract `ntilde-osc3008-context-effect-v1` is **supported** (28 of 28 decided reads, 10 policy reads recorded). Receipt schema 73 and source policy v66 bind 444 inputs; the inventory adds one effect-supported ID and no pinned, Core, Modern, stock or common-harness score increase.

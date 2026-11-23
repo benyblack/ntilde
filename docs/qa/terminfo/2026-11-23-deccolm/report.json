@@ -1,0 +1,396 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-deccolm-graded-v1",
+  "contractsVersion": 1,
+  "runId": "31af6e012dd85f4e939799d78fbb20da",
+  "adapter": {
+    "id": "ntilde-owned-deccolm-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "edc3bdd5ada37dec674301313b644beba6fa95b3fadcb26ba887605a4b7c38e6",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 criteria for modes.deccolm (decrpmModeProbe(\"modes.deccolm\", 3, ...): the termless path feeds CSI ? 3 h, captures the CSI ? 3 $ p reply and feeds CSI ? 3 l and returns parserStateResult(null, ...), inconclusive by construction; the terminal path asks queryMode(3) and returns decrpmResult, inconclusive while mode 3 is not recognized), decided by the unchanged stock collector against the App in this owned run and replayed byte-exactly on both pinned paths over the journaled replies and App grid width of their own fenced exchanges, beside a separately identified effect contract graded by independent literals written from xterm's DECCOLM and allow-switching (mode 40) contract: CSI ? 3 h / l alone, with switching allowed and not allowed, and a set/reset cycle, are ignored (policy, #1000: the App has no program-initiated resize path), leave the complete screen, cursor, rendition, margins, modes and active screen unchanged, keep the App grid and the independently read kernel PTY grid at their baseline size (a width other than 80 and 132, so either direction would be visible) and leave mode 3 and mode 40 answered not recognized, beside a recognised-mode control and a clear/home control. Raw replies, stored terminal state and PTY geometry, not a window size, rendering, painted pixels, remote/mux, Windows/Linux or common-harness behavior; no stock-score claim.",
+  "cases": [
+    {
+      "caseId": "modes.deccolm",
+      "pinnedCriterion": "decrpmModeProbe(\"modes.deccolm\", 3, termlessFn): the termless path feeds CSI ? 3 h, captures the CSI ? 3 $ p reply and feeds CSI ? 3 l, then returns parserStateResult(null, ...) (inconclusive, insufficient-evidence, parser-state) whether or not the reply holds $y; the terminal path asks queryMode(3) and returns decrpmResult: supported only for a recognised set/reset state, inconclusive for Pm 0 (not recognized) or no reply; neither path measures a width",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feed",
+            "\\e[?3h"
+          ],
+          [
+            "feedCapture",
+            "\\e[?3$p",
+            "replies"
+          ],
+          [
+            "feed",
+            "\\e[?3l"
+          ]
+        ],
+        "terminal": [
+          [
+            "queryMode",
+            3
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-deccolm-unsupported-effect-v1",
+        "version": 1,
+        "outcome": "unsupported",
+        "note": "DECCOLM and the allow-switching mode were ignored: no width change in the App or the kernel PTY, no clear, home or margin change, and mode 3 and mode 40 stayed not recognized",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140,
+          "kernelRows": 40,
+          "kernelCols": 140
+        },
+        "effectContract": "ntilde-deccolm-unsupported-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feed",
+              "\\e[?3h"
+            ],
+            [
+              "feedCapture",
+              "\\e[?3$p",
+              "replies"
+            ],
+            [
+              "feed",
+              "\\e[?3l"
+            ]
+          ],
+          "terminal": [
+            [
+              "queryMode",
+              3
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_DCL_31af6e012dd85f4e939799d78fbb20da",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "recognized": {
+            "kind": "control",
+            "request": "\\e[?7$p\\e[?2$pW\\e[D",
+            "demand": "the reply channel answers recognised modes (DECAWM set, DECANM set), so a Pm 0 answer for mode 3 is a real \"not recognized\" and silence is not a dead channel",
+            "demanded": [
+              "\\e[?7;1$y",
+              "\\e[?2;1$y"
+            ],
+            "received": [
+              "\\e[?7;1$y",
+              "\\e[?2;1$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[?3h\\e[?3$p\\e[?3lW\\e[D",
+            "demand": "the exact pinned termless exchange (CSI ? 3 h, the CSI ? 3 $ p query, CSI ? 3 l) leaves everything unchanged and mode 3 is answered not recognized",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "pinned-query": {
+            "kind": "protocol",
+            "request": "\\e[?3$pW\\e[D",
+            "demand": "the exact pinned terminal-path query alone (CSI ? 3 $ p) is answered not recognized",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "set": {
+            "kind": "protocol",
+            "request": "\\e[?3h\\e[?3$pW\\e[D",
+            "demand": "CSI ? 3 h alone changes no width, clears nothing, homes nothing and mode 3 stays not recognized",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "reset": {
+            "kind": "protocol",
+            "request": "\\e[?3l\\e[?3$pW\\e[D",
+            "demand": "CSI ? 3 l alone changes nothing and mode 3 stays not recognized",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "allow": {
+            "kind": "protocol",
+            "request": "\\e[?40h\\e[?3$p\\e[?40$pW\\e[D",
+            "demand": "CSI ? 40 h (allow 80/132 switching) changes nothing and neither mode 3 nor mode 40 is recognized",
+            "demanded": [
+              "\\e[?3;0$y",
+              "\\e[?40;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y",
+              "\\e[?40;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "allow-set": {
+            "kind": "protocol",
+            "request": "\\e[?40h\\e[?3h\\e[?3$pW\\e[D",
+            "demand": "with switching allowed, CSI ? 3 h changes no width and nothing else",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "allow-reset": {
+            "kind": "protocol",
+            "request": "\\e[?40h\\e[?3l\\e[?3$pW\\e[D",
+            "demand": "with switching allowed, CSI ? 3 l changes no width and nothing else",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "allow-cycle": {
+            "kind": "protocol",
+            "request": "\\e[?40h\\e[?3h\\e[?3l\\e[?3h\\e[?3l\\e[?3$pW\\e[D",
+            "demand": "with switching allowed, a full set, reset, set, reset cycle changes no width and nothing else",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "disallow-set": {
+            "kind": "protocol",
+            "request": "\\e[?40l\\e[?3h\\e[?3$pW\\e[D",
+            "demand": "with switching not allowed (CSI ? 40 l), CSI ? 3 h changes nothing",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "restored": {
+            "kind": "protocol",
+            "request": "\\e[?3l\\e[?40l\\e[?3$pW\\e[D",
+            "demand": "after all of them the mode is still not recognized, the width is still the baseline and nothing changed",
+            "demanded": [
+              "\\e[?3;0$y"
+            ],
+            "received": [
+              "\\e[?3;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": true
+          },
+          "control-clear": {
+            "kind": "control",
+            "request": "\\e[2J\\e[H",
+            "demand": "ED 2 and CUP 1;1 visibly clear the screen and home the cursor in the same readers, so the state reader can see what a DECCOLM would have done",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "kernel": {
+              "rows": 40,
+              "cols": 140
+            },
+            "unchanged": null
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "{\"response\":\"\\u001b[?3;0$y\",\"cols\":140}",
+          "note": "DECRPM state does not establish a width transition",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "parser-state",
+            "note": "DECRPM state does not establish a width transition"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "unknown",
+          "note": "DECRPM mode 3: not recognized; mode behavior unmeasured",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query",
+            "note": "DECRPM mode 3: not recognized; mode behavior unmeasured"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "unsupported",
+        "note": "DECCOLM and the allow-switching mode were ignored: no width change in the App or the kernel PTY, no clear, home or margin change, and mode 3 and mode 40 stayed not recognized"
+      },
+      "stock": {
+        "featureId": "modes.deccolm",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECRPM mode 3: not recognized; mode behavior unmeasured",
+        "rawReplyRef": "modes.deccolm"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "unsupported",
+        "kind": "pinned-inconclusive-effect-unsupported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-state-and-pty-geometry",
+        "grading": "pinned-termless-replayed",
+        "note": "DECRPM state does not establish a width transition",
+        "reason": "insufficient-evidence",
+        "scope": "DEC private mode 3 (DECCOLM) and mode 40 (allow 80/132 switching) only: the exact pinned termless exchange, the exact pinned mode query, set and reset alone, with switching allowed and not allowed, and a set/reset cycle, each leaving the complete screen, the cursor (away from home), the current rendition (witnessed by a plain character rewritten after every exchange), margins, modes and active screen unchanged and the App grid and the independently read kernel PTY grid at their baseline size, with mode 3 and mode 40 answered not recognized beside a recognised-mode control and a clear/home control that moves the cursor; raw replies, stored terminal state and PTY geometry, not a window size, rendering or painted pixels; no remote/mux, other-platform, common-harness or score claim; the pinned verdict stays inconclusive on both paths"
+      }
+    }
+  ]
+}

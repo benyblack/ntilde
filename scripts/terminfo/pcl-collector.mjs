@@ -40,8 +40,8 @@ const settle = async step => {
     try { return { value: await step() }; } catch (error) { return { error }; }
 };
 
-/** Run the work, then the restoration; when both fail, report both instead of dropping either. */
-async function guarded(work, restore) {
+/** Run the work, then the restoration; when both fail, report both instead of dropping either. `label` names the suite. */
+export async function guarded(work, restore, label) {
     const done = await settle(work), restored = await settle(restore);
     const failures = [done, restored].filter(outcome => 'error' in outcome).map(outcome => outcome.error);
     if (failures.length === 2) throw new AggregateError(failures, `${label} collection and restoration failed.`);
@@ -49,22 +49,22 @@ async function guarded(work, restore) {
     return done.value;
 }
 
-/** A read step journals the screen the parent observer sees after the last barrier, with the replies of the exchange that preceded it. */
-async function readStep(step, record, { owner, caseId }) {
+/** A read step journals the screen the parent observer sees after the last barrier, with the replies of the exchange that preceded it. `suite` names the suite: { label, prefix, parseFrame }. */
+async function readStep(step, record, { owner, caseId, suite }) {
     if (step.read !== 'report' && step.read !== 'cells') fail(`${caseId} unknown plan step ${step.read}.`);
     const wantsReport = step.read === 'report';
     if (wantsReport && record.report === null) fail(`${caseId} report read without an exchange.`);
-    const observed = await owner(`${pclPrefix}-read`, record.barriers.at(-1), wantsReport ? { report: record.report } : {});
+    const observed = await owner(`${suite.prefix}-read`, record.barriers.at(-1), wantsReport ? { report: record.report } : {});
     const journal = wantsReport ? { report: record.report } : {};
-    record.reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol], ...journal });
+    record.reads.push({ kind: step.read, cursor: [observed.screen.cursorRow, observed.screen.cursorCol], ...(suite.journalSize ? { size: [observed.screen.rows, observed.screen.cols] } : {}), ...journal });
     record.report = null;
 }
 
 /** A feed step writes the plan bytes; a capture step is one fenced exchange whose raw replies the next read journals, any other feed clears them. */
-async function feedStep(step, record, { fence }) {
+async function feedStep(step, record, { fence, suite }) {
     record.feeds.push(step.feed);
     if (step.capture === true) {
-        record.report = await fence.exchange(step.feed, parsePclFrame);
+        record.report = await fence.exchange(step.feed, suite.parseFrame);
         record.barriers.push(record.report.barrier);
         return;
     }
@@ -72,14 +72,17 @@ async function feedStep(step, record, { fence }) {
     record.barriers.push(await fence.write(step.feed));
 }
 
-async function collectCase(contract, io) {
-    const record = { feeds: [], barriers: [], reads: [], report: null }, context = { ...io, caseId: contract.caseId };
+/** Run one case's exact plan through the owned fence and return its journal of feeds, barriers and reads. Shared by every suite that frames its own exchanges. */
+export async function collectPlan(contract, io, suite) {
+    const record = { feeds: [], barriers: [], reads: [], report: null }, context = { ...io, caseId: contract.caseId, suite };
     for (const step of contract.plan) await (step.feed === undefined ? readStep : feedStep)(step, record, context); // NOSONAR - serial by design
-    if (record.feeds.length !== planFeeds(contract).length || record.reads.length !== planReads(contract)) fail(`Incomplete ${contract.caseId} ${label} fixture.`);
+    if (record.feeds.length !== planFeeds(contract).length || record.reads.length !== planReads(contract)) fail(`Incomplete ${contract.caseId} ${suite.label} fixture.`);
     validateExactFeeds(contract, record.feeds);
     const { feeds, barriers, reads } = record;
     return { caseId: contract.caseId, feeds, barriers, reads };
 }
+
+const pclSuite = Object.freeze({ label, prefix: pclPrefix, parseFrame: parsePclFrame });
 
 /** Replay both pinned paths over the journaled bytes of the pinned request's own exchange, making exactly the contracted calls. */
 async function replayPinned(gradingModule, contract, collected) {
@@ -104,10 +107,10 @@ async function collectGrading({ config, fence, owner, gradingModule }) {
         async () => {
             await owner(`${pclPrefix}-bind`, await fence.write('\x1b[?1049h' + pclPlanSeed(config.runId)));
             const done = [];
-            for (const contract of pclContracts) done.push(await collectCase(contract, io)); // NOSONAR - serial by design
+            for (const contract of pclContracts) done.push(await collectPlan(contract, io, pclSuite)); // NOSONAR - serial by design
             return done;
         },
-        async () => { await owner(`${pclPrefix}-finish`, await fence.write(pclFinish(config.runId))); });
+        async () => { await owner(`${pclPrefix}-finish`, await fence.write(pclFinish(config.runId))); }, label);
     const run = { schemaVersion: 1, adapterId: adapter.id, probeIds: [...adapter.probeIds], cases: [] };
     for (const item of collected) {
         const contract = pclContracts.find(entry => entry.caseId === item.caseId); // NOSONAR - serial by design: each pinned replay settles in case order

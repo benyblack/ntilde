@@ -64,6 +64,7 @@ ELSEWHERE = {
     "mex-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "caps-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "pcl-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
+    "dcl-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
     "modify-other-keys-3-policy.test.mjs": REAL_BUNDLE_WORKFLOW,
     "osc133-p-policy.test.mjs": REAL_BUNDLE_WORKFLOW,
     "osc22-grading-collector.test.mjs": REAL_BUNDLE_WORKFLOW,
