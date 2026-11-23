@@ -64,3 +64,9 @@ test('OSC22 lifecycle requests reach the authenticated owner observation dispatc
     for (const kind of ['ptr-startx', 'ptr-read\n', 'ptr-finish-extra', 'ptr-apply', 'ptrx-read']) assert.equal(untranslatedCellKind(kind), false, kind);
     assert.match(source, /if \(prefix === osc22Prefix\) return observeOsc22\(request, budget\);/);
 });
+
+test('Modern cursor lifecycle requests reach the authenticated owner dispatcher', () => {
+    for (const kind of ['mcur-start', 'mcur-bind', 'mcur-read', 'mcur-finish']) assert.equal(untranslatedCellKind(kind), true, kind);
+    for (const kind of ['mcur-read2', 'mcur-finish-extra', 'mcur-apply', 'mcurx-read']) assert.equal(untranslatedCellKind(kind), false, kind);
+    assert.match(source, /if \(prefix === modernCursorPrefix\)/);
+});

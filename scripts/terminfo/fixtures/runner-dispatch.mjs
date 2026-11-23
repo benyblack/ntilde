@@ -1,7 +1,8 @@
 // The owned runner is a trusted launcher script with side effects at import, so tests read its source. This helper extracts the
-// request-kind prefix and step literals that serve untranslated cell observations, pins the runner's dispatch predicate to its
+// request-kind prefixes and step literals that serve untranslated cell observations, pins the runner's dispatch predicate to its
 // exact expected text, and exposes a local reimplementation of that predicate. Nothing from the runner is evaluated.
 import { readFileSync } from 'node:fs';
+import { modernCursorPrefix } from '../modern-cursor.mjs';
 
 // A Windows checkout with core.autocrlf rewrites the runner to CRLF; the patterns below are written against LF.
 const source = readFileSync(new URL('../../terminfo-owned-runner.mjs', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
@@ -13,12 +14,18 @@ export const expectedPredicateText = `function untranslatedCellKind(kind) {
 }
 `;
 
-/** The string literals of one \`new Set([...])\` declaration, refusing anything that is not a plain list of lowercase words. */
+/** The lowercase strings (and the imported Modern cursor prefix) of one \`new Set([...])\` declaration, refusing anything that is not a plain list of lowercase words. */
 function setLiterals(name) {
     const match = new RegExp(`const ${name} = new Set\\(\\[([^\\]]*)\\]\\);\n`).exec(source);
     if (match === null) throw new Error(`The runner no longer declares ${name} as a literal set.`);
-    const words = [...match[1].matchAll(/'([a-z]+)'/g)].map(item => item[1]);
-    if (match[1].replaceAll(/'[a-z]+'/g, '').replaceAll(/[\s,]/g, '') !== '') throw new Error(`${name} holds something other than lowercase word literals.`);
+    // Only the prefix imported from the Modern cursor module is permitted
+    // alongside literals. The runner itself is never imported or evaluated.
+    const cursorImport = source.split('\n').some(line => line.startsWith('import { modernCursorSuiteId, modernCursorPrefix, ')
+        && line.endsWith(" from './terminfo/modern-cursor.mjs';"));
+    const list = name === 'untranslatedCellPrefixes' && cursorImport
+        ? match[1].replace(/\bmodernCursorPrefix\b/, "'" + modernCursorPrefix + "'") : match[1];
+    const words = [...list.matchAll(/'([a-z]+)'/g)].map(item => item[1]);
+    if (list.replaceAll(/'[a-z]+'/g, '').replaceAll(/[\s,]/g, '') !== '') throw new Error(name + ' holds an unrecognized prefix or step expression.');
     return new Set(words);
 }
 
