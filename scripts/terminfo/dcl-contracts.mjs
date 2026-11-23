@@ -18,6 +18,10 @@
 // beside control groups proving that the reply channel answers recognised modes and that the state reader sees a clear and a home. Any other observation makes the effect inconclusive: a terminal that
 // started honouring mode 3 needs its own supported contract rather than being graded as unsupported here.
 //
+// Masking: the seed leaves the cursor away from home (row 3, column 6, over a plain witness character written by the plan), so a mode 3 that merely homed the cursor changes a fact the groups compare, and
+// every exchange ends by rewriting that witness at the cursor and stepping back onto it, so a pen (bold, color, underline, inverse, ...) or an insert mode a mode 3 left changed shows in the stored cell.
+// The clear/home control starts from that placed cursor, so it also proves a cursor movement is visible.
+//
 // Geometry: every read frame carries the App's grid (the paired screen's rows and columns, settled after a DA barrier) and the kernel's grid read by the parent with the system `/bin/stty` against the proved
 // private PTY. They must agree with each other and with the baseline at every read. The baseline width must be neither 80 nor 132, so that both a set and a reset would be visible. An App grid that did
 // change is not even gradable: the observer's fixed-size guard and the journal refuse a frame of another grid, so such a run is refused rather than judged (the contract grader still states that case);
@@ -58,6 +62,13 @@ const csi = body => `${esc}[${body}`;
 const setThree = csi('?3h'), resetThree = csi('?3l'), queryThree = csi('?3$p');
 const allow = csi('?40h'), disallow = csi('?40l'), queryForty = csi('?40$p');
 const reply = (mode, pm) => csi(`?${mode};${pm}$y`);
+/** The cursor the seed leaves the pane at (one-based CUP 4;7, zero-based row 3 column 6), inside the margins and away from home, so a DECCOLM home is visible. */
+export const dclCursorAt = Object.freeze([3, 6]);
+const placeCursor = csi('4;7H');
+/** The witness every exchange ends with: a plain character written at the cursor with whatever pen is current, then the cursor stepped back onto it. It rewrites the same cell, so the cell shows the
+ *  pen (bold, color, underline, inverse and the rest) in force after that exchange, and an insert mode would shift the row. */
+const witnessChar = 'W';
+const witness = witnessChar + csi('D');
 /** Ntilde does not track mode 3 or mode 40: DECRQM answers Pm 0 (not recognized). */
 const notRecognizedThree = reply(3, 0), notRecognizedForty = reply(40, 0);
 
@@ -109,7 +120,8 @@ export function replayDclTerminal(caseId, replies) {
 
 // ---------- the groups ----------
 
-const ask = (role, kind, note, request, demand, expect = 'unchanged') => {
+const ask = (role, kind, note, body, demand, expect = 'unchanged') => {
+    const request = expect === 'cleared' ? body : body + witness;
     // The owned fence refuses any exchange request over 64 characters (terminal-fence.mjs); the contract
     // self-check keeps every group inside that bound instead of discovering it at collection time.
     if (request.length > 64) throw new Error(`The ${role} request exceeds the 64-byte owned exchange limit.`);
@@ -135,16 +147,16 @@ const groups = Object.freeze([
     ask('control-clear', 'control', 'ED 2 and CUP 1;1 visibly clear the screen and home the cursor in the same readers, so the state reader can see what a DECCOLM would have done', csi('2J') + csi('H'), [], 'cleared'),
 ]);
 
-/** The plan: the reseed, an initial cells read, then for each group the captured request and its report read. */
+/** The plan: the reseed, the cursor placed away from home with the plain witness written, an initial cells read, then for each group the captured request and its report read. */
 function planOf() {
-    const plan = [planFeed(dclReseed), planRead('cells')];
+    const plan = [planFeed(dclReseed + placeCursor + witness), planRead('cells')];
     for (const item of groups) plan.push({ feed: item.request, capture: true }, planRead('report'));
     return plan;
 }
 
 const appearanceScope = 'DEC private mode 3 (DECCOLM) and mode 40 (allow 80/132 switching) only: the exact pinned termless exchange, the exact pinned mode query, set and reset alone, with switching allowed and not allowed, '
-    + 'and a set/reset cycle, each leaving the complete screen, cursor, rendition, margins, modes and active screen unchanged and the App grid and the independently read kernel PTY grid at their baseline size, with '
-    + 'mode 3 and mode 40 answered not recognized beside a recognised-mode control and a clear/home control; raw replies, stored terminal state and PTY geometry, not a window size, rendering or painted pixels; '
+    + 'and a set/reset cycle, each leaving the complete screen, the cursor (away from home), the current rendition (witnessed by a plain character rewritten after every exchange), margins, modes and active screen unchanged and the App grid and the independently read kernel PTY grid at their baseline size, with '
+    + 'mode 3 and mode 40 answered not recognized beside a recognised-mode control and a clear/home control that moves the cursor; raw replies, stored terminal state and PTY geometry, not a window size, rendering or painted pixels; '
     + 'no remote/mux, other-platform, common-harness or score claim; the pinned verdict stays inconclusive on both paths';
 
 // ---------- state, seed and grading ----------
@@ -170,7 +182,7 @@ const stateKey = state => JSON.stringify([state.ink, state.at, state.cursorVisib
 const perRowAt = (cells, row) => cells.filter(cell => cell.row === row).length;
 const sameSize = (left, right) => left[0] === right[0] && left[1] === right[1];
 
-/** Whether the initial read holds the contracted seed: geometry, nonce at home, the attributed cells, margins and modes, and a width a DECCOLM would visibly change in either direction. */
+/** Whether the initial read holds the contracted seed: geometry, nonce row, the cursor away from home over a plain witness, the attributed cells, margins and modes, and a width a DECCOLM would visibly change in either direction. */
 function seedOk(state, nonce) {
     const { seedCells, seedMargins } = devqFixture;
     const perRow = row => state.ink.filter(cell => cell.row === row).length;
@@ -179,9 +191,13 @@ function seedOk(state, nonce) {
         return cell !== undefined && cell.char === spec.char && cell.bold === (spec.bold ?? false)
             && (spec.fgIndex === undefined || cell.fgIndex === spec.fgIndex) && (spec.underline === undefined || cell.underline === spec.underline);
     });
-    return state.size[0] >= dclMinimum.rows && state.size[1] >= dclMinimum.cols && !deccolmWidths.includes(state.size[1]) && state.screen.lines[0] === nonce && state.at.every(value => value === 0)
+    const plain = cell => cell !== undefined && cell.char === witnessChar && ['bold', 'dim', 'italic', 'underline', 'inverse', 'hidden', 'strikethrough', 'blink', 'overline'].every(field => cell[field] === false)
+        && cell.fgIndex === -1 && cell.bgIndex === -1 && cell.underlineStyle === 0;
+    const witnessCell = state.ink.find(item => item.row === dclCursorAt[0] && item.col === dclCursorAt[1]);
+    return state.size[0] >= dclMinimum.rows && state.size[1] >= dclMinimum.cols && !deccolmWidths.includes(state.size[1]) && state.screen.lines[0] === nonce
+        && state.at[0] === dclCursorAt[0] && state.at[1] === dclCursorAt[1] && plain(witnessCell)
         && state.bands[0] === seedMargins[0] && state.bands[1] === seedMargins[1] && state.origin === false && state.alternate === true
-        && perRow(1) === perRowAt(seedCells, 1) && perRow(3) === perRowAt(seedCells, 3) && holds;
+        && perRow(1) === perRowAt(seedCells, 1) && perRow(3) === perRowAt(seedCells, 3) + 1 && holds;
 }
 
 const inconclusive = note => ({ outcome: 'inconclusive', note });
@@ -235,7 +251,7 @@ function makeContract(caseId) {
     const script = dclPinnedScripts[caseId];
     const roles = Object.freeze(['initial', ...groups.map(group => group.role)]);
     const termlessGroup = groups.find(group => group.role === 'pinned'), terminalGroup = groups.find(group => group.role === 'pinned-query');
-    if (termlessGroup.request !== setThree + queryThree + resetThree || terminalGroup.request !== queryThree) throw new Error('The pinned groups must send exactly the pinned requests.');
+    if (termlessGroup.request !== setThree + queryThree + resetThree + witness || terminalGroup.request !== queryThree + witness) throw new Error('The pinned groups must send exactly the pinned requests, then the witness.');
     const contract = {
         caseId, probeId: caseId, id: caseId.slice('modes.'.length), roles, groups, plan: Object.freeze(planOf()),
         pinnedPath: 'termless', pinnedRead: roles.indexOf('pinned'), pinnedTerminalRead: roles.indexOf('pinned-query'), pinnedExpected: script.expected, pinnedCriterion, pinnedScript: script,

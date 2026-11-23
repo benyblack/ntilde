@@ -5,11 +5,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { planFeeds } from '../graded-plan.mjs';
-import { dclContracts, dclContractsVersion, dclObservation, dclSuiteId, gradeDclCase, replayDclTermless, replayDclTerminal } from '../dcl-contracts.mjs';
+import { dclContracts, dclContractsVersion, dclCursorAt, dclObservation, dclSuiteId, gradeDclCase, replayDclTermless, replayDclTerminal } from '../dcl-contracts.mjs';
 import { adaptDclCollector, dclAdapterId } from '../dcl-grading-collector.mjs';
 import { kernelGrid } from '../dcl-capture.mjs';
 import { syntheticColEditScreen, paletteBinding } from './col-edit-evidence.mjs';
-import { plainCell, syntheticSgrPaletteScreen } from './sgr-palette-evidence.mjs';
+import { colorCell, plainCell, syntheticSgrPaletteScreen } from './sgr-palette-evidence.mjs';
 import { screenSnapshot } from '../agent-observer.mjs';
 import { seedRows, frame, alternate } from './devq-evidence.mjs';
 
@@ -32,6 +32,14 @@ export const sttyDescription = (rows, cols) => `speed 9600 baud; ${rows} rows; $
 export const kernelOf = (rows, cols) => kernelGrid({ tool: '/bin/stty', outputProcessing: false, description: sttyDescription(rows, cols) });
 const frameWithKernel = (index, kind, screen, barrier, report, kernel = kernelOf(screen.rows, screen.cols)) => ({ ...frame(index, kind, screen, barrier, report), kernel });
 
+/** The seed rows with the witness the plan writes at the cursor (row 3, column 6, plain unless `witness` says otherwise: a cell written with a pen another exchange changed). */
+export const dclSeedRows = (witness = plainCell('W')) => {
+    const rows = seedRows();
+    rows[dclCursorAt[0]] = [...rows[dclCursorAt[0]], ...Array.from({ length: dclCursorAt[1] - rows[dclCursorAt[0]].length }, () => plainCell(' ')), witness];
+    return rows;
+};
+export { colorCell };
+
 /** The screens, kernel grids and reply lists of every read of the case; `mutate(caseId, role, read)` may return a changed read to build negative evidence. */
 export function syntheticDclScreens(contract, binding = paletteBinding(), mutate = null, runId = 'a'.repeat(32)) {
     const nonce = 'NTILDE_DCL_' + runId;
@@ -39,7 +47,7 @@ export function syntheticDclScreens(contract, binding = paletteBinding(), mutate
         const fresh = () => {
             const screen = role === 'control-clear'
                 ? alternate(syntheticColEditScreen([], [0, 0], { margins: [1, 5] }, [], structuredClone(binding)))
-                : alternate(syntheticColEditScreen(seedRows(), [0, 0], { margins: [1, 5] }, [], structuredClone(binding)), nonce);
+                : alternate(syntheticColEditScreen(dclSeedRows(), dclCursorAt, { margins: [1, 5] }, [], structuredClone(binding)), nonce);
             return { screen, kernel: kernelOf(screen.rows, screen.cols), replies: [...(exchanges[role] ?? [])] };
         };
         const read = mutate?.(contract.caseId, role, fresh()) ?? fresh();

@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { dclContracts, dclCaseIds, dclFeeds, dclFinish, dclFixture, dclPinnedScripts, dclPlanSeed, dclReads, deccolmWidths, pinnedModeState, replayDclTermless, replayDclTerminal,
     validateDclFeeds } from './dcl-contracts.mjs';
-import { kernelOf, resizedDclScreen, syntheticDclGrade } from './fixtures/dcl-evidence.mjs';
+import { colorCell, dclSeedRows, kernelOf, resizedDclScreen, syntheticDclGrade, syntheticDclScreens } from './fixtures/dcl-evidence.mjs';
 import { syntheticColEditScreen } from './fixtures/col-edit-evidence.mjs';
 import { alternate, seedRows } from './fixtures/devq-evidence.mjs';
 
 const [contract] = dclContracts;
 const caseId = contract.caseId;
 // The hand-written literals the contract must agree with (an independent spelling of the same bytes).
-const literal = { set: '\x1b[?3h', reset: '\x1b[?3l', query: '\x1b[?3$p', allow: '\x1b[?40h', disallow: '\x1b[?40l', three: '\x1b[?3;0$y', forty: '\x1b[?40;0$y' };
+const literal = { set: '\x1b[?3h', reset: '\x1b[?3l', query: '\x1b[?3$p', allow: '\x1b[?40h', disallow: '\x1b[?40l', three: '\x1b[?3;0$y', forty: '\x1b[?40;0$y', witness: 'W\x1b[D', place: '\x1b[4;7H' };
 
 test('the case is the pinned modes.deccolm and its fixtures are written out independently', () => {
     assert.deepEqual([...dclCaseIds], ['modes.deccolm']);
@@ -26,8 +26,8 @@ test('the pinned scripts name exactly the calls the pinned code makes', () => {
     assert.deepEqual(script.termless, [['feed', literal.set], ['feedCapture', literal.query, 'replies'], ['feed', literal.reset]]);
     assert.deepEqual(script.terminal, [['queryMode', 3]]);
     assert.deepEqual([...contract.pinnedFeeds], [literal.set, literal.query, literal.reset]);
-    assert.equal(contract.groups[contract.pinnedRead - 1].request, literal.set + literal.query + literal.reset, 'the pinned group sends exactly the pinned exchange');
-    assert.equal(contract.groups[contract.pinnedTerminalRead - 1].request, literal.query);
+    assert.equal(contract.groups[contract.pinnedRead - 1].request, literal.set + literal.query + literal.reset + literal.witness, 'the pinned group sends exactly the pinned exchange, then the witness');
+    assert.equal(contract.groups[contract.pinnedTerminalRead - 1].request, literal.query + literal.witness);
 });
 
 test('every request stays inside the owned exchange limit and the plan is exact', () => {
@@ -38,6 +38,14 @@ test('every request stays inside the owned exchange limit and the plan is exact'
     assert.throws(() => validateDclFeeds(contract, [...dclFeeds(contract).slice(1)]));
     assert.deepEqual(contract.groups.filter(group => group.kind === 'control').map(group => group.role), ['recognized', 'control-clear']);
     assert.equal(contract.groups.at(-1).role, 'control-clear', 'the clear control runs last because it destroys the fixture');
+});
+
+test('every exchange ends with the witness, except the clear control, and the seed places the cursor away from home', () => {
+    for (const group of contract.groups) assert.equal(group.request.endsWith(literal.witness), group.role !== 'control-clear', group.role);
+    assert.ok(contract.plan[0].feed.endsWith(literal.place + literal.witness), 'the reseed places the cursor and writes the plain witness before the initial read');
+    const [initial, , , , , , , , , , , , cleared] = syntheticDclScreens(contract);
+    assert.deepEqual([initial.screen.cursorRow, initial.screen.cursorCol], [3, 6], 'the baseline cursor is not at home');
+    assert.deepEqual([cleared.screen.cursorRow, cleared.screen.cursorCol], [0, 0], 'the clear control homes it, which the state reader can therefore see');
 });
 
 test('the seed and the finish are exact and the finish leaves switching disallowed', () => {
@@ -138,4 +146,21 @@ test('an earlier mismatch is reported before a later group it damaged, and a fai
     const seed = grade(changed('initial', read => ({ ...read, screen: { ...read.screen, lines: ['not-the-nonce', ...read.screen.lines.slice(1)] } })));
     assert.equal(seed.outcome, 'inconclusive');
     assert.match(seed.note, /attributed seed/);
+});
+
+test('a home-only effect and a pen-only effect are not masked by the seed', () => {
+    for (const role of contract.groups.map(group => group.role).filter(name => name !== 'control-clear')) {
+        inconclusive(changed(role, read => ({ ...read, screen: { ...read.screen, cursorRow: 0, cursorCol: 0 } })), /changed the screen, the cursor/);
+        // The witness rewritten after the exchange shows a pen the exchange left changed (bold here, a color or underline likewise).
+        inconclusive(changed(role, read => ({ ...read, screen: syntheticDclScreens(contract, undefined, (_case, name, fresh) => (name === role ? {
+            ...fresh, screen: { ...fresh.screen, ...syntheticColEditScreen(dclSeedRows(colorCell('W', { attrs: ['bold'] })), [3, 6], { margins: [1, 5] }, [], structuredClone(fresh.screen.colorBinding)),
+                lines: fresh.screen.lines, bufferState: fresh.screen.bufferState, horizontalMargins: fresh.screen.horizontalMargins, cursorMode: fresh.screen.cursorMode } } : fresh)).find(item => item.role === role).screen })), /changed the screen, the cursor/);
+    }
+});
+
+test('a seed at home, or with a witness that is not plain, is a failed seed', () => {
+    const seeded = mutate => grade(changed('initial', mutate));
+    assert.match(seeded(read => ({ ...read, screen: { ...read.screen, cursorRow: 0, cursorCol: 0 } })).note, /attributed seed/);
+    const bold = syntheticColEditScreen(dclSeedRows(colorCell('W', { attrs: ['bold'] })), [3, 6], { margins: [1, 5] }, [], undefined);
+    assert.match(seeded(read => ({ ...read, screen: { ...read.screen, cellDetails: bold.cellDetails, attributeRuns: bold.attributeRuns } })).note, /attributed seed/);
 });
