@@ -107,30 +107,65 @@ export function buildModernReport(base = modernRoot) {
 
 const tableText = value => String(value).replaceAll('|', '&#124;').replaceAll('\r', '').replaceAll('\n', ' ');
 export function readableModern(report) {
-    const t = report.totals, m = report.measurement;
-    const lines = ['# Ntilde Modern baseline — 2026-11-15', '',
+    const t = report.totals, m = report.measurement, cursor = report.cursorMeasurement;
+    const lines = [cursor ? '# Ntilde Modern assessment — four cursor requirements' : '# Ntilde Modern baseline — 2026-11-15', '',
         `**${t.pass} pass / ${t.fail} fail / ${t.inconclusive} inconclusive across 69 frozen requirements.**`, '',
         report.evidencePolicy, '', report.scope, '',
+        ...(cursor ? ['[Original Modern publication and frozen inputs](../2026-11-15-modern-results/report.md).', ''] : []),
         '## Reading the results', '',
-        '- The requirements are the exact 69 Modern catalogue rows and live-page membership captured on 2026-11-15. The original upstream source bytes and page excerpt are retained in `upstream-snapshot.zip`; SHA-256 pins admit these bytes. Git blob IDs are retained citation metadata, not security digests.',
+        ...(cursor ? ['- The 69 criteria are loaded from the original frozen requirements and upstream snapshot. The four cursor verdicts below use the new trace.'] : [
+        '- The requirements are the exact 69 Modern catalogue rows and live-page membership captured on 2026-11-15. The original upstream source bytes and page excerpt are retained in `upstream-snapshot.zip`; SHA-256 pins admit these bytes. Git blob IDs are retained citation metadata, not security digests.']),
         '- Stored-cell predicates are observed through the owned App projection. They do not establish an upstream headless-library result or an application pixel result. Each row names the selected path.',
         '- Physical/OS-generated input, real-time blink, native focus/paste and changed current controls are not inferred from older flags, synthetic phases, generated events or a similarly named case.',
         '- Pinned 4.0.0 stock grades stay beside the new conclusions. This does not change the 80/80 frozen Core report or the qualification inventory, and the percentage must not be compared with the public terminal leaderboard.', '',
         '## Upstream attribution', '',
-        'Catalogue and baseline material: © 2025–2026 Bjorn Stabell, [terminfo.dev](https://terminfo.dev/baseline/modern), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The original licence is retained as `LICENSE` in `upstream-snapshot.zip`. Catalogue and baseline source bytes are unmodified; the page excerpt, 69-row selection, evidence mapping and assessment are identified Ntilde adaptations. Upstream source revision and Git blob references are retained in `requirements-v1.json`.', '',
+        'Catalogue and baseline material: © 2025–2026 Bjorn Stabell, [terminfo.dev](https://terminfo.dev/baseline/modern), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The original licence is retained as `LICENSE` in `upstream-snapshot.zip`. Catalogue and baseline source bytes are unmodified; the page excerpt, 69-row selection, evidence mapping and assessment are identified Ntilde adaptations. Upstream source revision and Git blob references are retained in `requirements-v1.json`.'.replace('in `requirements-v1.json`', cursor ? 'in the [frozen requirements](../2026-11-15-modern-results/requirements-v1.json)' : 'in `requirements-v1.json`'), '',
         '## Measurement and provenance', '',
         `Reused owned run \`${m.runId}\`, started ${m.startedAt}. App source \`${m.appRevision}\`; measured scripts \`${m.scriptsRevision}\`; App version \`${m.appVersion}\` (${m.appVersionSource}). Geometry ${m.geometry.rows}×${m.geometry.cols}; source policy \`${m.sourcePolicy}\`; receipt ${m.receiptSchema}, completed ${m.receiptCompletedAt}.`, '',
-        `The archive is [the existing mouse-extended publication](../2026-11-15-mouse-extended/owned-run.zip), SHA-256 \`${m.archiveSha256}\`. The complete receipt, source graph, observations and cleanup are rederived in an isolated temporary directory. No archived source is executed and no raw artifact is modified. This report is a later evidence reassessment, not a fresh measurement or a source-to-binary attestation.`, '',
+        `The archive is [the existing mouse-extended publication](../2026-11-15-mouse-extended/owned-run.zip), SHA-256 \`${m.archiveSha256}\`. The complete receipt, source graph, observations and cleanup are rederived in an isolated temporary directory. No archived source is executed and no raw artifact is modified.`
+        + (cursor ? '' : ' This report is a later evidence reassessment, not a fresh measurement or a source-to-binary attestation.'), '',
+        ...(cursor ? readableCursorMeasurement(cursor) : []),
         `Original stock totals: ${report.stock.counts.supported} supported / ${report.stock.counts.unsupported} unsupported / ${report.stock.counts.inconclusive} inconclusive; suiteComplete=${report.stock.suiteComplete}. Those are whole-suite results under the recorded settings, not a Modern score.`, '',
         '## Per-requirement assessment', '', '| ID | Result | Selected observation path | Evidence / blocker |', '| --- | --- | --- | --- |'];
     for (const row of report.rows) {
-        const detail = row.blocker ?? [row.evidence.file, row.evidence.sourceId].join(' — ');
+        const newTrace = cursor && row.evidence?.runId === cursor.runId;
+        const detail = newTrace ? `[${row.evidence.sourceId}](#${row.evidence.sourceId})`
+            : row.blocker ?? [row.evidence.file, row.evidence.sourceId].join(' — ');
         lines.push(`| \`${row.id}\` | ${row.conclusion} | ${tableText(row.criterionPath)} | ${tableText(detail)} |`);
     }
+    if (cursor) {
+        lines.push('', '## Cursor traces', '', 'The positions below are zero-based. CPR uses one-based coordinates. Each transition has two agreeing App reads and a raw CPR ahead of its DA fence.', '');
+        const traces = new Map(report.rows.filter(row => row.evidence?.runId === cursor.runId)
+            .map(row => [row.evidence.sourceId, row.observed]));
+        for (const [id, trace] of traces) {
+            lines.push(`### ${id}`, '', '| Step | App position | CPR | Journal frame |', '| --- | --- | --- | --- |');
+            for (const step of trace.transitions) {
+                lines.push(`| ${step.role} | (${step.position.join(', ')}) | \`${step.cpr.slice(2, -1)}\` | ${step.frameIndex} |`);
+            }
+            lines.push('');
+        }
+    }
     lines.push('', '## Reproduce', '', 'Requires Node 24+ and Python 3; runs entirely offline without a desktop lease.', '',
-        '```sh', 'node scripts/terminfo-modern-results.mjs --check', '```', '',
-        '`report.json` retains the full frozen criterion, evidence references, selected observations, original stock verdict and exact per-row blocker. `requirements-v1.json` and `mapping-v1.json` are versioned inputs; future criteria need a new version/publication rather than silently changing this result.', '');
+        '```sh', 'node scripts/terminfo-modern-results.mjs --check' + (cursor ? ' --cursor' : ''), '```', '',
+        cursor
+            ? '`report.json` retains every frozen criterion, evidence reference, selected observation, original stock verdict and remaining blocker. The [original publication](../2026-11-15-modern-results/report.md) retains the frozen input files and their upstream attribution.'
+            : '`report.json` retains the full frozen criterion, evidence references, selected observations, original stock verdict and exact per-row blocker. `requirements-v1.json` and `mapping-v1.json` are versioned inputs; future criteria need a new version/publication rather than silently changing this result.', '');
+    if (cursor) {
+        lines.push('For a fresh capture, build the Release App at the recorded App revision using the repository build wrapper. Prepare the pinned collector at the measured scripts revision using the [QA guide](../../QA_TERMINFO.md). Run the owned collector with the standalone App on an awake macOS desktop.', '',
+            '\`\`\`sh',
+            'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
+            'node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version 0.14.0 --scope osc633',
+            '\`\`\`', '');
+    }
     return lines.join('\n');
+}
+
+function readableCursorMeasurement(cursor) {
+    return [
+        `New direct-local macOS cursor run \`${cursor.runId}\`, started ${cursor.startedAt}. App source \`${cursor.appRevision}\`; measured scripts \`${cursor.scriptsRevision}\`; App version \`${cursor.appVersion}\` (${cursor.appVersionSource}). Geometry ${cursor.geometry.rows}×${cursor.geometry.cols}; source policy \`${cursor.sourcePolicy}\`; receipt ${cursor.receiptSchema}, completed ${cursor.receiptCompletedAt}.`, '',
+        `The [cursor run archive](owned-run.zip) has SHA-256 \`${cursor.archiveSha256}\`. In it, \`mcur-run.json\` contains the exact writes and replies, \`mcur-snapshots.jsonl\` contains both App reads per frame, and \`mcur-observations.json\` records the derived traces. Each experiment began on a cleared alternate screen at home with origin mode and left/right margin mode off. The final pair matched the incoming main-screen projection after the alternate fixture was cleared and homed. The receipt verifies process and fixture cleanup.`, '',
+        ...cursor.attempts.map(attempt => `Retained attempt [${attempt.archive}](${attempt.archive}). ${attempt.reason}`),
+    ];
 }
 
 export const serializeModern = report => JSON.stringify(report, null, 2) + '\n';
