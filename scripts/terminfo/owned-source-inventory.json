@@ -467,5 +467,12 @@
   "capsCollectorSourceSha256": "caps-collector.mjs",
   "capsGradingSourceSha256": "caps-grading.mjs",
   "capsGradingCollectorSourceSha256": "caps-grading-collector.mjs",
-  "capsReceiptSourceSha256": "caps-receipt.mjs"
+  "capsReceiptSourceSha256": "caps-receipt.mjs",
+  "pclReportSourceSha256": "pcl-report.mjs",
+  "pclContractsSourceSha256": "pcl-contracts.mjs",
+  "pclCaptureSourceSha256": "pcl-capture.mjs",
+  "pclCollectorSourceSha256": "pcl-collector.mjs",
+  "pclGradingSourceSha256": "pcl-grading.mjs",
+  "pclGradingCollectorSourceSha256": "pcl-grading-collector.mjs",
+  "pclReceiptSourceSha256": "pcl-receipt.mjs"
 }

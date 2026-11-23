@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "note": "Failed or superseded owned-collection attempts for #991, retained unchanged. Each ran against the same pinned terminfo.dev@4.0.0 bundle on the same disposable-App setup.",
+  "attempts": [
+    {
+      "file": "superseded/attempt-1.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "uncommitted working tree before 44ea2a6e6 (the pointer-colour suite scripts as first written)",
+      "failedAt": "launch (before the start observation)",
+      "reason": "The owned App exited with status 0 before collection ('Owned app exited before collection (0)'). Cause: the sidecar copy had been built in a worktree whose packages were not yet restored, so the executable was not a runnable build of the App. No pointer-colour sequence was written; the retained journal is empty. The next attempt used the restored Release build of commit 67675feec and completed."
+    },
+    {
+      "file": "superseded/attempt-2.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "67675feecc6da035338c36dbb8d03198e6f5b271",
+      "failedAt": "none: a complete run, superseded by a contract change",
+      "reason": "A complete, rederivable run (owned run a2dc4d04\u2026) of the first contract: both cases unsupported, 14 groups held, pinned inconclusive, stock 97/1/157. Codex review then showed that a set which changed the cursor or selection color followed by a reset restoring it could be graded unsupported, because the five-color read came only after all pointer operations. The contract now sends a five-color read with every set and reset and a final one after the recovery queries, so the run was repeated; this one is retained unchanged."
+    },
+    {
+      "file": "superseded/attempt-3.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "b76e6801498aa33311b2b2206ba916724ad81b7e",
+      "failedAt": "cell collection (first fenced exchange)",
+      "reason": "The owned fence reported 'Unexpected input during cell collection. Bytes: 1b5b42' (a Down-arrow keypress reached the disposable App window while no barrier was pending). Environmental; the harness refuses unexpected input by design and graded nothing."
+    },
+    {
+      "file": "superseded/attempt-4.zip",
+      "scope": "osc633 scope",
+      "scriptsCommit": "b76e6801498aa33311b2b2206ba916724ad81b7e",
+      "failedAt": "cell collection (first fenced exchange)",
+      "reason": "The same refusal with bytes 7520 (typed characters reached the App window). Environmental; the next attempt, with the keyboard idle, completed."
+    }
+  ]
+}

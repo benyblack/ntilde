@@ -1372,6 +1372,17 @@ beside an effect contract (`ntilde-osc720-view-up-and-erase-saved-effect-v1`) gr
 controls held, so the effect is **unsupported**; the pinned terminal path stays **inconclusive** and the stock counts are unchanged (94/1/160). The run uses receipt schema 74 and source policy v67 (450 files) on the
 `osc633` scope; the frozen selections and all earlier publications remain retained and independently rederived. See [the qualification page](terminfo/2026-11-17-osc720-qualification.md).
 
+### xterm pointer colors (OSC 13/14/113/114, #991)
+
+The [pointer-color batch](terminfo/2026-11-20-pointer-color-qualification.md) qualifies `extensions.osc113-reset-pointer-fg` and `extensions.osc114-reset-pointer-bg` without changing terminal behavior. The pinned termless
+function (`colorResetProbe(13, 113)` / `(14, 114)`) needs a complete `OSC 13;rgb:` reply and returns inconclusive `no-response` without one; the pinned terminal path is `unverifiedEffect` (always inconclusive,
+the path the stock collector grades). The owned suite replays the termless function unchanged over the journaled raw reply of its own fenced exchange and the terminal path over the journaled cursor, beside a separately
+identified effect contract (`ntilde-pointer-color-unsupported-effect-v1`) graded by independent literals written from five seeded colors (OSC 10, 11, 12, 17, 19) and the xterm chain order: every query, set and
+reset spelling is silent and leaves the screen, cursor, rendition, margins, modes and the five colors unchanged, a chained OSC 12 set consumes the pointer slots so 17 does not shift, and a cursor-color change is read
+back as a control. A reply to a pointer request makes the effect inconclusive, never unsupported. All fourteen groups held for both cases, so the effect is **unsupported**, a recorded divergence from the
+**inconclusive** pinned and stock verdicts; stock stays 97 supported / 157 inconclusive / 1 unsupported. The run uses receipt schema 78 and source policy v71 on the `osc633` scope. The inventory adds
+two measured effect-unsupported ids and no pinned, stock, Core, Modern or common-harness score. Raw replies and stored state only; the operating system pointer image is not claimed.
+
 ### OSC 3008 hierarchical contexts
 
 The [OSC 3008 batch](terminfo/2026-11-17-osc3008-qualification.md) implements [UAPI.15](https://uapi-group.org/specifications/specs/osc_context/) context signalling: `OSC 3008;start=<id>[;field=value]...` opens, updates or returns to a context and `OSC 3008;end=<id>` closes it. The App keeps a stack of at most 16 contexts and the 8 most recently ended as **untrusted data**, exposed only through read-only `readPaneMetadata` (`buffer.contexts`); nothing is presented, executed or fed to command assist or an agent, OSC 133/633 neither create nor update a context, a terminal reset leaves the stack alone and the child's exit drops it ([contract](terminfo/osc3008.md)). The pinned probe (`type=test`, a cursor query, `unmeasuredCellResult`) is inconclusive by construction and its payload is not a UAPI.15 sequence, so it stays **inconclusive** with unchanged stock counts (94/1/160); the separately identified effect contract `ntilde-osc3008-context-effect-v1` is **supported** (28 of 28 decided reads, 10 policy reads recorded). Receipt schema 73 and source policy v66 bind 444 inputs; the inventory adds one effect-supported ID and no pinned, Core, Modern, stock or common-harness score increase.

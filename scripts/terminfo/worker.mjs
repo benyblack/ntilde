@@ -60,6 +60,7 @@ import { collectXsvGrading } from './xsv-collector.mjs';
 import { collectKclGrading } from './kcl-collector.mjs';
 import { collectOsc5Grading } from './osc5-collector.mjs';
 import { collectCapsGrading } from './caps-collector.mjs';
+import { collectPclGrading } from './pcl-collector.mjs';
 import { collectOsc3008 } from './osc3008-collector.mjs';
 import { collectOsc720 } from './osc720-collector.mjs';
 import { collectOsc22 } from './osc22-collector.mjs';
@@ -538,6 +539,12 @@ try {
             const capsModule = await import(pathToFileURL(config.capsBundle).href);
             const capsRun = await collectCapsGrading({ config, fence, owner, gradingModule: capsModule });
             writeFileSync(join(config.output, 'caps-run.json'), JSON.stringify(capsRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered xterm pointer-color qualification follows the feature-reporting suite on the same exclusively owned fence; it changes no persistent state beyond the colors the shared finish resets.
+            const pclSource = readFileSync(config.pclBundle);
+            if (createHash('sha256').update(pclSource).digest('hex') !== config.pclBundleSha256) throw new Error('Local pointer-color adapter bundle changed.');
+            const pclModule = await import(pathToFileURL(config.pclBundle).href);
+            const pclRun = await collectPclGrading({ config, fence, owner, gradingModule: pclModule });
+            writeFileSync(join(config.output, 'pcl-run.json'), JSON.stringify(pclRun) + '\n', { flag: 'wx', mode: 0o600 });
             const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
             // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
             // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
