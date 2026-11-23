@@ -474,5 +474,12 @@
   "pclCollectorSourceSha256": "pcl-collector.mjs",
   "pclGradingSourceSha256": "pcl-grading.mjs",
   "pclGradingCollectorSourceSha256": "pcl-grading-collector.mjs",
-  "pclReceiptSourceSha256": "pcl-receipt.mjs"
+  "pclReceiptSourceSha256": "pcl-receipt.mjs",
+  "dclReportSourceSha256": "dcl-report.mjs",
+  "dclContractsSourceSha256": "dcl-contracts.mjs",
+  "dclCaptureSourceSha256": "dcl-capture.mjs",
+  "dclCollectorSourceSha256": "dcl-collector.mjs",
+  "dclGradingSourceSha256": "dcl-grading.mjs",
+  "dclGradingCollectorSourceSha256": "dcl-grading-collector.mjs",
+  "dclReceiptSourceSha256": "dcl-receipt.mjs"
 }

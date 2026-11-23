@@ -61,6 +61,7 @@ import { collectKclGrading } from './kcl-collector.mjs';
 import { collectOsc5Grading } from './osc5-collector.mjs';
 import { collectCapsGrading } from './caps-collector.mjs';
 import { collectPclGrading } from './pcl-collector.mjs';
+import { collectDclGrading } from './dcl-collector.mjs';
 import { collectOsc3008 } from './osc3008-collector.mjs';
 import { collectOsc720 } from './osc720-collector.mjs';
 import { collectOsc22 } from './osc22-collector.mjs';
@@ -545,6 +546,12 @@ try {
             const pclModule = await import(pathToFileURL(config.pclBundle).href);
             const pclRun = await collectPclGrading({ config, fence, owner, gradingModule: pclModule });
             writeFileSync(join(config.output, 'pcl-run.json'), JSON.stringify(pclRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered xterm DECCOLM qualification follows the pointer-color suite on the same exclusively owned fence.
+            const dclSource = readFileSync(config.dclBundle);
+            if (createHash('sha256').update(dclSource).digest('hex') !== config.dclBundleSha256) throw new Error('Local DECCOLM adapter bundle changed.');
+            const dclModule = await import(pathToFileURL(config.dclBundle).href);
+            const dclRun = await collectDclGrading({ config, fence, owner, gradingModule: dclModule });
+            writeFileSync(join(config.output, 'dcl-run.json'), JSON.stringify(dclRun) + '\n', { flag: 'wx', mode: 0o600 });
             const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
             // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
             // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
