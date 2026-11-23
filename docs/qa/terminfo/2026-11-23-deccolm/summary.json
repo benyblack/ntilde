@@ -1918,6 +1918,7 @@
     "suiteId": "ntilde-owned-resize-reflow-v1",
     "runId": "31af6e012dd85f4e939799d78fbb20da",
     "passed": 3,
+    "paneId": "e7ea1dfa-23ae-47ed-9cd3-7095efbe6a2c",
     "baseline": {
       "rows": 40,
       "cols": 140
@@ -2020,7 +2021,7 @@
         }
       }
     ],
-    "note": "Parent-selected App resizes of the same owned run, each followed by the App grid and the kernel PTY grid through the same readers the DECCOLM groups use: both moved together and both returned."
+    "note": "Parent-selected App resizes of the same owned run, re-derived by the production resize check, each followed by the App grid and the kernel PTY grid through the same readers the DECCOLM groups use: both moved together and both returned."
   },
   "stockCollector": {
     "counts": {

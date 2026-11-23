@@ -59,6 +59,7 @@ test('retained run independently rederives the complete receipt and published pr
         // The live geometry control is the owned resize suite of the same run: parent-selected App resizes, each followed by the App grid and the kernel PTY grid through the DECCOLM suite's own readers.
         const control = projected.summary.geometryControl;
         assert.equal(control.runId, projected.summary.ownedRunId);
+        assert.match(control.paneId, /^[0-9a-f-]{8,}$/i, 'the control ran on the pane the DECCOLM groups ran on');
         assert.equal(control.passed, 3);
         assert.deepEqual(control.baseline, { rows: 40, cols: 140 });
         assert.deepEqual(control.actions.map(action => [action.caseId, action.stageId]), [['resize.width-roundtrip', 'after'], ['resize.width-roundtrip', 'restored'],
@@ -79,11 +80,17 @@ test('retained run independently rederives the complete receipt and published pr
                 assert.throws(() => dclPublication(copy, { appRevision: projected.summary.appRevision, scriptsRevision: projected.summary.scriptsRevision }), pattern);
             } finally { rmSync(copy, { recursive: true, force: true }); }
         };
-        tampered(lines => { lines[0].observed.terminalOutput.description = lines[0].observed.terminalOutput.description.replace(' 133 columns', ' 140 columns'); }, /readers disagree with the target/);
-        tampered(lines => { lines[0].observed.app.layoutSettled = false; }, /readers disagree with the target/);
-        tampered(lines => { lines[1].observed.app.cols = 139; lines[1].target.cols = 139; lines[1].observed.terminalOutput.description = lines[1].observed.terminalOutput.description.replace(' 140 columns', ' 139 columns'); }, /does not move and restore the DECCOLM baseline grid/);
-        tampered(lines => { lines.pop(); }, /six parent-selected actions/);
-        tampered(lines => { for (const line of lines) { line.target.cols = 140; line.observed.app.cols = 140; line.observed.terminalOutput.description = line.observed.terminalOutput.description.replace(/ 133 columns/, ' 140 columns'); } }, /does not move and restore/);
+        // The production resize check refuses every one of them: the action stream must be the one the ownership proof and the receipt-bound report validated against the source plan.
+        const refused = /Invalid or incomplete v\d+ owned resize receipt/;
+        tampered(lines => { lines[0].observed.terminalOutput.description = lines[0].observed.terminalOutput.description.replace(' 133 columns', ' 140 columns'); }, refused);
+        tampered(lines => { lines[0].observed.app.layoutSettled = false; }, refused);
+        tampered(lines => { for (const line of lines.slice(0, 2)) { line.target.cols = line.target.cols === 133 ? 129 : line.target.cols; line.observed.app.cols = line.observed.app.cols === 133 ? 129 : line.observed.app.cols; line.observed.terminalOutput.description = line.observed.terminalOutput.description.replace(' 133 columns', ' 129 columns'); } }, refused);
+        tampered(lines => { lines.splice(2, 0, structuredClone(lines[0]), structuredClone(lines[1])); lines.length = 6; }, refused);
+        tampered(lines => { lines.reverse(); }, refused);
+        tampered(lines => { lines[0].error = 'timed out'; }, refused);
+        tampered(lines => { lines[0].observed.runId = 'b'.repeat(32); }, refused);
+        tampered(lines => { lines[0].observed.paneId = 'foreign-pane'; }, refused);
+        tampered(lines => { lines.pop(); }, refused);
         assert.deepEqual(projected.summary.stockCollector.counts, { inconclusive: 157, supported: 97, unsupported: 1 });
         assert.equal(schemaVersion, 79); assert.equal(fixtureRemoved, true);
         assert.match(projected.summary.appRevision, /^[0-9a-f]{40}$/);
