@@ -28,7 +28,7 @@ export function deriveModernCursorEvidence(output, runId) {
     const run = readArtifact(output, runFile), journal = readArtifact(output, journalFile);
     const frames = journal.toString('utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     const report = buildModernCursorReport(frames, JSON.parse(run), runId);
-    return { report, binding: { runId, suiteId: modernCursorSuiteId, file: reportFile,
+    return { report, paneId: frames[0].paneId, binding: { runId, suiteId: modernCursorSuiteId, file: reportFile,
         sha256: hash(JSON.stringify(report, null, 2) + '\n'), runFile, runSha256: hash(run),
         journalFile, journalSha256: hash(journal), provisionalUntil: 'cell-receipt.json' } };
 }
@@ -39,6 +39,9 @@ export function checkModernCursorEvidence(output, evidence, runId, context) {
         && binding?.runId === runId && binding.suiteId === modernCursorSuiteId, 'suite, predecessor or binding missing');
     check(!exists(join(output, failureFile)), 'failed observation present');
     const derived = deriveModernCursorEvidence(output, runId);
+    const cell = JSON.parse(readFileSync(join(output, 'cell-observations.json'))).snapshots[0];
+    check(derived.paneId === cell.paneId && derived.report.geometry.rows === cell.screen.rows
+        && derived.report.geometry.cols === cell.screen.cols, 'cursor journal is from another pane or grid');
     check(hash(readArtifact(output, reportFile)) === derived.binding.sha256
         && JSON.stringify(binding) === JSON.stringify(derived.binding), 'artifact digest or rederivation mismatch');
 }
