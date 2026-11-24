@@ -142,6 +142,26 @@ namespace Ntilde.Tests.Input
         }
 
         [AvaloniaFact]
+        public void ContinuousOutput_StillLetsSmoothScrollingReachTheLiveBottom()
+        {
+            var (view, buffer) = CreateViewAtBottom();
+            view.ScrollOffset = WheelLinesPerNotch;
+            view.ScrollByWheelLines(-WheelLinesPerNotch);
+            var parser = new AnsiParser(buffer);
+
+            for (int frame = 0; frame < WheelLinesPerNotch; frame++)
+            {
+                parser.Process($"marker {frame}\r\n");
+                view.EnsureCursorVisible();
+                view.AdvanceScrollAnimation();
+            }
+
+            Assert.Equal(0, view.ScrollOffset);
+            Assert.False(view.AdvanceScrollAnimation());
+            Assert.Equal("marker 2", ReadVisibleRows(view, buffer)[^2]);
+        }
+
+        [AvaloniaFact]
         public void OutputEvictingAnOlderPage_HoldsARetainedAnchor()
         {
             var (view, buffer) = CreateViewAtBottom();

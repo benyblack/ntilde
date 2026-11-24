@@ -112,9 +112,10 @@ namespace Ntilde.Shell
             // the anchored row itself has gone. Clear/reflow changes generation,
             // so the old absolute row coordinates no longer apply. A height
             // change can also move rows between the live grid and scrollback.
-            long growth = generation == _scrollbackGeneration && rows == _scrollbackRows
-                ? Math.Max(0, tail - _scrollbackTail)
-                : 0;
+            // A gesture returning to the live line must keep closing the gap
+            // even if another row arrives on every animation frame.
+            bool holdingHistory = _targetScrollOffset != 0 && generation == _scrollbackGeneration && rows == _scrollbackRows;
+            long growth = holdingHistory ? Math.Max(0, tail - _scrollbackTail) : 0;
             (_scrollbackGeneration, _scrollbackTail, _scrollbackRows) = (generation, tail, rows);
             _targetScrollOffset = OffsetAfterGrowth(_targetScrollOffset, growth, maximum);
             SetScrollOffsetCore(OffsetAfterGrowth(_scrollOffset, growth, maximum), maximum);
