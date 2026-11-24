@@ -8,19 +8,19 @@ The [OSC title assessment](../2026-11-24-modern-osc-titles-results/report.md) ha
 
 Both same-basename targets read back with their distinct parent paths. The unhandled OSC held the path and the incoming URI was restored.
 
-The disposable worker launched with its reported directory unset. It emitted `file://localhost/tmp/cwd-aagsbsme/start` as fixture setup. The App showed the expected path, and a fresh hover verified the incoming path before the first control. The two targets had the same basename and different parent directories. The checked OSC 9999 carried a different URI-shaped payload and left the second target path in place. Restoration replayed the exact fixture URI and reopened the tooltip for a separate verification.
+The disposable worker launched with its reported directory unset. It emitted `file://localhost/qa-osc7/cwd-cdbshahs/start` as fixture setup. The App showed the expected path, and a fresh hover verified the incoming path before the first control. The two targets had the same basename and different parent directories. The checked OSC 9999 carried a different URI-shaped payload and left the second target path in place. Restoration replayed the exact fixture URI and reopened the tooltip for a separate verification.
 
 | Stage | Public tooltip path | Private pane metadata |
 | --- | --- | --- |
 | launch | unset | unset |
-| fixture | `/tmp/cwd-aagsbsme/start` | `/tmp/cwd-aagsbsme/start` |
-| incoming | `/tmp/cwd-aagsbsme/start` | `/tmp/cwd-aagsbsme/start` |
-| control | `/tmp/cwd-aagsbsme/check` | `/tmp/cwd-aagsbsme/check` |
-| target-a | `/tmp/cwd-aagsbsme/east/repo` | `/tmp/cwd-aagsbsme/east/repo` |
-| target-b | `/tmp/cwd-aagsbsme/west/repo` | `/tmp/cwd-aagsbsme/west/repo` |
-| unhandled | `/tmp/cwd-aagsbsme/west/repo` | `/tmp/cwd-aagsbsme/west/repo` |
-| restore | `/tmp/cwd-aagsbsme/start` | `/tmp/cwd-aagsbsme/start` |
-| restored | `/tmp/cwd-aagsbsme/start` | `/tmp/cwd-aagsbsme/start` |
+| fixture | `/qa-osc7/cwd-cdbshahs/start` | `/qa-osc7/cwd-cdbshahs/start` |
+| incoming | `/qa-osc7/cwd-cdbshahs/start` | `/qa-osc7/cwd-cdbshahs/start` |
+| control | `/qa-osc7/cwd-cdbshahs/check` | `/qa-osc7/cwd-cdbshahs/check` |
+| target-a | `/qa-osc7/cwd-cdbshahs/east/repo` | `/qa-osc7/cwd-cdbshahs/east/repo` |
+| target-b | `/qa-osc7/cwd-cdbshahs/west/repo` | `/qa-osc7/cwd-cdbshahs/west/repo` |
+| unhandled | `/qa-osc7/cwd-cdbshahs/west/repo` | `/qa-osc7/cwd-cdbshahs/west/repo` |
+| restore | `/qa-osc7/cwd-cdbshahs/start` | `/qa-osc7/cwd-cdbshahs/start` |
+| restored | `/qa-osc7/cwd-cdbshahs/start` | `/qa-osc7/cwd-cdbshahs/start` |
 
 The App’s tab tooltip now adds the active pane’s reported full directory on a second line. Each DA-fenced action was followed by a fresh native hover and a screenshot of the owned tooltip window. Apple Vision transcribed the captured pixels. Read-only pane metadata corroborates the decoded path. The result covers the path shown on the macOS horizontal tab tooltip. The child’s working directory and the headless OSC 633 P control are separate measurements.
 
@@ -28,7 +28,7 @@ The [earlier OSC 7 metadata qualification](../2026-11-11-osc7-osc8-qualification
 
 ## Evidence and reproduction
 
-[Owned run](owned-run.zip) `006f1fa42e3cd0e7e7b640fd8d2ba38b` started 2026-11-24T18:29:30.566Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. The App `0.14.0` came from build checkout `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6`. The collector checkout was `81c751de4c7a55443ba53651d9971f5519fe7412`.
+[Owned run](owned-run.zip) `231f707f7857ddc7b07b9e32a6f2943e` started 2026-11-24T18:37:53.997Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. The App `0.14.0` came from build checkout `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6`. The collector checkout was `af8aa04ef05d0204a759cd437f65e750f60105a2`.
 
 The 41 × 140 direct-local pane used an isolated profile with persistence off. The journal retains exact writes, raw DA replies, native window identities and ordered hover samples, private corroboration, screenshot hashes and raw Vision lines with bounds. The [manifest](manifest.json) pins the archive. Source policy `readonly-owned-source-graph-v78` and receipt schema 1 bind the run, settings, App and native reader identities, kernel terminal mode restoration and verified fixture cleanup. The archive also includes the desktop lease release. [All 69 rows](report.json).
 
@@ -48,13 +48,15 @@ The 41 × 140 direct-local pane used an isolated profile with persistence off. T
 
 [Retained attempt 3af03447e94a9ed716cf07acaf4e664a](attempt-8.zip). The desktop bounds changed between the initial lookup and mouse departure. The collector kept the launch pixels and rejected the stale anchor.
 
+[Retained attempt 006f1fa42e3cd0e7e7b640fd8d2ba38b](attempt-9.zip). All OSC 7 App controls and restoration passed. The SonarCloud fixes changed the collector and fixture path, so this run is retained as superseded.
+
 Rederive the report with Node 24 and Python 3.
 
 ```sh
 node scripts/terminfo-modern-results.mjs --check --osc7-cwd
 ```
 
-Build the App at `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6` and launch the collector from `81c751de4c7a55443ba53651d9971f5519fe7412` on an awake macOS desktop with screen capture and native pointer event access. The launcher acquires and releases the repository desktop lease.
+Build the App at `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6` and launch the collector from `af8aa04ef05d0204a759cd437f65e750f60105a2` on an awake macOS desktop with screen capture and native pointer event access. The launcher acquires and releases the repository desktop lease.
 
 ```sh
 scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar
@@ -64,6 +66,6 @@ node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --
 On macOS, independently transcribe an extracted native screenshot with the retained Swift source.
 
 ```sh
-swiftc -o /tmp/observe-tab-tooltip sources/modern-osc7-cwd-native.swift
-/tmp/observe-tab-tooltip --ocr tooltip-target-b.png
+swiftc -o ./observe-tab-tooltip sources/modern-osc7-cwd-native.swift
+./observe-tab-tooltip --ocr tooltip-target-b.png
 ```

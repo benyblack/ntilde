@@ -9,7 +9,7 @@ import { caseId } from './modern-osc7-cwd.mjs';
 import { reportFile, verifyOscCwdRun } from './modern-osc7-cwd-owned.mjs';
 
 export const oscCwdPublication = 'docs/qa/terminfo/2026-11-24-modern-osc7-cwd-results';
-const manifestSha256 = 'd3491df44c9a14a67f5a7f0f579f6bc622115f98f7105015980b49e8acbff3bc';
+const manifestSha256 = 'f21217aed342f24dc4d6c43183786ae214d5b332e848f9a5daa0911d109f8590';
 const criterionSha256 = '4e754b43c1c20fe5b5012ac5472461339a777f62851a92f7f2fb031dd5a4407b';
 
 function leaseReleasedAt(directory, context) {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "c1f96a38230440f15db44bfe83d6f3fd6d2adc154894b0dc2f97dc603ab5969b",
+    "owned-run.zip": "1b74cb90b7ebd44dc9f89a685715f394bb0e9d670a84f7eefe83fda9062b202b",
     "attempt-1.zip": "a579cbd3eb24ed022a23c96c1183f8c4a6ff9325b768987dde9861174e4b664f",
     "attempt-2.zip": "9bf303a09144ecde27690419c3d1e0227372ab47b135aec011cf54df0333ab07",
     "attempt-3.zip": "f6c19a09f2d443e5110f2428ce3943307bcb64cbac23451714097abc69fa3ccd",
@@ -9,13 +9,14 @@
     "attempt-5.zip": "95219b6c93d3e95ae199bcb0c76caa25503c112d67d8fa131cb6a4a5c8d7cee7",
     "attempt-6.zip": "9e9325820c758a910f1e64c9b9caf75efa1dfb59fe4c19249f72a3528f8b70bb",
     "attempt-7.zip": "cf7b9f20f7b35049e92da2e3d43ce194430bbd6450607f45640dda9df665f174",
-    "attempt-8.zip": "4fb882e95a03646e8289b7766d5a429fb38c88570e82a1341ef7e8dee5b20798"
+    "attempt-8.zip": "4fb882e95a03646e8289b7766d5a429fb38c88570e82a1341ef7e8dee5b20798",
+    "attempt-9.zip": "c1f96a38230440f15db44bfe83d6f3fd6d2adc154894b0dc2f97dc603ab5969b"
   },
   "measurement": {
-    "runId": "006f1fa42e3cd0e7e7b640fd8d2ba38b",
+    "runId": "231f707f7857ddc7b07b9e32a6f2943e",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "appRevision": "24dbfc89b83bd7d9d6e49b755108ea12014c5fc6",
-    "scriptsRevision": "81c751de4c7a55443ba53651d9971f5519fe7412"
+    "scriptsRevision": "af8aa04ef05d0204a759cd437f65e750f60105a2"
   },
   "sourcePolicy": "readonly-owned-source-graph-v78",
   "receiptSchema": 1,
@@ -67,6 +68,12 @@
       "runId": "3af03447e94a9ed716cf07acaf4e664a",
       "scriptsRevision": "d8cfeb0b7a7c875ee8509c0f39f1b669d7fc2435",
       "reason": "The desktop bounds changed between the initial lookup and mouse departure. The collector kept the launch pixels and rejected the stale anchor."
+    },
+    {
+      "archive": "attempt-9.zip",
+      "runId": "006f1fa42e3cd0e7e7b640fd8d2ba38b",
+      "scriptsRevision": "81c751de4c7a55443ba53651d9971f5519fe7412",
+      "reason": "All OSC 7 App controls and restoration passed. The SonarCloud fixes changed the collector and fixture path, so this run is retained as superseded."
     }
   ]
 }
