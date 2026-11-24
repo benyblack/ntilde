@@ -70,3 +70,9 @@ test('Modern cursor lifecycle requests reach the authenticated owner dispatcher'
     for (const kind of ['mcur-read2', 'mcur-finish-extra', 'mcur-apply', 'mcurx-read']) assert.equal(untranslatedCellKind(kind), false, kind);
     assert.match(source, /if \(prefix === modernCursorPrefix\)/);
 });
+
+test('Modern mode lifecycle requests reach the authenticated owner dispatcher', () => {
+    for (const kind of ['mmod-start', 'mmod-bind', 'mmod-read', 'mmod-finish']) assert.equal(untranslatedCellKind(kind), true, kind);
+    for (const kind of ['mmod-read2', 'mmod-finish-extra', 'mmod-apply', 'mmodx-read']) assert.equal(untranslatedCellKind(kind), false, kind);
+    assert.match(source, /if \(prefix === 'mmod'\)/);
+});
