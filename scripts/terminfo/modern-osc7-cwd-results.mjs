@@ -9,7 +9,7 @@ import { caseId } from './modern-osc7-cwd.mjs';
 import { reportFile, verifyOscCwdRun } from './modern-osc7-cwd-owned.mjs';
 
 export const oscCwdPublication = 'docs/qa/terminfo/2026-11-24-modern-osc7-cwd-results';
-const manifestSha256 = '802b51046e0f0c68158e03102aa55aa475d79835add048bafe797090a1e04092';
+const manifestSha256 = 'c4a7a1968611c9354d0209b27f94a7857ef8194243dc0b0f94fecffd0a3b228c';
 const criterionSha256 = '4e754b43c1c20fe5b5012ac5472461339a777f62851a92f7f2fb031dd5a4407b';
 
 function leaseReleasedAt(directory, context) {
@@ -100,7 +100,7 @@ export function readableModernOscCwd(report) {
         observed.reason, '',
         `The disposable worker launched with its reported directory unset. It emitted \`${observed.incomingUri}\` as fixture setup. The App showed the expected path, and a fresh hover verified the incoming path before the first control. The two targets had the same basename and different parent directories. The checked OSC 9999 carried a different URI-shaped payload and left the second target path in place. Restoration replayed the exact fixture URI and reopened the tooltip for a separate verification.`, '',
         ...table(observed), '',
-        'The App’s tab tooltip now adds the active pane’s reported full directory on a second line. Each DA-fenced action was followed by a fresh native hover and a screenshot of the owned tooltip window. Apple Vision transcribed the captured pixels. Read-only pane metadata corroborates the decoded path. The result covers the path shown on the macOS horizontal tab tooltip. The child’s working directory and the headless OSC 633 P control are separate measurements.', '',
+        'The App’s tab tooltip now adds the active pane’s reported directory on a second line. The tooltip bounds each line and replaces control and formatting characters. Each DA-fenced action was followed by a fresh native hover and a screenshot of the owned tooltip window. Apple Vision transcribed the captured pixels. Read-only pane metadata corroborates the decoded path. The result covers the path shown on the macOS horizontal tab tooltip. The child’s working directory and the headless OSC 633 P control are separate measurements.', '',
         'The [earlier OSC 7 metadata qualification](../2026-11-11-osc7-osc8-qualification.md) established decoded pane metadata. This batch adds the full-path tooltip and uses its native pixels for the frozen App criterion.', '',
         '## Evidence and reproduction', '',
         `[Owned run](owned-run.zip) \`${m.runId}\` started ${m.startedAt} on ${m.platform} with Node ${m.nodeVersion}. The App \`${m.appVersion}\` came from build checkout \`${m.appRevision}\`. The collector checkout was \`${m.scriptsRevision}\`.`, '',

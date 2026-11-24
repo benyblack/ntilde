@@ -8,27 +8,27 @@ The [OSC title assessment](../2026-11-24-modern-osc-titles-results/report.md) ha
 
 Both same-basename targets read back with their distinct parent paths. The unhandled OSC held the path and the incoming URI was restored.
 
-The disposable worker launched with its reported directory unset. It emitted `file://localhost/qa-osc7/cwd-rkpjpfcp/start` as fixture setup. The App showed the expected path, and a fresh hover verified the incoming path before the first control. The two targets had the same basename and different parent directories. The checked OSC 9999 carried a different URI-shaped payload and left the second target path in place. Restoration replayed the exact fixture URI and reopened the tooltip for a separate verification.
+The disposable worker launched with its reported directory unset. It emitted `file://localhost/qa-osc7/cwd-djkdrbsb/start` as fixture setup. The App showed the expected path, and a fresh hover verified the incoming path before the first control. The two targets had the same basename and different parent directories. The checked OSC 9999 carried a different URI-shaped payload and left the second target path in place. Restoration replayed the exact fixture URI and reopened the tooltip for a separate verification.
 
 | Stage | Public tooltip path | Private pane metadata |
 | --- | --- | --- |
 | launch | unset | unset |
-| fixture | `/qa-osc7/cwd-rkpjpfcp/start` | `/qa-osc7/cwd-rkpjpfcp/start` |
-| incoming | `/qa-osc7/cwd-rkpjpfcp/start` | `/qa-osc7/cwd-rkpjpfcp/start` |
-| control | `/qa-osc7/cwd-rkpjpfcp/check` | `/qa-osc7/cwd-rkpjpfcp/check` |
-| target-a | `/qa-osc7/cwd-rkpjpfcp/east/repo` | `/qa-osc7/cwd-rkpjpfcp/east/repo` |
-| target-b | `/qa-osc7/cwd-rkpjpfcp/west/repo` | `/qa-osc7/cwd-rkpjpfcp/west/repo` |
-| unhandled | `/qa-osc7/cwd-rkpjpfcp/west/repo` | `/qa-osc7/cwd-rkpjpfcp/west/repo` |
-| restore | `/qa-osc7/cwd-rkpjpfcp/start` | `/qa-osc7/cwd-rkpjpfcp/start` |
-| restored | `/qa-osc7/cwd-rkpjpfcp/start` | `/qa-osc7/cwd-rkpjpfcp/start` |
+| fixture | `/qa-osc7/cwd-djkdrbsb/start` | `/qa-osc7/cwd-djkdrbsb/start` |
+| incoming | `/qa-osc7/cwd-djkdrbsb/start` | `/qa-osc7/cwd-djkdrbsb/start` |
+| control | `/qa-osc7/cwd-djkdrbsb/check` | `/qa-osc7/cwd-djkdrbsb/check` |
+| target-a | `/qa-osc7/cwd-djkdrbsb/east/repo` | `/qa-osc7/cwd-djkdrbsb/east/repo` |
+| target-b | `/qa-osc7/cwd-djkdrbsb/west/repo` | `/qa-osc7/cwd-djkdrbsb/west/repo` |
+| unhandled | `/qa-osc7/cwd-djkdrbsb/west/repo` | `/qa-osc7/cwd-djkdrbsb/west/repo` |
+| restore | `/qa-osc7/cwd-djkdrbsb/start` | `/qa-osc7/cwd-djkdrbsb/start` |
+| restored | `/qa-osc7/cwd-djkdrbsb/start` | `/qa-osc7/cwd-djkdrbsb/start` |
 
-The App’s tab tooltip now adds the active pane’s reported full directory on a second line. Each DA-fenced action was followed by a fresh native hover and a screenshot of the owned tooltip window. Apple Vision transcribed the captured pixels. Read-only pane metadata corroborates the decoded path. The result covers the path shown on the macOS horizontal tab tooltip. The child’s working directory and the headless OSC 633 P control are separate measurements.
+The App’s tab tooltip now adds the active pane’s reported directory on a second line. The tooltip bounds each line and replaces control and formatting characters. Each DA-fenced action was followed by a fresh native hover and a screenshot of the owned tooltip window. Apple Vision transcribed the captured pixels. Read-only pane metadata corroborates the decoded path. The result covers the path shown on the macOS horizontal tab tooltip. The child’s working directory and the headless OSC 633 P control are separate measurements.
 
 The [earlier OSC 7 metadata qualification](../2026-11-11-osc7-osc8-qualification.md) established decoded pane metadata. This batch adds the full-path tooltip and uses its native pixels for the frozen App criterion.
 
 ## Evidence and reproduction
 
-[Owned run](owned-run.zip) `e9c8c52c03d5cbf50f6788eb7ef3da79` started 2026-11-24T18:53:56.961Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. The App `0.14.0` came from build checkout `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6`. The collector checkout was `88e369aac0de1b84f8460258c573af06e490c353`.
+[Owned run](owned-run.zip) `3893e1f11cc0e0190a444288a9986623` started 2026-11-24T19:09:19.997Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. The App `0.14.0` came from build checkout `afaa83389a8a365061bc17ccd9102c33d72f5a1d`. The collector checkout was `afaa83389a8a365061bc17ccd9102c33d72f5a1d`.
 
 The 41 × 140 direct-local pane used an isolated profile with persistence off. The archive retains the initial foreground proof. The journal retains exact writes, raw DA replies, native window identities and ordered hover samples, private corroboration, screenshot hashes and raw Vision lines with bounds. The [manifest](manifest.json) pins the archive. Source policy `readonly-owned-source-graph-v78` and receipt schema 1 bind the run, settings, App and native reader identities, kernel terminal mode restoration and verified fixture cleanup. The archive also includes the desktop lease release. [All 69 rows](report.json).
 
@@ -58,13 +58,15 @@ The 41 × 140 direct-local pane used an isolated profile with persistence off. T
 
 [Retained attempt 9b5686ac8b6f59e133feb3bafc376228](attempt-13.zip). Native activation did not establish the disposable App as foreground. The collector refused the launch observation and the lock released after cleanup.
 
+[Retained attempt e9c8c52c03d5cbf50f6788eb7ef3da79](attempt-14.zip). All controls, targets, and restoration passed. Codex identified control characters and oversized tooltip input. The App was rebuilt with bounded and sanitized tooltip text and remeasured.
+
 Rederive the report with Node 24 and Python 3.
 
 ```sh
 node scripts/terminfo-modern-results.mjs --check --osc7-cwd
 ```
 
-Build the App at `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6` and launch the collector from `88e369aac0de1b84f8460258c573af06e490c353` on an awake macOS desktop with screen capture, native pointer events and System Events access. The launcher acquires and releases the repository desktop lease.
+Build the App at `afaa83389a8a365061bc17ccd9102c33d72f5a1d` and launch the collector from `afaa83389a8a365061bc17ccd9102c33d72f5a1d` on an awake macOS desktop with screen capture, native pointer events and System Events access. The launcher acquires and releases the repository desktop lease.
 
 ```sh
 scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar

@@ -3107,27 +3107,27 @@
             "metadataPath": null,
             "image": {
               "file": "tooltip-launch.png",
-              "sha256": "5967b4f928e86621bab5ba9b50a023e4e1f6432eda0636241821d963e8991f4c"
+              "sha256": "250d3cf6a9a0f1f73ff530d614d43849a1a5d47e35b3cf935bd83f8805d5da50"
             },
             "lines": [
               {
                 "text": "terminfo disposable worker",
                 "confidence": 1,
                 "bounds": [
-                  0.028783937798034506,
-                  0.5052360014887689,
-                  0.6548809051513672,
-                  0.32159001177007496
+                  0.028201082748073526,
+                  0.515625635604714,
+                  0.6443764108126281,
+                  0.3171239224347202
                 ]
               },
               {
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79",
+                "text": "3893e1f11cc0e0190a444288a9986623",
                 "confidence": 1,
                 "bounds": [
-                  0.033333333132788155,
-                  0.22727272733644854,
-                  0.9333333333333332,
-                  0.2727272727272727
+                  0.03688524569672127,
+                  0.227272727328781,
+                  0.9221311475409836,
+                  0.2500000000000001
                 ]
               }
             ],
@@ -3135,343 +3135,343 @@
             "barrier": "\u001b[?62;4;22c"
           },
           "fixture": {
-            "publicPath": "/qa-osc7/cwd-rkpjpfcp/start",
-            "metadataPath": "/qa-osc7/cwd-rkpjpfcp/start",
+            "publicPath": "/qa-osc7/cwd-djkdrbsb/start",
+            "metadataPath": "/qa-osc7/cwd-djkdrbsb/start",
             "image": {
               "file": "tooltip-fixture.png",
-              "sha256": "ab6cb3e6d3236d4f945ba4d3c6ae2ab627250247953ccb1c4ba22789eb296320"
+              "sha256": "05f2f434285300461ce7fab2d4645315d443258ff2afa3276c9b6afca9e9ffa7"
             },
             "lines": [
               {
-                "confidence": 1,
                 "text": "terminfo disposable worker",
+                "confidence": 1,
                 "bounds": [
-                  0.025362318575676814,
-                  0.6551724138825634,
-                  0.5688405797101449,
+                  0.02857142830952384,
+                  0.6551724138834154,
+                  0.5571428571428572,
                   0.18965517241379315
                 ]
               },
               {
+                "text": "3893e1f11cc0e0190a444288a9986623 • start",
                 "confidence": 1,
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79 • start",
                 "bounds": [
-                  0.03260869544452418,
-                  0.4137931034930059,
-                  0.9384057971014492,
-                  0.18965517241379304
+                  0.03214285693465726,
+                  0.41379310349079934,
+                  0.9357142857142856,
+                  0.18965517241379315
                 ]
               },
               {
+                "text": "/qa-osc7/cwd-djkdrbsb/start",
                 "confidence": 1,
-                "text": "/qa-osc7/cwd-rkpjpfcp/start",
                 "bounds": [
-                  0.025362318630201032,
-                  0.1379310346774194,
-                  0.6014492753623188,
-                  0.24137931034482762
+                  0.024999998798701333,
+                  0.13793103550156738,
+                  0.6000000000000001,
+                  0.22413793103448276
                 ]
               }
             ],
-            "request": "\u001b]7;file://localhost/qa-osc7/cwd-rkpjpfcp/start\u0007\u001b[c",
+            "request": "\u001b]7;file://localhost/qa-osc7/cwd-djkdrbsb/start\u0007\u001b[c",
             "barrier": "\u001b[?62;4;22c"
           },
           "incoming": {
-            "publicPath": "/qa-osc7/cwd-rkpjpfcp/start",
-            "metadataPath": "/qa-osc7/cwd-rkpjpfcp/start",
+            "publicPath": "/qa-osc7/cwd-djkdrbsb/start",
+            "metadataPath": "/qa-osc7/cwd-djkdrbsb/start",
             "image": {
               "file": "tooltip-incoming.png",
-              "sha256": "ab6cb3e6d3236d4f945ba4d3c6ae2ab627250247953ccb1c4ba22789eb296320"
+              "sha256": "05f2f434285300461ce7fab2d4645315d443258ff2afa3276c9b6afca9e9ffa7"
             },
             "lines": [
               {
+                "text": "terminfo disposable worker",
                 "confidence": 1,
                 "bounds": [
-                  0.025362318575676814,
-                  0.6551724138825634,
-                  0.5688405797101449,
+                  0.02857142830952384,
+                  0.6551724138834154,
+                  0.5571428571428572,
                   0.18965517241379315
-                ],
-                "text": "terminfo disposable worker"
+                ]
               },
               {
+                "text": "3893e1f11cc0e0190a444288a9986623 • start",
                 "confidence": 1,
                 "bounds": [
-                  0.03260869544452418,
-                  0.4137931034930059,
-                  0.9384057971014492,
-                  0.18965517241379304
-                ],
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79 • start"
+                  0.03214285693465726,
+                  0.41379310349079934,
+                  0.9357142857142856,
+                  0.18965517241379315
+                ]
               },
               {
+                "text": "/qa-osc7/cwd-djkdrbsb/start",
                 "confidence": 1,
                 "bounds": [
-                  0.025362318630201032,
-                  0.1379310346774194,
-                  0.6014492753623188,
-                  0.24137931034482762
-                ],
-                "text": "/qa-osc7/cwd-rkpjpfcp/start"
+                  0.024999998798701333,
+                  0.13793103550156738,
+                  0.6000000000000001,
+                  0.22413793103448276
+                ]
               }
             ],
             "request": "\u001b[c",
             "barrier": "\u001b[?62;4;22c"
           },
           "control": {
-            "publicPath": "/qa-osc7/cwd-rkpjpfcp/check",
-            "metadataPath": "/qa-osc7/cwd-rkpjpfcp/check",
+            "publicPath": "/qa-osc7/cwd-djkdrbsb/check",
+            "metadataPath": "/qa-osc7/cwd-djkdrbsb/check",
             "image": {
               "file": "tooltip-control.png",
-              "sha256": "452c6b2edce7b9b5ad7eddf21a214cc1090d271b6a31df6b84e4de0b1ea4ae39"
+              "sha256": "8cc4656c513f524a9115f77a1962c950313c681710be14ed7843f45ffb30c4bd"
             },
             "lines": [
               {
                 "text": "terminfo disposable worker",
                 "confidence": 1,
                 "bounds": [
-                  0.02464788706650282,
+                  0.027777777522274654,
                   0.6551724138825634,
-                  0.5528169014084507,
+                  0.5416666666666667,
                   0.18965517241379315
                 ]
               },
               {
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79 • check",
+                "text": "3893e1f11cc0e0190a444288a9986623 • check",
                 "confidence": 1,
                 "bounds": [
-                  0.028169013913931052,
-                  0.41379310348517384,
-                  0.9401408450704227,
-                  0.18965517241379304
+                  0.031249999825738603,
+                  0.41379310348379184,
+                  0.9375,
+                  0.18965517241379315
                 ]
               },
               {
-                "text": "/qa-osc7/cwd-rkpjpfcp/check",
+                "text": "/qa-osc7/cwd-djkdrbsb/check",
                 "confidence": 1,
                 "bounds": [
-                  0.02464788709961381,
-                  0.1379310346774194,
-                  0.6091549295774648,
-                  0.24137931034482762
+                  0.02430555427714652,
+                  0.13793103550156738,
+                  0.6076388888888888,
+                  0.22413793103448276
                 ]
               }
             ],
-            "request": "\u001b]7;file://localhost/qa-osc7/cwd-rkpjpfcp/check\u0007\u001b[c",
+            "request": "\u001b]7;file://localhost/qa-osc7/cwd-djkdrbsb/check\u0007\u001b[c",
             "barrier": "\u001b[?62;4;22c"
           },
           "target-a": {
-            "publicPath": "/qa-osc7/cwd-rkpjpfcp/east/repo",
-            "metadataPath": "/qa-osc7/cwd-rkpjpfcp/east/repo",
+            "publicPath": "/qa-osc7/cwd-djkdrbsb/east/repo",
+            "metadataPath": "/qa-osc7/cwd-djkdrbsb/east/repo",
             "image": {
               "file": "tooltip-target-a.png",
-              "sha256": "44eb29f7351dc5dc15e4ab0892a96f5df0779900f9730f53a9cd533677430f01"
+              "sha256": "d3ba96361ba0a00ec5b9ce23ccf87da3963783ee0a78836bcde8cf0335462ecd"
             },
             "lines": [
               {
-                "bounds": [
-                  0.029090908893725988,
-                  0.6551724138598835,
-                  0.5672727272727273,
-                  0.18965517241379304
-                ],
+                "text": "terminfo disposable worker",
                 "confidence": 1,
-                "text": "terminfo disposable worker"
+                "bounds": [
+                  0.02867383486260457,
+                  0.6551724138834154,
+                  0.5591397849462366,
+                  0.18965517241379315
+                ]
               },
               {
-                "bounds": [
-                  0.03259109338886374,
-                  0.3954032107484755,
-                  0.9384519264914771,
-                  0.22384878684734477
-                ],
+                "text": "3893e1f11ccOe0190a444288a9986623 • repo",
                 "confidence": 1,
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79 • repo"
+                "bounds": [
+                  0.03207336081303713,
+                  0.39517758884303833,
+                  0.9394205291638665,
+                  0.22881255478694518
+                ]
               },
               {
-                "bounds": [
-                  0.02545454516422291,
-                  0.1379310346774194,
-                  0.7018181818181818,
-                  0.24137931034482762
-                ],
+                "text": "/qa-osc7/cwd-djkdrbsb/east/repo",
                 "confidence": 1,
-                "text": "/qa-osc7/cwd-rkpjpfcp/east/repo"
+                "bounds": [
+                  0.025089603924731172,
+                  0.13793103560344822,
+                  0.6989247311827957,
+                  0.22413793103448276
+                ]
               }
             ],
-            "request": "\u001b]7;file://localhost/qa-osc7/cwd-rkpjpfcp/east/repo\u0007\u001b[c",
+            "request": "\u001b]7;file://localhost/qa-osc7/cwd-djkdrbsb/east/repo\u0007\u001b[c",
             "barrier": "\u001b[?62;4;22c"
           },
           "target-b": {
-            "publicPath": "/qa-osc7/cwd-rkpjpfcp/west/repo",
-            "metadataPath": "/qa-osc7/cwd-rkpjpfcp/west/repo",
+            "publicPath": "/qa-osc7/cwd-djkdrbsb/west/repo",
+            "metadataPath": "/qa-osc7/cwd-djkdrbsb/west/repo",
             "image": {
               "file": "tooltip-target-b.png",
-              "sha256": "c4d1e6809851f38a5f908b8f9fe304a7d1e569f9b0489e634d92b46848167536"
+              "sha256": "7d74bed56b3a605eff733e016c80e0443c6fe0494ce3f1de41f11538443b21ab"
             },
             "lines": [
               {
-                "confidence": 1,
                 "text": "terminfo disposable worker",
+                "confidence": 1,
                 "bounds": [
-                  0.029090908824242506,
+                  0.02867383486260457,
                   0.6551724138834154,
-                  0.5672727272727274,
+                  0.5591397849462366,
                   0.18965517241379315
                 ]
               },
               {
+                "text": "3893e1f11ccOe0190a444288a9986623 • repo",
                 "confidence": 1,
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79 • repo",
                 "bounds": [
-                  0.03258410553302207,
-                  0.39533750159739334,
-                  0.938466463955966,
-                  0.22481949576016125
+                  0.03207336081303713,
+                  0.39517758884303833,
+                  0.9394205291638665,
+                  0.22881255478694518
                 ]
               },
               {
+                "text": "/qa-osc7/cwd-djkdrbsb/west/repo",
                 "confidence": 1,
-                "text": "/qa-osc7/cwd-rkpjpfcp/west/repo",
                 "bounds": [
-                  0.025454545155425255,
-                  0.1379310346774194,
-                  0.7127272727272728,
-                  0.24137931034482762
+                  0.02508960404040412,
+                  0.13793103550156738,
+                  0.7096774193548386,
+                  0.22413793103448276
                 ]
               }
             ],
-            "request": "\u001b]7;file://localhost/qa-osc7/cwd-rkpjpfcp/west/repo\u0007\u001b[c",
+            "request": "\u001b]7;file://localhost/qa-osc7/cwd-djkdrbsb/west/repo\u0007\u001b[c",
             "barrier": "\u001b[?62;4;22c"
           },
           "unhandled": {
-            "publicPath": "/qa-osc7/cwd-rkpjpfcp/west/repo",
-            "metadataPath": "/qa-osc7/cwd-rkpjpfcp/west/repo",
+            "publicPath": "/qa-osc7/cwd-djkdrbsb/west/repo",
+            "metadataPath": "/qa-osc7/cwd-djkdrbsb/west/repo",
             "image": {
               "file": "tooltip-unhandled.png",
-              "sha256": "c4d1e6809851f38a5f908b8f9fe304a7d1e569f9b0489e634d92b46848167536"
+              "sha256": "7d74bed56b3a605eff733e016c80e0443c6fe0494ce3f1de41f11538443b21ab"
             },
             "lines": [
               {
                 "text": "terminfo disposable worker",
+                "confidence": 1,
                 "bounds": [
-                  0.029090908824242506,
+                  0.02867383486260457,
                   0.6551724138834154,
-                  0.5672727272727274,
+                  0.5591397849462366,
                   0.18965517241379315
-                ],
-                "confidence": 1
+                ]
               },
               {
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79 • repo",
+                "text": "3893e1f11ccOe0190a444288a9986623 • repo",
+                "confidence": 1,
                 "bounds": [
-                  0.03258410553302207,
-                  0.39533750159739334,
-                  0.938466463955966,
-                  0.22481949576016125
-                ],
-                "confidence": 1
+                  0.03207336081303713,
+                  0.39517758884303833,
+                  0.9394205291638665,
+                  0.22881255478694518
+                ]
               },
               {
-                "text": "/qa-osc7/cwd-rkpjpfcp/west/repo",
+                "text": "/qa-osc7/cwd-djkdrbsb/west/repo",
+                "confidence": 1,
                 "bounds": [
-                  0.025454545155425255,
-                  0.1379310346774194,
-                  0.7127272727272728,
-                  0.24137931034482762
-                ],
-                "confidence": 1
+                  0.02508960404040412,
+                  0.13793103550156738,
+                  0.7096774193548386,
+                  0.22413793103448276
+                ]
               }
             ],
-            "request": "\u001b]9999;file://localhost/qa-osc7/cwd-rkpjpfcp/other\u0007\u001b[c",
+            "request": "\u001b]9999;file://localhost/qa-osc7/cwd-djkdrbsb/other\u0007\u001b[c",
             "barrier": "\u001b[?62;4;22c"
           },
           "restore": {
-            "publicPath": "/qa-osc7/cwd-rkpjpfcp/start",
-            "metadataPath": "/qa-osc7/cwd-rkpjpfcp/start",
+            "publicPath": "/qa-osc7/cwd-djkdrbsb/start",
+            "metadataPath": "/qa-osc7/cwd-djkdrbsb/start",
             "image": {
               "file": "tooltip-restore.png",
-              "sha256": "ab6cb3e6d3236d4f945ba4d3c6ae2ab627250247953ccb1c4ba22789eb296320"
+              "sha256": "05f2f434285300461ce7fab2d4645315d443258ff2afa3276c9b6afca9e9ffa7"
             },
             "lines": [
               {
                 "text": "terminfo disposable worker",
                 "confidence": 1,
                 "bounds": [
-                  0.025362318575676814,
-                  0.6551724138825634,
-                  0.5688405797101449,
+                  0.02857142830952384,
+                  0.6551724138834154,
+                  0.5571428571428572,
                   0.18965517241379315
                 ]
               },
               {
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79 • start",
+                "text": "3893e1f11cc0e0190a444288a9986623 • start",
                 "confidence": 1,
                 "bounds": [
-                  0.03260869544452418,
-                  0.4137931034930059,
-                  0.9384057971014492,
-                  0.18965517241379304
+                  0.03214285693465726,
+                  0.41379310349079934,
+                  0.9357142857142856,
+                  0.18965517241379315
                 ]
               },
               {
-                "text": "/qa-osc7/cwd-rkpjpfcp/start",
+                "text": "/qa-osc7/cwd-djkdrbsb/start",
                 "confidence": 1,
                 "bounds": [
-                  0.025362318630201032,
-                  0.1379310346774194,
-                  0.6014492753623188,
-                  0.24137931034482762
+                  0.024999998798701333,
+                  0.13793103550156738,
+                  0.6000000000000001,
+                  0.22413793103448276
                 ]
               }
             ],
-            "request": "\u001b]7;file://localhost/qa-osc7/cwd-rkpjpfcp/start\u0007\u001b[c",
+            "request": "\u001b]7;file://localhost/qa-osc7/cwd-djkdrbsb/start\u0007\u001b[c",
             "barrier": "\u001b[?62;4;22c"
           },
           "restored": {
-            "publicPath": "/qa-osc7/cwd-rkpjpfcp/start",
-            "metadataPath": "/qa-osc7/cwd-rkpjpfcp/start",
+            "publicPath": "/qa-osc7/cwd-djkdrbsb/start",
+            "metadataPath": "/qa-osc7/cwd-djkdrbsb/start",
             "image": {
               "file": "tooltip-restored.png",
-              "sha256": "ab6cb3e6d3236d4f945ba4d3c6ae2ab627250247953ccb1c4ba22789eb296320"
+              "sha256": "05f2f434285300461ce7fab2d4645315d443258ff2afa3276c9b6afca9e9ffa7"
             },
             "lines": [
               {
+                "text": "terminfo disposable worker",
                 "confidence": 1,
                 "bounds": [
-                  0.025362318575676814,
-                  0.6551724138825634,
-                  0.5688405797101449,
+                  0.02857142830952384,
+                  0.6551724138834154,
+                  0.5571428571428572,
                   0.18965517241379315
-                ],
-                "text": "terminfo disposable worker"
+                ]
               },
               {
+                "text": "3893e1f11cc0e0190a444288a9986623 • start",
                 "confidence": 1,
                 "bounds": [
-                  0.03260869544452418,
-                  0.4137931034930059,
-                  0.9384057971014492,
-                  0.18965517241379304
-                ],
-                "text": "e9c8c52c03d5cbf50f6788eb7ef3da79 • start"
+                  0.03214285693465726,
+                  0.41379310349079934,
+                  0.9357142857142856,
+                  0.18965517241379315
+                ]
               },
               {
+                "text": "/qa-osc7/cwd-djkdrbsb/start",
                 "confidence": 1,
                 "bounds": [
-                  0.025362318630201032,
-                  0.1379310346774194,
-                  0.6014492753623188,
-                  0.24137931034482762
-                ],
-                "text": "/qa-osc7/cwd-rkpjpfcp/start"
+                  0.024999998798701333,
+                  0.13793103550156738,
+                  0.6000000000000001,
+                  0.22413793103448276
+                ]
               }
             ],
             "request": "\u001b[c",
             "barrier": "\u001b[?62;4;22c"
           }
         },
-        "incomingUri": "file://localhost/qa-osc7/cwd-rkpjpfcp/start",
+        "incomingUri": "file://localhost/qa-osc7/cwd-djkdrbsb/start",
         "incomingVerified": true,
         "controlVerified": true,
         "negativeHeld": true,
@@ -3485,8 +3485,8 @@
       "evidence": {
         "file": "osc7-cwd-observation.json",
         "sourceId": "extensions.osc7-cwd",
-        "runId": "e9c8c52c03d5cbf50f6788eb7ef3da79",
-        "recordSha256": "892be732e6ed98761386a01860f848b55bf375a4500759b05092796b14860dab"
+        "runId": "3893e1f11cc0e0190a444288a9986623",
+        "recordSha256": "287f7255a2661fef8fa664c7c03465185fc15451c80c7ca1eaad0505cbca4a2a"
       },
       "stockVerdict": "inconclusive",
       "stockEvidence": "none",
@@ -4696,38 +4696,38 @@
   },
   "oscCwdMeasurement": {
     "publication": "docs/qa/terminfo/2026-11-24-modern-osc7-cwd-results",
-    "manifestSha256": "802b51046e0f0c68158e03102aa55aa475d79835add048bafe797090a1e04092",
-    "archiveSha256": "7077095697c65525ba160da7a563f6227e0f3543b709066808b4b815d859d77e",
+    "manifestSha256": "c4a7a1968611c9354d0209b27f94a7857ef8194243dc0b0f94fecffd0a3b228c",
+    "archiveSha256": "ce11aaef50c4f7f881fb31a1c3786694b9664c8577a16f30cc134557a7c04c73",
     "sourcePolicy": "readonly-owned-source-graph-v78",
     "receiptSchema": 1,
-    "runId": "e9c8c52c03d5cbf50f6788eb7ef3da79",
+    "runId": "3893e1f11cc0e0190a444288a9986623",
     "platform": "macOS 27.0.1 (26A434), arm64",
-    "appRevision": "24dbfc89b83bd7d9d6e49b755108ea12014c5fc6",
-    "scriptsRevision": "88e369aac0de1b84f8460258c573af06e490c353",
-    "startedAt": "2026-11-24T18:53:56.961Z",
+    "appRevision": "afaa83389a8a365061bc17ccd9102c33d72f5a1d",
+    "scriptsRevision": "afaa83389a8a365061bc17ccd9102c33d72f5a1d",
+    "startedAt": "2026-11-24T19:09:19.997Z",
     "appVersion": "0.14.0",
     "appRevisionSource": "operator-attested build checkout",
     "appVersionSource": "operator supplied; not independently verified",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "34dc24c11d8007bcc13c348cc81b005441c12280e0f4ccadfd4c41b955d81d3f",
+    "assemblySha256": "50a76fb9498b24a9200f890fbd9604b56263cf54290034a3e4d416c413bdfd4b",
     "nativeHelperSha256": "9f3e3afc631c95c9f2c5f618bd52458afc36c47d03b6bcac2c895b91f0a97e55",
     "nodeVersion": "v24.22.2",
-    "sourceSnapshotManifestSha256": "5137da192b0247f2b5b704e0d069e9607165b4c30d428a3f7d6713fb50125881",
+    "sourceSnapshotManifestSha256": "98949835aee76655c4452316e4b30d4128575fc45c4b797a5c4718ff4c5e14b5",
     "fixtureRemoved": true,
-    "leaseReleasedAt": "2026-11-24T18:54:12.385Z",
+    "leaseReleasedAt": "2026-11-24T19:09:37.258Z",
     "pane": {
-      "id": "58158a16-3ca7-4863-bdab-ba4c1b43f9fd",
+      "id": "06caef93-d2d3-4c09-98d5-0d945556f147",
       "rows": 41,
       "cols": 140
     },
     "window": {
+      "width": 1200,
+      "height": 800,
+      "id": 102575,
       "x": 156,
       "y": 56,
-      "layer": 0,
-      "height": 800,
-      "id": 102448,
-      "pid": 68890,
-      "width": 1200
+      "pid": 74520,
+      "layer": 0
     },
     "attempts": [
       {
@@ -4807,6 +4807,13 @@
         "runId": "9b5686ac8b6f59e133feb3bafc376228",
         "scriptsRevision": "77deb81a6160bd747d041e9a5bbd153c4abfda99",
         "reason": "Native activation did not establish the disposable App as foreground. The collector refused the launch observation and the lock released after cleanup."
+      },
+      {
+        "archive": "attempt-14.zip",
+        "runId": "e9c8c52c03d5cbf50f6788eb7ef3da79",
+        "scriptsRevision": "88e369aac0de1b84f8460258c573af06e490c353",
+        "appRevision": "24dbfc89b83bd7d9d6e49b755108ea12014c5fc6",
+        "reason": "All controls, targets, and restoration passed. Codex identified control characters and oversized tooltip input. The App was rebuilt with bounded and sanitized tooltip text and remeasured."
       }
     ]
   }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "7077095697c65525ba160da7a563f6227e0f3543b709066808b4b815d859d77e",
+    "owned-run.zip": "ce11aaef50c4f7f881fb31a1c3786694b9664c8577a16f30cc134557a7c04c73",
     "attempt-1.zip": "a579cbd3eb24ed022a23c96c1183f8c4a6ff9325b768987dde9861174e4b664f",
     "attempt-2.zip": "9bf303a09144ecde27690419c3d1e0227372ab47b135aec011cf54df0333ab07",
     "attempt-3.zip": "f6c19a09f2d443e5110f2428ce3943307bcb64cbac23451714097abc69fa3ccd",
@@ -14,13 +14,14 @@
     "attempt-10.zip": "1b74cb90b7ebd44dc9f89a685715f394bb0e9d670a84f7eefe83fda9062b202b",
     "attempt-11.zip": "c1452b9ad51f758f36387f7c05e5bc32b848402482b06a93e00d0c48ccaa7c71",
     "attempt-12.zip": "f916842be51181ea4ff2ac67383f7ebe67f5d20f2537d942da9f7c30818108af",
-    "attempt-13.zip": "6e745a8ee0a831802181c49e51bdf19387aebb3578876fd140f8d97e2bf2954a"
+    "attempt-13.zip": "6e745a8ee0a831802181c49e51bdf19387aebb3578876fd140f8d97e2bf2954a",
+    "attempt-14.zip": "7077095697c65525ba160da7a563f6227e0f3543b709066808b4b815d859d77e"
   },
   "measurement": {
-    "runId": "e9c8c52c03d5cbf50f6788eb7ef3da79",
+    "runId": "3893e1f11cc0e0190a444288a9986623",
     "platform": "macOS 27.0.1 (26A434), arm64",
-    "appRevision": "24dbfc89b83bd7d9d6e49b755108ea12014c5fc6",
-    "scriptsRevision": "88e369aac0de1b84f8460258c573af06e490c353"
+    "appRevision": "afaa83389a8a365061bc17ccd9102c33d72f5a1d",
+    "scriptsRevision": "afaa83389a8a365061bc17ccd9102c33d72f5a1d"
   },
   "sourcePolicy": "readonly-owned-source-graph-v78",
   "receiptSchema": 1,
@@ -102,6 +103,13 @@
       "runId": "9b5686ac8b6f59e133feb3bafc376228",
       "scriptsRevision": "77deb81a6160bd747d041e9a5bbd153c4abfda99",
       "reason": "Native activation did not establish the disposable App as foreground. The collector refused the launch observation and the lock released after cleanup."
+    },
+    {
+      "archive": "attempt-14.zip",
+      "runId": "e9c8c52c03d5cbf50f6788eb7ef3da79",
+      "scriptsRevision": "88e369aac0de1b84f8460258c573af06e490c353",
+      "appRevision": "24dbfc89b83bd7d9d6e49b755108ea12014c5fc6",
+      "reason": "All controls, targets, and restoration passed. Codex identified control characters and oversized tooltip input. The App was rebuilt with bounded and sanitized tooltip text and remeasured."
     }
   ]
 }
