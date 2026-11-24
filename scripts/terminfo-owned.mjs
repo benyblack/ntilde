@@ -72,6 +72,16 @@ function pathFor(root, file) {
     return join(root, 'scripts', relative);
 }
 const policy = 'readonly-owned-source-graph-v74';
+const blinkPolicy = 'readonly-owned-source-graph-v75';
+const blinkSources = {
+    modernBlinkSourceSha256: 'modern-blink.mjs',
+    modernBlinkNativeSourceSha256: 'modern-blink-native.mjs',
+    modernBlinkWindowSourceSha256: 'modern-blink-window.jxa',
+    modernBlinkOwnedSourceSha256: 'modern-blink-owned.mjs',
+    modernBlinkWorkerSourceSha256: 'modern-blink-worker.mjs',
+};
+const blinkScope = process.argv[6] === '--scope' && process.argv[7] === 'modern-blink';
+const focusedSuiteKey = Symbol.for('ntilde.terminfo.focusedSuite');
 // The desktop lease helper is the second reviewed pure bootstrap dependency (BCL imports only). It lives outside the measured
 // source graph, so the policy above does not change for it; its exact bytes are pinned here and loaded only when the runner asks for the lease.
 const desktopLockSha256 = '96076ef3a4afb7cc5c1bef8c6ac6f22ee86745270637e40b4792d58ce34dd9cf';
@@ -112,11 +122,14 @@ async function checkCapturedImports(sources) {
 }
 /** Copy regular fixed-scope inputs into an exclusive read-only tree, hash its manifest and check literal dependencies before execution. */
 async function capture(root) {
-    const input = readFileSync(join(repo, 'scripts/terminfo/owned-source-inventory.json'));
-    const inventory = JSON.parse(input), hashes = {}, sources = new Map();
+    const original = readFileSync(join(repo, 'scripts/terminfo/owned-source-inventory.json'));
+    const inventory = { ...JSON.parse(original), ...(blinkScope ? blinkSources : {}) };
+    const input = blinkScope ? Buffer.from(JSON.stringify(inventory, null, 2) + '\n') : original;
+    const hashes = {}, sources = new Map();
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');
     for (const [key, file] of Object.entries(inventory)) {
         if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file)
+            && file !== blinkSources.modernBlinkWindowSourceSha256
             && !Object.hasOwn(coreGapsReferencePaths, file) && !Object.hasOwn(oscTitleReferencePaths, file) && !Object.hasOwn(insertReplaceReferencePaths, file) && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file) && !Object.hasOwn(cellSizeReferencePaths, file))) throw new Error('Invalid source inventory entry.');
         const source = pathFor(repo, file), info = lstatSync(source);
         if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular source file.');
@@ -124,7 +137,7 @@ async function capture(root) {
         const target = pathFor(root, file); mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
         writeFileSync(target, bytes, { flag: 'wx', mode: 0o400 }); hashes[key] = digest(bytes); sources.set(file, bytes);
     }
-    const manifest = Buffer.from(JSON.stringify({ schemaVersion: 1, policy, hashes }, null, 2) + '\n');
+    const manifest = Buffer.from(JSON.stringify({ schemaVersion: 1, policy: blinkScope ? blinkPolicy : policy, hashes }, null, 2) + '\n');
     writeFileSync(join(root, 'source-snapshot.json'), manifest, { flag: 'wx', mode: 0o400 });
     setDirectoryModes(root, 0o500);
     await checkCapturedImports(sources);
@@ -162,13 +175,14 @@ async function launch() {
             broker = createDesktopLeaseBroker({ entrypoint: 'terminfo-owned.mjs', worktree: repo, waitMs: desktopLockWaitMs(), aborted: () => interrupted !== undefined });
             return broker.acquire();
         } });
+        if (blinkScope) globalThis[focusedSuiteKey] = await import(pathToFileURL(pathFor(root, blinkSources.modernBlinkOwnedSourceSha256)).href);
         await import(pathToFileURL(pathFor(root, 'terminfo-owned-runner.mjs')).href);
         if (interrupted) process.exitCode = 1;
     } finally {
         try { removeSnapshot(root); }
         finally {
             try { settleDesktopLease(broker); }
-            finally { delete globalThis[desktopLeaseKey]; }
+            finally { delete globalThis[desktopLeaseKey]; delete globalThis[focusedSuiteKey]; }
             process.removeListener('SIGINT', onInt); process.removeListener('SIGTERM', onTerm); process.removeListener('SIGHUP', onHup);
             for (const [name, value] of previous) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
         }

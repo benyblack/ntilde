@@ -417,9 +417,11 @@ function retainFailedMetadataAttempt(output, request, error, observer, file = 'm
         writeJson(join(output, file), { ...observer.lastAttempt, error: observer.failure(error) });
 }
 
+const focusedSuite = globalThis[Symbol.for('ntilde.terminfo.focusedSuite')];
+
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2229,7 +2231,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2252,6 +2254,10 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     if (args[5] === 'direct-placeholders') return persistentAnimationMain(args, executable, snapshot, directPlaceholdersScope);
     if (args[5] === 'persistent-placeholder-grid') return persistentAnimationMain(args, executable, snapshot, persistentPlaceholderGridScope);
     if (args[5] === 'direct-placeholder-grid') return persistentAnimationMain(args, executable, snapshot, directPlaceholderGridScope);
+    if (args[5] === 'modern-blink') {
+        if (!focusedSuite) throw new Error('Expected the captured Modern blink scope.');
+        return persistentAnimationMain(args, executable, snapshot, focusedSuite.scope);
+    }
     const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
     const input = readPreparedCollector(join(repo, 'artifacts', 'terminfo', 'tool'));
 
@@ -4715,16 +4721,23 @@ function preparePersistentRunIn(scratch, args, executable, snapshot, lease, outp
     const run = { args, executable, snapshot, lease, output, scratch, appData, runId, profileName, collectionScope, token: randomBytes(32).toString('hex'),
         socketPath: join(scratch, 'owner.sock'), image: statSync(executable), proofs: [], outputModeVerified: false, completed: false, identities: {} };
     writeJson(configPath, { privateClipboard: true, runId, token: run.token, appData, output, executable, collectionScope, profileName, socket: run.socketPath });
-    writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(join(sourceRepo, 'scripts', 'terminfo', 'worker.mjs'))} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
+    const workerFile = focusedSuite?.workerFile ?? 'worker.mjs';
+    writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(join(sourceRepo, 'scripts', 'terminfo', workerFile))} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
     const settings = ownedSettings({ profileId: randomUUID(), profileName, command, scratch, persistence: collectionScope.persistence });
+    if (focusedSuite) {
+        settings.AllowOsc52ClipboardWrite = false;
+        settings.AgentAccessActEnabled = false;
+    }
     writeJson(join(appData, 'settings.json'), settings);
     writeJson(join(output, 'initial-settings.json'), settings);
     const { digests } = retainSourceCopies(output);
-    run.context = { adapter: persistentAnimationAdapterId, collectionScope, appVersion: args[3], appVersionSource: 'operator supplied; not independently verified',
+    run.context = { adapter: focusedSuite ? collectionScope.id : persistentAnimationAdapterId, collectionScope, appVersion: args[3], appVersionSource: 'operator supplied; not independently verified',
         sourceSnapshotPolicy, sourceSnapshotManifestSha256: snapshot.sha256, sourceSnapshotRoot: sourceRepo, ...digests,
         initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))), executable, executableSha256: hash(readFileSync(executable)),
         assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
-        nodeVersion: process.version, startedAt: new Date().toISOString(), runId, animationSuiteId: animationSuiteIds[version], ownedAnimationPolicy: ownedAnimationPolicies[version] };
+        nodeVersion: process.version, startedAt: new Date().toISOString(), runId,
+        ...(!focusedSuite ? { animationSuiteId: animationSuiteIds[version], ownedAnimationPolicy: ownedAnimationPolicies[version] } : {}) };
+    if (focusedSuite) return run;
     const cases = animationCasesByVersion[version];
     run.version = version; run.relaunches = [];
     run.carrier = { label: 'Animation', prefix: 'kan-', proof: 'kittyAnimation', file: 'animation', suiteId: animationSuiteIds[version], Observer: version === currentAnimationVersion ? OwnedAnimationObserver : animationObserverOf(version),
@@ -4739,7 +4752,8 @@ function retainPersistentFirstProof(run, owner, worker, tty, budget) {
     if (run.proofs.length > 0) return;
     run.proofs.push({ privateClipboard: { policy: ownedPrivateClipboardPolicy, appBirth: processBirth(owner.pid, budget()), workerBirth: processBirth(worker.pid, budget()),
         outputDevice: outputDevice(tty), originalTerminalState: readOwnedTerminalState(tty, budget()) }, app: owner, worker, tty, at: new Date().toISOString(),
-        kittyAnimation: { policy: ownedAnimationPolicies[run.version] }, ...(run.version === restoreAnimationVersion ? { relaunches: run.relaunches } : {}) });
+        ...(!focusedSuite ? { kittyAnimation: { policy: ownedAnimationPolicies[run.version] },
+            ...(run.version === restoreAnimationVersion ? { relaunches: run.relaunches } : {}) } : {}) });
 }
 
 /** Admit one relaunch request and carry it out: the App is terminated and started again, and the answer follows once the new pane shows the restored screen. */
@@ -4752,20 +4766,43 @@ async function answerRelaunchRequest(run, request) {
     return {};
 }
 
-/** Answer one lineage-proved owner request of the persistent animation collection. */
-async function answerPersistentRequest(run, request, budget, { owner, worker, daemon }) {
+function requireScopedWorker(run, worker, budget) {
+    if (!run.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
+    const command = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
+    if (!matchesRecordedWorker(worker, run.identities.worker, command, run.runId)) throw new Error('Recorded worker identity or marker changed.');
+}
+
+function answerScopedObservation(run, request, budget, { owner, worker, daemon }) {
+    requireScopedWorker(run, worker, budget);
+    if (focusedSuite) {
+        run.focusedState ??= new focusedSuite.BlinkCollection(run);
+        return run.focusedState.observe(request, budget);
+    }
+    const { tty } = request;
+    return observeImageCarrierIn(run.imageEnvironment, run.carrier, request, budget, { app: owner, worker, ...(daemon ? { daemon: daemon.record } : {}), tty, at: new Date().toISOString(),
+        terminalOutput: readOwnedOutputMode(tty, budget()), ...(run.relaunches?.length ? { relaunch: run.relaunches.at(-1) } : {}) });
+}
+
+function finishScopedRequest(run, tty, budget) {
+    if (focusedSuite) {
+        if (!run.focusedState?.restored) throw new Error('Incomplete blink observations or pane restoration.');
+    } else requireAnimationCompletion(run.animationState);
+    const terminal = run.proofs[0].privateClipboard;
+    if (readOwnedTerminalState(tty, budget()) !== terminal.originalTerminalState) throw new Error('Original private kernel mode was not restored.');
+    Object.assign(terminal, { restoredTerminalState: terminal.originalTerminalState, restoredAt: new Date().toISOString() });
+    run.completed = true;
+    run.resolve();
+    return {};
+}
+
+/** Answer one lineage-proved owner request of the scoped collection. */
+async function answerPersistentRequest(run, request, budget, lineage) {
     const [proofs, tty] = [run.proofs, request.tty];
     if (request.kind === 'kan-relaunch') return answerRelaunchRequest(run, request);
-    if (request.kind.startsWith('kan-')) {
-        if (!run.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
-        const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
-        if (!matchesRecordedWorker(worker, run.identities.worker, workerCommand, run.runId)) throw new Error('Recorded animation worker identity or marker changed.');
-        return observeImageCarrierIn(run.imageEnvironment, run.carrier, request, budget, { app: owner, worker, ...(daemon ? { daemon: daemon.record } : {}), tty, at: new Date().toISOString(),
-            terminalOutput: readOwnedOutputMode(tty, budget()), ...(run.relaunches?.length ? { relaunch: run.relaunches.at(-1) } : {}) });
-    }
+    if (request.kind.startsWith(focusedSuite ? 'mblink-' : 'kan-')) return answerScopedObservation(run, request, budget, lineage);
     switch (request.kind) {
         case 'prove':
-            retainPersistentFirstProof(run, owner, worker, tty, budget);
+            retainPersistentFirstProof(run, lineage.owner, lineage.worker, tty, budget);
             return { privateClipboard: true, originalTerminalState: proofs[0].privateClipboard.originalTerminalState };
         case 'raw-output':
             if (run.outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
@@ -4773,12 +4810,7 @@ async function answerPersistentRequest(run, request, budget, { owner, worker, da
             run.outputModeVerified = true;
             return {};
         case 'done':
-            requireAnimationCompletion(run.animationState);
-            if (readOwnedTerminalState(tty, budget()) !== proofs[0].privateClipboard.originalTerminalState) throw new Error('Original private kernel mode was not restored.');
-            Object.assign(proofs[0].privateClipboard, { restoredTerminalState: proofs[0].privateClipboard.originalTerminalState, restoredAt: new Date().toISOString() });
-            run.completed = true;
-            run.resolve();
-            return {};
+            return finishScopedRequest(run, tty, budget);
         case 'failed':
             run.reject(new Error(request.error ?? 'Worker failed.'));
             return {};
@@ -4889,6 +4921,7 @@ async function collectPersistentAnimation(run, server) {
     console.log(`Collecting in disposable Ntilde pid ${run.app.pid} (${isPersistentScope(collectionScope) ? 'persistent' : 'ordinary'} tab); results: ${output}`);
     await run.done;
     assertOwnedSourcesUnchanged(sourceRepo, run.context);
+    if (focusedSuite) return {};
     if (run.animationState?.unavailable) throw new Error('Persistent animation fixture was unavailable: ' + run.animationState.unavailable.reason);
     return { animationEvidence: retainCellReport(output, run.animationState?.observer, runId, () => run.animationState.observer.report, 'animation-observations.json') };
 }
@@ -4917,7 +4950,8 @@ async function persistentAnimationMain(args, executable, snapshot, collectionSco
         if (interruption) throw interruption;
         const outcome = await runPersistentAnimation(run);
         if (interruption) throw interruption;
-        console.log(JSON.stringify({ runId: run.runId, output, counts: outcome.receipt.animationEvidence.counts }, null, 2));
+        console.log(JSON.stringify({ runId: run.runId, output,
+            ...(focusedSuite ? { verdict: outcome.receipt.verdict } : { counts: outcome.receipt.animationEvidence.counts }) }, null, 2));
     } catch (error) {
         retainPreparationFailure(output, error);
         throw error;
@@ -4950,7 +4984,8 @@ async function runPersistentAnimation(run) {
     const proofPath = join(run.output, 'ownership-proof.json'), proof = JSON.parse(readFileSync(proofPath));
     proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
     writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-    return { receipt: completePersistentAnimationReceipt(run.output, run.scratch, evidence) };
+    return { receipt: focusedSuite ? focusedSuite.completeBlinkReceipt(run.output, run.scratch)
+        : completePersistentAnimationReceipt(run.output, run.scratch, evidence) };
 }
 
 try {

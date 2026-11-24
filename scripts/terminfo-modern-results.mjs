@@ -6,16 +6,19 @@ import { buildModernCursorPublication, modernCursorOutputPaths } from './terminf
 
 import { buildModernModesPublication, modernModesOutputPaths, readableModernModes } from './terminfo/modern-modes-results.mjs';
 
+import { buildModernBlinkPublication, modernBlinkOutputPaths, readableModernBlink } from './terminfo/modern-blink-results.mjs';
+
 const args = process.argv.slice(2);
 const publications = {
     baseline: [buildModernReport, modernOutputPaths, readableModern],
     '--cursor': [buildModernCursorPublication, modernCursorOutputPaths, readableModern],
     '--modes': [buildModernModesPublication, modernModesOutputPaths, readableModernModes],
+    '--blink': [buildModernBlinkPublication, modernBlinkOutputPaths, readableModernBlink],
 };
 const selected = args.length === 1 ? 'baseline' : args[1];
 if (!['--check', '--write'].includes(args[0])
-    || (args.length !== 1 && !(args.length === 2 && ['--cursor', '--modes'].includes(selected)))) {
-    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes]');
+    || (args.length !== 1 && !(args.length === 2 && Object.hasOwn(publications, selected) && selected.startsWith('--')))) {
+    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes|--blink]');
     process.exitCode = 2;
 } else {
     const [build, outputPaths, readable] = publications[selected];

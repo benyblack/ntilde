@@ -1,0 +1,15 @@
+ObjC.import('CoreGraphics'); ObjC.import('Foundation');
+function run(argv) {
+    const pid = Number(argv[0]);
+    const raw = $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly | $.kCGWindowListExcludeDesktopElements, $.kCGNullWindowID);
+    if (!raw) throw new Error('No native window census');
+    const windows = [];
+    for (let index = 0; index < $.CFArrayGetCount(raw); index++) {
+        const row = ObjC.castRefToObject($.CFArrayGetValueAtIndex(raw, index));
+        const number = key => Number(row.objectForKey(key).js);
+        if (number('kCGWindowOwnerPID') !== pid || number('kCGWindowLayer') !== 0) continue;
+        const bounds = row.objectForKey('kCGWindowBounds');
+        windows.push([number('kCGWindowNumber'), pid, ...['X', 'Y', 'Width', 'Height'].map(key => Number(bounds.objectForKey(key).js))]);
+    }
+    return JSON.stringify(windows);
+}
