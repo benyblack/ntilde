@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "sourcePolicy": "readonly-owned-source-graph-v76",
+  "receiptSchema": 1,
+  "archives": {
+    "baseline-run.zip": "13258eca83729c956c459bc3309d9779355e2d4473090d7f0d915bf250f8499e",
+    "owned-run.zip": "7061c3966831af0692e6fcff7adb91d17ed8a0d96cef052d09f08cda4914a5cf"
+  },
+  "baseline": {
+    "runId": "9d5cb718f7dc5abae880324e9e792298",
+    "appRevision": "2decf1f1392322a4a0b60ec28cd14edd5ec2ee67",
+    "scriptsRevision": "6778948c0c3dd2f295364ddc73a6897500b83bf0",
+    "platform": "macOS 27.0.1 (26A434), arm64"
+  },
+  "measurement": {
+    "runId": "cf1bc5d09c17f80f18bc787cfee4ef99",
+    "appRevision": "f0ca2b28f174f7595c4e901ff68ed4782aab65ed",
+    "scriptsRevision": "f0ca2b28f174f7595c4e901ff68ed4782aab65ed",
+    "platform": "macOS 27.0.1 (26A434), arm64"
+  },
+  "attempts": []
+}

@@ -1,5 +1,11 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern viewport hold assessment](terminfo/2026-11-24-modern-viewport-results/report.md)
+reaches 53 pass, 0 fail, and 16 inconclusive across 69 frozen criteria. The
+macOS App held the same visible historical rows through plain and synchronized
+output after the anchor fix. Run `node scripts/terminfo-modern-results.mjs --check --viewport`
+to rederive both phases and the baseline offline.
+
 The [Modern SGR 5 blink assessment](terminfo/2026-11-24-modern-blink-results/report.md)
 reaches 52 pass, 0 fail, and 17 inconclusive across 69 frozen criteria. It records
 a visible change and return in the live App with a stable unstyled control.
