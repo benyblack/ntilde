@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { dslContracts, dslCaseIds, dslFeeds, dslObservation, gradeDslCase, dslFinish, dslFixture, dslPinnedScripts, dslPlanSeed, dslReads, dslBurstLines, dslPauseMs, dslSmoothLinesPerSecond, dslTimingBoundMs,
     pinnedModeState, replayDslTermless, replayDslTerminal, validateDslFeeds } from './dsl-contracts.mjs';
-import { burstRoles, colorCell, dslBurstRows, dslSeedRows, resizedDslScreen, syntheticDslGrade, syntheticDslScreens, timingOf } from './fixtures/dsl-evidence.mjs';
+import { burstRoles, colorCell, dslBurstRows, literalChannel, dslSeedRows, resizedDslScreen, syntheticDslGrade, syntheticDslScreens, timingOf } from './fixtures/dsl-evidence.mjs';
 import { syntheticColEditScreen } from './fixtures/col-edit-evidence.mjs';
 import { alternate, seedRows } from './fixtures/devq-evidence.mjs';
 
@@ -147,6 +147,15 @@ test('a burst that does not scroll the band blank, leaves another cursor, pen or
         inconclusive(changed(role, read => ({ ...read, screen: { ...read.screen, bufferState: { ...read.screen.bufferState, insertMode: true } } })), /insert, active screen|buffer state/);
         inconclusive(changed(role, read => ({ ...read, screen: { ...read.screen, cursorVisible: !read.screen.cursorVisible } })), /cursor mode, the buffer state/);
         inconclusive(changed(role, read => ({ ...read, screen: { ...read.screen, lines: ['not-the-nonce', ...read.screen.lines.slice(1)] } })), /did not end as a jump scroll|nonce/);
+    }
+});
+
+test('a truecolor, underline-colored or otherwise non-neutral witness ends no burst, and a held burst cannot hide it', () => {
+    const blankBandWith = rows => read => ({ ...read, screen: alternate(syntheticColEditScreen(rows, [5, 0], { margins: [1, 5] }, [], structuredClone(read.screen.colorBinding)), read.screen.lines[0]) });
+    for (const pen of [{ fg: literalChannel(255, 0, 0) }, { bg: literalChannel(0, 0, 255) }, { underlineStyle: 1, underlineColorIndex: 3 }]) {
+        for (const role of ['burst-set', 'burst-held']) inconclusive(changed(role, blankBandWith(dslBurstRows(colorCell('W', pen)))), /plain witness/);
+        // The same pen on both the set burst and the held one (a reseed after it would erase it) is refused at the first.
+        inconclusive((_case, role, read) => (['burst-set', 'burst-held'].includes(role) ? blankBandWith(dslBurstRows(colorCell('W', pen)))(read) : read), /burst-set burst did not end as a jump scroll/);
     }
 });
 

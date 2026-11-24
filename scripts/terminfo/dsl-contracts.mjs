@@ -30,6 +30,7 @@
 // Limits: raw replies, stored terminal state and the parent's monotonic timing only; no rendered frame, repaint cadence, window, remote/mux, other-platform, common-harness or score claim.
 import { planFeed, planRead, validateExactFeeds } from './graded-plan.mjs';
 import { selectiveEraseInk } from './selective-erase-contracts.mjs';
+import { sgrAttrsPredicates } from './sgr-attrs-contracts.mjs';
 import { devqFixture, devqMinimum, devqReseed, devqReset, devqSeed } from './devq-contracts.mjs';
 export { validateDevqScreen as validateDslScreen } from './devq-contracts.mjs';
 
@@ -198,8 +199,8 @@ const groupOf = (screen, timing, replies) => ({
 const stateKey = state => JSON.stringify([state.ink, state.at, state.cursorVisible, state.cursorMode, state.buffer, state.horizontalMargins, state.size]);
 const perRowAt = (cells, row) => cells.filter(cell => cell.row === row).length;
 const sameSize = (left, right) => left[0] === right[0] && left[1] === right[1];
-const plainCell = cell => cell !== undefined && cell.char === witnessChar && ['bold', 'dim', 'italic', 'underline', 'inverse', 'hidden', 'strikethrough', 'blink', 'overline'].every(field => cell[field] === false)
-    && cell.fgIndex === -1 && cell.bgIndex === -1 && cell.underlineStyle === 0;
+/** The witness cell: the plain character with the complete neutral stored tuple (every attribute clear, default colors by source, index and literal RGB, no underline color, not protected). */
+const plainCell = cell => cell !== undefined && cell.char === witnessChar && sgrAttrsPredicates.neutral(cell) && !cell.protected;
 
 /** Whether the initial read holds the contracted seed: geometry, nonce row, the cursor away from home over a plain witness, the attributed cells, margins and modes, and room for the burst. */
 function seedOk(state, nonce) {
@@ -263,7 +264,7 @@ function gradeCase(item, observation) {
         const mismatch = groupMismatch(group, observation[group.role], observation.initial);
         if (mismatch !== null) return inconclusive(group.kind === 'control' ? `Setup control failed before the effect could be judged: ${mismatch}` : `${mismatch}; behavior that differs from the ignored contract needs its own supported contract`);
     }
-    return unsupported('DECSCLM was ignored: with smooth scrolling selected, held, reset and never touched a forty-line burst scrolled identically inside the timing bound, mode 4 stayed not recognized and nothing else changed');
+    return unsupported('DECSCLM was ignored: with smooth scrolling selected, held, reset and never touched the processing of a forty-line scrolling burst finished identically inside the timing bound (the stored state, read after the fence, is the final scrolled state), mode 4 stayed not recognized and nothing else changed');
 }
 
 /** The observed record of one case: every group with its demanded and received replies, its timing and whether the state was unchanged (or cleared, for the clear control). */

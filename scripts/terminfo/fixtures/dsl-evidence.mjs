@@ -9,7 +9,7 @@ import { dslBurstCursor, dslContracts, dslContractsVersion, dslCursorAt, dslObse
 import { adaptDslCollector, dslAdapterId } from '../dsl-grading-collector.mjs';
 import { timingClock } from '../dsl-capture.mjs';
 import { syntheticColEditScreen, paletteBinding } from './col-edit-evidence.mjs';
-import { colorCell, plainCell, syntheticSgrPaletteScreen } from './sgr-palette-evidence.mjs';
+import { colorCell, literalChannel, plainCell, syntheticSgrPaletteScreen } from './sgr-palette-evidence.mjs';
 import { screenSnapshot } from '../agent-observer.mjs';
 import { seedRows, frame, alternate } from './devq-evidence.mjs';
 
@@ -37,7 +37,7 @@ export const dslSeedRows = (witness = plainCell('W')) => {
     rows[dslCursorAt[0]] = [...rows[dslCursorAt[0]], ...Array.from({ length: dslCursorAt[1] - rows[dslCursorAt[0]].length }, () => plainCell(' ')), witness];
     return rows;
 };
-export { colorCell };
+export { colorCell, literalChannel };
 
 /** The rows a burst leaves: everything scrolled out of the margin band but the witness the exchange rewrote on the bottom margin row. */
 export const dslBurstRows = (witness = plainCell('W')) => [[], [], [], [], [], [witness]];
