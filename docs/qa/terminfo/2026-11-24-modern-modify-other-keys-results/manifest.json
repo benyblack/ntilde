@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "449c8a44d947ca0bea8b3c7d6023ccee16662a45c2cfdc20aced52183ee02bf9"
+  },
+  "runId": "f469ae5cf5f75aa36e38d399a8dd366c",
+  "appRevision": "bc9a2d2337d299ada91522ef463209a926e4ee47",
+  "scriptsRevision": "620d9c6e2c881b2a223f4628a5521c1204e8de97",
+  "platform": "Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64",
+  "dotnetSdk": "10.0.403",
+  "x11Packages": {
+    "xvfb": "2:21.1.22-1ubuntu1",
+    "libx11-6": "2:1.8.13-1ubuntu0.1",
+    "libxtst6": "2:1.2.5-1ubuntu0.1",
+    "libxres1": "2:1.2.1-1build2"
+  }
+}

@@ -22,23 +22,23 @@ const alphabetical = (a, b) => a.localeCompare(b, 'en');
 const isDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
 const before = (a, b) => typeof a === 'string' && /^\d+$/.test(a) && typeof b === 'string' && /^\d+$/.test(b) && BigInt(a) < BigInt(b);
 
-function verifySources(directory) {
+function verifySources(directory, policy, names) {
     const raw = readFileSync(join(directory, 'source-manifest.json')), manifest = JSON.parse(raw);
     const sources = join(directory, 'sources');
-    requireModern(manifest.policy === 'owned-modern-x11-mouse-v1' && same(Object.keys(manifest.files), sourceFiles)
-        && same(readdirSync(sources).toSorted(alphabetical), sourceFiles.toSorted(alphabetical))
+    requireModern(manifest.policy === policy && same(Object.keys(manifest.files), names)
+        && same(readdirSync(sources).toSorted(alphabetical), names.toSorted(alphabetical))
         && manifest.launcherSha256 === digest(readFileSync(join(directory, 'launcher.mjs'))), 'wrong X11 collector source manifest');
-    for (const name of sourceFiles) {
+    for (const name of names) {
         requireModern(digest(readFileSync(join(sources, name))) === manifest.files[name], 'changed X11 collector source ' + name);
     }
     return { policy: manifest.policy, sha256: digest(raw) };
 }
 
-function verifyProfile(run) {
+function verifyProfile(run, profilePrefix) {
     const { settings, runId, identity, lineage: { child }, python } = run;
     const profile = settings.Profiles?.[0];
     requireModern(settings.Profiles?.length === 1 && settings.DefaultProfileId === profile.Id
-        && profile.Name === 'X11 Mouse ' + runId && identity.pane.profileName === profile.Name
+        && profile.Name === profilePrefix + runId && identity.pane.profileName === profile.Name
         && profile.Type === 0 && profile.Command === python && posix.isAbsolute(profile.StartingDirectory)
         && /^ntilde-x11-[A-Za-z0-9]+$/.test(posix.basename(profile.StartingDirectory))
         && settings.SessionPersistence === 'Off' && settings.AlternateScroll === false
@@ -51,10 +51,10 @@ function verifyProfile(run) {
     return { argv, scratch };
 }
 
-function verifyIdentities(run) {
+function verifyIdentities(run, profilePrefix, markerPrefix) {
     const { appFiles, pythonSha256, runId, lineage: { parent: app, child }, identity, display, coordinatorPid, uid } = run;
     const { server } = display;
-    const { argv, scratch } = verifyProfile(run);
+    const { argv, scratch } = verifyProfile(run, profilePrefix);
     assertLinuxOwnedChild(app, child, { parentPid: app.pid, childPid: child.pid, runId, uid, executable: run.python, argv });
     requireModern([app, child, server].every(item => item.platform === 'linux' && item.uids.length === 4 && item.uids.every(value => value === uid))
         && new Set([coordinatorPid, server.pid, app.pid, child.pid]).size === 4 && app.ppid === coordinatorPid
@@ -71,7 +71,7 @@ function verifyIdentities(run) {
         && /^[1-9]\d*$/.test(display.socketInode) && isDigest(display.executableSha256)
         && same(server.argv, [server.executable, '-displayfd', '3', '-screen', '0', '1280x800x24', '-dpi', '96',
             '-nolisten', 'tcp', '-noreset', '-auth', posix.join(scratch, 'Xauthority')])
-        && identity.xtestVersion[0] === 2 && identity.marker === 'x11-mouse-' + runId
+        && identity.xtestVersion[0] === 2 && identity.marker === markerPrefix + runId
         && identity.window.width >= 400 && identity.window.height >= 300
         && Number.isSafeInteger(identity.window.id) && identity.window.id > 0, 'missing independently owned XTEST display or window');
 }
@@ -95,14 +95,19 @@ function verifyCleanup(directory, run) {
 }
 
 export function verifyX11MouseRun(directory) {
+    return verifyX11Run(directory, { policy: 'owned-modern-x11-mouse-v1', profilePrefix: 'X11 Mouse ',
+        markerPrefix: 'x11-mouse-', replay: replayMouse });
+}
+
+export function verifyX11Run(directory, { policy, profilePrefix, markerPrefix, replay, extraSources = [] }) {
     requireModern(!existsSync(join(directory, 'failure.json')), 'X11 collection failed');
     const frame = readFileSync(join(directory, 'observation.json'));
     const run = JSON.parse(frame);
     requireModern(run.schemaVersion === 1 && /^[a-f\d]{32}$/.test(run.runId) && !run.failure && !run.cleanupError,
-        'invalid completed X11 mouse observation');
-    const source = verifySources(directory);
-    verifyIdentities(run);
-    const results = replayMouse(run);
+        'invalid completed X11 observation');
+    const source = verifySources(directory, policy, [...sourceFiles, ...extraSources]);
+    verifyIdentities(run, profilePrefix, markerPrefix);
+    const results = replay(run);
     requireModern(same(results, run.results), 'X11 recorded grading does not rederive');
     const cleanup = verifyCleanup(directory, run);
     return { run, results, measurement: { ...cleanup, sha256: digest(frame), source } };

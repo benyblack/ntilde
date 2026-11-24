@@ -1,5 +1,11 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern modifyOtherKeys assessment](terminfo/2026-11-24-modern-modify-other-keys-results/report.md)
+reaches 63 pass, 0 fail and 6 inconclusive across 69 frozen criteria. On an owned
+Linux X11 display, the child received plain `a` and then `CSI 27;5;105~` for
+Ctrl+I under level 2. Run `node scripts/terminfo-modern-results.mjs --check --modify-other-keys`
+to rederive the report.
+
 The [Modern X11 mouse assessment](terminfo/2026-11-24-modern-x11-mouse-results/report.md)
 reaches 62 pass, 0 fail, and 7 inconclusive across 69 frozen criteria. Three
 fresh SGR click controls admitted the X10, button-event, and alternate-scroll
