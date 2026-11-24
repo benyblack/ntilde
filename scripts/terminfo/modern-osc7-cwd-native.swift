@@ -81,12 +81,12 @@ func move(_ point: CGPoint) throws {
     event.post(tap: .cghidEventTap)
 }
 
-func recognize(_ image: URL, popup: Bool) throws -> [Line] {
+func recognize(_ image: URL) throws -> [Line] {
     let request = VNRecognizeTextRequest()
-    request.recognitionLevel = .accurate
+    request.recognitionLevel = .fast
+    request.revision = VNRecognizeTextRequestRevision3
     request.usesLanguageCorrection = false
     request.recognitionLanguages = ["en-US"]
-    if !popup { request.regionOfInterest = CGRect(x: 0, y: 0.78, width: 0.6, height: 0.22) }
     try VNImageRequestHandler(url: image).perform([request])
     return (request.results ?? []).compactMap { result in
         guard let candidate = result.topCandidates(1).first else { return nil }
@@ -132,8 +132,7 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
             && abs(window.x - target.x) < 80 && abs(window.y - target.y) < 80
             && window.width > 20 && window.height > 10 && window.height < 120
     }
-    guard popups.count <= 1 else { throw CaptureError.noWindow }
-    let window = popups.first ?? tabWindow
+    guard popups.count == 1, let window = popups.first else { throw CaptureError.noWindow }
     try capture(image, in: window)
     let captured = try state(pid)
     guard captured.pointer == hover.pointer else { throw CaptureError.pointerChanged }
@@ -143,16 +142,21 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
     Thread.sleep(forTimeInterval: 0.10)
     let restored = try state(pid)
     guard restored.pointer == initial.pointer else { throw CaptureError.pointerChanged }
-    let lines = try recognize(image, popup: window.id != tabWindow.id)
     return Reading(original: initial.pointer, before: before, hover: hover, captured: captured,
-                   restored: restored, window: window, lines: lines)
+                   restored: restored, window: window, lines: try recognize(image))
 }
 
 do {
     let args = CommandLine.arguments
-    guard args.count == 3, let pid = Int(args[1]), pid > 0 else { throw CaptureError.noState }
-    let reading = try readTooltip(pid: pid, image: URL(fileURLWithPath: args[2]))
-    FileHandle.standardOutput.write(try JSONEncoder().encode(reading))
+    let encoder = JSONEncoder()
+    if args.count == 3, args[1] == "--ocr" {
+        let lines = try recognize(URL(fileURLWithPath: args[2]))
+        FileHandle.standardOutput.write(try encoder.encode(lines))
+    } else {
+        guard args.count == 3, let pid = Int(args[1]), pid > 0 else { throw CaptureError.noState }
+        let reading = try readTooltip(pid: pid, image: URL(fileURLWithPath: args[2]))
+        FileHandle.standardOutput.write(try encoder.encode(reading))
+    }
 } catch {
     FileHandle.standardError.write(Data(("Native tab tooltip capture: \(error)\n").utf8))
     exit(1)

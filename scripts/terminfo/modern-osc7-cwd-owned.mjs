@@ -44,7 +44,7 @@ function validateNative(read, pid, expectedWindow) {
     const popups = hover.windows.filter(item => !before.windows.some(prior => prior.id === item.id)
         && Math.abs(item.x - target.x) < 80 && Math.abs(item.y - target.y) < 80
         && item.width > 20 && item.height > 10 && item.height < 120);
-    requireCwd(popups.length <= 1 && same(window, popups[0] ?? main)
+    requireCwd(popups.length === 1 && same(window, popups[0])
         && [hover, captured, restored].every(state => state.windows.some(item => same(item, main)))
         && captured.windows.some(item => same(item, window)), 'the tooltip window was not bound to the owned tab');
     requireCwd(Array.isArray(lines) && lines.length > 0 && lines.length <= 30
