@@ -1,14 +1,36 @@
 {
   "schemaVersion": 1,
   "measurement": {
-    "runId": "143a7ed6de7a05544364a898fc6fe975",
+    "runId": "9339df4e00bebdb6f237b0a1d2f14e6a",
     "sourcePolicy": "readonly-owned-source-graph-v74",
     "receiptSchema": 81,
     "appRevision": "faca305c5e915dbb6a3f5ffbe9e4c927b9c071f5",
-    "scriptsRevision": "4099739ce69ba5c0ba06f5eb581f699bb97f5f9e"
+    "scriptsRevision": "c3fe10609910d995303de16d5ccd9b2a4c1b91d8"
   },
   "archives": {
-    "owned-run.zip": "c0a5bd28fe747bd50c1d8204d228c7b596067f42fb300b854d5ff116a38a9af8"
+    "owned-run.zip": "079ec4fb4f07ca856f083457ccd53cb0e1d0ecfe3837098751a5f398e2a6b0dd",
+    "attempt-1.zip": "c0a5bd28fe747bd50c1d8204d228c7b596067f42fb300b854d5ff116a38a9af8",
+    "attempt-2.zip": "20104fbdeca1a73ab12a70c435aac35c32d50b75addeee9feabb1035cf8acd37",
+    "attempt-3.zip": "58776e85bba50019f70179edc94b2f0d47ebe6c9e0c04b88dbbdce83fd3dac12"
   },
-  "attempts": []
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "143a7ed6de7a05544364a898fc6fe975",
+      "scriptsRevision": "4099739ce69ba5c0ba06f5eb581f699bb97f5f9e",
+      "reason": "Completed with both modes returning reset, set, and reset. The SonarCloud cleanup fix changed measured scripts and superseded this capture."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "6f84c2bda4c143d4ab49dd3685c18dc7",
+      "scriptsRevision": "f74fb0b2e46450614b9f4c30c008096db2b6809f",
+      "reason": "An unexpected PTY byte (hex 64) invalidated the initial cell fixture before either mode query. The launcher verified cleanup and released the lease."
+    },
+    {
+      "archive": "attempt-3.zip",
+      "runId": "56ecb7180756a22aef9355dd883d4f4b",
+      "scriptsRevision": "c3fe10609910d995303de16d5ccd9b2a4c1b91d8",
+      "reason": "Both mode transitions were observed. A window activation changed the tab presentation during the integrated OSC title fixture, which refused restoration and prevented a complete receipt. The launcher verified cleanup and released the lease."
+    }
+  ]
 }

@@ -16,8 +16,8 @@ Each query ends at a DA barrier. The reset-state branch sends DECSET, the first 
 
 | Stage | Exact framed request | Exact framed reply | DECRPM states | Elapsed ms |
 | --- | --- | --- | --- | --- |
-| initial | `"\u001b[?2026$p\u001b[c"` | `"\u001b[?2026;2$y\u001b[?62;4;22c"` | 2 | 0.80 |
-| set-restore | `"\u001b[?2026h\u001b[?2026$p\u001b[c\u001b[?2026l\u001b[?2026$p\u001b[c"` | `"\u001b[?2026;1$y\u001b[?62;4;22c\u001b[?2026;2$y\u001b[?62;4;22c"` | 1 → 2 | 0.51 |
+| initial | `"\u001b[?2026$p\u001b[c"` | `"\u001b[?2026;2$y\u001b[?62;4;22c"` | 2 | 0.86 |
+| set-restore | `"\u001b[?2026h\u001b[?2026$p\u001b[c\u001b[?2026l\u001b[?2026$p\u001b[c"` | `"\u001b[?2026;1$y\u001b[?62;4;22c\u001b[?2026;2$y\u001b[?62;4;22c"` | 1 → 2 | 0.65 |
 
 ### Mode 2031
 
@@ -25,14 +25,20 @@ Each query ends at a DA barrier. The reset-state branch sends DECSET, the first 
 
 | Stage | Exact framed request | Exact framed reply | DECRPM states | Elapsed ms |
 | --- | --- | --- | --- | --- |
-| initial | `"\u001b[?2031$p\u001b[c"` | `"\u001b[?2031;2$y\u001b[?62;4;22c"` | 2 | 0.15 |
-| set-restore | `"\u001b[?2031h\u001b[?2031$p\u001b[c\u001b[?2031l\u001b[?2031$p\u001b[c"` | `"\u001b[?2031;1$y\u001b[?62;4;22c\u001b[?2031;2$y\u001b[?62;4;22c"` | 1 → 2 | 0.17 |
+| initial | `"\u001b[?2031$p\u001b[c"` | `"\u001b[?2031;2$y\u001b[?62;4;22c"` | 2 | 0.18 |
+| set-restore | `"\u001b[?2031h\u001b[?2031$p\u001b[c\u001b[?2031l\u001b[?2031$p\u001b[c"` | `"\u001b[?2031;1$y\u001b[?62;4;22c\u001b[?2031;2$y\u001b[?62;4;22c"` | 1 → 2 | 4.66 |
 
 ## Measurement and provenance
 
-Owned run `143a7ed6de7a05544364a898fc6fe975`, started 2026-11-24T13:44:15.907Z. App source `faca305c5e915dbb6a3f5ffbe9e4c927b9c071f5`; measured scripts `4099739ce69ba5c0ba06f5eb581f699bb97f5f9e`; App version `0.14.0` (operator supplied; not independently verified). Geometry 40×140; source policy `readonly-owned-source-graph-v74`; receipt 81, completed 2026-11-24T13:48:47.746Z.
+Owned run `9339df4e00bebdb6f237b0a1d2f14e6a`, started 2026-11-24T14:07:36.356Z. App source `faca305c5e915dbb6a3f5ffbe9e4c927b9c071f5`; measured scripts `c3fe10609910d995303de16d5ccd9b2a4c1b91d8`; App version `0.14.0` (operator supplied; not independently verified). Geometry 40×140; source policy `readonly-owned-source-graph-v74`; receipt 81, completed 2026-11-24T14:10:21.662Z.
 
-The [owned run](owned-run.zip) has SHA-256 `c0a5bd28fe747bd50c1d8204d228c7b596067f42fb300b854d5ff116a38a9af8`. It retains the worker exchanges in `mmod-run.json`, the pane-bound journal in `mmod-snapshots.jsonl`, and the derived traces in `mmod-observations.json`. The receipt verifies the source manifest, mode exchanges, restored main-screen projection, and process and fixture cleanup.
+The [owned run](owned-run.zip) has SHA-256 `079ec4fb4f07ca856f083457ccd53cb0e1d0ecfe3837098751a5f398e2a6b0dd`. It retains the worker exchanges in `mmod-run.json`, the pane-bound journal in `mmod-snapshots.jsonl`, and the derived traces in `mmod-observations.json`. The receipt verifies the source manifest, mode exchanges, restored main-screen projection, and process and fixture cleanup.
+
+Retained attempt [attempt-1.zip](attempt-1.zip). Completed with both modes returning reset, set, and reset. The SonarCloud cleanup fix changed measured scripts and superseded this capture.
+
+Retained attempt [attempt-2.zip](attempt-2.zip). An unexpected PTY byte (hex 64) invalidated the initial cell fixture before either mode query. The launcher verified cleanup and released the lease.
+
+Retained attempt [attempt-3.zip](attempt-3.zip). Both mode transitions were observed. A window activation changed the tab presentation during the integrated OSC title fixture, which refused restoration and prevented a complete receipt. The launcher verified cleanup and released the lease.
 
 ## Reproduce
 

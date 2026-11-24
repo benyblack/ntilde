@@ -8,7 +8,7 @@ import { digest, parseJson, pinnedJson, requireModern, same } from './modern-inp
 import { modernModeRequirements, modernModesSuiteId } from './modern-modes.mjs';
 
 export const modesPublication = 'docs/qa/terminfo/2026-11-24-modern-modes-results';
-const manifestSha256 = '5f6a4235084df58c31ad16fedaca46a750b5e9fcf5b588dff9696ef80ae5ad51';
+const manifestSha256 = '9d5189fe693a99b4f7da8b3493c1637f863ac0c5a9f4791772cdc89ee04216b8';
 
 export function verifyModernModesRun(directory, manifest) {
     requireModern(existsSync(join(directory, 'cell-receipt.json')) && !existsSync(join(directory, 'failure.json'))

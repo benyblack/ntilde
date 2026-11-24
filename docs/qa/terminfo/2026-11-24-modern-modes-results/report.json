@@ -1391,7 +1391,7 @@
             "frameIndex": 2,
             "request": "\u001b[?2026$p\u001b[c",
             "response": "\u001b[?2026;2$y\u001b[?62;4;22c",
-            "elapsedMs": 0.804667000003974,
+            "elapsedMs": 0.8614159999997355,
             "replies": [
               {
                 "reply": "\u001b[?2026;2$y",
@@ -1405,7 +1405,7 @@
             "frameIndex": 3,
             "request": "\u001b[?2026h\u001b[?2026$p\u001b[c\u001b[?2026l\u001b[?2026$p\u001b[c",
             "response": "\u001b[?2026;1$y\u001b[?62;4;22c\u001b[?2026;2$y\u001b[?62;4;22c",
-            "elapsedMs": 0.5096660000053816,
+            "elapsedMs": 0.6485000000029686,
             "replies": [
               {
                 "reply": "\u001b[?2026;1$y",
@@ -1426,8 +1426,8 @@
       "evidence": {
         "file": "mmod-observations.json",
         "sourceId": "2026",
-        "runId": "143a7ed6de7a05544364a898fc6fe975",
-        "recordSha256": "a3f5e6359f687c5af678d853d19897ae5835e17b76badc50fb552c81c956f357"
+        "runId": "9339df4e00bebdb6f237b0a1d2f14e6a",
+        "recordSha256": "7ece071f6dcff6fd70ffe70ab3269df5561d711d2b3dbce87a4176aebd9b5fac"
       },
       "stockVerdict": "supported",
       "stockEvidence": "query",
@@ -2189,7 +2189,7 @@
             "frameIndex": 4,
             "request": "\u001b[?2031$p\u001b[c",
             "response": "\u001b[?2031;2$y\u001b[?62;4;22c",
-            "elapsedMs": 0.14820800000597956,
+            "elapsedMs": 0.17874999999912689,
             "replies": [
               {
                 "reply": "\u001b[?2031;2$y",
@@ -2203,7 +2203,7 @@
             "frameIndex": 5,
             "request": "\u001b[?2031h\u001b[?2031$p\u001b[c\u001b[?2031l\u001b[?2031$p\u001b[c",
             "response": "\u001b[?2031;1$y\u001b[?62;4;22c\u001b[?2031;2$y\u001b[?62;4;22c",
-            "elapsedMs": 0.1703750000015134,
+            "elapsedMs": 4.664791999995941,
             "replies": [
               {
                 "reply": "\u001b[?2031;1$y",
@@ -2224,8 +2224,8 @@
       "evidence": {
         "file": "mmod-observations.json",
         "sourceId": "2031",
-        "runId": "143a7ed6de7a05544364a898fc6fe975",
-        "recordSha256": "a1ce0bae7e01962b011fa11685b523fe92cdfc3fa582597c99b4ab1bda3662cb"
+        "runId": "9339df4e00bebdb6f237b0a1d2f14e6a",
+        "recordSha256": "1ebb28d1d5f726154fc8d140d561af7e3bed17a96e3ee27c7a11f6c909ccf400"
       },
       "stockVerdict": "supported",
       "stockEvidence": "query",
@@ -2508,26 +2508,45 @@
     }
   },
   "modesMeasurement": {
-    "runId": "143a7ed6de7a05544364a898fc6fe975",
+    "runId": "9339df4e00bebdb6f237b0a1d2f14e6a",
     "sourcePolicy": "readonly-owned-source-graph-v74",
     "receiptSchema": 81,
     "appRevision": "faca305c5e915dbb6a3f5ffbe9e4c927b9c071f5",
-    "scriptsRevision": "4099739ce69ba5c0ba06f5eb581f699bb97f5f9e",
-    "startedAt": "2026-11-24T13:44:15.907Z",
+    "scriptsRevision": "c3fe10609910d995303de16d5ccd9b2a4c1b91d8",
+    "startedAt": "2026-11-24T14:07:36.356Z",
     "appVersion": "0.14.0",
     "appVersionSource": "operator supplied; not independently verified",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "b55f9471db10fe50054dacdb8fdc4e8af0450e80d3d3ccd9c0e29694d034a272",
-    "sourceSnapshotManifestSha256": "f5f092c00a7aa997bd9e7a94a56acabe4381c3bb7e1f1ca7175c013fab0a61ac",
-    "receiptCompletedAt": "2026-11-24T13:48:47.746Z",
+    "sourceSnapshotManifestSha256": "8ca3275ead7d8cf045a3da4b02ad46afebeed7837e9b199668bd81f2adc77a9d",
+    "receiptCompletedAt": "2026-11-24T14:10:21.662Z",
     "fixtureRemoved": true,
     "geometry": {
       "rows": 40,
       "cols": 140
     },
     "publication": "docs/qa/terminfo/2026-11-24-modern-modes-results",
-    "manifestSha256": "5f6a4235084df58c31ad16fedaca46a750b5e9fcf5b588dff9696ef80ae5ad51",
-    "archiveSha256": "c0a5bd28fe747bd50c1d8204d228c7b596067f42fb300b854d5ff116a38a9af8",
-    "attempts": []
+    "manifestSha256": "9d5189fe693a99b4f7da8b3493c1637f863ac0c5a9f4791772cdc89ee04216b8",
+    "archiveSha256": "079ec4fb4f07ca856f083457ccd53cb0e1d0ecfe3837098751a5f398e2a6b0dd",
+    "attempts": [
+      {
+        "archive": "attempt-1.zip",
+        "runId": "143a7ed6de7a05544364a898fc6fe975",
+        "scriptsRevision": "4099739ce69ba5c0ba06f5eb581f699bb97f5f9e",
+        "reason": "Completed with both modes returning reset, set, and reset. The SonarCloud cleanup fix changed measured scripts and superseded this capture."
+      },
+      {
+        "archive": "attempt-2.zip",
+        "runId": "6f84c2bda4c143d4ab49dd3685c18dc7",
+        "scriptsRevision": "f74fb0b2e46450614b9f4c30c008096db2b6809f",
+        "reason": "An unexpected PTY byte (hex 64) invalidated the initial cell fixture before either mode query. The launcher verified cleanup and released the lease."
+      },
+      {
+        "archive": "attempt-3.zip",
+        "runId": "56ecb7180756a22aef9355dd883d4f4b",
+        "scriptsRevision": "c3fe10609910d995303de16d5ccd9b2a4c1b91d8",
+        "reason": "Both mode transitions were observed. A window activation changed the tab presentation during the integrated OSC title fixture, which refused restoration and prevented a complete receipt. The launcher verified cleanup and released the lease."
+      }
+    ]
   }
 }
