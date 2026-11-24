@@ -288,10 +288,10 @@ export function assertPrivateFile(path) {
  * returning the binding; private mode also requires the original kernel-mode token.
  * These process observations do not create an immutable PID or held PTY lease.
  */
-export async function verifyNtildeOutput(config, out) {
+export async function verifyNtildeOutput(config, out, { requireTermProgram = true } = {}) {
     if (process.platform !== 'darwin') throw new Error('This owned adapter currently supports macOS.');
     if (process.env.NTILDE_APPDATA_ROOT !== config.appData || process.env.TERMINFO_RUN_ID !== config.runId
-        || process.env.TERM_PROGRAM !== 'Ntilde'
+        || (requireTermProgram && process.env.TERM_PROGRAM !== 'Ntilde')
         || process.argv[3] !== `--ntilde-terminfo-worker=${config.runId}`) throw new Error('Worker launch environment differs from this run.');
     const worker = processRecord(process.pid);
     const tty = `/dev/${worker.tty}`;

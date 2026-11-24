@@ -119,6 +119,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'cell-size-publication.test.mjs': 'frozen pre-integration source-policy v63 cell-size result; current integrated v64 remeasurement is the active suite claim',
     'osc633-publication.test.mjs': 'frozen historical unsupported OSC 633 result; the current implementing-App remeasurement is the active suite claim',
     'ascii-reflow-publication.test.mjs': 'frozen historical unsupported reflow result; current fixed-App retest is the active suite claim',
+    'modern-child-environment-publication.test.mjs': 'four manual environment criteria within the frozen Modern assessment; adds no benchmark-suite claim',
     'modern-osc7-cwd-publication.test.mjs': 'OSC 7 App tooltip criterion within the frozen Modern assessment; adds no benchmark-suite claim',
     'modern-osc-titles-publication.test.mjs': 'OSC 2 and OSC 0 App criteria within the frozen Modern assessment; adds no benchmark-suite claim',
     'modern-viewport-publication.test.mjs': 'manual App viewport criterion within the frozen Modern assessment; adds no benchmark-suite claim',

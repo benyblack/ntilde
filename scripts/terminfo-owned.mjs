@@ -102,11 +102,17 @@ const oscCwdSources = {
     modernOscCwdNativeSourceSha256: 'modern-osc7-cwd-native.swift',
     modernOscCwdTabHeadersSourceSha256: 'modern-osc7-cwd-tab-headers.cs',
 };
+const childEnvironmentSources = {
+    modernChildEnvironmentSourceSha256: 'modern-child-environment.mjs',
+    modernChildEnvironmentOwnedSourceSha256: 'modern-child-environment-owned.mjs',
+    modernChildEnvironmentWorkerSourceSha256: 'modern-child-environment-worker.mjs',
+};
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
     'modern-blink': { policy: blinkPolicy, sources: blinkSources, entry: blinkSources.modernBlinkOwnedSourceSha256 },
     'modern-viewport': { policy: viewportPolicy, sources: viewportSources, entry: viewportSources.modernViewportOwnedSourceSha256 },
     'modern-osc-titles': { policy: 'readonly-owned-source-graph-v77', sources: oscTitlesSources, entry: oscTitlesSources.modernOscTitlesOwnedSourceSha256 },
+    'modern-child-environment': { policy: 'readonly-owned-source-graph-v79', sources: childEnvironmentSources, entry: childEnvironmentSources.modernChildEnvironmentOwnedSourceSha256 },
     'modern-osc7-cwd': { policy: 'readonly-owned-source-graph-v78', sources: oscCwdSources, entry: oscCwdSources.modernOscCwdOwnedSourceSha256 },
 };
 const focusedScope = Object.hasOwn(scopes, requestedScope) ? scopes[requestedScope] : null;

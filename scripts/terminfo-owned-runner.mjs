@@ -421,7 +421,7 @@ const focusedSuite = globalThis[Symbol.for('ntilde.terminfo.focusedSuite')];
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport', 'modern-osc-titles', 'modern-osc7-cwd'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport', 'modern-osc-titles', 'modern-osc7-cwd', 'modern-child-environment'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2231,7 +2231,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport|modern-osc-titles|modern-osc7-cwd]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport|modern-osc-titles|modern-osc7-cwd|modern-child-environment]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2254,7 +2254,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     if (args[5] === 'direct-placeholders') return persistentAnimationMain(args, executable, snapshot, directPlaceholdersScope);
     if (args[5] === 'persistent-placeholder-grid') return persistentAnimationMain(args, executable, snapshot, persistentPlaceholderGridScope);
     if (args[5] === 'direct-placeholder-grid') return persistentAnimationMain(args, executable, snapshot, directPlaceholderGridScope);
-    if (['modern-blink', 'modern-viewport', 'modern-osc-titles', 'modern-osc7-cwd'].includes(args[5])) {
+    if (['modern-blink', 'modern-viewport', 'modern-osc-titles', 'modern-osc7-cwd', 'modern-child-environment'].includes(args[5])) {
         if (!focusedSuite) throw new Error('Expected the captured Modern scope.');
         return persistentAnimationMain(args, executable, snapshot, focusedSuite.scope);
     }
@@ -4722,8 +4722,13 @@ function preparePersistentRunIn(scratch, args, executable, snapshot, lease, outp
         socketPath: join(scratch, 'owner.sock'), image: statSync(executable), proofs: [], outputModeVerified: false, completed: false, identities: {} };
     writeJson(configPath, { privateClipboard: true, runId, token: run.token, appData, output, executable, collectionScope, profileName, socket: run.socketPath });
     const workerFile = focusedSuite?.workerFile ?? 'worker.mjs';
-    writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(join(sourceRepo, 'scripts', 'terminfo', workerFile))} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
-    const settings = ownedSettings({ profileId: randomUUID(), profileName, command, scratch, persistence: collectionScope.persistence });
+    const workerScript = join(sourceRepo, 'scripts', 'terminfo', workerFile);
+    const profileCommand = focusedSuite?.workerProfile?.({ node: realpathSync(process.execPath), workerScript, configPath, runId });
+    if (!profileCommand) {
+        writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
+    }
+    const settings = ownedSettings({ profileId: randomUUID(), profileName, command: profileCommand?.Command ?? command, scratch, persistence: collectionScope.persistence });
+    if (profileCommand) settings.Profiles[0].Arguments = profileCommand.Arguments;
     if (focusedSuite) {
         settings.AllowOsc52ClipboardWrite = false;
         settings.AgentAccessActEnabled = focusedSuite.allowGeneratedInput === true;
@@ -4914,7 +4919,7 @@ async function collectPersistentAnimation(run, server) {
     const env = { ...process.env, NTILDE_APPDATA_ROOT: appData, TERMINFO_RUN_ID: runId, TERM_PROGRAM: 'Ntilde', TERM_PROGRAM_VERSION: args[3], PATH: dirname(process.execPath) + ':' + process.env.PATH };
     for (const name of ['__CFBundleIdentifier', 'TMUX', 'STY', 'SSH_CONNECTION', 'SSH_TTY']) delete env[name];
     run.logFd = openSync(join(output, 'app-output.log'), 'wx', 0o600);
-    run.env = env;
+    run.env = focusedSuite?.prepareLaunchEnvironment?.(run, env) ?? env;
     startPersistentApp(run);
     writeJson(join(output, 'context.json'), { ...run.context, ownerPid: run.app.pid });
     run.deadline = setTimeout(() => run.reject(new Error(`Persistent animation collection exceeded ${collectionScope.deadlineMs / 60000} minutes.`)), collectionScope.deadlineMs);

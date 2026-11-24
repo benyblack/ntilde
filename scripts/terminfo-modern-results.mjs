@@ -13,6 +13,8 @@ import { buildModernOscTitlesPublication, modernOscTitlesOutputPaths, readableMo
 
 import { buildModernOscCwdPublication, modernOscCwdOutputPaths, readableModernOscCwd } from './terminfo/modern-osc7-cwd-results.mjs';
 
+import { buildModernChildEnvironmentPublication, modernChildEnvironmentOutputPaths, readableModernChildEnvironment } from './terminfo/modern-child-environment-results.mjs';
+
 const args = process.argv.slice(2);
 const publications = {
     baseline: [buildModernReport, modernOutputPaths, readableModern],
@@ -20,13 +22,14 @@ const publications = {
     '--modes': [buildModernModesPublication, modernModesOutputPaths, readableModernModes],
     '--blink': [buildModernBlinkPublication, modernBlinkOutputPaths, readableModernBlink],
     '--viewport': [buildModernViewportPublication, modernViewportOutputPaths, readableModernViewport],
+    '--child-environment': [buildModernChildEnvironmentPublication, modernChildEnvironmentOutputPaths, readableModernChildEnvironment],
     '--osc7-cwd': [buildModernOscCwdPublication, modernOscCwdOutputPaths, readableModernOscCwd],
     '--osc-titles': [buildModernOscTitlesPublication, modernOscTitlesOutputPaths, readableModernOscTitles],
 };
 const selected = args.length === 1 ? 'baseline' : args[1];
 if (!['--check', '--write'].includes(args[0])
     || (args.length !== 1 && !(args.length === 2 && Object.hasOwn(publications, selected) && selected.startsWith('--')))) {
-    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes|--blink|--viewport|--osc-titles|--osc7-cwd]');
+    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes|--blink|--viewport|--osc-titles|--osc7-cwd|--child-environment]');
     process.exitCode = 2;
 } else {
     const [build, outputPaths, readable] = publications[selected];
