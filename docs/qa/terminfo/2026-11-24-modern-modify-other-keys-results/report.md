@@ -25,12 +25,12 @@ Rederive the publication offline using Node 24 and Python 3.
 node scripts/terminfo-modern-results.mjs --check --modify-other-keys
 ```
 
-For a fresh measurement, use Linux x64 with Xvfb, libXtst, libX11, libXRes and Python 3. Use an absolute private sidecar directory.
+For a fresh measurement, install Node 24, Python 3, Xvfb, libXtst, libX11 and libXRes on Linux x64. Building the App requires the pinned .NET SDK and Rust toolchain (cargo and rustc). See the [App build prerequisites](../../../../CONTRIBUTING.md#1-prerequisites). The launcher requires the canonical path to the private executable, with every symlink component resolved.
 
 ```sh
 # From an App checkout at bc9a2d2337d299ada91522ef463209a926e4ee47
 scripts/build.sh publish src/Ntilde.App -c Release -r linux-x64 --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar
 chmod -R go-w /absolute/private/sidecar
 # From a collector checkout at 620d9c6e2c881b2a223f4628a5521c1204e8de97
-node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde 0.14.0 --modify-other-keys
+node scripts/terminfo-modern-x11-owned.mjs "$(realpath /absolute/private/sidecar/Ntilde)" 0.14.0 --modify-other-keys
 ```

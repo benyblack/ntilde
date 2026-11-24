@@ -61,10 +61,10 @@ export function readableKeyboard(report) {
         `App ${m.appVersion} was built from a source archive at \`${m.appRevision}\` with .NET SDK ${m.dotnetSdk}. The archive hashes the complete publish tree. Collector \`${m.scriptsRevision}\` ran under Node ${m.nodeVersion} and retained the launcher and its measured source files. [Manifest](manifest.json).`, '',
         'Rederive the publication offline using Node 24 and Python 3.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check --modify-other-keys', '```', '',
-        'For a fresh measurement, use Linux x64 with Xvfb, libXtst, libX11, libXRes and Python 3. Use an absolute private sidecar directory.', '',
+        'For a fresh measurement, install Node 24, Python 3, Xvfb, libXtst, libX11 and libXRes on Linux x64. Building the App requires the pinned .NET SDK and Rust toolchain (cargo and rustc). See the [App build prerequisites](../../../../CONTRIBUTING.md#1-prerequisites). The launcher requires the canonical path to the private executable, with every symlink component resolved.', '',
         '```sh', `# From an App checkout at ${m.appRevision}`,
         'scripts/build.sh publish src/Ntilde.App -c Release -r linux-x64 --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
         'chmod -R go-w /absolute/private/sidecar', `# From a collector checkout at ${m.scriptsRevision}`,
-        `node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde ${m.appVersion} --modify-other-keys`, '```', '',
+        `node scripts/terminfo-modern-x11-owned.mjs "$(realpath /absolute/private/sidecar/Ntilde)" ${m.appVersion} --modify-other-keys`, '```', '',
     ].join('\n');
 }
