@@ -80,7 +80,18 @@ const blinkSources = {
     modernBlinkOwnedSourceSha256: 'modern-blink-owned.mjs',
     modernBlinkWorkerSourceSha256: 'modern-blink-worker.mjs',
 };
-const blinkScope = process.argv[6] === '--scope' && process.argv[7] === 'modern-blink';
+const viewportPolicy = 'readonly-owned-source-graph-v76';
+const viewportSources = {
+    modernViewportSourceSha256: 'modern-viewport.mjs',
+    modernViewportOwnedSourceSha256: 'modern-viewport-owned.mjs',
+    modernViewportWorkerSourceSha256: 'modern-viewport-worker.mjs',
+};
+const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
+const scopes = {
+    'modern-blink': { policy: blinkPolicy, sources: blinkSources, entry: blinkSources.modernBlinkOwnedSourceSha256 },
+    'modern-viewport': { policy: viewportPolicy, sources: viewportSources, entry: viewportSources.modernViewportOwnedSourceSha256 },
+};
+const focusedScope = Object.hasOwn(scopes, requestedScope) ? scopes[requestedScope] : null;
 const focusedSuiteKey = Symbol.for('ntilde.terminfo.focusedSuite');
 // The desktop lease helper is the second reviewed pure bootstrap dependency (BCL imports only). It lives outside the measured
 // source graph, so the policy above does not change for it; its exact bytes are pinned here and loaded only when the runner asks for the lease.
@@ -123,8 +134,9 @@ async function checkCapturedImports(sources) {
 /** Copy regular fixed-scope inputs into an exclusive read-only tree, hash its manifest and check literal dependencies before execution. */
 async function capture(root) {
     const original = readFileSync(join(repo, 'scripts/terminfo/owned-source-inventory.json'));
-    const inventory = { ...JSON.parse(original), ...(blinkScope ? blinkSources : {}) };
-    const input = blinkScope ? Buffer.from(JSON.stringify(inventory, null, 2) + '\n') : original;
+    const inventory = JSON.parse(original);
+    if (focusedScope) Object.assign(inventory, focusedScope.sources);
+    const input = focusedScope ? Buffer.from(JSON.stringify(inventory, null, 2) + '\n') : original;
     const hashes = {}, sources = new Map();
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');
     for (const [key, file] of Object.entries(inventory)) {
@@ -137,7 +149,7 @@ async function capture(root) {
         const target = pathFor(root, file); mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
         writeFileSync(target, bytes, { flag: 'wx', mode: 0o400 }); hashes[key] = digest(bytes); sources.set(file, bytes);
     }
-    const manifest = Buffer.from(JSON.stringify({ schemaVersion: 1, policy: blinkScope ? blinkPolicy : policy, hashes }, null, 2) + '\n');
+    const manifest = Buffer.from(JSON.stringify({ schemaVersion: 1, policy: focusedScope?.policy ?? policy, hashes }, null, 2) + '\n');
     writeFileSync(join(root, 'source-snapshot.json'), manifest, { flag: 'wx', mode: 0o400 });
     setDirectoryModes(root, 0o500);
     await checkCapturedImports(sources);
@@ -175,7 +187,12 @@ async function launch() {
             broker = createDesktopLeaseBroker({ entrypoint: 'terminfo-owned.mjs', worktree: repo, waitMs: desktopLockWaitMs(), aborted: () => interrupted !== undefined });
             return broker.acquire();
         } });
-        if (blinkScope) globalThis[focusedSuiteKey] = await import(pathToFileURL(pathFor(root, blinkSources.modernBlinkOwnedSourceSha256)).href);
+        if (focusedScope) {
+            const suite = await import(pathToFileURL(pathFor(root, focusedScope.entry)).href);
+            globalThis[focusedSuiteKey] = focusedScope.policy === blinkPolicy
+                ? { scope: suite.scope, workerFile: suite.workerFile, prefix: 'mblink-', Collection: suite.BlinkCollection, completeReceipt: suite.completeBlinkReceipt }
+                : suite;
+        }
         await import(pathToFileURL(pathFor(root, 'terminfo-owned-runner.mjs')).href);
         if (interrupted) process.exitCode = 1;
     } finally {

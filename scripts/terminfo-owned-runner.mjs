@@ -421,7 +421,7 @@ const focusedSuite = globalThis[Symbol.for('ntilde.terminfo.focusedSuite')];
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2231,7 +2231,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2254,8 +2254,8 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     if (args[5] === 'direct-placeholders') return persistentAnimationMain(args, executable, snapshot, directPlaceholdersScope);
     if (args[5] === 'persistent-placeholder-grid') return persistentAnimationMain(args, executable, snapshot, persistentPlaceholderGridScope);
     if (args[5] === 'direct-placeholder-grid') return persistentAnimationMain(args, executable, snapshot, directPlaceholderGridScope);
-    if (args[5] === 'modern-blink') {
-        if (!focusedSuite) throw new Error('Expected the captured Modern blink scope.');
+    if (args[5] === 'modern-blink' || args[5] === 'modern-viewport') {
+        if (!focusedSuite) throw new Error('Expected the captured Modern scope.');
         return persistentAnimationMain(args, executable, snapshot, focusedSuite.scope);
     }
     const collectionScope = args.length === 6 ? osc633Scope : legacyScope;
@@ -4726,7 +4726,7 @@ function preparePersistentRunIn(scratch, args, executable, snapshot, lease, outp
     const settings = ownedSettings({ profileId: randomUUID(), profileName, command, scratch, persistence: collectionScope.persistence });
     if (focusedSuite) {
         settings.AllowOsc52ClipboardWrite = false;
-        settings.AgentAccessActEnabled = false;
+        settings.AgentAccessActEnabled = focusedSuite.allowGeneratedInput === true;
     }
     writeJson(join(appData, 'settings.json'), settings);
     writeJson(join(output, 'initial-settings.json'), settings);
@@ -4775,7 +4775,7 @@ function requireScopedWorker(run, worker, budget) {
 function answerScopedObservation(run, request, budget, { owner, worker, daemon }) {
     requireScopedWorker(run, worker, budget);
     if (focusedSuite) {
-        run.focusedState ??= new focusedSuite.BlinkCollection(run);
+        run.focusedState ??= new focusedSuite.Collection(run);
         return run.focusedState.observe(request, budget);
     }
     const { tty } = request;
@@ -4785,7 +4785,7 @@ function answerScopedObservation(run, request, budget, { owner, worker, daemon }
 
 function finishScopedRequest(run, tty, budget) {
     if (focusedSuite) {
-        if (!run.focusedState?.restored) throw new Error('Incomplete blink observations or pane restoration.');
+        if (!run.focusedState?.restored) throw new Error('Incomplete Modern observations or pane restoration.');
     } else requireAnimationCompletion(run.animationState);
     const terminal = run.proofs[0].privateClipboard;
     if (readOwnedTerminalState(tty, budget()) !== terminal.originalTerminalState) throw new Error('Original private kernel mode was not restored.');
@@ -4799,7 +4799,7 @@ function finishScopedRequest(run, tty, budget) {
 async function answerPersistentRequest(run, request, budget, lineage) {
     const [proofs, tty] = [run.proofs, request.tty];
     if (request.kind === 'kan-relaunch') return answerRelaunchRequest(run, request);
-    if (request.kind.startsWith(focusedSuite ? 'mblink-' : 'kan-')) return answerScopedObservation(run, request, budget, lineage);
+    if (request.kind.startsWith(focusedSuite?.prefix ?? 'kan-')) return answerScopedObservation(run, request, budget, lineage);
     switch (request.kind) {
         case 'prove':
             retainPersistentFirstProof(run, lineage.owner, lineage.worker, tty, budget);
@@ -4984,7 +4984,7 @@ async function runPersistentAnimation(run) {
     const proofPath = join(run.output, 'ownership-proof.json'), proof = JSON.parse(readFileSync(proofPath));
     proof.sourceSnapshot = { policy: sourceSnapshotPolicy, root: sourceRepo, removedAt: new Date().toISOString() };
     writeFileSync(proofPath, JSON.stringify(proof, null, 2) + '\n', { mode: 0o600 });
-    return { receipt: focusedSuite ? focusedSuite.completeBlinkReceipt(run.output, run.scratch)
+    return { receipt: focusedSuite ? focusedSuite.completeReceipt(run.output, run.scratch)
         : completePersistentAnimationReceipt(run.output, run.scratch, evidence) };
 }
 

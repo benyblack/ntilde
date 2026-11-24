@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "sourcePolicy": "readonly-owned-source-graph-v76",
+  "receiptSchema": 1,
+  "archives": {
+    "baseline-run.zip": "13258eca83729c956c459bc3309d9779355e2d4473090d7f0d915bf250f8499e",
+    "owned-run.zip": "27eb989269b25e30393ca6bc2bc8721e084b0c44ddf17f10ca75adf3d1216dc6",
+    "attempt-1.zip": "7061c3966831af0692e6fcff7adb91d17ed8a0d96cef052d09f08cda4914a5cf",
+    "attempt-2.zip": "bf40d0ddbec1e8fb54a21bc7d6c3c9aaf882b193aabbcb06add1060b2d46cefd",
+    "attempt-3.zip": "0abb08274a850a5f744aa99b72291600b27d4f7c2adba34dce289d2c1c558c30",
+    "attempt-4.zip": "608692c4ab08076562c2f6f02867ea60ce43cf91834bb6add9d484f8c8828900"
+  },
+  "baseline": {
+    "runId": "9d5cb718f7dc5abae880324e9e792298",
+    "appRevision": "2decf1f1392322a4a0b60ec28cd14edd5ec2ee67",
+    "scriptsRevision": "6778948c0c3dd2f295364ddc73a6897500b83bf0",
+    "platform": "macOS 27.0.1 (26A434), arm64"
+  },
+  "measurement": {
+    "runId": "d4541ac4d1c7185353e5713cd4a4652b",
+    "appRevision": "d09d54a43058077744ded049a9ec8d8446b3a65a",
+    "scriptsRevision": "431fe2512775eb744b74424899416178f186c502",
+    "platform": "macOS 27.0.1 (26A434), arm64"
+  },
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "cf1bc5d09c17f80f18bc787cfee4ef99",
+      "appRevision": "f0ca2b28f174f7595c4e901ff68ed4782aab65ed",
+      "scriptsRevision": "f0ca2b28f174f7595c4e901ff68ed4782aab65ed",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "reason": "Both phases passed on this App. Codex flagged a smooth-scroll convergence defect under continuous output, which this capture preceded."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "3bc714f153f4ac4a62b01e2c9cc1b3e4",
+      "appRevision": "351150271ee064bb5b9cd06538085f61af382b76",
+      "scriptsRevision": "351150271ee064bb5b9cd06538085f61af382b76",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "reason": "Both phases passed after the smooth-scroll fix. This run preceded SonarCloud changes to the App setter and measured collector."
+    },
+    {
+      "archive": "attempt-3.zip",
+      "runId": "e2bb579eaf287ff42c434fd186168924",
+      "appRevision": "d09d54a43058077744ded049a9ec8d8446b3a65a",
+      "scriptsRevision": "d09d54a43058077744ded049a9ec8d8446b3a65a",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "reason": "Both phases passed on the final App. The next run used the bounded wheel replay and worker naming changes requested by SonarCloud."
+    },
+    {
+      "archive": "attempt-4.zip",
+      "runId": "3ffaaa3123f98bd0f90d5cda1905f399",
+      "appRevision": "d09d54a43058077744ded049a9ec8d8446b3a65a",
+      "scriptsRevision": "d6ec9e28d6f190f186ae799e87c9f98fe9d25dcd",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "reason": "Both phases passed on the final App. This run preceded CodeRabbit changes to the seed request and abort restoration in the collector."
+    }
+  ]
+}

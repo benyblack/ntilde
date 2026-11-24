@@ -74,7 +74,7 @@ namespace Ntilde.Shell
             ResetMouseMotionTracking();
             _renderCaches.Rows.MaxEntries = Math.Max(buffer.Rows * 3, 50);
             _renderCaches.Rows.RequestClear();
-            ApplyScrollOffset(_scrollOffset, retireWheelTarget: true); // re-clamp against the new TotalLines/Rows
+            ScrollOffset = _scrollOffset; // re-clamp against the new TotalLines/Rows
             InvalidateBuffer();
         }
 

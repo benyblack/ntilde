@@ -11,6 +11,9 @@ namespace Ntilde.Shell
     {
         private bool _enableSmoothScrolling = true;
         private int _targetScrollOffset;
+        private long _scrollbackGeneration;
+        private long _scrollbackTail;
+        private int _scrollbackRows;
         // Carry fractional high-resolution wheel deltas so precision touchpads / hi-res
         // wheels (which emit sub-notch micro-events) produce one step per notch instead
         // of one per micro-event. One accumulator per wheel route, because each measures
@@ -51,13 +54,7 @@ namespace Ntilde.Shell
         /// </summary>
         internal bool AdvanceScrollAnimation()
         {
-            if (_buffer != null)
-            {
-                // The buffer may have shrunk since the gesture began (alt-screen switch, ED 3);
-                // a target past the new ceiling would otherwise never be reached.
-                int maxScroll = Math.Max(0, _buffer.TotalLines - _buffer.Rows);
-                _targetScrollOffset = Math.Clamp(_targetScrollOffset, 0, maxScroll);
-            }
+            int maxScroll = RebaseScrollOffsets();
 
             if (_scrollOffset == _targetScrollOffset)
             {
@@ -67,52 +64,66 @@ namespace Ntilde.Shell
 
             int delta = _targetScrollOffset - _scrollOffset;
             int step = Math.Sign(delta) * Math.Max(1, Math.Abs(delta) / 3);
-            ApplyScrollOffset(_scrollOffset + step, retireWheelTarget: false);
+            SetScrollOffsetCore(_scrollOffset + step, maxScroll);
             return IsWheelAnimationInFlight;
         }
 
-        // Method to ensure the cursor is visible in the view
+        // Follow output near the live line, otherwise keep the historical anchor in view.
         public void EnsureCursorVisible()
         {
             if (_buffer == null) return;
 
-
-            // For remote environments (WSL/SSH), after screen transitions, ensure we're at the bottom
-            // where the prompt should be, rather than calculating based on cursor position
-            // This addresses the issue where new output doesn't scroll properly after mc exits
             if (_justSwitchedFromAltScreen)
             {
-                ScrollOffset = 0; // Always scroll to bottom after alt screen switch
-                _justSwitchedFromAltScreen = false; // Reset the flag
+                ScrollOffset = 0;
+                _justSwitchedFromAltScreen = false;
+                return;
             }
-            else
+
+            // A smooth gesture owns the viewport even while passing through the
+            // follow-output band. The live end is still represented by offset zero.
+            if (IsWheelAnimationInFlight || _scrollOffset > 2)
             {
-                // Calculate the ideal scroll offset to show the cursor at the bottom of the viewport
-                int maxScroll = Math.Max(0, _buffer.TotalLines - _buffer.Rows);
-
-                // A smooth wheel gesture still in flight owns the viewport: output landing
-                // mid-gesture (a TUI redrawing its spinner) must not yank it back to the live
-                // line while it is passing through the follow-output band below.
-                if (IsWheelAnimationInFlight)
-                {
-                    _targetScrollOffset = Math.Clamp(_targetScrollOffset, 0, maxScroll);
-                    return;
-                }
-
-                // Only follow the output if we're already near the bottom (within 2 lines)
-                // This allows users to scroll up and stay there while still following new output when appropriate
-                if (ScrollOffset <= 2)
-                {
-                    ScrollOffset = 0;
-                }
-                else
-                {
-                    // Maintain current scroll position if user has scrolled up
-                    // Make sure it's still within valid range
-                    ScrollOffset = Math.Min(ScrollOffset, maxScroll);
-                }
+                RebaseScrollOffsets();
+            }
+            else if (_scrollOffset != 0)
+            {
+                ScrollOffset = 0;
             }
         }
+
+        private (int Maximum, long Generation, long Tail, int Rows) ReadScrollbackPosition()
+        {
+            if (_buffer is not { } buffer) return default;
+            buffer.Lock.EnterReadLock();
+            try
+            {
+                if (buffer.IsAltScreenActive) return default;
+                var history = buffer.Scrollback;
+                return (history.Count, history.Generation, history.TotalRowsAppended, buffer.Rows);
+            }
+            finally { buffer.Lock.ExitReadLock(); }
+        }
+
+        private int RebaseScrollOffsets()
+        {
+            var (maximum, generation, tail, rows) = ReadScrollbackPosition();
+            // The tail advances even when history evicts a page. Clamp only once
+            // the anchored row itself has gone. Clear/reflow changes generation,
+            // so the old absolute row coordinates no longer apply. A height
+            // change can also move rows between the live grid and scrollback.
+            // A gesture returning to the live line must keep closing the gap
+            // even if another row arrives on every animation frame.
+            bool holdingHistory = _targetScrollOffset != 0 && generation == _scrollbackGeneration && rows == _scrollbackRows;
+            long growth = holdingHistory ? Math.Max(0, tail - _scrollbackTail) : 0;
+            (_scrollbackGeneration, _scrollbackTail, _scrollbackRows) = (generation, tail, rows);
+            _targetScrollOffset = OffsetAfterGrowth(_targetScrollOffset, growth, maximum);
+            SetScrollOffsetCore(OffsetAfterGrowth(_scrollOffset, growth, maximum), maximum);
+            return maximum;
+        }
+
+        private static int OffsetAfterGrowth(int offset, long growth, int maximum)
+            => offset == 0 ? 0 : (int)Math.Min(offset + growth, maximum);
 
         public event Action<int, int>? ScrollStateChanged;
         private int _scrollOffset;
@@ -122,34 +133,41 @@ namespace Ntilde.Shell
         /// <summary>
         /// The viewport's distance above the live line, in rows. Setting it is an external
         /// seek (typing, scrollbar, search, follow-output snap) and retires any smooth-scroll
-        /// gesture still in flight; the animation itself moves the offset through
-        /// <see cref="ApplyScrollOffset"/> so its own frames do not cancel it.
+        /// gesture still in flight.
         /// </summary>
         public int ScrollOffset
         {
             get => _scrollOffset;
-            set => ApplyScrollOffset(value, retireWheelTarget: true);
+            set
+            {
+                if (_buffer == null) return;
+                int maximum = MaxScrollOffset;
+                if (value > 0)
+                {
+                    (maximum, _scrollbackGeneration, _scrollbackTail, _scrollbackRows) = ReadScrollbackPosition();
+                }
+                _targetScrollOffset = Math.Clamp(value, 0, maximum);
+                if (_scrollOffset == _targetScrollOffset) return;
+                _scrollOffset = _targetScrollOffset;
+                NotifyScrollOffsetChanged(maximum);
+            }
         }
 
         /// <summary>True while a smooth wheel gesture still has frames to play.</summary>
         private bool IsWheelAnimationInFlight => _scrollOffset != _targetScrollOffset;
 
-        private void ApplyScrollOffset(int value, bool retireWheelTarget)
+        private void SetScrollOffsetCore(int offset, int maximum)
         {
-            if (_buffer == null) return;
-            int maxScroll = Math.Max(0, _buffer.TotalLines - _buffer.Rows);
-            int newValue = Math.Clamp(value, 0, maxScroll);
-            if (retireWheelTarget)
-            {
-                _targetScrollOffset = newValue;
-            }
-            if (_scrollOffset != newValue)
-            {
-                _scrollOffset = newValue;
-                ScrollStateChanged?.Invoke(_scrollOffset, maxScroll);
-                CommandAssistAnchorHintChanged?.Invoke();
-                InvalidateBuffer();
-            }
+            if (_scrollOffset == offset) return;
+            _scrollOffset = offset;
+            NotifyScrollOffsetChanged(maximum);
+        }
+
+        private void NotifyScrollOffsetChanged(int maximum)
+        {
+            ScrollStateChanged?.Invoke(_scrollOffset, maximum);
+            CommandAssistAnchorHintChanged?.Invoke();
+            InvalidateBuffer();
         }
 
         /// <summary>Greatest reachable <see cref="ScrollOffset"/> for the attached buffer (0 when none).</summary>
@@ -356,10 +374,11 @@ namespace Ntilde.Shell
         {
             if (_buffer == null || lines == 0) return;
 
+            int maximum = RebaseScrollOffsets();
+            int origin = _enableSmoothScrolling ? _targetScrollOffset : _scrollOffset;
+            _targetScrollOffset = Math.Clamp(origin + lines, 0, maximum);
             if (_enableSmoothScrolling)
             {
-                int maxScroll = Math.Max(0, _buffer.TotalLines - _buffer.Rows);
-                _targetScrollOffset = Math.Clamp(_targetScrollOffset + lines, 0, maxScroll);
                 if (!_retired && !_scrollAnimationTimer.IsEnabled)
                 {
                     _scrollAnimationTimer.Start();
@@ -367,7 +386,7 @@ namespace Ntilde.Shell
             }
             else
             {
-                ScrollOffset += lines;
+                SetScrollOffsetCore(_targetScrollOffset, maximum);
             }
         }
     }

@@ -883,10 +883,8 @@ namespace Ntilde.Controls
         /// <para>
         /// Called on the PTY/SSH read thread, once per chunk read from the session. Posting
         /// unconditionally (what this replaced) makes the dispatcher queue grow with the remote's
-        /// send rate rather than the UI's drain rate: a busy SSH session delivers chunks far faster
-        /// than the UI thread retires them, and each one queued a closure that did the same work as
-        /// the one in front of it. <see cref="UpdateScrollUI"/> then posts a second job of its own,
-        /// so the cost was two dispatcher items and an async state machine per chunk.
+        /// send rate rather than the UI's drain rate: a busy SSH session can deliver chunks
+        /// far faster than the UI thread retires them.
         /// </para>
         /// <para>
         /// Every consumer here is a level, not an edge — the scrollbar reads the buffer's current
@@ -1199,6 +1197,21 @@ namespace Ntilde.Controls
         {
             if (Buffer == null) return;
 
+            if (TermView.JustSwitchedFromAltScreen)
+            {
+                this.Dispatcher.Post(async () =>
+                {
+                    await Task.Delay(10);
+                    TermView.EnsureCursorVisible();
+                }, DispatcherPriority.Render);
+            }
+            else
+            {
+                // Settle the historical anchor before publishing the scrollbar
+                // and scheduling the next rendered frame.
+                TermView.EnsureCursorVisible();
+            }
+
             _isUpdatingScroll = true;
             try
             {
@@ -1218,27 +1231,6 @@ namespace Ntilde.Controls
             {
                 _isUpdatingScroll = false;
             }
-
-            // When new output arrives, ensure the cursor is visible
-            // If we just switched from alt screen (like after exiting mc), ensure we're scrolled to show the cursor
-            this.Dispatcher.Post(async () =>
-            {
-
-                if (TermView.JustSwitchedFromAltScreen)
-                {
-                    // Small delay to ensure screen switch processing is complete
-                    await Task.Delay(10);
-                    // Ensure cursor is visible after screen switch
-                    TermView.EnsureCursorVisible();
-                    // Note: EnsureCursorVisible() handles resetting the flag internally
-                }
-                else
-                {
-                    // For normal output, ensure the cursor is visible
-                    TermView.EnsureCursorVisible();
-                }
-
-            }, DispatcherPriority.Render);
 
             // Failsafe: Force render on output
             TermView.InvalidateVisual();
