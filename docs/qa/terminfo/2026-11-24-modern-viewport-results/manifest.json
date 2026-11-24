@@ -4,10 +4,11 @@
   "receiptSchema": 1,
   "archives": {
     "baseline-run.zip": "13258eca83729c956c459bc3309d9779355e2d4473090d7f0d915bf250f8499e",
-    "owned-run.zip": "608692c4ab08076562c2f6f02867ea60ce43cf91834bb6add9d484f8c8828900",
+    "owned-run.zip": "27eb989269b25e30393ca6bc2bc8721e084b0c44ddf17f10ca75adf3d1216dc6",
     "attempt-1.zip": "7061c3966831af0692e6fcff7adb91d17ed8a0d96cef052d09f08cda4914a5cf",
     "attempt-2.zip": "bf40d0ddbec1e8fb54a21bc7d6c3c9aaf882b193aabbcb06add1060b2d46cefd",
-    "attempt-3.zip": "0abb08274a850a5f744aa99b72291600b27d4f7c2adba34dce289d2c1c558c30"
+    "attempt-3.zip": "0abb08274a850a5f744aa99b72291600b27d4f7c2adba34dce289d2c1c558c30",
+    "attempt-4.zip": "608692c4ab08076562c2f6f02867ea60ce43cf91834bb6add9d484f8c8828900"
   },
   "baseline": {
     "runId": "9d5cb718f7dc5abae880324e9e792298",
@@ -16,9 +17,9 @@
     "platform": "macOS 27.0.1 (26A434), arm64"
   },
   "measurement": {
-    "runId": "3ffaaa3123f98bd0f90d5cda1905f399",
+    "runId": "d4541ac4d1c7185353e5713cd4a4652b",
     "appRevision": "d09d54a43058077744ded049a9ec8d8446b3a65a",
-    "scriptsRevision": "d6ec9e28d6f190f186ae799e87c9f98fe9d25dcd",
+    "scriptsRevision": "431fe2512775eb744b74424899416178f186c502",
     "platform": "macOS 27.0.1 (26A434), arm64"
   },
   "attempts": [
@@ -45,6 +46,14 @@
       "scriptsRevision": "d09d54a43058077744ded049a9ec8d8446b3a65a",
       "platform": "macOS 27.0.1 (26A434), arm64",
       "reason": "Both phases passed on the final App. The next run used the bounded wheel replay and worker naming changes requested by SonarCloud."
+    },
+    {
+      "archive": "attempt-4.zip",
+      "runId": "3ffaaa3123f98bd0f90d5cda1905f399",
+      "appRevision": "d09d54a43058077744ded049a9ec8d8446b3a65a",
+      "scriptsRevision": "d6ec9e28d6f190f186ae799e87c9f98fe9d25dcd",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "reason": "Both phases passed on the final App. This run preceded CodeRabbit changes to the seed request and abort restoration in the collector."
     }
   ]
 }

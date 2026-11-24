@@ -9,7 +9,7 @@ import { requirementId } from './modern-viewport.mjs';
 import { verifyViewportRun } from './modern-viewport-owned.mjs';
 
 export const viewportPublication = 'docs/qa/terminfo/2026-11-24-modern-viewport-results';
-const manifestSha256 = '5c2ba2cb063274bc092da427b509b9cac4a005ded4e55f5d8a155514064e3261';
+const manifestSha256 = '62fa757f9ca559dee7ee15d89585e77adfa638e4b408afda0f291dc922f3a94b';
 
 function verifyLease(directory, runId) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
