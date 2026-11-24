@@ -75,7 +75,7 @@ export class BlinkCollection {
         this.pane.push(frame);
         if (stage === 'blank' || stage === 'plain') {
             // The DA barrier orders terminal bytes, so allow the compositor to paint before calibrating.
-            await delay(150);
+            await delay(stage === 'blank' ? 650 : 150);
             this.capture(stage, `blink-${stage}.png`, budget);
         }
     }
