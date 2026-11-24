@@ -1,0 +1,159 @@
+import AppKit
+import CoreGraphics
+import Foundation
+import Vision
+
+struct Point: Codable, Equatable {
+    let x: Double
+    let y: Double
+
+    init(_ point: CGPoint) {
+        x = point.x
+        y = point.y
+    }
+
+    var cgPoint: CGPoint { CGPoint(x: x, y: y) }
+}
+
+struct Window: Codable, Equatable {
+    let id: Int
+    let pid: Int
+    let layer: Int
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
+
+    init?(_ row: [String: Any], owner: Int) {
+        guard let pid = row[kCGWindowOwnerPID as String] as? Int, pid == owner,
+              let id = row[kCGWindowNumber as String] as? Int,
+              let layer = row[kCGWindowLayer as String] as? Int,
+              let bounds = row[kCGWindowBounds as String] as? [String: Double],
+              let x = bounds["X"], let y = bounds["Y"],
+              let width = bounds["Width"], let height = bounds["Height"] else { return nil }
+        self.id = id
+        self.pid = pid
+        self.layer = layer
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    }
+}
+
+struct State: Codable {
+    let frontPid: Int
+    let pointer: Point
+    let windows: [Window]
+}
+
+struct Line: Codable {
+    let text: String
+    let confidence: Float
+    let bounds: [Double]
+}
+
+struct Reading: Codable {
+    let original: Point
+    let before: State
+    let hover: State
+    let captured: State
+    let restored: State
+    let window: Window
+    let lines: [Line]
+}
+
+enum CaptureError: Error {
+    case noState, notFrontmost, noWindow, pointerChanged, windowChanged, captureFailed
+}
+
+func state(_ pid: Int) throws -> State {
+    guard let pointer = CGEvent(source: nil)?.location,
+          let rows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]],
+          let active = NSWorkspace.shared.frontmostApplication else { throw CaptureError.noState }
+    guard Int(active.processIdentifier) == pid else { throw CaptureError.notFrontmost }
+    return State(frontPid: pid, pointer: Point(pointer), windows: rows.compactMap { Window($0, owner: pid) })
+}
+
+func move(_ point: CGPoint) throws {
+    guard let event = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)
+    else { throw CaptureError.noState }
+    event.post(tap: .cghidEventTap)
+}
+
+func recognize(_ image: URL, popup: Bool) throws -> [Line] {
+    let request = VNRecognizeTextRequest()
+    request.recognitionLevel = .accurate
+    request.usesLanguageCorrection = false
+    request.recognitionLanguages = ["en-US"]
+    if !popup { request.regionOfInterest = CGRect(x: 0, y: 0.78, width: 0.6, height: 0.22) }
+    try VNImageRequestHandler(url: image).perform([request])
+    return (request.results ?? []).compactMap { result in
+        guard let candidate = result.topCandidates(1).first else { return nil }
+        let box = result.boundingBox
+        return Line(text: candidate.string, confidence: candidate.confidence, bounds: [box.minX, box.minY, box.width, box.height])
+    }
+}
+
+func capture(_ image: URL, in window: Window) throws {
+    let screen = Process()
+    screen.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+    screen.arguments = ["-l", String(window.id), "-o", "-x", "-t", "png", image.path]
+    try screen.run()
+    screen.waitUntilExit()
+    guard screen.terminationStatus == 0 else { throw CaptureError.captureFailed }
+}
+
+func readTooltip(pid: Int, image: URL) throws -> Reading {
+    let initial = try state(pid)
+    let main = initial.windows.filter { $0.layer == 0 && $0.width >= 400 && $0.height >= 200 }
+    guard main.count == 1, let tabWindow = main.first else { throw CaptureError.noWindow }
+    // The owned profile uses the horizontal strip. Its first tab sits just to
+    // the right of the macOS traffic-light reserve in the 36-point title band.
+    let target = CGPoint(x: tabWindow.x + 112, y: tabWindow.y + 18)
+    let outside = CGPoint(x: tabWindow.x + 112, y: tabWindow.y + 95)
+    var lastPosted = outside
+    defer {
+        if let pointer = CGEvent(source: nil)?.location, pointer == lastPosted {
+            try? move(initial.pointer.cgPoint)
+        }
+    }
+    try move(outside)
+    Thread.sleep(forTimeInterval: 0.15)
+    let before = try state(pid)
+    guard before.pointer.cgPoint == outside else { throw CaptureError.pointerChanged }
+    lastPosted = target
+    try move(target)
+    Thread.sleep(forTimeInterval: 0.8)
+    let hover = try state(pid)
+    guard hover.pointer.cgPoint == target else { throw CaptureError.pointerChanged }
+    let popups = hover.windows.filter { window in
+        !before.windows.contains { $0.id == window.id }
+            && abs(window.x - target.x) < 80 && abs(window.y - target.y) < 80
+            && window.width > 20 && window.height > 10 && window.height < 120
+    }
+    guard popups.count <= 1 else { throw CaptureError.noWindow }
+    let window = popups.first ?? tabWindow
+    try capture(image, in: window)
+    let captured = try state(pid)
+    guard captured.pointer == hover.pointer else { throw CaptureError.pointerChanged }
+    guard [before, hover, captured].allSatisfy({ $0.windows.contains(tabWindow) }),
+          captured.windows.contains(window) else { throw CaptureError.windowChanged }
+    try move(initial.pointer.cgPoint)
+    Thread.sleep(forTimeInterval: 0.10)
+    let restored = try state(pid)
+    guard restored.pointer == initial.pointer else { throw CaptureError.pointerChanged }
+    let lines = try recognize(image, popup: window.id != tabWindow.id)
+    return Reading(original: initial.pointer, before: before, hover: hover, captured: captured,
+                   restored: restored, window: window, lines: lines)
+}
+
+do {
+    let args = CommandLine.arguments
+    guard args.count == 3, let pid = Int(args[1]), pid > 0 else { throw CaptureError.noState }
+    let reading = try readTooltip(pid: pid, image: URL(fileURLWithPath: args[2]))
+    FileHandle.standardOutput.write(try JSONEncoder().encode(reading))
+} catch {
+    FileHandle.standardError.write(Data(("Native tab tooltip capture: \(error)\n").utf8))
+    exit(1)
+}
