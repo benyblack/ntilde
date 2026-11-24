@@ -71,15 +71,18 @@ export function readableModernBlink(report) {
     const appearances = new Map();
     const label = hash => {
         if (hash === null) return 'unusable';
-        if (!appearances.has(hash)) appearances.set(hash, String.fromCharCode(65 + appearances.size));
+        if (!appearances.has(hash)) appearances.set(hash, String.fromCodePoint(65 + appearances.size));
         return appearances.get(hash);
     };
+    const control = b.controlMatchesCalibration
+        ? `All ${b.frames.length} control crops matched that calibration.`
+        : 'The control crops diverged from that calibration.';
     return [
         '# Ntilde Modern assessment for SGR 5 blink', '',
         `**${totals.pass} pass / ${totals.fail} fail / ${totals.inconclusive} inconclusive across ${report.requirementsCount} frozen requirements.**`, '',
         `The [Modern modes assessment](../2026-11-24-modern-modes-results/report.md) had ${previous.pass} pass / ${previous.fail} fail / ${previous.inconclusive} inconclusive. The [original Modern publication](../2026-11-15-modern-results/report.md) retains the frozen criteria and upstream attribution.`, '',
         `**sgr.blink: ${b.conclusion}.** ${b.reason}.`, '',
-        `The sidecar wrote SGR 5 followed by X on row 4 and left an unstyled X on row 7. It hid the caret and parked it at row 12, column 1. It made no terminal writes during the measured series. Both crops came from the separate plain-X calibration. ${b.controlMatchesCalibration ? `All ${b.frames.length} control crops matched that calibration.` : 'The control crops diverged from that calibration.'}`, '',
+        `The sidecar wrote SGR 5 followed by X on row 4 and left an unstyled X on row 7. It hid the caret and parked it at row 12, column 1. It made no terminal writes during the measured series. Both crops came from the separate plain-X calibration. ${control}`, '',
         `The sampler targeted ${b.intervalMs} ms intervals. Each native screenshot falls within its recorded command interval. The no-change rule uses the shortest possible overall span and the longest possible interframe gap.`, '',
         ...(b.spanMs === undefined ? [] : [`The measured series spans at least ${b.spanMs.toFixed(2)} ms with gaps no greater than ${b.maxGapMs.toFixed(2)} ms.`, '']),
         ...(b.returnFrames ? [`The styled crop changed and returned across frames ${b.returnFrames.join(' → ')} (zero-based). The live compositor used the App’s usual clock. The stored blink flag (${b.corroboration.storedBlink}) and DECRQSS reply (\`${JSON.stringify(b.corroboration.decrqss)}\`) corroborate the setup.`, ''] : []),

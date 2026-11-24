@@ -4766,25 +4766,43 @@ async function answerRelaunchRequest(run, request) {
     return {};
 }
 
-/** Answer one lineage-proved owner request of the persistent animation collection. */
-async function answerPersistentRequest(run, request, budget, { owner, worker, daemon }) {
-    const [proofs, tty] = [run.proofs, request.tty];
-    if (focusedSuite && request.kind.startsWith('mblink-')) {
-        if (!run.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
+function requireScopedWorker(run, worker, budget) {
+    if (!run.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
+    const command = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
+    if (!matchesRecordedWorker(worker, run.identities.worker, command, run.runId)) throw new Error('Recorded worker identity or marker changed.');
+}
+
+function answerScopedObservation(run, request, budget, { owner, worker, daemon }) {
+    requireScopedWorker(run, worker, budget);
+    if (focusedSuite) {
         run.focusedState ??= new focusedSuite.BlinkCollection(run);
         return run.focusedState.observe(request, budget);
     }
+    const { tty } = request;
+    return observeImageCarrierIn(run.imageEnvironment, run.carrier, request, budget, { app: owner, worker, ...(daemon ? { daemon: daemon.record } : {}), tty, at: new Date().toISOString(),
+        terminalOutput: readOwnedOutputMode(tty, budget()), ...(run.relaunches?.length ? { relaunch: run.relaunches.at(-1) } : {}) });
+}
+
+function finishScopedRequest(run, tty, budget) {
+    if (focusedSuite) {
+        if (!run.focusedState?.restored) throw new Error('Incomplete blink observations or pane restoration.');
+    } else requireAnimationCompletion(run.animationState);
+    const terminal = run.proofs[0].privateClipboard;
+    if (readOwnedTerminalState(tty, budget()) !== terminal.originalTerminalState) throw new Error('Original private kernel mode was not restored.');
+    Object.assign(terminal, { restoredTerminalState: terminal.originalTerminalState, restoredAt: new Date().toISOString() });
+    run.completed = true;
+    run.resolve();
+    return {};
+}
+
+/** Answer one lineage-proved owner request of the scoped collection. */
+async function answerPersistentRequest(run, request, budget, lineage) {
+    const [proofs, tty] = [run.proofs, request.tty];
     if (request.kind === 'kan-relaunch') return answerRelaunchRequest(run, request);
-    if (request.kind.startsWith('kan-')) {
-        if (!run.outputModeVerified) throw new Error('Private PTY output mode has not been verified.');
-        const workerCommand = execFileSync('/bin/ps', ['-p', String(worker.pid), '-o', 'command='], { encoding: 'utf8', timeout: budget(), maxBuffer: 16384 });
-        if (!matchesRecordedWorker(worker, run.identities.worker, workerCommand, run.runId)) throw new Error('Recorded animation worker identity or marker changed.');
-        return observeImageCarrierIn(run.imageEnvironment, run.carrier, request, budget, { app: owner, worker, ...(daemon ? { daemon: daemon.record } : {}), tty, at: new Date().toISOString(),
-            terminalOutput: readOwnedOutputMode(tty, budget()), ...(run.relaunches?.length ? { relaunch: run.relaunches.at(-1) } : {}) });
-    }
+    if (request.kind.startsWith(focusedSuite ? 'mblink-' : 'kan-')) return answerScopedObservation(run, request, budget, lineage);
     switch (request.kind) {
         case 'prove':
-            retainPersistentFirstProof(run, owner, worker, tty, budget);
+            retainPersistentFirstProof(run, lineage.owner, lineage.worker, tty, budget);
             return { privateClipboard: true, originalTerminalState: proofs[0].privateClipboard.originalTerminalState };
         case 'raw-output':
             if (run.outputModeVerified || !proofs.length) throw new Error('Unexpected private PTY output proof.');
@@ -4792,14 +4810,7 @@ async function answerPersistentRequest(run, request, budget, { owner, worker, da
             run.outputModeVerified = true;
             return {};
         case 'done':
-            if (focusedSuite) {
-                if (!run.focusedState?.restored) throw new Error('Incomplete blink observations or pane restoration.');
-            } else requireAnimationCompletion(run.animationState);
-            if (readOwnedTerminalState(tty, budget()) !== proofs[0].privateClipboard.originalTerminalState) throw new Error('Original private kernel mode was not restored.');
-            Object.assign(proofs[0].privateClipboard, { restoredTerminalState: proofs[0].privateClipboard.originalTerminalState, restoredAt: new Date().toISOString() });
-            run.completed = true;
-            run.resolve();
-            return {};
+            return finishScopedRequest(run, tty, budget);
         case 'failed':
             run.reject(new Error(request.error ?? 'Worker failed.'));
             return {};

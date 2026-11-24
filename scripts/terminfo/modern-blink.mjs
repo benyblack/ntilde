@@ -1,6 +1,7 @@
 // Live native-window evidence for the frozen Modern SGR 5 criterion.
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual as same } from 'node:util';
+import { parseChecksumReportFrame } from './checksum-report.mjs';
 
 export const blinkScope = Object.freeze({ id: 'owned-modern-blink-direct-v1', persistence: 'Off', deadlineMs: 90000 });
 export const blinkPrefix = 'mblink';
@@ -25,10 +26,11 @@ export const blinkHash = bytes => createHash('sha256').update(bytes).digest('hex
 export const checkBlink = (condition, reason) => { if (!condition) throw new Error('Modern blink: ' + reason); };
 
 export function parseBlinkReply(bytes) {
-    if (!bytes.endsWith('c')) return null;
-    const match = /^(\x1bP[01]\$r[^\x1b]*\x1b\\)?(\x1b\[\?[\d;]+c)$/.exec(bytes);
-    checkBlink(match, 'unexpected DECRQSS exchange bytes');
-    return { response: match[1] ?? null, barrier: match[2] };
+    const parsed = parseChecksumReportFrame(bytes);
+    if (!parsed) return null;
+    const response = parsed.reply?.raw ?? null;
+    checkBlink(response === null || /^[01]\$r/.test(response.slice(2)), 'unexpected DECRQSS exchange bytes');
+    return { response, barrier: parsed.barrier };
 }
 
 export function gradeBlink(frames, geometry) {

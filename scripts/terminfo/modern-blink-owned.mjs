@@ -36,7 +36,7 @@ function verifyStep(frame, index, start, runId) {
     if (stage === 'start' || stage === 'finish') {
         checkBlink(!screen.bufferState.alternateScreen && frame.sha256 === start.sha256 && screen.cursorVisible, 'main screen not restored');
     } else {
-        const expected = Array(screen.rows).fill('');
+        const expected = new Array(screen.rows).fill('');
         expected[0] = blinkNonce + runId;
         if (index >= 3) expected[targetRow] = expected[controlRow] = ' '.repeat(textCol) + 'X';
         const bound = stage === 'bind';
@@ -48,8 +48,9 @@ function verifyStep(frame, index, start, runId) {
 }
 
 export class BlinkCollection {
-    constructor({ app, appData, output, profileName, runId }) {
-        Object.assign(this, { app, output, runId, pane: [], count: 0 });
+    constructor(run) {
+        const { app, appData, output, profileName, runId } = run;
+        Object.assign(this, { run, app, output, runId, pane: [], count: 0 });
         this.observer = new OwnedCellObserver({ appData, ownerPid: app.pid, profileName, includeCellDetails: true, includeBufferState: true,
             nonce: blinkNonce + runId, prefix: 'mblink' });
     }
@@ -80,6 +81,7 @@ export class BlinkCollection {
         }
     }
     capture(stage, file, budget) {
+        checkBlink(!this.run.stopping, 'collection stopped before native capture');
         const native = captureBlinkWindow(this.output, file, this.app.pid, budget);
         append(this.output, nativeFile, { stage, ...native });
     }
@@ -144,11 +146,14 @@ export function deriveBlinkMeasurement(output, context) {
     });
     const grade = gradeBlink(frames, geometry);
     const restoredControl = frames.every(frame => frame.control === baseline);
-    const verdict = !restoredControl && grade.conclusion !== 'inconclusive'
-        ? { ...grade, conclusion: 'inconclusive', reason: 'unstyled control differs from calibration', returnFrames: undefined } : grade;
+    if (!restoredControl && grade.conclusion !== 'inconclusive') {
+        grade.conclusion = 'inconclusive';
+        grade.reason = 'unstyled control differs from calibration';
+        delete grade.returnFrames;
+    }
     const screen = panes[4].screen;
     const cells = expandCellDetails(screen.cellDetails, screen.rows * screen.cols);
-    return { ...verdict, id: 'sgr.blink', runId: context.runId, paneId: panes[0].paneId, geometry, crops,
+    return { ...grade, id: 'sgr.blink', runId: context.runId, paneId: panes[0].paneId, geometry, crops,
         imageSize: { width: plain.width, height: plain.height }, intervalMs: blinkIntervalMs, frames,
         controlMatchesCalibration: restoredControl, controlDigest: baseline, setup: panes.filter(frame => frame.requestBytes !== null)
             .map(({ stage, requestBytes, barrier }) => ({ stage, requestBytes, barrier })),
@@ -191,7 +196,7 @@ export function verifyBlinkRun(output, archived = false) {
     const report = deriveBlinkMeasurement(output, context);
     if (archived) {
         checkBlink(same(json(output, receiptFile), makeReceipt(output)), 'receipt does not rederive');
-        checkBlink(same(json(output, reportFile), JSON.parse(JSON.stringify(report))), 'pixel verdict does not rederive');
+        checkBlink(same(json(output, reportFile), report), 'pixel verdict does not rederive');
     }
     return report;
 }

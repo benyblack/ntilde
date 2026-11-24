@@ -64,5 +64,5 @@ test('DECRQSS records an exact reply or fenced silence', () => {
     assert.deepEqual(parseBlinkReply(response + barrier), { response, barrier });
     assert.deepEqual(parseBlinkReply(barrier), { response: null, barrier });
     assert.equal(parseBlinkReply(response), null);
-    assert.throws(() => parseBlinkReply('junk' + barrier), /unexpected DECRQSS/);
+    assert.throws(() => parseBlinkReply('junk' + barrier), /Unexpected rectangle checksum barrier bytes/);
 });

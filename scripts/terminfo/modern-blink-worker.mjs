@@ -47,12 +47,11 @@ async function run(config, binding) {
         await collect(config, tty, fence);
     } catch (error) {
         failure = error;
-    } finally {
-        try { restore(); }
-        catch (error) {
-            if (failure) throw new AggregateError([failure, error], 'Blink collection and terminal restoration failed.');
-            throw error;
-        }
+    }
+    try { restore(); }
+    catch (error) {
+        if (failure) throw new AggregateError([failure, error], 'Blink collection and terminal restoration failed.');
+        throw error;
     }
     if (failure) throw failure;
     await requestOwner(config, 'done', { tty });
