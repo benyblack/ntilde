@@ -1,5 +1,6 @@
 using Avalonia.Headless.XUnit;
 using Moq;
+using System.Linq;
 using Ntilde.Pty;
 using Ntilde.Shell;
 using Ntilde.VT;
@@ -101,6 +102,92 @@ namespace Ntilde.Tests.Input
 
             Assert.Equal(0, view.ScrollOffset);
             Assert.False(view.AdvanceScrollAnimation(), "no animation should be pending after a snap");
+        }
+
+        [AvaloniaTheory]
+        [InlineData("marker\r\n")]
+        [InlineData("\u001b[?2026hmarker\r\n\u001b[?2026l")]
+        public void OutputWhileScrolledBack_HoldsTheSameVisibleRows(string output)
+        {
+            var (view, buffer) = CreateViewAtBottom();
+            view.ScrollByWheelLines(10 * WheelLinesPerNotch);
+            RunAnimationToCompletion(view);
+            string[] anchor = ReadVisibleRows(view, buffer);
+            Assert.Equal("line 8", anchor[0]);
+            Assert.Equal("line 31", anchor[^1]);
+
+            new AnsiParser(buffer).Process(output);
+            view.EnsureCursorVisible();
+            view.EnsureCursorVisible(); // The same appended row must not be counted twice.
+
+            Assert.Equal(anchor, ReadVisibleRows(view, buffer));
+            Assert.Equal(31, view.ScrollOffset);
+
+            view.ScrollToInputLine();
+            Assert.Equal("marker", ReadVisibleRows(view, buffer)[^2]);
+        }
+
+        [AvaloniaFact]
+        public void GrowthDuringSmoothScroll_PreservesTheRequestedAnchor()
+        {
+            var (view, buffer) = CreateViewAtBottom();
+            view.ScrollByWheelLines(10 * WheelLinesPerNotch);
+            Assert.True(view.AdvanceScrollAnimation());
+
+            new AnsiParser(buffer).Process("marker\r\n");
+            view.EnsureCursorVisible();
+            RunAnimationToCompletion(view);
+
+            Assert.Equal("line 8", ReadVisibleRows(view, buffer)[0]);
+        }
+
+        [AvaloniaFact]
+        public void OutputEvictingAnOlderPage_HoldsARetainedAnchor()
+        {
+            var (view, buffer) = CreateViewAtBottom();
+            const int budgetRows = 128;
+            buffer.MaxHistory = budgetRows;
+            var parser = new AnsiParser(buffer);
+            int extra = budgetRows - buffer.Scrollback.Count;
+            for (int i = 0; i < extra; i++)
+            {
+                parser.Process($"extra {i}\r\n");
+            }
+            Assert.Equal(0, buffer.Scrollback.TotalRowsEvicted);
+
+            view.ScrollOffset = 30;
+            string[] anchor = ReadVisibleRows(view, buffer);
+            parser.Process("marker\r\n");
+            view.EnsureCursorVisible();
+
+            Assert.True(buffer.Scrollback.TotalRowsEvicted > 0);
+            Assert.Equal(anchor, ReadVisibleRows(view, buffer));
+        }
+
+        [AvaloniaFact]
+        public void ClearedHistory_ClampsAnAnchorFromThePreviousGeneration()
+        {
+            var (view, buffer) = CreateViewAtBottom();
+            view.ScrollOffset = 30;
+            var parser = new AnsiParser(buffer);
+            parser.Process("\u001b[3J");
+            parser.Process("marker\r\n");
+            view.EnsureCursorVisible();
+
+            Assert.Equal(1, view.ScrollOffset);
+            Assert.Equal(1, view.MaxScrollOffset);
+        }
+
+        private static string[] ReadVisibleRows(TerminalView view, TerminalBuffer buffer)
+        {
+            int start = buffer.TotalLines - buffer.Rows - view.ScrollOffset;
+            buffer.Lock.EnterReadLock();
+            try
+            {
+                return Enumerable.Range(start, buffer.Rows).Select(row => new string(Enumerable.Range(0, buffer.Cols)
+                    .Select(col => buffer.GetCellAbsolute(col, row).Character).ToArray()).TrimEnd(' ', '\0')).ToArray();
+            }
+            finally { buffer.Lock.ExitReadLock(); }
         }
 
         [AvaloniaFact]
