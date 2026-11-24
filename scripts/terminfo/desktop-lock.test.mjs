@@ -427,12 +427,18 @@ test('the survivor scan sees a marker at the end of a long command line even whe
     finally { if (before === undefined) delete process.env.COLUMNS; else process.env.COLUMNS = before; child.kill('SIGKILL'); }
 }));
 
-test('offline commands never import the lock: only the launcher, the common-core driver, the lock tooling and its test fixture reference it', () => {
+test('only approved collection entrypoints and lock tooling reference the desktop lock', () => {
     const scripts = new URL('../', import.meta.url);
     const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? (entry.name === 'node_modules' ? [] : walk(new URL(entry.name + '/', dir))) : [new URL(entry.name, dir)]);
     const referencing = walk(scripts).filter(url => /\.(?:mjs|ts|py|sh|ps1)$/.test(url.pathname) && !/\.test\./.test(url.pathname))
-        .filter(url => /desktop-lock|desktop-collection\.lock|acquireDesktopLease|desktopLeaseKey|ntilde\.terminfo\.desktopLease/.test(readFileSync(url, 'utf8')))
-        .map(url => url.pathname.slice(scripts.pathname.length)).sort();
-    assert.deepEqual(referencing, ['terminfo-desktop-lock.mjs', 'terminfo-owned-runner.mjs', 'terminfo-owned.mjs', 'terminfo/common-core-driver.ts',
+        .filter(url => {
+            let source = readFileSync(url, 'utf8');
+            // The offline X11 publication checks this retained source basename as data.
+            if (url.pathname.endsWith('/terminfo/modern-x11-mouse-results.mjs')) source = source.replace("'desktop-lock.mjs',", '');
+            return /desktop-lock|desktop-collection\.lock|acquireDesktopLease|desktopLeaseKey|ntilde\.terminfo\.desktopLease/.test(source);
+        })
+        .map(url => url.pathname.slice(scripts.pathname.length)).toSorted();
+    assert.deepEqual(referencing, ['terminfo-desktop-lock.mjs', 'terminfo-modern-x11-owned.mjs', 'terminfo-owned-runner.mjs',
+        'terminfo-owned.mjs', 'terminfo/common-core-driver.ts',
         'terminfo/desktop-lock.mjs', 'terminfo/fixtures/desktop-lock-fixture.mjs']);
 });

@@ -5,7 +5,7 @@ import { dirname, join, relative } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { isDeepStrictEqual as equal, promisify } from 'node:util';
 import { readLinuxOwnedChildFacts, readLinuxProcessFacts } from './linux-process-provider.mjs';
-import { actionPlan, ids, modePlan, need, replayMouse } from './modern-x11-mouse.mjs';
+import { actionPlan, ids, modePlan, need, replayMouse, x11SocketPath } from './modern-x11-mouse.mjs';
 
 const runFile = promisify(execFile);
 const stamp = () => process.hrtime.bigint().toString();
@@ -52,7 +52,7 @@ async function waitFor(check, message, aborted, timeout = 12000) {
         if (aborted?.()) throw new Error('interrupted owned fixture');
         const value = check();
         if (value) return value;
-        await delay(30);
+        await delay(30); // NOSONAR: serial readiness polling within the fixture deadline.
     }
     throw new Error(message);
 }
@@ -95,13 +95,14 @@ async function launchDisplay(run) {
         need(!run.display.status && result.length <= 8, 'Xvfb exited or returned an invalid display number');
         return /^(\d{1,4})\n$/.exec(result)?.[1];
     }, 'Xvfb did not report its allocated display', run.aborted);
-    run.xSocket = '/tmp/.X11-unix/X' + number;
+    const display = ':' + number;
+    run.xSocket = x11SocketPath(display);
     const socket = lstatSync(run.xSocket, { bigint: true });
     need(socket.isSocket() && socket.uid === BigInt(process.getuid()), 'wrong display socket identity');
     const server = readLinuxProcessFacts(run.display.child.pid);
     need(server.ppid === process.pid && server.executable === realpathSync('/usr/bin/Xvfb')
         && equal(server.argv.slice(1), args), 'wrong Xvfb launch identity');
-    Object.assign(run.env, { DISPLAY: ':' + number, XAUTHORITY: auth });
+    Object.assign(run.env, { DISPLAY: display, XAUTHORITY: auth });
     run.record.display = { name: run.env.DISPLAY, socket: run.xSocket, socketInode: socket.ino.toString(), server,
         executableSha256: hash(readFileSync(server.executable)) };
 }
@@ -196,16 +197,29 @@ async function modes(run, key) {
     return result;
 }
 
-async function actions(run, log, sequence, key) {
+async function recordAction(run, step, request, key) {
+    checkLineage(run);
+    step.arm = await worker(run, { kind: 'arm', key });
+    step.native = await x11(run, { kind: 'action', window: run.record.identity.window, request });
+    step.capture = await worker(run, { kind: 'seal', key });
+}
+
+async function recordPhase(run, phase, sequence, mode, label) {
+    phase.modes = await modes(run, mode);
     for (const [index, request] of sequence.entries()) {
-        checkLineage(run);
-        const label = key + '/' + index;
         const step = {};
-        log.push(step);
-        step.arm = await worker(run, { kind: 'arm', key: label });
-        step.native = await x11(run, { kind: 'action', window: run.record.identity.window, request });
-        step.capture = await worker(run, { kind: 'seal', key: label });
+        phase.steps.push(step);
+        await recordAction(run, step, request, label + '/' + index); // NOSONAR: arm, drive and seal each exclusive observation window before the next.
     }
+}
+
+async function recordCase(run, id) {
+    const { record } = run;
+    const planned = actionPlan(record.identity.window, id);
+    const attempt = { id, control: { steps: [] }, target: { steps: [] } };
+    record.cases.push(attempt);
+    await recordPhase(run, attempt.control, planned.control, 'control', id + '/control');
+    await recordPhase(run, attempt.target, planned.target, id, id + '/target');
 }
 
 async function observe(run) {
@@ -213,15 +227,7 @@ async function observe(run) {
     await launchPane(run);
     const { record } = run;
     record.incoming = await modes(run, 'incoming');
-    for (const id of ids) {
-        const planned = actionPlan(record.identity.window, id);
-        const attempt = { id, control: { steps: [] }, target: { steps: [] } };
-        record.cases.push(attempt);
-        attempt.control.modes = await modes(run, 'control');
-        await actions(run, attempt.control.steps, planned.control, id + '/control');
-        attempt.target.modes = await modes(run, id);
-        await actions(run, attempt.target.steps, planned.target, id + '/target');
-    }
+    for (const id of ids) await recordCase(run, id); // NOSONAR: one pane, with distinct sequenced mode changes and byte windows.
     record.restore = { modes: await modes(run, 'restore') };
     const pane = await listPane(run);
     need(equal(pane, record.identity.pane), 'pane changed during collection');

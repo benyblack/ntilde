@@ -42,6 +42,7 @@ function fixture() {
     const steps = (sequence, outputs, label) => sequence.map((request, index) => {
         const key = label + '/' + index, armed = tick(), started = tick(), finished = tick();
         const chunks = outputs[index] ? [{ hex: outputs[index], at: tick() }] : [];
+        time += 240000000n;
         return {
             arm: { key, armed },
             native: { request, started, finished, windowId: window.id, appPid: identity.appPid, serverPid: identity.serverPid, focus: window.id, xtest: true,
@@ -71,6 +72,10 @@ test('replay refuses stale control/target bytes or a capture sealed before deliv
     const press = early.cases[0].target.steps[1];
     press.capture.sealed = press.native.started;
     assert.throws(() => replayMouse(early), /misordered action window/);
+    const short = fixture();
+    const silent = short.cases[0].target.steps[0];
+    silent.capture.sealed = (BigInt(silent.native.finished) + 1000n).toString();
+    assert.throws(() => replayMouse(short), /silence observation budget/);
 });
 
 test('replay refuses failed native delivery and changed pane or kernel restoration', () => {

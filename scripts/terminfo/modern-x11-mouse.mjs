@@ -23,6 +23,11 @@ export function need(condition, message) {
     if (!condition) throw new Error('Modern X11 mouse: ' + message);
 }
 
+export function x11SocketPath(display) {
+    need(/^:\d{1,4}$/.test(display), 'invalid Xvfb display number');
+    return '/tmp/.X11-unix/X' + display.slice(1); // NOSONAR: fixed Xorg socket namespace is inspected read-only; the owned Xvfb creates and removes its socket.
+}
+
 function point(window, fractionX, fractionY) {
     return [window.x + Math.floor(window.width * fractionX), window.y + Math.floor(window.height * fractionY)];
 }
@@ -65,6 +70,7 @@ function verifyAction(step, expected, previous, identity, key) {
     need(arm?.key === key && capture?.key === key && before(previous, arm.armed)
         && before(arm.armed, native.started) && before(native.started, native.finished)
         && before(native.finished, capture.sealed), 'stale or misordered action window');
+    need(BigInt(capture.sealed) - BigInt(native.finished) >= 200000000n, 'raw input window ended before the silence observation budget');
     need(same(native.request, expected) && native.serverPid === identity.serverPid
         && native.windowId === identity.window.id && native.appPid === identity.appPid
         && native.focus === identity.window.id && native.xtest === true
@@ -104,6 +110,23 @@ const leftRelease = frame => frame?.code === 0 && !frame.press;
 const invalid = reason => ({ status: 'probe-invalid', conclusion: 'inconclusive', reason });
 const verdict = (supported, reason) => ({ status: supported ? 'supported' : 'unsupported', conclusion: supported ? 'pass' : 'fail', reason });
 
+function gradeX10(press, release) {
+    if (!press && !release) return verdict(false, 'The delivered X10 click was silent.');
+    if (press.startsWith('1b5b4d') && press.length === 12 && !release) return verdict(true, 'Legacy CSI M and three payload bytes arrived on the press.');
+    return invalid('The X10 click produced an SGR or otherwise unclassifiable report.');
+}
+
+function gradeDrag(press, move, release, pane) {
+    const down = sgr(press, pane), up = sgr(release, pane);
+    if (!leftPress(down) || !leftRelease(up) || same(down.cell, up.cell)) return invalid('The drag lacked ordered left-button endpoints in distinct cells.');
+    if (!move) return verdict(false, 'The delivered drag produced press and release without motion.');
+    const motion = sgr(move, pane);
+    if (motion?.code === 32 && motion.press && same(motion.cell, up.cell)) {
+        return verdict(true, 'SGR motion with the left-button motion bit arrived before the destination release.');
+    }
+    return invalid('The drag motion stream did not match the ordered held-button action.');
+}
+
 export function gradeCase(id, control, target, pane) {
     const [controlMove, controlPress, controlRelease] = control;
     const start = sgr(controlPress, pane), end = sgr(controlRelease, pane);
@@ -112,21 +135,8 @@ export function gradeCase(id, control, target, pane) {
     }
     const [position, press, moveOrRelease, release] = target;
     if (position) return invalid('Bytes arrived during the neutral positioning window.');
-    if (id === ids[0]) {
-        if (!press && !moveOrRelease) return verdict(false, 'The delivered X10 click was silent.');
-        if (press.startsWith('1b5b4d') && press.length === 12 && !moveOrRelease) return verdict(true, 'Legacy CSI M and three payload bytes arrived on the press.');
-        return invalid('The X10 click produced an SGR or otherwise unclassifiable report.');
-    }
-    if (id === ids[1]) {
-        const down = sgr(press, pane), up = sgr(release, pane);
-        if (!leftPress(down) || !leftRelease(up) || same(down.cell, up.cell)) return invalid('The drag lacked ordered left-button endpoints in distinct cells.');
-        if (!moveOrRelease) return verdict(false, 'The delivered drag produced press and release without motion.');
-        const motion = sgr(moveOrRelease, pane);
-        if (motion?.code === 32 && motion.press && same(motion.cell, up.cell)) {
-            return verdict(true, 'SGR motion with the left-button motion bit arrived before the destination release.');
-        }
-        return invalid('The drag motion stream did not match the ordered held-button action.');
-    }
+    if (id === ids[0]) return gradeX10(press, moveOrRelease);
+    if (id === ids[1]) return gradeDrag(press, moveOrRelease, release, pane);
     need(id === ids[2], 'unknown case');
     const raw = press + moveOrRelease;
     return verdict(raw === '1b5b41' || raw === '1b4f41', raw === '' ? 'The delivered alternate-screen wheel-up was silent.'

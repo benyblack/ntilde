@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -35,7 +35,7 @@ function captureLease(lease, output) {
     writeFileSync(join(output, 'desktop-lease.jsonl'), entries.join('\n') + '\n', { flag: 'wx', mode: 0o600 });
 }
 
-async function main() {
+function validateInvocation() {
     const [target, appVersion, ...extra] = process.argv.slice(2);
     if (extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
         || process.platform !== 'linux' || Number(process.versions.node.split('.')[0]) < 24) {
@@ -45,10 +45,34 @@ async function main() {
     const info = lstatSync(executable);
     if (target !== executable || basename(executable) !== 'Ntilde' || !info.isFile() || info.uid !== process.getuid()
         || (info.mode & 0o022) !== 0 || lstatSync(dirname(executable)).uid !== process.getuid()) throw new Error('Expected the owned regular Ntilde sidecar.');
-    const repo = realpathSync(join(here, '..'));
-    const outputRoot = join(repo, 'artifacts', 'terminfo');
-    mkdirSync(outputRoot, { recursive: true, mode: 0o700 });
-    const lease = await acquireDesktopLease({ entrypoint: 'terminfo-modern-x11-owned.mjs', worktree: repo, waitMs: desktopLockWaitMs() });
+    return { executable, appVersion };
+}
+
+function finishLease(lease, scratch, sources, output) {
+    if (lease.launchAttempted && !lease.cleanupVerified) {
+        lease.retain('Owned X11 launch or cleanup was not verified.');
+        throw new Error('Desktop lock retained for ' + lease.leaseId);
+    }
+    if (sources) chmodSync(sources.dir, 0o700);
+    if (scratch) {
+        rmSync(scratch, { recursive: true, force: true });
+        if (existsSync(scratch)) throw new Error('Disposable X11 fixture remains.');
+        writeFileSync(join(output, 'fixture-cleanup.json'), JSON.stringify({
+            runId: lease.leaseId, scratch, removedAt: new Date().toISOString(),
+        }) + '\n', { flag: 'wx', mode: 0o600 });
+    }
+    lease.release();
+    if (output) captureLease(lease, output);
+}
+
+function assertUnchanged(sources) {
+    if (readdirSync(sources.dir).length !== files.length) throw new Error('Measured source membership changed.');
+    for (const name of files) {
+        if (digest(readFileSync(join(sources.dir, name))) !== sources.manifest[name]) throw new Error('Measured source changed.');
+    }
+}
+
+async function runOwnedFixture(lease, outputRoot, invocation) {
     let scratch, output, sources, failure;
     const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
     let interrupted;
@@ -60,33 +84,28 @@ async function main() {
         scratch = realpathSync(mkdtempSync(join(tmpdir(), 'ntilde-x11-')));
         sources = copySources(scratch, output);
         const { collect } = await import(pathToFileURL(join(sources.dir, 'modern-x11-mouse-collect.mjs')).href);
-        const verdicts = await collect({ scratch, output, executable, appVersion, sources: sources.dir, lease, aborted: () => interrupted !== undefined });
+        const verdicts = await collect({ scratch, output, ...invocation, sources: sources.dir, lease, aborted: () => interrupted !== undefined });
         if (interrupted) throw new Error('Interrupted by ' + interrupted);
-        for (const name of readdirSync(sources.dir)) {
-            if (digest(readFileSync(join(sources.dir, name))) !== sources.manifest[name]) throw new Error('Measured source changed.');
-        }
+        assertUnchanged(sources);
         console.log(JSON.stringify({ runId: lease.leaseId, output, verdicts }));
     } catch (error) { failure = error; }
-    try {
-        if (lease.launchAttempted && !lease.cleanupVerified) {
-            lease.retain('Owned X11 launch or cleanup was not verified.');
-            throw new Error('Desktop lock retained for ' + lease.leaseId);
-        }
-        if (sources) chmodSync(sources.dir, 0o700);
-        if (scratch) rmSync(scratch, { recursive: true, force: true });
-        lease.release();
-        if (output) captureLease(lease, output);
-    } catch (error) {
-        failure = failure ? new AggregateError([failure, error], 'run and cleanup failed') : error;
-    } finally {
-        for (const signal of signals) process.removeListener(signal, onSignal);
-    }
-    if (failure) {
-        if (output) writeFileSync(join(output, 'failure.json'), JSON.stringify({
-            errors: failure instanceof AggregateError ? failure.errors.map(error => error.message) : [failure.message],
-        }) + '\n', { mode: 0o600 });
-        throw failure;
-    }
+    try { finishLease(lease, scratch, sources, output); }
+    catch (error) { failure = failure ? new AggregateError([failure, error], 'run and cleanup failed') : error; }
+    finally { for (const signal of signals) process.removeListener(signal, onSignal); }
+    if (!failure) return;
+    if (output) writeFileSync(join(output, 'failure.json'), JSON.stringify({
+        errors: failure instanceof AggregateError ? failure.errors.map(error => error.message) : [failure.message],
+    }) + '\n', { mode: 0o600 });
+    throw failure;
+}
+
+async function main() {
+    const invocation = validateInvocation();
+    const repo = realpathSync(join(here, '..'));
+    const outputRoot = join(repo, 'artifacts', 'terminfo');
+    mkdirSync(outputRoot, { recursive: true, mode: 0o700 });
+    const lease = await acquireDesktopLease({ entrypoint: 'terminfo-modern-x11-owned.mjs', worktree: repo, waitMs: desktopLockWaitMs() });
+    await runOwnedFixture(lease, outputRoot, invocation);
 }
 try { await main(); }
 catch (error) { console.error(error); process.exitCode = 1; }
