@@ -104,6 +104,24 @@ export function buildModernModesReport(frames, run, runId) {
         geometry: { rows: start.screen.rows, cols: start.screen.cols } };
 }
 
+async function failAfterCleanup({ fence, run, pendingReset, retainFailed, error }) {
+    const cleanup = (pendingReset === undefined ? '' : reset(pendingReset)) + leave;
+    run.cleanup = { request: fence.failed ? cleanup : cleanup + da };
+    let failure = error;
+    try {
+        if (fence.failed) await fence.writeCleanup(cleanup);
+        else run.cleanup.barrier = await fence.write(cleanup);
+    } catch (cleanupError) {
+        failure = new AggregateError([error, cleanupError], 'Modern modes collection and cleanup failed.');
+    }
+    try {
+        retainFailed?.(run);
+    } catch (retentionError) {
+        throw new AggregateError([failure, retentionError], 'Modern modes collection and attempt retention failed.');
+    }
+    throw failure;
+}
+
 export async function collectModernModes({ config, fence, owner, retainFailed }) {
     const run = { schemaVersion: 1, suiteId: modernModesSuiteId, runId: config.runId, exchanges: [] };
     const start = await owner('mmod-start');
@@ -126,10 +144,8 @@ export async function collectModernModes({ config, fence, owner, retainFailed })
         await owner('mmod-read', replies.at(-1).barrier, { requestBytes: record.request, response: record.response });
         return replies;
     };
-    let mayHaveEntered = false;
+    const bind = bindBytes(modernModesNonce + config.runId);
     try {
-        const bind = bindBytes(modernModesNonce + config.runId);
-        mayHaveEntered = true;
         run.bind = { request: bind + da, barrier: await fence.write(bind) };
         await owner('mmod-bind', run.bind.barrier, { requestBytes: run.bind.request });
         for (const mode of [2026, 2031]) {
@@ -145,19 +161,7 @@ export async function collectModernModes({ config, fence, owner, retainFailed })
         await owner('mmod-finish', run.finish.barrier, { requestBytes: run.finish.request });
         return run;
     } catch (error) {
-        if (mayHaveEntered) {
-            const cleanup = (pendingReset === undefined ? '' : reset(pendingReset)) + leave;
-            run.cleanup = { request: fence.failed ? cleanup : cleanup + da };
-            try {
-                if (fence.failed) await fence.writeCleanup(cleanup);
-                else run.cleanup.barrier = await fence.write(cleanup);
-            } catch (cleanupError) {
-                retainFailed?.(run);
-                throw new AggregateError([error, cleanupError], 'Modern modes collection and cleanup failed.');
-            }
-        }
-        retainFailed?.(run);
-        throw error;
+        await failAfterCleanup({ fence, run, pendingReset, retainFailed, error });
     }
 }
 

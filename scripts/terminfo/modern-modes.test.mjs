@@ -38,6 +38,10 @@ function fixture({ initial = [2, 2], enabled = [1, 1], restored = [2, 2], overri
         requests.push(bytes);
         assert.ok(expected.has(bytes), 'unexpected write ' + JSON.stringify(bytes));
         const response = Object.hasOwn(override, bytes) ? override[bytes] : expected.get(bytes);
+        if (response instanceof Error) {
+            callback(response);
+            return;
+        }
         callback();
         if (response) {
             // Exercise fragmentation before the first complete response.
@@ -96,6 +100,23 @@ test('an incorrect final state requires cleanup and invalidates the attempt', as
     await assert.rejects(collected, /restoration was not verified/);
     assert.equal(requests.at(-1), '\x1b[?2026l' + leave + da);
     assert.equal(attempts[0].cleanup.barrier, daReply);
+});
+
+test('a cleanup write failure preserves both errors and the exact attempted bytes', async () => {
+    const cleanup = '\x1b[?2026l' + leave;
+    const wrongMode = rawReply(2031, 1) + daReply;
+    const { collected, attempts } = fixture({ override: {
+        [transition(2026)]: wrongMode,
+        [cleanup]: new Error('test cleanup write failure'),
+    } });
+    await assert.rejects(collected, error => {
+        assert.ok(error instanceof AggregateError);
+        assert.match(error.errors[0].message, /malformed or mismatched/);
+        assert.match(error.errors[1].message, /test cleanup write failure/);
+        return true;
+    });
+    assert.equal(attempts[0].exchanges.at(-1).response, wrongMode);
+    assert.equal(attempts[0].cleanup.request, cleanup);
 });
 
 for (const [name, mutate, message] of [
