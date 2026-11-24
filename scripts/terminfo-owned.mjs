@@ -86,10 +86,16 @@ const viewportSources = {
     modernViewportOwnedSourceSha256: 'modern-viewport-owned.mjs',
     modernViewportWorkerSourceSha256: 'modern-viewport-worker.mjs',
 };
+const oscTitlesSources = {
+    modernOscTitlesSourceSha256: 'modern-osc-titles.mjs',
+    modernOscTitlesOwnedSourceSha256: 'modern-osc-titles-owned.mjs',
+    modernOscTitlesWorkerSourceSha256: 'modern-osc-titles-worker.mjs',
+};
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
     'modern-blink': { policy: blinkPolicy, sources: blinkSources, entry: blinkSources.modernBlinkOwnedSourceSha256 },
     'modern-viewport': { policy: viewportPolicy, sources: viewportSources, entry: viewportSources.modernViewportOwnedSourceSha256 },
+    'modern-osc-titles': { policy: 'readonly-owned-source-graph-v77', sources: oscTitlesSources, entry: oscTitlesSources.modernOscTitlesOwnedSourceSha256 },
 };
 const focusedScope = Object.hasOwn(scopes, requestedScope) ? scopes[requestedScope] : null;
 const focusedSuiteKey = Symbol.for('ntilde.terminfo.focusedSuite');
