@@ -21,7 +21,7 @@ const focusedSourcePolicies = [
     ['modernOscCwdSourceSha256', capturedOscCwdSourcePolicy],
 ];
 export const sourceSnapshotPolicy = focusedSourcePolicies.find(([field]) => Object.hasOwn(ownedSourceFiles, field))?.[1]
-    ?? 'readonly-owned-source-graph-v74';
+    ?? 'readonly-owned-source-graph-v78';
 // Frozen forks are selected only by valid own-family source digests and absence of every other family's marker.
 const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
 const familyMarker = (context, prefix) => Object.keys(context).some(key => key.startsWith(prefix) && key.endsWith('Sha256'));
@@ -1000,7 +1000,19 @@ export const capturedV81SourceFiles = Object.freeze({
     modernModesReceiptSourceSha256: 'modern-modes-receipt.mjs',
 });
 
-// Only the blink scope captures this extension. Full collections keep their v74 graph and receipt.
+// The DECSCLM batch adds its seven suite scripts to the integrated v74 graph (policy v78). Policies v75-v77 are the frozen focused forks of v74 below: they never carried these scripts and stay exactly as published.
+export const capturedV82SourceFiles = Object.freeze({
+    ...capturedV81SourceFiles,
+    dslReportSourceSha256: 'dsl-report.mjs',
+    dslContractsSourceSha256: 'dsl-contracts.mjs',
+    dslCaptureSourceSha256: 'dsl-capture.mjs',
+    dslCollectorSourceSha256: 'dsl-collector.mjs',
+    dslGradingSourceSha256: 'dsl-grading.mjs',
+    dslGradingCollectorSourceSha256: 'dsl-grading-collector.mjs',
+    dslReceiptSourceSha256: 'dsl-receipt.mjs',
+});
+
+// Only the blink scope captures this extension. Full collections keep their integrated graph and receipt.
 export const capturedBlinkSourceFiles = Object.freeze({
     ...capturedV81SourceFiles,
     modernBlinkSourceSha256: 'modern-blink.mjs',
@@ -1051,7 +1063,7 @@ export function readSourceSnapshot(root) {
         [capturedOscTitlesSourcePolicy]: capturedOscTitlesSourceFiles,
         [capturedChildEnvironmentSourcePolicy]: capturedChildEnvironmentSourceFiles,
         [capturedOscCwdSourcePolicy]: capturedOscCwdSourceFiles,
-    }[sourceSnapshotPolicy] ?? capturedV81SourceFiles;
+    }[sourceSnapshotPolicy] ?? capturedV82SourceFiles;
     if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(expected)) throw new Error('Invalid selected source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');

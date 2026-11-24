@@ -88,6 +88,7 @@ code.set(new URL('osc5-collector.mjs', root).href, log + `export async function 
 code.set(new URL('caps-collector.mjs', root).href, log + `export async function collectCapsGrading() { record('Caps'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('pcl-collector.mjs', root).href, log + `export async function collectPclGrading() { record('Pcl'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('dcl-collector.mjs', root).href, log + `export async function collectDclGrading() { record('Dcl'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
+code.set(new URL('dsl-collector.mjs', root).href, log + `export async function collectDslGrading() { record('Dsl'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('xsv-collector.mjs', root).href, log + `export async function collectXsvGrading() { record('Xsv'); return { schemaVersion: 1, adapterId: 'stub', probeIds: [], cases: [] }; }`);
 code.set(new URL('osc9-collector.mjs', root).href, log + `export async function collectOsc9() { record('Osc9'); return { status: 'complete', run: { schemaVersion: 1, adapterId: 'stub', probeIds: [], experiments: [], pinned: [] } }; }`);
 code.set(new URL('core-reverse-wide.mjs', root).href, log + `export async function collectReverseWide() { record('ReverseWide'); return { schemaVersion: 1, cases: [] }; }`);

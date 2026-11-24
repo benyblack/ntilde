@@ -485,5 +485,12 @@
   "modernCursorSourceSha256": "modern-cursor.mjs",
   "modernCursorReceiptSourceSha256": "modern-cursor-receipt.mjs",
   "modernModesSourceSha256": "modern-modes.mjs",
-  "modernModesReceiptSourceSha256": "modern-modes-receipt.mjs"
+  "modernModesReceiptSourceSha256": "modern-modes-receipt.mjs",
+  "dslReportSourceSha256": "dsl-report.mjs",
+  "dslContractsSourceSha256": "dsl-contracts.mjs",
+  "dslCaptureSourceSha256": "dsl-capture.mjs",
+  "dslCollectorSourceSha256": "dsl-collector.mjs",
+  "dslGradingSourceSha256": "dsl-grading.mjs",
+  "dslGradingCollectorSourceSha256": "dsl-grading-collector.mjs",
+  "dslReceiptSourceSha256": "dsl-receipt.mjs"
 }

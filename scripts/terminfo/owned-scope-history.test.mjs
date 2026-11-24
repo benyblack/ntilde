@@ -27,10 +27,10 @@ for (const [name, grow, policy] of [
         if (policy) {
             const path = join(scripts, 'owned-sources.mjs');
             writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v75';"));
+                "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v79';"));
         }
         const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
-        assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 488 : 487);        assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v75' : 'readonly-owned-source-graph-v74');
+        assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 495 : 494);        assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v79' : 'readonly-owned-source-graph-v78');
         const published = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-04-metadata-snapshot.json', import.meta.url)));
         const paths = Object.keys(published.archive.fileSha256).filter(name => name.startsWith('sources/')).map(name => name.slice(8));
         assert.equal(paths.length, 52);
@@ -93,13 +93,13 @@ for (const [name, grow, policy] of [['inventory', true, false], ['policy', false
             if (policy) {
                 const path = join(scripts, 'owned-sources.mjs');
                 writeFileSync(path, readFileSync(path, 'utf8').replace(/export const sourceSnapshotPolicy = [^;]+;/,
-                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v75';"));
+                    "export const sourceSnapshotPolicy = 'readonly-owned-source-graph-v79';"));
             }
             const sources = await import(pathToFileURL(join(scripts, 'owned-sources.mjs')).href);
-            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v75' : 'readonly-owned-source-graph-v74');
+            assert.equal(sources.sourceSnapshotPolicy, policy ? 'readonly-owned-source-graph-v79' : 'readonly-owned-source-graph-v78');
             assert.equal(Object.keys(sources.capturedV9SourceFiles).length, 60);
             assert.equal(sources.capturedV9SourcePolicy, 'readonly-owned-source-graph-v2');
-            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 488 : 487);            const next = await import(pathToFileURL(join(scripts, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
+            assert.equal(Object.keys(sources.ownedSourceFiles).length, grow ? 495 : 494);            const next = await import(pathToFileURL(join(scripts, 'receipt.mjs')).href), output = join(root, 'evidence'); mkdirSync(output);
             const archived = historicalArchive('2026-11-04-input-observations');
             for (const [file, bytes] of archived) { const target = join(output, file); mkdirSync(join(target, '..'), { recursive: true }); writeFileSync(target, bytes); }
             const original = JSON.parse(archived.get('cell-receipt.json'));
