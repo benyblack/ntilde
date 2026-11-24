@@ -8,7 +8,7 @@ import { digest, parseJson, pinnedJson, requireModern, same } from './modern-inp
 import { modernRoot } from './modern-results.mjs';
 
 export const blinkPublication = 'docs/qa/terminfo/2026-11-24-modern-blink-results';
-const manifestSha256 = '0ffd970ad5aa21a5a4d3af635286df808c006c5f47d8180f513a41642554c068';
+const manifestSha256 = '0ade1d5002ec70e7b11bb1225db32630f50407bc275e6da84017d5f7e0ac913a';
 
 function verifyLease(directory, runId) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
