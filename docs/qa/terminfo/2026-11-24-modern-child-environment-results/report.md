@@ -17,12 +17,14 @@ The Ntilde App uses Avalonia and its own native PTY integration. The clean child
 
 ## Evidence and reproduction
 
-The sidecar was built from App checkout `1aa66dc3f3e932f083ae3c1bde950e47a484c726` with version `0.14.0`. The collector used checkout `e75fa8407d78a6a609a7c3c431e8b0d78176930f`, Node v24.22.2 and macOS 27.0.1 (26A434) arm64. The observation is scoped to the disposable macOS direct-local App profile.
+The sidecar was built from App checkout `1aa66dc3f3e932f083ae3c1bde950e47a484c726` with version `0.14.0`. The collector used checkout `c286a0bbcec83145640ae28b40c903edbb5673b3`, Node v24.22.2 and macOS 27.0.1 (26A434) arm64. The observation is scoped to the disposable macOS direct-local App profile.
 
-- [clean launch](clean-run.zip) `6a5fbc7082e21dc416fee7267a12de96` bound App PID 7780, PTY child PID 7805, and pane `56af4b9b-74c0-46da-9a39-1bf3eae2b330`. The desktop lease released at 2026-11-24T19:54:28.642Z after verified cleanup.
-- [inherited launch](inherited-run.zip) `ace366ce2e88cd6ef840d58da91ddc4e` bound App PID 7963, PTY child PID 7969, and pane `563637b8-36ba-44a5-92a1-934b09bc44dc`. The desktop lease released at 2026-11-24T19:54:42.954Z after verified cleanup.
+- [clean launch](clean-run.zip) `d83240b5d5acc1ee79031383bd97e111` bound App PID 22352, PTY child PID 22382, and pane `41632ef7-bd5c-4c67-899b-782bf1ef84bd`. The desktop lease released at 2026-11-24T20:24:34.561Z after verified cleanup.
+- [inherited launch](inherited-run.zip) `02c201a8c6dda4c7b6dd59eb6cdec59f` bound App PID 22417, PTY child PID 22437, and pane `5aac54ea-bbed-4652-9e6b-e6242c7165ea`. The desktop lease released at 2026-11-24T20:24:36.156Z after verified cleanup.
 
 Each archive retains the four controlled parent inputs, direct Node profile, raw child JSON, hashes of the App executable, App assembly, managed PTY assembly and native PTY library, process and pane proofs, source graph, restored kernel terminal mode, and lease log. Source policy `readonly-owned-source-graph-v79` and receipt schema 1 bind the observations. [Manifest](manifest.json) · [All 69 rows](report.json).
+
+The first pair used collector `e75fa8407d78a6a609a7c3c431e8b0d78176930f`. Windows CI caught host-dependent joining of recorded macOS paths during archive replay. The App observations repeated after the verifier fix. [First clean launch](superseded-clean-run.zip) · [First inherited launch](superseded-inherited-run.zip).
 
 Rederive from the retained bytes with Node 24 and Python 3.
 

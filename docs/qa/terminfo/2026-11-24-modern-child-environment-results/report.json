@@ -3718,13 +3718,13 @@
         {
           "archive": "clean-run.zip",
           "file": "child-environment.json",
-          "runId": "6a5fbc7082e21dc416fee7267a12de96",
+          "runId": "d83240b5d5acc1ee79031383bd97e111",
           "sha256": "89fb7678efadf364842fe68597c538474bf166aa9327dac525317d7064c8e904"
         },
         {
           "archive": "inherited-run.zip",
           "file": "child-environment.json",
-          "runId": "ace366ce2e88cd6ef840d58da91ddc4e",
+          "runId": "02c201a8c6dda4c7b6dd59eb6cdec59f",
           "sha256": "54311c9d4aabab844b0136f17e81759cd71a1656672c858c65dd5445191ab5f0"
         }
       ],
@@ -3759,13 +3759,13 @@
         {
           "archive": "clean-run.zip",
           "file": "child-environment.json",
-          "runId": "6a5fbc7082e21dc416fee7267a12de96",
+          "runId": "d83240b5d5acc1ee79031383bd97e111",
           "sha256": "89fb7678efadf364842fe68597c538474bf166aa9327dac525317d7064c8e904"
         },
         {
           "archive": "inherited-run.zip",
           "file": "child-environment.json",
-          "runId": "ace366ce2e88cd6ef840d58da91ddc4e",
+          "runId": "02c201a8c6dda4c7b6dd59eb6cdec59f",
           "sha256": "54311c9d4aabab844b0136f17e81759cd71a1656672c858c65dd5445191ab5f0"
         }
       ],
@@ -3802,13 +3802,13 @@
         {
           "archive": "clean-run.zip",
           "file": "child-environment.json",
-          "runId": "6a5fbc7082e21dc416fee7267a12de96",
+          "runId": "d83240b5d5acc1ee79031383bd97e111",
           "sha256": "89fb7678efadf364842fe68597c538474bf166aa9327dac525317d7064c8e904"
         },
         {
           "archive": "inherited-run.zip",
           "file": "child-environment.json",
-          "runId": "ace366ce2e88cd6ef840d58da91ddc4e",
+          "runId": "02c201a8c6dda4c7b6dd59eb6cdec59f",
           "sha256": "54311c9d4aabab844b0136f17e81759cd71a1656672c858c65dd5445191ab5f0"
         }
       ],
@@ -3843,13 +3843,13 @@
         {
           "archive": "clean-run.zip",
           "file": "child-environment.json",
-          "runId": "6a5fbc7082e21dc416fee7267a12de96",
+          "runId": "d83240b5d5acc1ee79031383bd97e111",
           "sha256": "89fb7678efadf364842fe68597c538474bf166aa9327dac525317d7064c8e904"
         },
         {
           "archive": "inherited-run.zip",
           "file": "child-environment.json",
-          "runId": "ace366ce2e88cd6ef840d58da91ddc4e",
+          "runId": "02c201a8c6dda4c7b6dd59eb6cdec59f",
           "sha256": "54311c9d4aabab844b0136f17e81759cd71a1656672c858c65dd5445191ab5f0"
         }
       ],
@@ -4917,18 +4917,18 @@
   },
   "childEnvironmentMeasurement": {
     "publication": "docs/qa/terminfo/2026-11-24-modern-child-environment-results",
-    "manifestSha256": "251b85ef537ffa2092691c78781e55bb53864e05eaec221c1c5d05ecafe705d1",
+    "manifestSha256": "e6c93a2042c73170c7ea1da2657760fa488591a3de3df394734d4d745c171568",
     "appRevision": "1aa66dc3f3e932f083ae3c1bde950e47a484c726",
     "appRevisionSource": "operator-attested build checkout",
-    "scriptsRevision": "e75fa8407d78a6a609a7c3c431e8b0d78176930f",
+    "scriptsRevision": "c286a0bbcec83145640ae28b40c903edbb5673b3",
     "platform": "macOS 27.0.1 (26A434) arm64",
     "runs": [
       {
         "control": "clean",
-        "runId": "6a5fbc7082e21dc416fee7267a12de96",
+        "runId": "d83240b5d5acc1ee79031383bd97e111",
         "archive": "clean-run.zip",
-        "sha256": "89eba3117dea7e762c870a60e49f82c410e1bc79e6a7489dfaaf9ae030a085e6",
-        "startedAt": "2026-11-24T19:54:26.243Z",
+        "sha256": "7b79b7b5a47776f9e6dade76b190b192a964682c66ce903cfcce6178d9285e37",
+        "startedAt": "2026-11-24T20:24:32.823Z",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
@@ -4940,7 +4940,7 @@
         "nodeVersion": "v24.22.2",
         "nodeSha256": "ab0fc8db86abad289091b6bad2d60b2d64f0e6900bfbbf9f7dc195d1ecbfb28e",
         "sourcePolicy": "readonly-owned-source-graph-v79",
-        "sourceSnapshotManifestSha256": "06311dc08540e02fc646fe5adada9a4b13a8c16351357ab98d898277d89c2c46",
+        "sourceSnapshotManifestSha256": "ed4dd1a79aa16b9d0d88828446b999d4bdc1c3af0508260c381c25804e5c5402",
         "receiptSchema": 1,
         "childOutputSha256": "89fb7678efadf364842fe68597c538474bf166aa9327dac525317d7064c8e904",
         "parentInputs": {
@@ -4962,28 +4962,28 @@
           }
         },
         "pane": {
-          "runId": "6a5fbc7082e21dc416fee7267a12de96",
-          "appPid": 7780,
-          "workerPid": 7805,
+          "runId": "d83240b5d5acc1ee79031383bd97e111",
+          "appPid": 22352,
+          "workerPid": 22382,
           "tty": "/dev/ttys012",
-          "paneId": "56af4b9b-74c0-46da-9a39-1bf3eae2b330",
+          "paneId": "41632ef7-bd5c-4c67-899b-782bf1ef84bd",
           "kind": "local",
           "rows": 41,
           "cols": 140,
           "isActive": true,
-          "profileName": "terminfo disposable worker 6a5fbc7082e21dc416fee7267a12de96",
-          "at": "2026-11-24T19:54:28.456Z"
+          "profileName": "terminfo disposable worker d83240b5d5acc1ee79031383bd97e111",
+          "at": "2026-11-24T20:24:34.387Z"
         },
         "fixtureRemoved": true,
-        "cleanedUpAt": "2026-11-24T19:54:28.554Z",
-        "leaseReleasedAt": "2026-11-24T19:54:28.642Z"
+        "cleanedUpAt": "2026-11-24T20:24:34.486Z",
+        "leaseReleasedAt": "2026-11-24T20:24:34.561Z"
       },
       {
         "control": "inherited",
-        "runId": "ace366ce2e88cd6ef840d58da91ddc4e",
+        "runId": "02c201a8c6dda4c7b6dd59eb6cdec59f",
         "archive": "inherited-run.zip",
-        "sha256": "c6add597138513d7f8d874b190de118a673830b045ac5f95201fb44fbdee39dc",
-        "startedAt": "2026-11-24T19:54:41.865Z",
+        "sha256": "3cc78e099934800fb2f46f2de63617b25c2b492585258ef31d460a0ccc6a9db7",
+        "startedAt": "2026-11-24T20:24:34.849Z",
         "appVersion": "0.14.0",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
@@ -4995,7 +4995,7 @@
         "nodeVersion": "v24.22.2",
         "nodeSha256": "ab0fc8db86abad289091b6bad2d60b2d64f0e6900bfbbf9f7dc195d1ecbfb28e",
         "sourcePolicy": "readonly-owned-source-graph-v79",
-        "sourceSnapshotManifestSha256": "06311dc08540e02fc646fe5adada9a4b13a8c16351357ab98d898277d89c2c46",
+        "sourceSnapshotManifestSha256": "ed4dd1a79aa16b9d0d88828446b999d4bdc1c3af0508260c381c25804e5c5402",
         "receiptSchema": 1,
         "childOutputSha256": "54311c9d4aabab844b0136f17e81759cd71a1656672c858c65dd5445191ab5f0",
         "parentInputs": {
@@ -5017,22 +5017,40 @@
           }
         },
         "pane": {
-          "runId": "ace366ce2e88cd6ef840d58da91ddc4e",
-          "appPid": 7963,
-          "workerPid": 7969,
+          "runId": "02c201a8c6dda4c7b6dd59eb6cdec59f",
+          "appPid": 22417,
+          "workerPid": 22437,
           "tty": "/dev/ttys012",
-          "paneId": "563637b8-36ba-44a5-92a1-934b09bc44dc",
+          "paneId": "5aac54ea-bbed-4652-9e6b-e6242c7165ea",
           "kind": "local",
           "rows": 41,
           "cols": 140,
           "isActive": true,
-          "profileName": "terminfo disposable worker ace366ce2e88cd6ef840d58da91ddc4e",
-          "at": "2026-11-24T19:54:42.779Z"
+          "profileName": "terminfo disposable worker 02c201a8c6dda4c7b6dd59eb6cdec59f",
+          "at": "2026-11-24T20:24:35.960Z"
         },
         "fixtureRemoved": true,
-        "cleanedUpAt": "2026-11-24T19:54:42.875Z",
-        "leaseReleasedAt": "2026-11-24T19:54:42.954Z"
+        "cleanedUpAt": "2026-11-24T20:24:36.061Z",
+        "leaseReleasedAt": "2026-11-24T20:24:36.156Z"
       }
-    ]
+    ],
+    "superseded": {
+      "scriptsRevision": "e75fa8407d78a6a609a7c3c431e8b0d78176930f",
+      "reason": "Windows CI caught host-dependent joining of recorded macOS paths during archive replay. The App observations repeated after the verifier fix.",
+      "runs": [
+        {
+          "control": "clean",
+          "runId": "6a5fbc7082e21dc416fee7267a12de96",
+          "archive": "superseded-clean-run.zip",
+          "sha256": "89eba3117dea7e762c870a60e49f82c410e1bc79e6a7489dfaaf9ae030a085e6"
+        },
+        {
+          "control": "inherited",
+          "runId": "ace366ce2e88cd6ef840d58da91ddc4e",
+          "archive": "superseded-inherited-run.zip",
+          "sha256": "c6add597138513d7f8d874b190de118a673830b045ac5f95201fb44fbdee39dc"
+        }
+      ]
+    }
   }
 }

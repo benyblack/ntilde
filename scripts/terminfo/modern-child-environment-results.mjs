@@ -10,7 +10,7 @@ import { verifyChildEnvironmentRun } from './modern-child-environment-owned.mjs'
 import { modernRoot } from './modern-results.mjs';
 
 export const childEnvironmentPublication = 'docs/qa/terminfo/2026-11-24-modern-child-environment-results';
-const manifestSha256 = '251b85ef537ffa2092691c78781e55bb53864e05eaec221c1c5d05ecafe705d1';
+const manifestSha256 = 'e6c93a2042c73170c7ea1da2657760fa488591a3de3df394734d4d745c171568';
 const criterionSha256 = 'e48d44e88175d05493965f90e1046b0fcdf637a23f2abd22c9a689ea36c25ec6';
 
 export function leaseReleasedAt(directory, context, ownership) {
@@ -48,12 +48,10 @@ function readRun(directory, entry) {
     }
 }
 
-function readPair(directory, manifest) {
-    requireModern(manifest.schemaVersion === 1
-        && ['appRevision', 'scriptsRevision'].every(field => /^[a-f\d]{40}$/.test(manifest[field]))
-        && equal(manifest.runs.map(run => run.control), controls)
-        && manifest.runs.every(run => run.archive === run.control + '-run.zip'), 'wrong child environment manifest');
-    const [clean, inherited] = manifest.runs.map(entry => readRun(directory, entry));
+function readPair(directory, runs, archivePrefix = '') {
+    requireModern(equal(runs.map(run => run.control), controls)
+        && runs.every(run => run.archive === archivePrefix + run.control + '-run.zip'), 'wrong child environment archive list');
+    const [clean, inherited] = runs.map(entry => readRun(directory, entry));
     const a = clean.measurement, b = inherited.measurement;
     requireModern(a.runId !== b.runId && clean.launch.appData !== inherited.launch.appData && a.pane.paneId !== b.pane.paneId
         && Date.parse(a.leaseReleasedAt) <= Date.parse(b.startedAt)
@@ -66,7 +64,12 @@ export function buildModernChildEnvironmentPublication(base = modernRoot) {
     const previous = buildModernOscCwdPublication(base);
     const directory = join(base, childEnvironmentPublication);
     const manifest = pinnedJson(join(directory, 'manifest.json'), manifestSha256);
-    const { results, measurements } = readPair(directory, manifest);
+    requireModern(manifest.schemaVersion === 1 && [manifest.appRevision, manifest.scriptsRevision, manifest.superseded.scriptsRevision]
+        .every(revision => /^[a-f\d]{40}$/.test(revision)) && manifest.superseded.reason, 'wrong child environment manifest');
+    const { results, measurements } = readPair(directory, manifest.runs);
+    const earlier = readPair(directory, manifest.superseded.runs, 'superseded-');
+    requireModern(Date.parse(earlier.measurements[1].leaseReleasedAt) <= Date.parse(measurements[0].startedAt)
+        && equal(earlier.results, results), 'remeasured child environment differs from the retained first pair');
     const byId = new Map(results.map(result => [result.id, result]));
     const rows = previous.rows.map(row => {
         const result = byId.get(row.id);
@@ -86,7 +89,7 @@ export function buildModernChildEnvironmentPublication(base = modernRoot) {
         predecessor: { publication: oscCwdPublication, totals: previous.totals },
         childEnvironmentMeasurement: { publication: childEnvironmentPublication, manifestSha256,
             appRevision: manifest.appRevision, appRevisionSource: 'operator-attested build checkout',
-            scriptsRevision: manifest.scriptsRevision, platform: manifest.platform, runs: measurements }, rows };
+            scriptsRevision: manifest.scriptsRevision, platform: manifest.platform, runs: measurements, superseded: manifest.superseded }, rows };
 }
 
 function cell({ state, value }) {
@@ -111,6 +114,7 @@ export function readableModernChildEnvironment(report) {
         `The sidecar was built from App checkout \`${measurement.appRevision}\` with version \`${clean.appVersion}\`. The collector used checkout \`${measurement.scriptsRevision}\`, Node ${clean.nodeVersion} and ${measurement.platform}. The observation is scoped to the disposable macOS direct-local App profile.`, '',
         ...measurement.runs.map(run => `- [${run.control} launch](${run.archive}) \`${run.runId}\` bound App PID ${run.pane.appPid}, PTY child PID ${run.pane.workerPid}, and pane \`${run.pane.paneId}\`. The desktop lease released at ${run.leaseReleasedAt} after verified cleanup.`), '',
         `Each archive retains the four controlled parent inputs, direct Node profile, raw child JSON, hashes of the App executable, App assembly, managed PTY assembly and native PTY library, process and pane proofs, source graph, restored kernel terminal mode, and lease log. Source policy \`${clean.sourcePolicy}\` and receipt schema ${clean.receiptSchema} bind the observations. [Manifest](manifest.json) · [All 69 rows](report.json).`, '',
+        `The first pair used collector \`${measurement.superseded.scriptsRevision}\`. ${measurement.superseded.reason} [First clean launch](superseded-clean-run.zip) · [First inherited launch](superseded-inherited-run.zip).`, '',
         'Rederive from the retained bytes with Node 24 and Python 3.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check --child-environment', '```', '',
         'To collect fresh controls, build the recorded App checkout and run each launch from the recorded collector checkout on macOS. The launcher acquires and releases the desktop lease for each run.', '',
