@@ -1,5 +1,12 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern child environment assessment](terminfo/2026-11-24-modern-child-environment-results/report.md)
+reaches 59 pass, 0 fail, and 10 inconclusive across 69 frozen criteria. Two
+disposable macOS launches verified the `COLORTERM` and `TERM_PROGRAM` defaults
+and overrides, and separately verified inheritance of a user-set `NO_COLOR`.
+The VTE-specific row remains inconclusive. Run
+`node scripts/terminfo-modern-results.mjs --check --child-environment` to rederive the report.
+
 The [Modern OSC 7 directory assessment](terminfo/2026-11-24-modern-osc7-cwd-results/report.md)
 reaches 56 pass, 0 fail, and 13 inconclusive across 69 frozen criteria. The macOS
 tab tooltip showed both full target paths, held through the unhandled OSC, and

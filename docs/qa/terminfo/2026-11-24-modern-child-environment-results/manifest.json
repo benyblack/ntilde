@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "appRevision": "1aa66dc3f3e932f083ae3c1bde950e47a484c726",
+  "scriptsRevision": "e75fa8407d78a6a609a7c3c431e8b0d78176930f",
+  "platform": "macOS 27.0.1 (26A434) arm64",
+  "runs": [
+    {
+      "control": "clean",
+      "runId": "6a5fbc7082e21dc416fee7267a12de96",
+      "archive": "clean-run.zip",
+      "sha256": "89eba3117dea7e762c870a60e49f82c410e1bc79e6a7489dfaaf9ae030a085e6"
+    },
+    {
+      "control": "inherited",
+      "runId": "ace366ce2e88cd6ef840d58da91ddc4e",
+      "archive": "inherited-run.zip",
+      "sha256": "c6add597138513d7f8d874b190de118a673830b045ac5f95201fb44fbdee39dc"
+    }
+  ]
+}
