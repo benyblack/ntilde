@@ -65,7 +65,7 @@ struct Reading: Codable {
 }
 
 enum CaptureError: Error {
-    case noState, notFrontmost, noWindow, windowChanged, captureFailed
+    case noState, notFrontmost, noWindow, windowChanged, captureFailed, warpFailed
     case pointerChanged(String, Point, Point)
 }
 
@@ -80,6 +80,7 @@ func state(_ pid: Int) throws -> State {
 func move(_ point: CGPoint) throws {
     guard let event = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)
     else { throw CaptureError.noState }
+    guard CGWarpMouseCursorPosition(point) == .success else { throw CaptureError.warpFailed }
     event.post(tap: .cghidEventTap)
 }
 
