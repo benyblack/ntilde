@@ -421,7 +421,7 @@ const focusedSuite = globalThis[Symbol.for('ntilde.terminfo.focusedSuite')];
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport', 'modern-osc-titles'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2231,7 +2231,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport|modern-osc-titles]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2254,7 +2254,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
     if (args[5] === 'direct-placeholders') return persistentAnimationMain(args, executable, snapshot, directPlaceholdersScope);
     if (args[5] === 'persistent-placeholder-grid') return persistentAnimationMain(args, executable, snapshot, persistentPlaceholderGridScope);
     if (args[5] === 'direct-placeholder-grid') return persistentAnimationMain(args, executable, snapshot, directPlaceholderGridScope);
-    if (args[5] === 'modern-blink' || args[5] === 'modern-viewport') {
+    if (['modern-blink', 'modern-viewport', 'modern-osc-titles'].includes(args[5])) {
         if (!focusedSuite) throw new Error('Expected the captured Modern scope.');
         return persistentAnimationMain(args, executable, snapshot, focusedSuite.scope);
     }

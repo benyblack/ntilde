@@ -1,5 +1,11 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern OSC title assessment](terminfo/2026-11-24-modern-osc-titles-results/report.md)
+reaches 55 pass, 0 fail, and 14 inconclusive across 69 frozen criteria. It
+records paired public title and icon label replies and verified stack restoration.
+Run `node scripts/terminfo-modern-results.mjs --check --osc-titles` to rederive the
+report offline.
+
 The [Modern viewport hold assessment](terminfo/2026-11-24-modern-viewport-results/report.md)
 reaches 53 pass, 0 fail, and 16 inconclusive across 69 frozen criteria. The
 macOS App held the same visible historical rows through plain and synchronized

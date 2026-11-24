@@ -8,11 +8,13 @@ export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
 export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
+export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 const focusedSourcePolicies = [
     ['modernBlinkSourceSha256', capturedBlinkSourcePolicy],
     ['modernViewportSourceSha256', capturedViewportSourcePolicy],
+    ['modernOscTitlesSourceSha256', capturedOscTitlesSourcePolicy],
 ];
 export const sourceSnapshotPolicy = focusedSourcePolicies.find(([field]) => Object.hasOwn(ownedSourceFiles, field))?.[1]
     ?? 'readonly-owned-source-graph-v74';
@@ -1008,6 +1010,13 @@ export const capturedViewportSourceFiles = Object.freeze({
     modernViewportWorkerSourceSha256: 'modern-viewport-worker.mjs',
 });
 
+export const capturedOscTitlesSourceFiles = Object.freeze({
+    ...capturedV81SourceFiles,
+    modernOscTitlesSourceSha256: 'modern-osc-titles.mjs',
+    modernOscTitlesOwnedSourceSha256: 'modern-osc-titles-owned.mjs',
+    modernOscTitlesWorkerSourceSha256: 'modern-osc-titles-worker.mjs',
+});
+
 /** Bind the private temporary root, selected inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
@@ -1015,6 +1024,7 @@ export function readSourceSnapshot(root) {
     const expected = {
         [capturedBlinkSourcePolicy]: capturedBlinkSourceFiles,
         [capturedViewportSourcePolicy]: capturedViewportSourceFiles,
+        [capturedOscTitlesSourcePolicy]: capturedOscTitlesSourceFiles,
     }[sourceSnapshotPolicy] ?? capturedV81SourceFiles;
     if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(expected)) throw new Error('Invalid selected source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));

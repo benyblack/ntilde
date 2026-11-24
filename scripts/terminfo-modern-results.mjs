@@ -9,6 +9,7 @@ import { buildModernModesPublication, modernModesOutputPaths, readableModernMode
 import { buildModernBlinkPublication, modernBlinkOutputPaths, readableModernBlink } from './terminfo/modern-blink-results.mjs';
 
 import { buildModernViewportPublication, modernViewportOutputPaths, readableModernViewport } from './terminfo/modern-viewport-results.mjs';
+import { buildModernOscTitlesPublication, modernOscTitlesOutputPaths, readableModernOscTitles } from './terminfo/modern-osc-titles-results.mjs';
 
 const args = process.argv.slice(2);
 const publications = {
@@ -17,11 +18,12 @@ const publications = {
     '--modes': [buildModernModesPublication, modernModesOutputPaths, readableModernModes],
     '--blink': [buildModernBlinkPublication, modernBlinkOutputPaths, readableModernBlink],
     '--viewport': [buildModernViewportPublication, modernViewportOutputPaths, readableModernViewport],
+    '--osc-titles': [buildModernOscTitlesPublication, modernOscTitlesOutputPaths, readableModernOscTitles],
 };
 const selected = args.length === 1 ? 'baseline' : args[1];
 if (!['--check', '--write'].includes(args[0])
     || (args.length !== 1 && !(args.length === 2 && Object.hasOwn(publications, selected) && selected.startsWith('--')))) {
-    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes|--blink|--viewport]');
+    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes|--blink|--viewport|--osc-titles]');
     process.exitCode = 2;
 } else {
     const [build, outputPaths, readable] = publications[selected];
