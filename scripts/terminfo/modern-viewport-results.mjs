@@ -9,7 +9,7 @@ import { requirementId } from './modern-viewport.mjs';
 import { verifyViewportRun } from './modern-viewport-owned.mjs';
 
 export const viewportPublication = 'docs/qa/terminfo/2026-11-24-modern-viewport-results';
-const manifestSha256 = '5da011e38cb61dad0e936c3988f1e1e27c434dd1f9b848e43a82003a0ec6b100';
+const manifestSha256 = '5c2ba2cb063274bc092da427b509b9cac4a005ded4e55f5d8a155514064e3261';
 
 function verifyLease(directory, runId) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
@@ -92,11 +92,11 @@ export function readableModernViewport(report) {
         '# Ntilde Modern assessment for holding the viewport on output', '',
         `**${totals.pass} pass / ${totals.fail} fail / ${totals.inconclusive} inconclusive across ${report.requirementsCount} frozen requirements.**`, '',
         `The [blink assessment](../2026-11-24-modern-blink-results/report.md) had ${predecessor.totals.pass} pass / ${predecessor.totals.fail} fail / ${predecessor.totals.inconclusive} inconclusive. The [original Modern publication](../2026-11-15-modern-results/report.md) retains the frozen catalogue and criteria.`, '',
-        `**\`${requirementId}\` on the macOS App: ${observed.conclusion}.** The manual criterion requires the same old rows at the same visible positions after both plain and synchronized output. The separate Linux XTEST wheel and pixel-capture path remains unmeasured by this run.`, '',
+        `**\`${requirementId}\` earns a ${observed.conclusion} in the macOS App assessment.** The manual criterion requires the same old rows at the same visible positions after both plain and synchronized output. The separate Linux XTEST wheel and pixel-capture path remains unmeasured by this run.`, '',
         '## Fixed App', '',
         ...table(observed), '',
         'The table shows the numbered row IDs and the distance from the live bottom over the maximum offset. The restored view ends with a blank row below its marker.', '',
-        ...observed.phases.map(phase => `- ${phase.phase} control marker at the restored bottom: \`${phase.marker}\`.`), '',
+        ...observed.phases.map(phase => `- The ${phase.phase} marker at the restored bottom was \`${phase.marker}\`.`), '',
         `Each phase started from a fresh seed of ${3 * viewRows} numbered lines. The pane held a ${viewRows}-row by ${viewCols}-column grid in a ${windowWidthDip} × ${windowHeightDip} DIP window. Both phases retained every seeded row with zero evictions. Smooth scrolling was disabled for settled wheel steps. The default wheel step was three rows per notch and the default MaxHistory was 10,000. Session persistence was off.`, '',
         'The collector used the OSC 720 generated App wheel route. Paired readbacks combined the App viewport offset, the retained history and the live rows to identify every visible row. The child wrote the plain marker with CRLF. For the synchronized phase it wrote the marker and CRLF in one write between `ESC [ ? 2026 h` and `ESC [ ? 2026 l`. The collector sent no keyboard input or PTY queries between the anchor and post-output snapshots.', '',
         '## Baseline and fix', '',
