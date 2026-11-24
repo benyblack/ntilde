@@ -63,12 +63,12 @@ async function run(config, binding) {
         restoreOutput = prepareOwnedOutput(tty);
         await requestOwner(config, 'raw-output', { tty });
         await collect(config, tty, fence);
-    } catch (failure) {
+    } catch (error_) {
         try { restore(); }
         catch (cleanupError) {
-            throw new AggregateError([failure, cleanupError], 'Viewport collection and kernel terminal restoration failed.');
+            throw new AggregateError([error_, cleanupError], 'Viewport collection and kernel terminal restoration failed.');
         }
-        throw failure;
+        throw error_;
     }
     restore();
     await requestOwner(config, 'done', { tty });
@@ -80,10 +80,10 @@ async function main(configPath) {
     const binding = await verifyNtildeOutput(config, process.stdout);
     try {
         await run(config, binding);
-    } catch (failure) {
-        const error = failure instanceof AggregateError ? failure.errors.map(item => item.message).join('; ') : failure.message;
-        await requestOwner(config, 'failed', { tty: binding.tabTty, error }).catch(() => {});
-        throw new Error(error, { cause: failure });
+    } catch (error_) {
+        const message = error_ instanceof AggregateError ? error_.errors.map(item => item.message).join('; ') : error_.message;
+        await requestOwner(config, 'failed', { tty: binding.tabTty, error: message }).catch(() => {});
+        throw new Error(message, { cause: error_ });
     }
 }
 

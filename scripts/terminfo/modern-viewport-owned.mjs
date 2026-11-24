@@ -205,18 +205,26 @@ function verifySources(output, context) {
     assertRetainedSourceClosure(sources, capturedViewportSourceFiles);
 }
 
+const wheelBeforeStage = { anchor: 'scroll-up', restored: 'scroll-down' };
+
+function replayWheel(frames, action, paneId) {
+    const count = frames.findIndex(frame => frame.kind !== action);
+    requireViewport(count > 0 && count <= maxWheelNotches, 'missing or over-budget wheel control');
+    let viewport;
+    for (const frame of frames.splice(0, count)) {
+        viewport = verifyWheel(frame, action, paneId);
+    }
+    return viewport;
+}
+
 function readPhase(frames, phase, paneId, baseline, { runId }) {
     const fixture = viewportFixture(runId, phase, baseline.live.length);
     const captures = {};
     for (const stage of stages) {
-        let viewport, count = 0;
-        const direction = stage === 'anchor' ? 'scroll-up' : stage === 'restored' ? 'scroll-down' : null;
-        for (let next = frames[0]; direction && next?.kind === direction; next = frames[0]) {
-            requireViewport(++count <= maxWheelNotches, 'too many wheel actions');
-            viewport = verifyWheel(frames.shift(), direction, paneId);
-        }
+        const action = wheelBeforeStage[stage];
+        const viewport = action ? replayWheel(frames, action, paneId) : null;
         const frame = frames.shift();
-        requireViewport(frame?.kind === stage && (!direction || count > 0), 'missing capture or wheel control');
+        requireViewport(frame?.kind === stage, 'missing capture');
         validateWrite(frame, fixture);
         const snapshot = verifyCapture(frame, baseline);
         if (viewport) requireViewport(viewport.scrollOffset === snapshot.offset && viewport.maxScrollOffset === snapshot.extent,
