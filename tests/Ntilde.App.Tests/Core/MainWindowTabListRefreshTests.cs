@@ -193,6 +193,32 @@ public sealed class MainWindowTabListRefreshTests : IDisposable, IClassFixture<T
         Assert.EndsWith("\n/second/project", Assert.IsType<string>(ToolTip.GetTip(header)));
     }
 
+    [AvaloniaFact]
+    public void Tab_tooltip_makes_reported_paths_single_line_and_bounds_their_length()
+    {
+        var services = AppServices.BuildForDesigner();
+        var window = TestMainWindowFactory.Create(services with { SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()) });
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        window.Show();
+        var tab = Assert.IsType<TabItem>(tabs.SelectedItem);
+        var pane = Assert.IsType<TerminalPane>(tab.Content);
+        var header = Assert.IsAssignableFrom<Control>(tab.Header);
+
+        pane.Parser!.Process("\u001b]7;file://localhost/parent%0Aline%09tab%E2%80%AEoverride/repo\a");
+        Dispatcher.UIThread.RunJobs();
+        string[] lines = Assert.IsType<string>(ToolTip.GetTip(header)).Split('\n');
+        Assert.Equal(2, lines.Length);
+        Assert.Equal("/parent\uFFFDline\uFFFDtab\uFFFDoverride/repo", lines[1]);
+        Assert.Equal("/parent\nline\ttab\u202Eoverride/repo", pane.CurrentWorkingDirectory);
+
+        string longPath = "/" + new string('a', 4093) + "\U0001F642" + new string('b', 4096) + "/repo";
+        pane.Parser.Process("\u001b]7;file://localhost" + longPath + "\a");
+        Dispatcher.UIThread.RunJobs();
+        string shownPath = Assert.IsType<string>(ToolTip.GetTip(header)).Split('\n')[1];
+        Assert.Equal("/" + new string('a', 4093) + "…", shownPath);
+        Assert.Equal(longPath, pane.CurrentWorkingDirectory);
+    }
+
     private static (MainWindow Window, TabControl Tabs, MenuFlyout Flyout) OpenTabList(string placement)
     {
         var services = AppServices.BuildForDesigner();
