@@ -134,6 +134,32 @@ public sealed class MainWindowTabListRefreshTests : IDisposable, IClassFixture<T
         Assert.False(flyout.IsOpen);
     }
 
+    [AvaloniaTheory]
+    [InlineData("Horizontal")]
+    [InlineData("Vertical")]
+    public void Tab_tooltip_shows_the_full_reported_path_when_the_basename_stays_the_same(string orientation)
+    {
+        var session = new FakeTerminalSession();
+        var services = AppServices.BuildForDesigner();
+        services.Settings!.TabStripOrientation = orientation;
+        var window = TestMainWindowFactory.Create(services with { SessionFactory = new RecordingSessionFactory(session) });
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        window.Show();
+        var tab = Assert.IsType<TabItem>(tabs.SelectedItem);
+        var header = Assert.IsAssignableFrom<Control>(tab.Header);
+        var pane = Assert.IsType<Ntilde.Controls.TerminalPane>(tab.Content);
+        var initialTip = Assert.IsType<string>(ToolTip.GetTip(header));
+        Assert.DoesNotContain('\n', initialTip);
+
+        pane.Parser!.Process("\u001b]7;file://localhost/first/project\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.EndsWith("\n/first/project", Assert.IsType<string>(ToolTip.GetTip(header)));
+
+        pane.Parser.Process("\u001b]7;file://localhost/second/project\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.EndsWith("\n/second/project", Assert.IsType<string>(ToolTip.GetTip(header)));
+    }
+
     private static (MainWindow Window, TabControl Tabs, MenuFlyout Flyout) OpenTabList(string placement)
     {
         var services = AppServices.BuildForDesigner();

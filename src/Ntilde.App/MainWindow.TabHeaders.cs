@@ -363,6 +363,15 @@ namespace Ntilde
             return $"{index}. {icon}{label}";
         }
 
+        private void UpdateTabHeaderTooltip(TabItem tab)
+        {
+            if (tab.Header is not Control header) return;
+
+            string label = BuildFullTabLabel(tab);
+            string? directory = ResolvePaneForTab(tab)?.CurrentWorkingDirectory;
+            ToolTip.SetTip(header, string.IsNullOrWhiteSpace(directory) ? label : label + "\n" + directory);
+        }
+
         internal void UpdateTabVisuals(TabItem? specificTab = null)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -413,10 +422,7 @@ namespace Ntilde
                     tb.Text = labels[ti];
                 }
 
-                if (ti.Header is Control headerControl)
-                {
-                    ToolTip.SetTip(headerControl, BuildFullTabLabel(ti));
-                }
+                UpdateTabHeaderTooltip(ti);
 
                 if (_isVerticalTabStrip)
                 {
