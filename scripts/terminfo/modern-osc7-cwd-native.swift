@@ -64,7 +64,8 @@ struct Reading: Codable {
 }
 
 enum CaptureError: Error {
-    case noState, notFrontmost, noWindow, windowChanged, captureFailed, warpFailed
+    case noState, notFrontmost, noWindow, captureFailed, warpFailed
+    case windowChanged(String, [Window])
     case pointerChanged(String, Point, Point)
 }
 
@@ -146,8 +147,10 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
     try capture(image, in: window)
     let captured = try state(pid)
     try checkPointer("capture", captured.pointer, hover.pointer)
-    guard [before, hover, captured].allSatisfy({ $0.windows.contains(tabWindow) }),
-          captured.windows.contains(window) else { throw CaptureError.windowChanged }
+    for (stage, snapshot) in [("before", before), ("hover", hover), ("capture", captured)] {
+        guard snapshot.windows.contains(tabWindow) else { throw CaptureError.windowChanged(stage, snapshot.windows) }
+    }
+    guard captured.windows.contains(window) else { throw CaptureError.windowChanged("tooltip", captured.windows) }
     try move(initial.pointer.cgPoint)
     Thread.sleep(forTimeInterval: 0.10)
     let restored = try state(pid)
@@ -182,7 +185,8 @@ do {
     if args.count == 2, args[1] == "--ocr-server" {
         try warmReader()
         try send("ready", encoder: encoder)
-        while let path = readLine() {
+        while let input = readLine() {
+            let path = try JSONDecoder().decode(String.self, from: Data(input.utf8))
             let handler = VNImageRequestHandler(url: URL(fileURLWithPath: path))
             try send(recognize(handler), encoder: encoder)
         }

@@ -112,24 +112,33 @@ export async function withFixture(run, collect) {
         requireCwd(!done && value.length <= 32768, 'native text reader stopped: ' + diagnostic);
         return JSON.parse(value);
     };
+    let result;
+    let failure;
     try {
         requireCwd(await Promise.race([run.done, receive(45000)]) === 'ready', 'native text reader did not warm up');
         run.readTooltipText = (path, budget) => {
-            child.stdin.write(path + '\n');
+            child.stdin.write(JSON.stringify(path) + '\n');
             return receive(budget());
         };
-        return await collect();
-    } finally {
-        lines.close();
-        child.stdin.end();
-        try {
-            await within(closed, 3000, 'native text reader did not exit');
-        } catch (error) {
-            child.kill('SIGKILL');
-            await closed;
-            throw error;
-        }
+        result = await collect();
+    } catch (error) {
+        failure = error;
     }
+    lines.close();
+    child.stdin.end();
+    try {
+        const [code, signal] = await within(closed, 3000, 'native text reader did not exit');
+        requireCwd(code === 0 && signal === null, 'native text reader exited unsuccessfully: ' + diagnostic);
+        run.nativeReaderExit = { pid: child.pid, code, signal };
+    } catch (error) {
+        child.kill('SIGKILL');
+        try { await closed; } catch { /* The failed spawn or exit is already recorded. */ }
+        if (failure) throw new AggregateError([failure, error], 'Modern OSC 7 collection and native reader cleanup failed.');
+        throw error;
+    }
+    if (failure) throw failure;
+    writeFileSync(join(run.output, 'native-reader-exit.json'), JSON.stringify(run.nativeReaderExit) + '\n', { flag: 'wx', mode: 0o600 });
+    return result;
 }
 
 export class Collection {
@@ -170,8 +179,8 @@ export class Collection {
             const file = fileAt(phase), path = join(this.run.output, file);
             const result = await runFile(this.helper, [String(this.run.app.pid), path], { timeout: budget(), maxBuffer: 32768 });
             frame.native = JSON.parse(result.stdout);
-            frame.native.lines = await this.run.readTooltipText(path, budget);
             frame.image = { file, sha256: hash(bytes(this.run.output, file)) };
+            frame.native.lines = await this.run.readTooltipText(path, budget);
             frame.metadata = await this.observer.request('readPaneMetadata', { paneId }, budget);
 
             const { native, reading } = stageReading(this.run.output, frame, step, { ownerPid: this.run.app.pid }, this.pane, this.lastNative);
@@ -249,12 +258,15 @@ function derive(output) {
     const contextBytes = bytes(output, 'context.json'), ownershipBytes = bytes(output, 'ownership-proof.json');
     const settingsBytes = bytes(output, 'initial-settings.json'), journal = bytes(output, journalFile);
     const context = JSON.parse(contextBytes), ownership = JSON.parse(ownershipBytes);
+    const readerExit = bytes(output, 'native-reader-exit.json'), reader = JSON.parse(readerExit);
+    requireCwd(Number.isSafeInteger(reader.pid) && reader.pid > 0 && reader.code === 0 && reader.signal === null,
+        'missing verified native reader exit');
     requireCwd(hash(settingsBytes) === context.initialSettingsSha256, 'changed settings bytes');
     const terminalOutput = verifyOwnership(context, ownership, JSON.parse(settingsBytes));
     verifySources(output, context);
     const report = replay(output, journal, context, terminalOutput);
     const receipt = { schemaVersion: 1, runId: context.runId, contextSha256: hash(contextBytes), ownershipProofSha256: hash(ownershipBytes),
-        journalSha256: hash(journal), fixtureRemoved: true, verdict: report.result.verdict };
+        journalSha256: hash(journal), nativeReaderExitSha256: hash(readerExit), fixtureRemoved: true, verdict: report.result.verdict };
     return { report, receipt };
 }
 
