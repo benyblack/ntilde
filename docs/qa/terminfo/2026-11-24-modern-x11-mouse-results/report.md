@@ -18,11 +18,13 @@ The report covers App delivery through the Linux X11 backend. Each target used s
 
 ## Evidence and reproduction
 
-The [owned run](owned-run.zip) `99cbfe93f97e673edd4e05c73c31310b` began at 2026-11-24T20:56:01.547Z on Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64. App `0.14.0` was built from `7b6858ebe104b69625fabc5371fcdb927d8c03d2` with .NET SDK 10.0.403. Collector `e99773ef8ee996b6aac2fe4492b238b2274fbaae` ran under Node v24.22.2.
+The [owned run](owned-run.zip) `049caa77f45006d44a3c46652d2b0c89` began at 2026-11-24T21:09:50.042Z on Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64. App `0.14.0` was built from `7b6858ebe104b69625fabc5371fcdb927d8c03d2` with .NET SDK 10.0.403. Collector `51677ee25751c0e15f8dbbb6ba04fc54752992dd` ran under Node v24.22.2.
 
-Private display `:0` provided XTEST 2.2. The App PID was 1542183, the child PID 1542329 and the direct PTY `/dev/pts/0`. The owned pane measured 40 rows by 149 columns in X window 2097171. After the worker exited, the collector reaped its App and Xvfb processes and verified the display socket was gone. The lease released at 2026-11-24T20:56:12.510Z.
+Private display `:0` provided XTEST 2.2. The App PID was 1590838, the child PID 1591011 and the direct PTY `/dev/pts/0`. The owned pane measured 40 rows by 149 columns in X window 2097171. After the worker exited, the collector reaped its App and Xvfb processes and verified the display socket was gone. The isolated scratch tree was removed before the lease released at 2026-11-24T21:10:00.537Z.
 
 The archive retains the exact mode writes and replies, XTEST actions and coordinates, timestamped raw PTY bytes, profile, process and display identities, complete App publish tree hashes, source policy `owned-modern-x11-mouse-v1` and the lease audit. [Manifest](manifest.json) · [All 69 rows](report.json).
+
+[Retained run `99cbfe93f97e673edd4e05c73c31310b`](attempt-1.zip). First accepted capture. Superseded after the SonarCloud and lease guard fixes, including a stricter minimum silence window and explicit fixture-removal record. The three results repeated.
 
 Rederive the report from the archive with Node 24 and Python 3.
 

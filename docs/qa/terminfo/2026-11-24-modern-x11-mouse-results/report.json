@@ -1887,8 +1887,8 @@
       "criterionPath": "frozen App path with XTEST input on a disposable Linux X11 pane",
       "evidence": {
         "file": "observation.json",
-        "runId": "99cbfe93f97e673edd4e05c73c31310b",
-        "sha256": "ce98e2fa2cd6f42aae14e597578bd69bd95113bb6d6fcc1ceb6c15fe450ba12d"
+        "runId": "049caa77f45006d44a3c46652d2b0c89",
+        "sha256": "a2a81d3fba08a57e6194570e3bf028024f7051be5ff8173ea33e26f21502527b"
       },
       "stockVerdict": "inconclusive",
       "stockEvidence": "none",
@@ -1932,8 +1932,8 @@
       "criterionPath": "frozen App path with XTEST input on a disposable Linux X11 pane",
       "evidence": {
         "file": "observation.json",
-        "runId": "99cbfe93f97e673edd4e05c73c31310b",
-        "sha256": "ce98e2fa2cd6f42aae14e597578bd69bd95113bb6d6fcc1ceb6c15fe450ba12d"
+        "runId": "049caa77f45006d44a3c46652d2b0c89",
+        "sha256": "a2a81d3fba08a57e6194570e3bf028024f7051be5ff8173ea33e26f21502527b"
       },
       "stockVerdict": "inconclusive",
       "stockEvidence": "none",
@@ -2367,8 +2367,8 @@
       "criterionPath": "frozen App path with XTEST input on a disposable Linux X11 pane",
       "evidence": {
         "file": "observation.json",
-        "runId": "99cbfe93f97e673edd4e05c73c31310b",
-        "sha256": "ce98e2fa2cd6f42aae14e597578bd69bd95113bb6d6fcc1ceb6c15fe450ba12d"
+        "runId": "049caa77f45006d44a3c46652d2b0c89",
+        "sha256": "a2a81d3fba08a57e6194570e3bf028024f7051be5ff8173ea33e26f21502527b"
       },
       "stockVerdict": "supported",
       "stockEvidence": "query",
@@ -5113,14 +5113,15 @@
   },
   "x11MouseMeasurement": {
     "publication": "docs/qa/terminfo/2026-11-24-modern-x11-mouse-results",
-    "manifestSha256": "b529c0bd96fb882098a6be39857b901c92e99dcff4a8a481177b67145d4ebe18",
+    "manifestSha256": "b5f5d599ee3ce20aaef48be5ee5ca7fce7ee74d14185690cfc8fd5397cef5ef5",
     "schemaVersion": 1,
     "archives": {
-      "owned-run.zip": "c68dca9fff618123099f44da510c3f1db5842c74473a84270d6a1d72f00bbe64"
+      "owned-run.zip": "a3d8e6564a95b76479134c0e14e061d2ecfbe970803d25e62b8db08562c42a69",
+      "attempt-1.zip": "c68dca9fff618123099f44da510c3f1db5842c74473a84270d6a1d72f00bbe64"
     },
-    "runId": "99cbfe93f97e673edd4e05c73c31310b",
+    "runId": "049caa77f45006d44a3c46652d2b0c89",
     "appRevision": "7b6858ebe104b69625fabc5371fcdb927d8c03d2",
-    "scriptsRevision": "e99773ef8ee996b6aac2fe4492b238b2274fbaae",
+    "scriptsRevision": "51677ee25751c0e15f8dbbb6ba04fc54752992dd",
     "platform": "Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64",
     "x11Packages": {
       "xvfb": "2:21.1.22-1ubuntu1",
@@ -5129,12 +5130,21 @@
       "libxres1": "2:1.2.1-1build2"
     },
     "dotnetSdk": "10.0.403",
-    "startedAt": "2026-11-24T20:56:01.547Z",
-    "leaseReleasedAt": "2026-11-24T20:56:12.510Z",
-    "sha256": "ce98e2fa2cd6f42aae14e597578bd69bd95113bb6d6fcc1ceb6c15fe450ba12d",
+    "attempts": [
+      {
+        "archive": "attempt-1.zip",
+        "runId": "99cbfe93f97e673edd4e05c73c31310b",
+        "scriptsRevision": "e99773ef8ee996b6aac2fe4492b238b2274fbaae",
+        "reason": "First accepted capture. Superseded after the SonarCloud and lease guard fixes, including a stricter minimum silence window and explicit fixture-removal record. The three results repeated."
+      }
+    ],
+    "startedAt": "2026-11-24T21:09:50.042Z",
+    "fixtureRemovedAt": "2026-11-24T21:10:00.536Z",
+    "leaseReleasedAt": "2026-11-24T21:10:00.537Z",
+    "sha256": "a2a81d3fba08a57e6194570e3bf028024f7051be5ff8173ea33e26f21502527b",
     "source": {
       "policy": "owned-modern-x11-mouse-v1",
-      "sha256": "63e73dc91c2e74179eba22bbe0c31a6b72f3184ee010799aa2cba5a2d02fb840"
+      "sha256": "cd7b08ae6844caf1c1be037eb6d276dfc024b3911ab78a2d18e211572a6e4505"
     },
     "appVersion": "0.14.0",
     "appBuildSource": "operator-attested source archive and publish command",
@@ -5143,8 +5153,8 @@
     "ptyLibrarySha256": "256462ce015549eb20eb22967a65af225c9bd17ca6da8fc03417ce633011ccba",
     "nodeVersion": "v24.22.2",
     "pane": {
-      "paneId": "0258a463-698a-4875-9ca3-91a8270d2b2f",
-      "profileName": "X11 Mouse 99cbfe93f97e673edd4e05c73c31310b",
+      "paneId": "e306fd76-0254-410a-8c5f-fdd7c17a0381",
+      "profileName": "X11 Mouse 049caa77f45006d44a3c46652d2b0c89",
       "rows": 40,
       "cols": 149,
       "kind": "local",
@@ -5162,8 +5172,8 @@
       2,
       2
     ],
-    "appPid": 1542183,
-    "workerPid": 1542329,
+    "appPid": 1590838,
+    "workerPid": 1591011,
     "tty": "/dev/pts/0"
   }
 }

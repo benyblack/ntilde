@@ -48,7 +48,13 @@ test('archive replay verifies display ancestry, PTY ownership and actual cleanup
         rejectMutation(record => { record.cleanup.socketGone = false; }, /unverified X11 App, worker or display cleanup/);
         writeFileSync(observation, raw);
         const lease = join(scratch, 'desktop-lease.jsonl');
-        writeFileSync(lease, readFileSync(lease, 'utf8').trimEnd().split('\n').slice(0, -1).join('\n'));
+        const audit = readFileSync(lease, 'utf8');
+        writeFileSync(lease, audit.trimEnd().split('\n').slice(0, -1).join('\n'));
+        assert.throws(() => verifyX11MouseRun(scratch), /desktop lease cleanup or release/);
+        writeFileSync(lease, audit);
+        const fixture = join(scratch, 'fixture-cleanup.json');
+        const cleanup = JSON.parse(readFileSync(fixture));
+        writeFileSync(fixture, JSON.stringify({ ...cleanup, removedAt: '1970-01-01T00:00:00.000Z' }));
         assert.throws(() => verifyX11MouseRun(scratch), /desktop lease cleanup or release/);
     } finally {
         rmSync(scratch, { recursive: true, force: true });

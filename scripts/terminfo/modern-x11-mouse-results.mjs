@@ -7,10 +7,10 @@ import { assertLinuxOwnedChild, linuxControllingDevice } from './linux-process-c
 import { buildModernChildEnvironmentPublication, childEnvironmentPublication } from './modern-child-environment-results.mjs';
 import { digest, parseJson, pinnedJson, requireModern } from './modern-inputs.mjs';
 import { modernRoot } from './modern-results.mjs';
-import { ids, replayMouse } from './modern-x11-mouse.mjs';
+import { ids, replayMouse, x11SocketPath } from './modern-x11-mouse.mjs';
 
 export const x11MousePublication = 'docs/qa/terminfo/2026-11-24-modern-x11-mouse-results';
-const manifestSha256 = 'b529c0bd96fb882098a6be39857b901c92e99dcff4a8a481177b67145d4ebe18';
+const manifestSha256 = 'f6a7a4370b13aa4b108ef73d25f1aa7f4884452d615f02fd982aa676251f08a0';
 const criterionSha256 = {
     [ids[0]]: 'd56308b4d02629905fc6f8be951b43fd27009efd1651d16040245c4e05f2bbcd',
     [ids[1]]: '1532d2ee68aefc5f657e1c306c3d72ad69e13cdc3fbbce54966f81ac7e362ab7',
@@ -18,6 +18,7 @@ const criterionSha256 = {
 };
 const sourceFiles = ['desktop-lock.mjs', 'linux-process-core.mjs', 'linux-process-provider.mjs', 'modern-x11-mouse.mjs',
     'modern-x11-mouse-collect.mjs', 'modern-x11-mouse-native.py', 'modern-x11-mouse-worker.py'];
+const alphabetical = (a, b) => a.localeCompare(b, 'en');
 const isDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
 const before = (a, b) => typeof a === 'string' && /^\d+$/.test(a) && typeof b === 'string' && /^\d+$/.test(b) && BigInt(a) < BigInt(b);
 
@@ -25,7 +26,7 @@ function verifySources(directory) {
     const raw = readFileSync(join(directory, 'source-manifest.json')), manifest = JSON.parse(raw);
     const sources = join(directory, 'sources');
     requireModern(manifest.policy === 'owned-modern-x11-mouse-v1' && same(Object.keys(manifest.files), sourceFiles)
-        && same(readdirSync(sources).toSorted(), sourceFiles.toSorted())
+        && same(readdirSync(sources).toSorted(alphabetical), sourceFiles.toSorted(alphabetical))
         && manifest.launcherSha256 === digest(readFileSync(join(directory, 'launcher.mjs'))), 'wrong X11 collector source manifest');
     for (const name of sourceFiles) {
         requireModern(digest(readFileSync(join(sources, name))) === manifest.files[name], 'changed X11 collector source ' + name);
@@ -66,7 +67,7 @@ function verifyIdentities(run) {
         && stdin.path === stdout.path && same(stdin.device, stdout.device) && stdin.device.uid === String(uid)
         && linuxControllingDevice(BigInt(stdin.device.rdev)) === child.controllingDevice, 'wrong direct PTY identity');
     requireModern(server.pid === identity.serverPid && server.ppid === coordinatorPid && server.executable === '/usr/bin/Xvfb'
-        && /^:\d{1,4}$/.test(display.name) && display.socket === '/tmp/.X11-unix/X' + display.name.slice(1)
+        && /^:\d{1,4}$/.test(display.name) && display.socket === x11SocketPath(display.name)
         && /^[1-9]\d*$/.test(display.socketInode) && isDigest(display.executableSha256)
         && same(server.argv, [server.executable, '-displayfd', '3', '-screen', '0', '1280x800x24', '-dpi', '96',
             '-nolisten', 'tcp', '-noreset', '-auth', posix.join(scratch, 'Xauthority')])
@@ -78,15 +79,19 @@ function verifyIdentities(run) {
 function verifyCleanup(directory, run) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     const instants = events.map(event => Date.parse(event.at));
+    const fixture = parseJson(join(directory, 'fixture-cleanup.json'));
+    const removedAt = Date.parse(fixture.removedAt);
     requireModern(same(events.map(event => event.event), ['acquired', 'launch-attempt', 'cleanup-verified', 'released'])
         && events.every(event => event.pid === run.coordinatorPid && event.lease === run.runId)
         && instants.every((time, index) => Number.isFinite(time) && (index === 0 || time >= instants[index - 1]))
-        && events[0].entrypoint === 'terminfo-modern-x11-owned.mjs' && events[2].by === 'marker-scan' && events[3].launch === 'attempted',
+        && events[0].entrypoint === 'terminfo-modern-x11-owned.mjs' && events[2].by === 'marker-scan' && events[3].launch === 'attempted'
+        && fixture.runId === run.runId && fixture.scratch === run.settings.Profiles[0].StartingDirectory
+        && instants[2] <= removedAt && removedAt <= instants[3],
     'unproved X11 desktop lease cleanup or release');
     requireModern(run.cleanup?.socketGone === true && before(run.terminal.at, run.workerGoneAt) && before(run.workerGoneAt, run.cleanup.at)
         && [run.cleanup.app, run.cleanup.display].every(exit => exit && (Number.isSafeInteger(exit.code) || ['SIGTERM', 'SIGKILL'].includes(exit.signal))),
     'unverified X11 App, worker or display cleanup');
-    return { startedAt: events[1].at, leaseReleasedAt: events[3].at };
+    return { startedAt: events[1].at, fixtureRemovedAt: fixture.removedAt, leaseReleasedAt: events[3].at };
 }
 
 export function verifyX11MouseRun(directory) {
@@ -103,10 +108,21 @@ export function verifyX11MouseRun(directory) {
     return { run, results, measurement: { ...cleanup, sha256: digest(frame), source } };
 }
 
+function verifyAttempts(directory, manifest) {
+    const { attempts, archives } = manifest;
+    requireModern(Array.isArray(attempts) && same(Object.keys(archives), ['owned-run.zip', ...attempts.map(item => item.archive)]),
+        'wrong X11 attempt archive list');
+    for (const { archive, runId, scriptsRevision, reason } of attempts) {
+        requireModern(/^attempt-\d+\.zip$/.test(archive) && /^[a-f\d]{32}$/.test(runId) && /^[a-f\d]{40}$/.test(scriptsRevision)
+            && reason && digest(readFileSync(join(directory, archive))) === archives[archive], 'changed retained X11 attempt');
+    }
+}
+
 export function buildModernX11MousePublication(base = modernRoot) {
     const previous = buildModernChildEnvironmentPublication(base);
     const directory = join(base, x11MousePublication);
     const manifest = pinnedJson(join(directory, 'manifest.json'), manifestSha256);
+    verifyAttempts(directory, manifest);
     const scratch = mkdtempSync(join(tmpdir(), 'ntilde-modern-x11-results-'));
     try {
         extractOwnedArchive(directory, manifest, scratch, join(directory, 'owned-run.zip'));
@@ -151,17 +167,20 @@ export function readableModernX11Mouse(report) {
         '| --- | --- | --- | --- |',
         ...rows.map(({ id, observed }) => `| \`${id}\` | ${displayHex(observed.controlHex)} | ${displayHex(observed.targetHex)} | ${observed.conclusion} |`), '',
         ...rows.map(({ id, observed }) => `- \`${id}\`. ${observed.reason}`), '',
-        'The report covers App delivery through the Linux X11 backend. Each target used separate raw observation windows. DECRPM exchanges qualified the exact initial, control and target mode selections. The final exchange and private pane read verified the initial effective modes and primary-screen marker. The worker restored and read back its original kernel terminal mode.', '',
+        'The report covers App delivery through the Linux X11 backend. Each target used separate raw observation windows ending with a unique XTEST keyboard delimiter. DECRPM exchanges qualified the exact initial, control and target mode selections. The final exchange and private pane read verified the initial effective modes and primary-screen marker. The worker restored and read back its original kernel terminal mode.', '',
         '## Evidence and reproduction', '',
         `The [owned run](owned-run.zip) \`${m.runId}\` began at ${m.startedAt} on ${m.platform}. App \`${m.appVersion}\` was built from \`${m.appRevision}\` with .NET SDK ${m.dotnetSdk}. Collector \`${m.scriptsRevision}\` ran under Node ${m.nodeVersion}.`, '',
-        `Private display \`${m.display}\` provided XTEST ${m.xtestVersion.join('.')}. The App PID was ${m.appPid}, the child PID ${m.workerPid} and the direct PTY \`${m.tty}\`. The owned pane measured ${m.pane.rows} rows by ${m.pane.cols} columns in X window ${m.window.id}. After the worker exited, the collector reaped its App and Xvfb processes and verified the display socket was gone. The lease released at ${m.leaseReleasedAt}.`, '',
+        `Private display \`${m.display}\` provided XTEST ${m.xtestVersion.join('.')}. The App PID was ${m.appPid}, the child PID ${m.workerPid} and the direct PTY \`${m.tty}\`. The owned pane measured ${m.pane.rows} rows by ${m.pane.cols} columns in X window ${m.window.id}. After the worker exited, the collector reaped its App and Xvfb processes and verified the display socket was gone. The isolated scratch tree was removed before the lease released at ${m.leaseReleasedAt}.`, '',
         `The archive retains the exact mode writes and replies, XTEST actions and coordinates, timestamped raw PTY bytes, profile, process and display identities, complete App publish tree hashes, source policy \`${m.source.policy}\` and the lease audit. [Manifest](manifest.json) · [All 69 rows](report.json).`, '',
+        ...m.attempts.flatMap(attempt => [`[Retained run \`${attempt.runId}\`](${attempt.archive}). ${attempt.reason}`, '']),
         'Rederive the report from the archive with Node 24 and Python 3.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check --x11-mouse', '```', '',
-        'To collect a fresh run, build the recorded App revision on Linux x64. Install Xvfb, libX11, libXtst, libXRes and Python 3. The collector uses its own private display and the normal desktop collection lease.', '',
+        'To collect a fresh run, use Linux x64 with Xvfb, libX11, libXtst, libXRes and Python 3. The collector uses its own private display and the normal desktop collection lease.', '',
         '```sh',
+        `# Build in an App checkout at ${m.appRevision}.`,
         'scripts/build.sh publish src/Ntilde.App -c Release -r linux-x64 --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
         'chmod -R go-w /absolute/private/sidecar',
+        `# Launch from a separate collector checkout at ${m.scriptsRevision}.`,
         `node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde ${m.appVersion}`,
         '```', '',
     ].join('\n');

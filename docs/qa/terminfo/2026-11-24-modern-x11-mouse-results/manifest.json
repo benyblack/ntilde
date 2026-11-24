@@ -1,11 +1,13 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "c68dca9fff618123099f44da510c3f1db5842c74473a84270d6a1d72f00bbe64"
+    "owned-run.zip": "b47534176abff1e56a76a1ff031a798101443a5e22505ba63c43381d049d68ff",
+    "attempt-1.zip": "c68dca9fff618123099f44da510c3f1db5842c74473a84270d6a1d72f00bbe64",
+    "attempt-2.zip": "a3d8e6564a95b76479134c0e14e061d2ecfbe970803d25e62b8db08562c42a69"
   },
-  "runId": "99cbfe93f97e673edd4e05c73c31310b",
+  "runId": "0e8540a355ecf2885806424b86d26eea",
   "appRevision": "7b6858ebe104b69625fabc5371fcdb927d8c03d2",
-  "scriptsRevision": "e99773ef8ee996b6aac2fe4492b238b2274fbaae",
+  "scriptsRevision": "411c06c4da37359bf890a9af9f343f18ffdcc2f1",
   "platform": "Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64",
   "x11Packages": {
     "xvfb": "2:21.1.22-1ubuntu1",
@@ -13,5 +15,19 @@
     "libxtst6": "2:1.2.5-1ubuntu0.1",
     "libxres1": "2:1.2.1-1build2"
   },
-  "dotnetSdk": "10.0.403"
+  "dotnetSdk": "10.0.403",
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "99cbfe93f97e673edd4e05c73c31310b",
+      "scriptsRevision": "e99773ef8ee996b6aac2fe4492b238b2274fbaae",
+      "reason": "First accepted capture. Superseded after the SonarCloud and lease guard fixes, including a stricter minimum silence window and explicit fixture-removal record. The three results repeated."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "049caa77f45006d44a3c46652d2b0c89",
+      "scriptsRevision": "51677ee25751c0e15f8dbbb6ba04fc54752992dd",
+      "reason": "Repeated after the SonarCloud and lease guard fixes. Superseded after CodeRabbit prompted the per-action XTEST keyboard fences and X10 payload validation. All three target sequences repeated."
+    }
+  ]
 }
