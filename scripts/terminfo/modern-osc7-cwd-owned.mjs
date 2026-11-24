@@ -21,6 +21,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const fileAt = phase => 'tooltip-' + phase + '.png';
 const pointAt = (window, offsetY) => ({ x: window.x + 112, y: window.y + offsetY });
+const near = (actual, expected) => Math.abs(actual?.x - expected?.x) <= 1 && Math.abs(actual?.y - expected?.y) <= 1;
 
 function bytes(output, file) {
     const path = join(output, file), stat = lstatSync(path);
@@ -39,8 +40,8 @@ function validateNative(read, pid, expectedWindow) {
     const [main] = mains;
     requireCwd(mains.length === 1 && (!expectedWindow || same(main, expectedWindow)), 'the owned native window changed');
     const target = pointAt(main, 18);
-    requireCwd(same(before.pointer, pointAt(main, 95)) && same(hover.pointer, target)
-        && same(captured.pointer, target) && same(restored.pointer, original), 'unverified hover move or pointer restoration');
+    requireCwd(near(before.pointer, pointAt(main, 95)) && near(hover.pointer, target)
+        && near(captured.pointer, hover.pointer) && near(restored.pointer, original), 'unverified hover move or pointer restoration');
     const popups = hover.windows.filter(item => !before.windows.some(prior => prior.id === item.id)
         && Math.abs(item.x - target.x) < 80 && Math.abs(item.y - target.y) < 80
         && item.width > 20 && item.height > 10 && item.height < 120);

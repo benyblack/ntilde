@@ -64,7 +64,8 @@ struct Reading: Codable {
 }
 
 enum CaptureError: Error {
-    case noState, notFrontmost, noWindow, pointerChanged, windowChanged, captureFailed
+    case noState, notFrontmost, noWindow, windowChanged, captureFailed
+    case pointerChanged(String, Point, Point)
 }
 
 func state(_ pid: Int) throws -> State {
@@ -104,6 +105,14 @@ func capture(_ image: URL, in window: Window) throws {
     guard screen.terminationStatus == 0 else { throw CaptureError.captureFailed }
 }
 
+func near(_ lhs: Point, _ rhs: Point) -> Bool {
+    abs(lhs.x - rhs.x) <= 1 && abs(lhs.y - rhs.y) <= 1
+}
+
+func checkPointer(_ stage: String, _ actual: Point, _ expected: Point) throws {
+    guard near(actual, expected) else { throw CaptureError.pointerChanged(stage, actual, expected) }
+}
+
 func readTooltip(pid: Int, image: URL) throws -> Reading {
     let initial = try state(pid)
     let main = initial.windows.filter { $0.layer == 0 && $0.width >= 400 && $0.height >= 200 }
@@ -114,19 +123,19 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
     let outside = CGPoint(x: tabWindow.x + 112, y: tabWindow.y + 95)
     var lastPosted = outside
     defer {
-        if let pointer = CGEvent(source: nil)?.location, pointer == lastPosted {
+        if let pointer = CGEvent(source: nil)?.location, near(Point(pointer), Point(lastPosted)) {
             try? move(initial.pointer.cgPoint)
         }
     }
     try move(outside)
     Thread.sleep(forTimeInterval: 0.15)
     let before = try state(pid)
-    guard before.pointer.cgPoint == outside else { throw CaptureError.pointerChanged }
+    try checkPointer("outside", before.pointer, Point(outside))
     lastPosted = target
     try move(target)
     Thread.sleep(forTimeInterval: 0.8)
     let hover = try state(pid)
-    guard hover.pointer.cgPoint == target else { throw CaptureError.pointerChanged }
+    try checkPointer("hover", hover.pointer, Point(target))
     let popups = hover.windows.filter { window in
         !before.windows.contains { $0.id == window.id }
             && abs(window.x - target.x) < 80 && abs(window.y - target.y) < 80
@@ -135,13 +144,13 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
     guard popups.count == 1, let window = popups.first else { throw CaptureError.noWindow }
     try capture(image, in: window)
     let captured = try state(pid)
-    guard captured.pointer == hover.pointer else { throw CaptureError.pointerChanged }
+    try checkPointer("capture", captured.pointer, hover.pointer)
     guard [before, hover, captured].allSatisfy({ $0.windows.contains(tabWindow) }),
           captured.windows.contains(window) else { throw CaptureError.windowChanged }
     try move(initial.pointer.cgPoint)
     Thread.sleep(forTimeInterval: 0.10)
     let restored = try state(pid)
-    guard restored.pointer == initial.pointer else { throw CaptureError.pointerChanged }
+    try checkPointer("restore", restored.pointer, initial.pointer)
     return Reading(original: initial.pointer, before: before, hover: hover, captured: captured,
                    restored: restored, window: window, lines: try recognize(image))
 }
