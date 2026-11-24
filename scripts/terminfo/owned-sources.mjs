@@ -21,7 +21,7 @@ const focusedSourcePolicies = [
     ['modernOscCwdSourceSha256', capturedOscCwdSourcePolicy],
 ];
 export const sourceSnapshotPolicy = focusedSourcePolicies.find(([field]) => Object.hasOwn(ownedSourceFiles, field))?.[1]
-    ?? 'readonly-owned-source-graph-v78';
+    ?? 'readonly-owned-source-graph-v79';
 // Frozen forks are selected only by valid own-family source digests and absence of every other family's marker.
 const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
 const familyMarker = (context, prefix) => Object.keys(context).some(key => key.startsWith(prefix) && key.endsWith('Sha256'));
@@ -1000,7 +1000,7 @@ export const capturedV81SourceFiles = Object.freeze({
     modernModesReceiptSourceSha256: 'modern-modes-receipt.mjs',
 });
 
-// The DECSCLM batch adds its seven suite scripts to the integrated v74 graph (policy v78). Policies v75-v77 are the frozen focused forks of v74 below: they never carried these scripts and stay exactly as published.
+// The DECSCLM batch adds its seven suite scripts to the integrated v74 graph (policy v79). Policies v75-v78 are the frozen focused forks of v74 below: they never carried these scripts and stay exactly as published.
 export const capturedV82SourceFiles = Object.freeze({
     ...capturedV81SourceFiles,
     dslReportSourceSha256: 'dsl-report.mjs',
