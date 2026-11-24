@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -29,7 +29,14 @@ test('changed retained viewport data fails replay', () => {
     try {
         const manifest = JSON.parse(readFileSync(join(directory, 'manifest.json')));
         extractOwnedArchive(directory, manifest, scratch, join(directory, 'owned-run.zip'));
-        appendFileSync(join(scratch, 'viewport-journal.jsonl'), '{}\n');
+        const journal = join(scratch, 'viewport-journal.jsonl');
+        const original = readFileSync(journal, 'utf8');
+        const frames = original.trimEnd().split('\n').map(line => JSON.parse(line));
+        const sync = frames.find(frame => frame.kind === 'output' && frame.phase === 'synchronized');
+        sync.requestBytes = sync.requestBytes.slice('\x1b[?2026h'.length, -'\x1b[?2026l'.length);
+        writeFileSync(journal, frames.map(frame => JSON.stringify(frame)).join('\n') + '\n');
+        assert.throws(() => verifyViewportRun(scratch), /changed PTY write or barrier/);
+        writeFileSync(journal, original + '{}\n');
         assert.throws(() => verifyViewportRun(scratch), /failed observation or pane changed/);
     } finally {
         rmSync(scratch, { recursive: true, force: true });

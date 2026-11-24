@@ -3,7 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { assertPrivateFile, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { ownedTerminalRestorer, prepareOwnedOutput, restoreOwnedTerminalState } from './terminal-output.mjs';
 import { terminalFence } from './terminal-fence.mjs';
-import { clear, da, maxWheelNotches, phases, prefix, requireViewport, syncReset, viewportFixture } from './modern-viewport.mjs';
+import { clear, da, maxWheelNotches, phases, prefix, requireViewport, syncReset, viewportDigest, viewportFixture } from './modern-viewport.mjs';
 
 const writeOutput = bytes => new Promise((resolve, reject) => {
     process.stdout.write(Buffer.from(bytes, 'ascii'), error => error ? reject(error) : resolve());
@@ -35,7 +35,12 @@ async function measure(owner, write, runId, phase, rows) {
 
 async function collect(config, tty, fence) {
     const owner = (kind, fields = {}) => requestOwner(config, prefix + kind, { tty, ...fields });
-    const write = async (kind, bytes, fields = {}) => owner(kind, { ...fields, requestBytes: bytes + da, barrier: await fence.write(bytes) });
+    const write = async (kind, bytes, fields = {}) => {
+        const requestBytes = bytes + da;
+        // Full seeds can exceed the bounded owner frame once JSON escapes them.
+        const proof = kind === 'bottom' ? { requestSha256: viewportDigest(requestBytes) } : { requestBytes };
+        return owner(kind, { ...fields, ...proof, barrier: await fence.write(bytes) });
+    };
     const { rows } = await owner('start');
     let failure;
     try {
@@ -46,7 +51,7 @@ async function collect(config, tty, fence) {
     }
     try {
         if (fence.failed) await fence.writeCleanup(syncReset + clear);
-        else await write('finish', syncReset + clear);
+        else await write(failure ? 'abort-restoration' : 'finish', syncReset + clear);
     } catch (error) {
         if (failure) throw new AggregateError([failure, error], 'Viewport collection and pane restoration failed.');
         throw error;

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { isDeepStrictEqual as same } from 'node:util';
 
 export const scope = Object.freeze({ id: 'owned-modern-viewport-direct-v1', persistence: 'Off', deadlineMs: 90000 });
@@ -10,6 +11,7 @@ export const syncReset = '\x1b[?2026l';
 export const phases = ['plain', 'synchronized'];
 export const stages = ['bottom', 'anchor', 'output', 'restored'];
 export const maxWheelNotches = 128;
+export const viewportDigest = bytes => createHash('sha256').update(bytes).digest('hex');
 
 export function requireViewport(condition, detail) {
     if (!condition) throw new Error('Modern viewport: ' + detail);

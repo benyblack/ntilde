@@ -52,3 +52,17 @@ test('stable distance, missing output, failed movement and eviction stay inconcl
         assert.equal(gradeViewportPhase(run).conclusion, 'inconclusive');
     }
 });
+
+test('an aborted phase can prove restoration while successful completion remains unavailable', async () => {
+    const { Collection } = await import('./modern-viewport-owned.mjs');
+    const collection = new Collection({ app: { pid: 1 } });
+    const baseline = { live: [''], history: [], offset: 0, cursor: [0, 0, true], generation: 1 };
+    collection.advance('start', baseline);
+    collection.advance('bottom', baseline);
+    assert.equal(collection.admit('finish', null), false);
+    assert.equal(collection.admit('abort-restoration', null), true);
+    assert.throws(() => collection.advance('abort-restoration', { ...baseline, live: ['changed'] }), /initial screen was not restored/);
+    collection.advance('abort-restoration', { ...baseline, generation: 2 });
+    assert.equal(collection.restored, false);
+    await assert.rejects(collection.observe({ kind: 'mviewport-anchor', phase: 'plain' }), /concurrent or completed observation/);
+});

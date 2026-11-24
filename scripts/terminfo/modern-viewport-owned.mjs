@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDeepStrictEqual as same } from 'node:util';
@@ -7,7 +6,7 @@ import { copyPaneMetadata } from './metadata-state.mjs';
 import { runViewAction } from './osc720-action.mjs';
 import { assertRetainedSourceClosure, capturedViewportSourceFiles, capturedViewportSourcePolicy } from './owned-sources.mjs';
 import { readOwnedOutputMode, validateOutputGeometry } from './terminal-output.mjs';
-import { clear, da, gradeViewport, gradeViewportPhase, maxWheelNotches, phases, requireViewport, scope, stages, syncReset, viewportFixture } from './modern-viewport.mjs';
+import { clear, da, gradeViewport, gradeViewportPhase, maxWheelNotches, phases, requireViewport, scope, stages, syncReset, viewportDigest as hash, viewportFixture } from './modern-viewport.mjs';
 
 export { prefix, scope } from './modern-viewport.mjs';
 export const workerFile = 'modern-viewport-worker.mjs';
@@ -16,6 +15,7 @@ export const receiptFile = 'viewport-receipt.json';
 const journalFile = 'viewport-journal.jsonl';
 const reportFile = 'viewport-observation.json';
 const maxHistory = 257;
+const isRestoration = kind => kind === 'finish' || kind === 'abort-restoration';
 
 function project({ screen: rawScreen, history, metadata: rawMetadata }, paneId) {
     const screen = screenSnapshot(rawScreen);
@@ -41,14 +41,16 @@ function sameRestoredState(before, after) {
 function expectedBytes(kind, fixture) {
     if (kind === 'bottom') return fixture.seedBytes + da;
     if (kind === 'output') return fixture.markerBytes;
-    if (kind === 'finish') return syncReset + clear + da;
+    if (isRestoration(kind)) return syncReset + clear + da;
     return null;
 }
 
-function validateWrite({ kind, requestBytes, barrier }, fixture) {
+function validateWrite({ kind, requestBytes, requestSha256, barrier }, fixture) {
     const expected = expectedBytes(kind, fixture);
-    const fenced = kind === 'bottom' || kind === 'finish';
+    const fenced = kind === 'bottom' || isRestoration(kind);
     requireViewport(requestBytes === expected && (fenced ? /^\x1b\[\?[\d;]+c$/.test(barrier) : barrier === null), 'changed PTY write or barrier');
+    // Earlier retained runs carried the full seed directly in the owner request.
+    if (requestSha256 !== undefined) requireViewport(kind === 'bottom' && requestSha256 === hash(expected), 'changed PTY seed digest');
 }
 
 function verifyCapture(frame, baseline) {
@@ -85,7 +87,7 @@ export class Collection {
     }
 
     async observe(request, budget) {
-        requireViewport(!this.busy && !this.restored, 'unexpected concurrent or completed observation');
+        requireViewport(!this.busy && !this.restored && !this.aborted, 'unexpected concurrent or completed observation');
         this.busy = true;
         try {
             const kind = request.kind.slice('mviewport-'.length);
@@ -129,6 +131,7 @@ export class Collection {
 
     admit(kind, phase) {
         if (!this.baseline) return kind === 'start' && phase === null;
+        if (kind === 'abort-restoration') return phase === null;
         if (this.phaseIndex === phases.length) return kind === 'finish' && phase === null;
         return kind === stages[this.stageIndex] && phase === phases[this.phaseIndex];
     }
@@ -138,9 +141,15 @@ export class Collection {
         requireViewport(this.admit(kind, phase), 'unexpected capture stage');
         const before = await this.observer.session(budget);
         this.observer.paneId = before.paneId;
+        const fixture = viewportFixture(this.run.runId, phase, before.rows);
         const frame = { kind, phase, paneId: before.paneId, requestBytes: request.requestBytes ?? null, barrier: request.barrier ?? null, reads: [] };
         try {
-            validateWrite(frame, viewportFixture(this.run.runId, phase, before.rows));
+            if (kind === 'bottom') {
+                frame.requestBytes = expectedBytes(kind, fixture);
+                frame.requestSha256 = request.requestSha256;
+                requireViewport(request.requestBytes === undefined && typeof frame.requestSha256 === 'string', 'missing bounded PTY seed proof');
+            }
+            validateWrite(frame, fixture);
             frame.reads.push(await this.read(before.paneId, budget), await this.read(before.paneId, budget));
             frame.terminalOutput = readOwnedOutputMode(request.tty, budget());
             const after = await this.observer.session(budget);
@@ -164,9 +173,10 @@ export class Collection {
             this.baseline = capture;
             return;
         }
-        if (kind === 'finish') {
+        if (isRestoration(kind)) {
             requireViewport(sameRestoredState(this.baseline, capture), 'initial screen was not restored');
-            this.restored = true;
+            this.restored = kind === 'finish';
+            this.aborted = !this.restored;
             return;
         }
         if (kind === 'anchor' || kind === 'restored') {
@@ -258,10 +268,6 @@ function deriveReport(output, context, settings) {
     return { conclusion: gradeViewport(results), runId: context.runId, paneId, geometry: baseline.geometry,
         settings: { smoothScrolling: settings.SmoothScrolling, sessionPersistence: settings.SessionPersistence },
         phases: results, restoredMainScreen: true };
-}
-
-function hash(bytes) {
-    return createHash('sha256').update(bytes).digest('hex');
 }
 
 function verifyOwnership(output, context, ownership, settings) {
