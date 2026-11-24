@@ -1871,7 +1871,7 @@
         "id": "input.x10-mouse",
         "status": "supported",
         "conclusion": "pass",
-        "reason": "Legacy CSI M and three payload bytes arrived on the press.",
+        "reason": "Legacy CSI M and three valid left-press payload bytes arrived on the press.",
         "controlHex": [
           "",
           "1b5b3c303b34393b31354d",
@@ -1887,8 +1887,8 @@
       "criterionPath": "frozen App path with XTEST input on a disposable Linux X11 pane",
       "evidence": {
         "file": "observation.json",
-        "runId": "049caa77f45006d44a3c46652d2b0c89",
-        "sha256": "a2a81d3fba08a57e6194570e3bf028024f7051be5ff8173ea33e26f21502527b"
+        "runId": "0e8540a355ecf2885806424b86d26eea",
+        "sha256": "346d9b17785ad2d8c22c36185a74afe478b7075bf26d60bca48914ee4cdbf143"
       },
       "stockVerdict": "inconclusive",
       "stockEvidence": "none",
@@ -1932,8 +1932,8 @@
       "criterionPath": "frozen App path with XTEST input on a disposable Linux X11 pane",
       "evidence": {
         "file": "observation.json",
-        "runId": "049caa77f45006d44a3c46652d2b0c89",
-        "sha256": "a2a81d3fba08a57e6194570e3bf028024f7051be5ff8173ea33e26f21502527b"
+        "runId": "0e8540a355ecf2885806424b86d26eea",
+        "sha256": "346d9b17785ad2d8c22c36185a74afe478b7075bf26d60bca48914ee4cdbf143"
       },
       "stockVerdict": "inconclusive",
       "stockEvidence": "none",
@@ -2367,8 +2367,8 @@
       "criterionPath": "frozen App path with XTEST input on a disposable Linux X11 pane",
       "evidence": {
         "file": "observation.json",
-        "runId": "049caa77f45006d44a3c46652d2b0c89",
-        "sha256": "a2a81d3fba08a57e6194570e3bf028024f7051be5ff8173ea33e26f21502527b"
+        "runId": "0e8540a355ecf2885806424b86d26eea",
+        "sha256": "346d9b17785ad2d8c22c36185a74afe478b7075bf26d60bca48914ee4cdbf143"
       },
       "stockVerdict": "supported",
       "stockEvidence": "query",
@@ -5113,15 +5113,16 @@
   },
   "x11MouseMeasurement": {
     "publication": "docs/qa/terminfo/2026-11-24-modern-x11-mouse-results",
-    "manifestSha256": "b5f5d599ee3ce20aaef48be5ee5ca7fce7ee74d14185690cfc8fd5397cef5ef5",
+    "manifestSha256": "f6a7a4370b13aa4b108ef73d25f1aa7f4884452d615f02fd982aa676251f08a0",
     "schemaVersion": 1,
     "archives": {
-      "owned-run.zip": "a3d8e6564a95b76479134c0e14e061d2ecfbe970803d25e62b8db08562c42a69",
-      "attempt-1.zip": "c68dca9fff618123099f44da510c3f1db5842c74473a84270d6a1d72f00bbe64"
+      "owned-run.zip": "b47534176abff1e56a76a1ff031a798101443a5e22505ba63c43381d049d68ff",
+      "attempt-1.zip": "c68dca9fff618123099f44da510c3f1db5842c74473a84270d6a1d72f00bbe64",
+      "attempt-2.zip": "a3d8e6564a95b76479134c0e14e061d2ecfbe970803d25e62b8db08562c42a69"
     },
-    "runId": "049caa77f45006d44a3c46652d2b0c89",
+    "runId": "0e8540a355ecf2885806424b86d26eea",
     "appRevision": "7b6858ebe104b69625fabc5371fcdb927d8c03d2",
-    "scriptsRevision": "51677ee25751c0e15f8dbbb6ba04fc54752992dd",
+    "scriptsRevision": "411c06c4da37359bf890a9af9f343f18ffdcc2f1",
     "platform": "Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64",
     "x11Packages": {
       "xvfb": "2:21.1.22-1ubuntu1",
@@ -5136,15 +5137,21 @@
         "runId": "99cbfe93f97e673edd4e05c73c31310b",
         "scriptsRevision": "e99773ef8ee996b6aac2fe4492b238b2274fbaae",
         "reason": "First accepted capture. Superseded after the SonarCloud and lease guard fixes, including a stricter minimum silence window and explicit fixture-removal record. The three results repeated."
+      },
+      {
+        "archive": "attempt-2.zip",
+        "runId": "049caa77f45006d44a3c46652d2b0c89",
+        "scriptsRevision": "51677ee25751c0e15f8dbbb6ba04fc54752992dd",
+        "reason": "Repeated after the SonarCloud and lease guard fixes. Superseded after CodeRabbit prompted the per-action XTEST keyboard fences and X10 payload validation. All three target sequences repeated."
       }
     ],
-    "startedAt": "2026-11-24T21:09:50.042Z",
-    "fixtureRemovedAt": "2026-11-24T21:10:00.536Z",
-    "leaseReleasedAt": "2026-11-24T21:10:00.537Z",
-    "sha256": "a2a81d3fba08a57e6194570e3bf028024f7051be5ff8173ea33e26f21502527b",
+    "startedAt": "2026-11-24T21:14:33.848Z",
+    "fixtureRemovedAt": "2026-11-24T21:14:44.302Z",
+    "leaseReleasedAt": "2026-11-24T21:14:44.303Z",
+    "sha256": "346d9b17785ad2d8c22c36185a74afe478b7075bf26d60bca48914ee4cdbf143",
     "source": {
       "policy": "owned-modern-x11-mouse-v1",
-      "sha256": "cd7b08ae6844caf1c1be037eb6d276dfc024b3911ab78a2d18e211572a6e4505"
+      "sha256": "0dfeecfd101f9dc02c42c6be24e74bd67445679b3fe15240d1f7b307ed87fdee"
     },
     "appVersion": "0.14.0",
     "appBuildSource": "operator-attested source archive and publish command",
@@ -5153,8 +5160,8 @@
     "ptyLibrarySha256": "256462ce015549eb20eb22967a65af225c9bd17ca6da8fc03417ce633011ccba",
     "nodeVersion": "v24.22.2",
     "pane": {
-      "paneId": "e306fd76-0254-410a-8c5f-fdd7c17a0381",
-      "profileName": "X11 Mouse 049caa77f45006d44a3c46652d2b0c89",
+      "paneId": "5ca27672-34cf-4d1b-abcb-15424098f5d5",
+      "profileName": "X11 Mouse 0e8540a355ecf2885806424b86d26eea",
       "rows": 40,
       "cols": 149,
       "kind": "local",
@@ -5172,8 +5179,8 @@
       2,
       2
     ],
-    "appPid": 1590838,
-    "workerPid": 1591011,
+    "appPid": 1607704,
+    "workerPid": 1607856,
     "tty": "/dev/pts/0"
   }
 }
