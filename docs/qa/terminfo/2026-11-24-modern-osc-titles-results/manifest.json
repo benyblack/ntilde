@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "sourcePolicy": "readonly-owned-source-graph-v77",
+  "receiptSchema": 1,
+  "measurement": {
+    "runId": "25a4131e8260b5307f2dd4e388d26b43",
+    "appRevision": "0a99252e40265d209df886cd9c27f21c6c978d65",
+    "scriptsRevision": "133f6f8158cb5dbb9cb8bf24a983fe44c4351bda",
+    "platform": "macOS 27.0.1 (26A434), arm64"
+  },
+  "archives": {
+    "owned-run.zip": "c52af2be10bcd3b943d399391c23772342288646c8e95a337622a036ad51bf77"
+  },
+  "attempts": []
+}
