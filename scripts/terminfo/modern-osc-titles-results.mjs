@@ -83,10 +83,12 @@ export function buildModernOscTitlesPublication(base = modernRoot) {
             sourcePolicy: manifest.sourcePolicy, receiptSchema: manifest.receiptSchema, ...measurement, pane: report.pane, attempts }, rows };
 }
 
+const codeLabel = value => `\`${value}\``;
+
 function show(reading) {
     if (reading.value === null) return reading.stable ? 'unobserved' : 'unstable';
     if (reading.value === '') return 'empty';
-    return `\`${reading.value}\``;
+    return codeLabel(reading.value);
 }
 
 function observationTable(result) {
@@ -95,7 +97,7 @@ function observationTable(result) {
         '| --- | --- | --- | --- |',
         ...Object.entries(result.stages).map(([stage, { title, icon }]) => {
             const requested = result.requested[stage];
-            return `| ${stage} | ${requested ? `\`${requested}\`` : '—'} | ${show(title)} | ${show(icon)} |`;
+            return `| ${stage} | ${requested ? codeLabel(requested) : '—'} | ${show(title)} | ${show(icon)} |`;
         }),
     ];
 }

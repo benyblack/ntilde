@@ -25,6 +25,15 @@ async function captureStep(owner, fence, caseId, step) {
     return owner('stage', record);
 }
 
+async function emergencyPop(fence, primary) {
+    try {
+        if (fence.failed) await fence.writeCleanup(popLabels);
+        else await fence.write(popLabels);
+    } catch (cleanupError) {
+        throw new AggregateError([primary, cleanupError], 'Title collection and emergency stack pop failed.');
+    }
+}
+
 async function collect(owner, fence, runId) {
     let saved = false;
     try {
@@ -38,14 +47,7 @@ async function collect(owner, fence, runId) {
         }
         if (fence.failed) throw new Error('Unexpected input after the last public label read.');
     } catch (error) {
-        if (saved) {
-            try {
-                if (fence.failed) await fence.writeCleanup(popLabels);
-                else await fence.write(popLabels);
-            } catch (cleanupError) {
-                throw new AggregateError([error, cleanupError], 'Title collection and emergency stack pop failed.');
-            }
-        }
+        if (saved) await emergencyPop(fence, error);
         throw error;
     }
 }

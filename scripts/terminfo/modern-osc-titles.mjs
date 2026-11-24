@@ -35,7 +35,7 @@ export function titlePlans(runId) {
 }
 
 function replyLabel(raw) {
-    requireTitles([...raw].every(char => char.charCodeAt(0) <= 255), 'invalid label reply bytes');
+    requireTitles([...raw].every(char => char.codePointAt(0) <= 255), 'invalid label reply bytes');
     const text = decoder.decode(Buffer.from(raw.slice(3, -2), 'latin1'));
     requireTitles(![...text].some(char => char < '\x20' || (char >= '\x7f' && char <= '\x9f')), 'control bytes in label reply');
     return text;
@@ -140,7 +140,8 @@ export function gradeTitleCase(plan, stages) {
     const restoration = Object.fromEntries(labels.map(label => [label, provedRestoration(stages, label)]));
     const grade = plan.id === osc2 ? osc2Grade(stages, requested) : osc0Grade(stages, requested);
     const saveHeld = same(stages.incoming, stages.save);
-    const eligible = saveHeld && Object.values(restoration).every(value => value !== 'unproved');
-    return { id: plan.id, ...grade, ...(eligible ? {} : invalid(saveHeld ? 'Incoming label restoration was not proved.' : 'Labels changed while saving the incoming state.')),
-        requested, stages, restoration, saveHeld };
+    const result = { id: plan.id, ...grade, requested, stages, restoration, saveHeld };
+    if (!saveHeld) return { ...result, ...invalid('Labels changed while saving the incoming state.') };
+    if (Object.values(restoration).includes('unproved')) return { ...result, ...invalid('Incoming label restoration was not proved.') };
+    return result;
 }
