@@ -134,7 +134,8 @@ async function checkCapturedImports(sources) {
 /** Copy regular fixed-scope inputs into an exclusive read-only tree, hash its manifest and check literal dependencies before execution. */
 async function capture(root) {
     const original = readFileSync(join(repo, 'scripts/terminfo/owned-source-inventory.json'));
-    const inventory = { ...JSON.parse(original), ...(focusedScope?.sources ?? {}) };
+    const inventory = JSON.parse(original);
+    if (focusedScope) Object.assign(inventory, focusedScope.sources);
     const input = focusedScope ? Buffer.from(JSON.stringify(inventory, null, 2) + '\n') : original;
     const hashes = {}, sources = new Map();
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');

@@ -138,29 +138,34 @@ namespace Ntilde.Shell
         public int ScrollOffset
         {
             get => _scrollOffset;
-            set => SeekScrollOffset(value);
+            set
+            {
+                if (_buffer == null) return;
+                int maximum = MaxScrollOffset;
+                if (value > 0)
+                {
+                    (maximum, _scrollbackGeneration, _scrollbackTail, _scrollbackRows) = ReadScrollbackPosition();
+                }
+                _targetScrollOffset = Math.Clamp(value, 0, maximum);
+                if (_scrollOffset == _targetScrollOffset) return;
+                _scrollOffset = _targetScrollOffset;
+                NotifyScrollOffsetChanged(maximum);
+            }
         }
 
         /// <summary>True while a smooth wheel gesture still has frames to play.</summary>
         private bool IsWheelAnimationInFlight => _scrollOffset != _targetScrollOffset;
 
-        private void SeekScrollOffset(int value)
-        {
-            if (_buffer == null) return;
-            int maximum = MaxScrollOffset;
-            if (value > 0)
-            {
-                (maximum, _scrollbackGeneration, _scrollbackTail, _scrollbackRows) = ReadScrollbackPosition();
-            }
-            _targetScrollOffset = Math.Clamp(value, 0, maximum);
-            SetScrollOffsetCore(_targetScrollOffset, maximum);
-        }
-
         private void SetScrollOffsetCore(int offset, int maximum)
         {
             if (_scrollOffset == offset) return;
             _scrollOffset = offset;
-            ScrollStateChanged?.Invoke(offset, maximum);
+            NotifyScrollOffsetChanged(maximum);
+        }
+
+        private void NotifyScrollOffsetChanged(int maximum)
+        {
+            ScrollStateChanged?.Invoke(_scrollOffset, maximum);
             CommandAssistAnchorHintChanged?.Invoke();
             InvalidateBuffer();
         }

@@ -210,13 +210,13 @@ function readPhase(frames, phase, paneId, baseline, { runId }) {
     const captures = {};
     for (const stage of stages) {
         let viewport, count = 0;
-        const direction = stage === 'anchor' ? 'scroll-up' : 'scroll-down';
-        while (frames[0]?.kind === direction && (stage === 'anchor' || stage === 'restored')) {
+        const direction = stage === 'anchor' ? 'scroll-up' : stage === 'restored' ? 'scroll-down' : null;
+        for (let next = frames[0]; direction && next?.kind === direction; next = frames[0]) {
             requireViewport(++count <= maxWheelNotches, 'too many wheel actions');
             viewport = verifyWheel(frames.shift(), direction, paneId);
         }
         const frame = frames.shift();
-        requireViewport(frame?.kind === stage && ((stage !== 'anchor' && stage !== 'restored') || count > 0), 'missing capture or wheel control');
+        requireViewport(frame?.kind === stage && (!direction || count > 0), 'missing capture or wheel control');
         validateWrite(frame, fixture);
         const snapshot = verifyCapture(frame, baseline);
         if (viewport) requireViewport(viewport.scrollOffset === snapshot.offset && viewport.maxScrollOffset === snapshot.extent,

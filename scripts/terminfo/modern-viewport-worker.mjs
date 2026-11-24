@@ -56,34 +56,40 @@ async function collect(config, tty, fence) {
 
 async function run(config, binding) {
     const tty = binding.tabTty, fence = terminalFence(process.stdin, process.stdout);
-    let restoreOutput, failure;
+    let restoreOutput;
     const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
         () => restoreOwnedTerminalState(tty, binding.originalTerminalState)]);
     try {
         restoreOutput = prepareOwnedOutput(tty);
         await requestOwner(config, 'raw-output', { tty });
         await collect(config, tty, fence);
-    } catch (error) {
-        failure = error;
+    } catch (failure) {
+        try { restore(); }
+        catch (cleanupError) {
+            throw new AggregateError([failure, cleanupError], 'Viewport collection and kernel terminal restoration failed.');
+        }
+        throw failure;
     }
-    try { restore(); }
-    catch (error) {
-        if (failure) throw new AggregateError([failure, error], 'Viewport collection and kernel terminal restoration failed.');
-        throw error;
-    }
-    if (failure) throw failure;
+    restore();
     await requestOwner(config, 'done', { tty });
 }
 
-let config, binding;
+async function main(configPath) {
+    assertPrivateFile(configPath);
+    const config = JSON.parse(readFileSync(configPath, 'utf8'));
+    const binding = await verifyNtildeOutput(config, process.stdout);
+    try {
+        await run(config, binding);
+    } catch (failure) {
+        const error = failure instanceof AggregateError ? failure.errors.map(item => item.message).join('; ') : failure.message;
+        await requestOwner(config, 'failed', { tty: binding.tabTty, error }).catch(() => {});
+        throw new Error(error, { cause: failure });
+    }
+}
+
 try {
-    assertPrivateFile(process.argv[2]);
-    config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-    binding = await verifyNtildeOutput(config, process.stdout);
-    await run(config, binding);
+    await main(process.argv[2]);
 } catch (error) {
-    const cause = error instanceof AggregateError ? error.errors.map(item => item.message).join('; ') : error.message;
-    console.error(cause);
-    if (binding) await requestOwner(config, 'failed', { tty: binding.tabTty, error: cause }).catch(() => {});
+    console.error(error.message);
     process.exitCode = 1;
 }
