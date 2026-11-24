@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
@@ -18,6 +20,7 @@ namespace Ntilde
     /// </summary>
     public partial class MainWindow
     {
+        private const int MaxTabTooltipLineLength = 4096;
         private readonly HashSet<TabItem> _pendingVisualRefreshTabs = new();
         private bool _tabVisualRefreshScheduled;
 
@@ -85,7 +88,7 @@ namespace Ntilde
             headerHost.ContextFlyout = new MenuFlyout();
             headerHost.PointerPressed += (_, e) => OnTabHeaderPointerPressed(tab, e);
             WireTabHeaderReorderDrag(tab, headerHost);
-            ToolTip.SetTip(headerHost, text);
+            ToolTip.SetTip(headerHost, FormatTabTooltipLine(text));
             return headerHost;
         }
 
@@ -210,7 +213,7 @@ namespace Ntilde
             headerHost.ContextFlyout = new MenuFlyout();
             headerHost.PointerPressed += (_, e) => OnTabHeaderPointerPressed(tab, e);
             WireTabHeaderReorderDrag(tab, headerHost);
-            ToolTip.SetTip(headerHost, text);
+            ToolTip.SetTip(headerHost, FormatTabTooltipLine(text));
             return headerHost;
         }
 
@@ -363,6 +366,46 @@ namespace Ntilde
             return $"{index}. {icon}{label}";
         }
 
+        private void UpdateTabHeaderTooltip(TabItem tab)
+        {
+            if (tab.Header is not Control header) return;
+
+            string label = FormatTabTooltipLine(BuildFullTabLabel(tab));
+            string? directory = ResolvePaneForTab(tab)?.CurrentWorkingDirectory;
+            ToolTip.SetTip(header, string.IsNullOrWhiteSpace(directory) ? label : label + "\n" + FormatTabTooltipLine(directory));
+        }
+
+        private static string FormatTabTooltipLine(string text)
+        {
+            // Bound shell-supplied text before shaping and reserve the line break for the App.
+            bool truncated = text.Length > MaxTabTooltipLineLength;
+            int length = truncated ? MaxTabTooltipLineLength - 1 : text.Length;
+            if (truncated && char.IsHighSurrogate(text[length - 1])) length--;
+
+            ReadOnlySpan<char> prefix = text.AsSpan(0, length);
+            StringBuilder? clean = null;
+            int offset = 0;
+            int start = 0;
+            foreach (Rune rune in prefix.EnumerateRunes())
+            {
+                int next = offset + rune.Utf16SequenceLength;
+                if (rune == Rune.ReplacementChar || Rune.GetUnicodeCategory(rune) is
+                    UnicodeCategory.Control or UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator)
+                {
+                    clean ??= new StringBuilder(length + 1);
+                    clean.Append(prefix[start..offset]).Append('\uFFFD');
+                    start = next;
+                }
+
+                offset = next;
+            }
+
+            if (clean is null) return truncated ? string.Concat(prefix, "…") : text;
+            clean.Append(prefix[start..]);
+            if (truncated) clean.Append('…');
+            return clean.ToString();
+        }
+
         internal void UpdateTabVisuals(TabItem? specificTab = null)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -413,10 +456,7 @@ namespace Ntilde
                     tb.Text = labels[ti];
                 }
 
-                if (ti.Header is Control headerControl)
-                {
-                    ToolTip.SetTip(headerControl, BuildFullTabLabel(ti));
-                }
+                UpdateTabHeaderTooltip(ti);
 
                 if (_isVerticalTabStrip)
                 {

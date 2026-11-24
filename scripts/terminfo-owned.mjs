@@ -61,7 +61,11 @@ const cellSizeReferencePaths = Object.freeze({
     "cell-size-observer-contract.cs": "src/Ntilde.AgentHost.Contracts/PaneCellGeometry.cs"
 });
 /** Map admitted reference aliases or established script basenames without reading or executing them. */
+const oscCwdReferencePaths = Object.freeze({
+    'modern-osc7-cwd-tab-headers.cs': 'src/Ntilde.App/MainWindow.TabHeaders.cs',
+});
 function pathFor(root, file) {
+    if (Object.hasOwn(oscCwdReferencePaths, file)) return join(root, oscCwdReferencePaths[file]);
     if (Object.hasOwn(cellSizeReferencePaths, file)) return join(root, cellSizeReferencePaths[file]);
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
     if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
@@ -91,11 +95,19 @@ const oscTitlesSources = {
     modernOscTitlesOwnedSourceSha256: 'modern-osc-titles-owned.mjs',
     modernOscTitlesWorkerSourceSha256: 'modern-osc-titles-worker.mjs',
 };
+const oscCwdSources = {
+    modernOscCwdSourceSha256: 'modern-osc7-cwd.mjs',
+    modernOscCwdOwnedSourceSha256: 'modern-osc7-cwd-owned.mjs',
+    modernOscCwdWorkerSourceSha256: 'modern-osc7-cwd-worker.mjs',
+    modernOscCwdNativeSourceSha256: 'modern-osc7-cwd-native.swift',
+    modernOscCwdTabHeadersSourceSha256: 'modern-osc7-cwd-tab-headers.cs',
+};
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
     'modern-blink': { policy: blinkPolicy, sources: blinkSources, entry: blinkSources.modernBlinkOwnedSourceSha256 },
     'modern-viewport': { policy: viewportPolicy, sources: viewportSources, entry: viewportSources.modernViewportOwnedSourceSha256 },
     'modern-osc-titles': { policy: 'readonly-owned-source-graph-v77', sources: oscTitlesSources, entry: oscTitlesSources.modernOscTitlesOwnedSourceSha256 },
+    'modern-osc7-cwd': { policy: 'readonly-owned-source-graph-v78', sources: oscCwdSources, entry: oscCwdSources.modernOscCwdOwnedSourceSha256 },
 };
 const focusedScope = Object.hasOwn(scopes, requestedScope) ? scopes[requestedScope] : null;
 const focusedSuiteKey = Symbol.for('ntilde.terminfo.focusedSuite');
@@ -147,7 +159,8 @@ async function capture(root) {
     if (inventory.runnerSourceSha256 !== 'terminfo-owned-runner.mjs' || inventory.sourceInventorySha256 !== 'owned-source-inventory.json') throw new Error('Invalid source inventory.');
     for (const [key, file] of Object.entries(inventory)) {
         if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file)
-            && file !== blinkSources.modernBlinkWindowSourceSha256
+            && file !== blinkSources.modernBlinkWindowSourceSha256 && file !== oscCwdSources.modernOscCwdNativeSourceSha256
+            && !Object.hasOwn(oscCwdReferencePaths, file)
             && !Object.hasOwn(coreGapsReferencePaths, file) && !Object.hasOwn(oscTitleReferencePaths, file) && !Object.hasOwn(insertReplaceReferencePaths, file) && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file) && !Object.hasOwn(cellSizeReferencePaths, file))) throw new Error('Invalid source inventory entry.');
         const source = pathFor(repo, file), info = lstatSync(source);
         if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular source file.');

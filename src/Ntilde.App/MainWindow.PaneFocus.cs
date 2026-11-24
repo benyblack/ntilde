@@ -285,6 +285,7 @@ namespace Ntilde
             UpdatePaneAutomationLabels();
             if (ownerTab != null)
             {
+                UpdateTabHeaderTooltip(ownerTab);
                 RefreshLayoutModelForTab(ownerTab);
                 PublishPaneEvent(ownerTab, pane, PaneAuditEventKind.FocusChanged);
             }

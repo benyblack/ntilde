@@ -9,12 +9,14 @@ export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
 export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
 export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
+export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 const focusedSourcePolicies = [
     ['modernBlinkSourceSha256', capturedBlinkSourcePolicy],
     ['modernViewportSourceSha256', capturedViewportSourcePolicy],
     ['modernOscTitlesSourceSha256', capturedOscTitlesSourcePolicy],
+    ['modernOscCwdSourceSha256', capturedOscCwdSourcePolicy],
 ];
 export const sourceSnapshotPolicy = focusedSourcePolicies.find(([field]) => Object.hasOwn(ownedSourceFiles, field))?.[1]
     ?? 'readonly-owned-source-graph-v74';
@@ -259,7 +261,11 @@ export const cellSizeReferencePaths = Object.freeze({
     "cell-size-font.cs": "src/Ntilde.App/Shell/TerminalView.Fonts.cs",
     "cell-size-observer-contract.cs": "src/Ntilde.AgentHost.Contracts/PaneCellGeometry.cs"
 });
+const oscCwdReferencePaths = Object.freeze({
+    'modern-osc7-cwd-tab-headers.cs': 'src/Ntilde.App/MainWindow.TabHeaders.cs',
+});
 export function ownedSourcePath(root, file) {
+    if (Object.hasOwn(oscCwdReferencePaths, file)) return join(root, oscCwdReferencePaths[file]);
     if (Object.hasOwn(cellSizeReferencePaths, file)) return join(root, cellSizeReferencePaths[file]);
     if (Object.hasOwn(coreGapsReferencePaths, file)) return join(root, coreGapsReferencePaths[file]);
     if (Object.hasOwn(oscTitleReferencePaths, file)) return join(root, oscTitleReferencePaths[file]);
@@ -1017,6 +1023,15 @@ export const capturedOscTitlesSourceFiles = Object.freeze({
     modernOscTitlesWorkerSourceSha256: 'modern-osc-titles-worker.mjs',
 });
 
+export const capturedOscCwdSourceFiles = Object.freeze({
+    ...capturedV81SourceFiles,
+    modernOscCwdSourceSha256: 'modern-osc7-cwd.mjs',
+    modernOscCwdOwnedSourceSha256: 'modern-osc7-cwd-owned.mjs',
+    modernOscCwdWorkerSourceSha256: 'modern-osc7-cwd-worker.mjs',
+    modernOscCwdNativeSourceSha256: 'modern-osc7-cwd-native.swift',
+    modernOscCwdTabHeadersSourceSha256: 'modern-osc7-cwd-tab-headers.cs',
+});
+
 /** Bind the private temporary root, selected inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
@@ -1025,6 +1040,7 @@ export function readSourceSnapshot(root) {
         [capturedBlinkSourcePolicy]: capturedBlinkSourceFiles,
         [capturedViewportSourcePolicy]: capturedViewportSourceFiles,
         [capturedOscTitlesSourcePolicy]: capturedOscTitlesSourceFiles,
+        [capturedOscCwdSourcePolicy]: capturedOscCwdSourceFiles,
     }[sourceSnapshotPolicy] ?? capturedV81SourceFiles;
     if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(expected)) throw new Error('Invalid selected source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
