@@ -1,4 +1,4 @@
-import { execFile, spawn } from 'node:child_process';
+import { execFile, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { once } from 'node:events';
@@ -10,6 +10,7 @@ import { isDeepStrictEqual as same, promisify } from 'node:util';
 import { OwnedCellObserver } from './agent-observer.mjs';
 import { copyPaneMetadata } from './metadata-state.mjs';
 import { checkAction, cwdPlan, gradeCwd, prefix, readPublicPath, requireCwd, scope } from './modern-osc7-cwd.mjs';
+import { runFocusAction } from './osc9-focus.mjs';
 import { assertRetainedSourceClosure, capturedOscCwdSourceFiles, capturedOscCwdSourcePolicy } from './owned-sources.mjs';
 import { readOwnedOutputMode, validateOutputGeometry } from './terminal-output.mjs';
 
@@ -18,6 +19,7 @@ export const workerFile = 'modern-osc7-cwd-worker.mjs';
 export const reportFile = 'osc7-cwd-observation.json';
 const receiptFile = 'osc7-cwd-receipt.json';
 const journalFile = 'osc7-cwd-journal.jsonl';
+const focusFile = 'osc7-cwd-focus.json';
 const swift = fileURLToPath(new URL('./modern-osc7-cwd-native.swift', import.meta.url));
 const runFile = promisify(execFile);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -157,10 +159,24 @@ export class Collection {
         requireCwd(!this.busy && !this.restored, 'unexpected concurrent or completed tooltip reading');
         this.busy = true;
         try {
+            if (request.kind === prefix + 'focus') return await this.focus(budget);
+            requireCwd(this.focused, 'the disposable App has not been brought to the foreground');
             return await this.capture(request, budget);
         } finally {
             this.busy = false;
         }
+    }
+
+    async focus(budget) {
+        requireCwd(!this.focused, 'unexpected second foreground request');
+        const appPid = this.run.app.pid;
+        const remaining = () => { try { return budget(); } catch { return 0; } };
+        const record = await runFocusAction({ action: 'refocus', appPid, remaining, sleep: delay,
+            run: (args, timeout) => spawnSync('/usr/bin/osascript', args, { encoding: 'utf8', timeout }) });
+        writeFileSync(join(this.run.output, focusFile), JSON.stringify(record) + '\n', { flag: 'wx', mode: 0o600 });
+        requireCwd(record.attempts.at(-1)?.frontmostPid === appPid, 'the disposable App did not become foreground');
+        this.focused = true;
+        return {};
     }
 
     async capture(request, budget) {
@@ -261,6 +277,11 @@ function derive(output) {
     const contextBytes = bytes(output, 'context.json'), ownershipBytes = bytes(output, 'ownership-proof.json');
     const settingsBytes = bytes(output, 'initial-settings.json'), journal = bytes(output, journalFile);
     const context = JSON.parse(contextBytes), ownership = JSON.parse(ownershipBytes);
+    const focusBytes = bytes(output, focusFile), focus = JSON.parse(focusBytes);
+    requireCwd(focus.action === 'refocus' && focus.method === 'osascript' && focus.appPid === context.ownerPid
+        && focus.attempts?.at(-1)?.frontmostPid === context.ownerPid
+        && Date.parse(context.startedAt) <= Date.parse(focus.startedAt) && Date.parse(focus.startedAt) <= Date.parse(focus.finishedAt)
+        && Date.parse(focus.finishedAt) <= Date.parse(ownership.cleanedUpAt), 'missing verified initial App foreground action');
     const readerExit = bytes(output, 'native-reader-exit.json'), reader = JSON.parse(readerExit);
     requireCwd(Number.isSafeInteger(reader.pid) && reader.pid > 0 && reader.code === 0 && reader.signal === null,
         'missing verified native reader exit');
@@ -269,7 +290,7 @@ function derive(output) {
     verifySources(output, context);
     const report = replay(output, journal, context, terminalOutput);
     const receipt = { schemaVersion: 1, runId: context.runId, contextSha256: hash(contextBytes), ownershipProofSha256: hash(ownershipBytes),
-        journalSha256: hash(journal), nativeReaderExitSha256: hash(readerExit), fixtureRemoved: true, verdict: report.result.verdict };
+        journalSha256: hash(journal), focusSha256: hash(focusBytes), nativeReaderExitSha256: hash(readerExit), fixtureRemoved: true, verdict: report.result.verdict };
     return { report, receipt };
 }
 

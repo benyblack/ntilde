@@ -55,6 +55,7 @@ async function main(configPath) {
     try {
         await withOwnedOutput({ tty, original, restoreInput: () => fence.dispose() }, async () => {
             await request('raw-output');
+            await owner('focus');
             await collect(owner, fence, config.runId);
         });
         await request('done');
