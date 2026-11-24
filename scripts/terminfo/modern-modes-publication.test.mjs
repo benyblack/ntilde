@@ -23,7 +23,8 @@ test('the retained publication reissues its full receipt and changes only the tw
     for (const row of changed) {
         const original = previous.rows.find(item => item.id === row.id);
         assert.equal(row.requirement, original.requirement);
-        assert.deepEqual(row.stock, original.stock);
+        assert.equal(row.stockVerdict, original.stockVerdict);
+        assert.deepEqual(row.stockEvidence, original.stockEvidence);
         assert.equal(row.conclusion, 'pass');
         assert.deepEqual(row.observed.exchanges.flatMap(exchange => exchange.replies.map(reply => reply.pm)), [2, 1, 2]);
     }
