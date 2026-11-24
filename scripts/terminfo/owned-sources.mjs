@@ -7,10 +7,15 @@ export const capturedV8SourcePolicy = 'readonly-owned-source-graph-v1';
 export const capturedV9SourcePolicy = 'readonly-owned-source-graph-v2';
 export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
+export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
-export const sourceSnapshotPolicy = Object.hasOwn(ownedSourceFiles, 'modernBlinkSourceSha256')
-    ? capturedBlinkSourcePolicy : 'readonly-owned-source-graph-v74';
+const focusedSourcePolicies = [
+    ['modernBlinkSourceSha256', capturedBlinkSourcePolicy],
+    ['modernViewportSourceSha256', capturedViewportSourcePolicy],
+];
+export const sourceSnapshotPolicy = focusedSourcePolicies.find(([field]) => Object.hasOwn(ownedSourceFiles, field))?.[1]
+    ?? 'readonly-owned-source-graph-v74';
 // Frozen forks are selected only by valid own-family source digests and absence of every other family's marker.
 const graphDigest = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
 const familyMarker = (context, prefix) => Object.keys(context).some(key => key.startsWith(prefix) && key.endsWith('Sha256'));
@@ -995,11 +1000,22 @@ export const capturedBlinkSourceFiles = Object.freeze({
     modernBlinkWorkerSourceSha256: 'modern-blink-worker.mjs',
 });
 
+// Only the viewport scope extends the full graph with these measured scripts.
+export const capturedViewportSourceFiles = Object.freeze({
+    ...capturedV81SourceFiles,
+    modernViewportSourceSha256: 'modern-viewport.mjs',
+    modernViewportOwnedSourceSha256: 'modern-viewport-owned.mjs',
+    modernViewportWorkerSourceSha256: 'modern-viewport-worker.mjs',
+});
+
 /** Bind the private temporary root, selected inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
-    const expected = sourceSnapshotPolicy === capturedBlinkSourcePolicy ? capturedBlinkSourceFiles : capturedV81SourceFiles;
+    const expected = {
+        [capturedBlinkSourcePolicy]: capturedBlinkSourceFiles,
+        [capturedViewportSourcePolicy]: capturedViewportSourceFiles,
+    }[sourceSnapshotPolicy] ?? capturedV81SourceFiles;
     if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(expected)) throw new Error('Invalid selected source inventory.');
     const bytes = readFileSync(join(root, 'source-snapshot.json'));
     if (digest(bytes) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT_SHA256) throw new Error('Source snapshot manifest changed.');
