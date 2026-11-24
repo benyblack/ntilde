@@ -1,5 +1,11 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern X11 mouse assessment](terminfo/2026-11-24-modern-x11-mouse-results/report.md)
+reaches 62 pass, 0 fail, and 7 inconclusive across 69 frozen criteria. Three
+fresh SGR click controls admitted the X10, button-event, and alternate-scroll
+App criteria on a disposable X11 display. Run
+`node scripts/terminfo-modern-results.mjs --check --x11-mouse` to rederive the report.
+
 The [Modern child environment assessment](terminfo/2026-11-24-modern-child-environment-results/report.md)
 reaches 59 pass, 0 fail, and 10 inconclusive across 69 frozen criteria. Two
 disposable macOS launches verified the `COLORTERM` and `TERM_PROGRAM` defaults
