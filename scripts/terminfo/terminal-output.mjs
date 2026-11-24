@@ -74,6 +74,23 @@ export function ownedTerminalRestorer(restores) {
     };
 }
 
+/** Run one owned experiment with output translation disabled and both terminal modes restored on every exit. */
+export async function withOwnedOutput({ tty, original, restoreInput }, work) {
+    let restoreOutput;
+    const restore = ownedTerminalRestorer([() => restoreOutput?.(), restoreInput, () => restoreOwnedTerminalState(tty, original)]);
+    try {
+        restoreOutput = prepareOwnedOutput(tty);
+        await work();
+    } catch (error) {
+        try { restore(); }
+        catch (cleanupError) {
+            throw new AggregateError([error, cleanupError], 'Owned experiment and kernel terminal restoration failed.');
+        }
+        throw error;
+    }
+    restore();
+}
+
 // Darwin canonical-mode transition sets PENDIN until the next kernel read. This
 // is an explicit bounded input operation, never a normalization of final proof.
 /** Recognize only a previously-clear Darwin PENDIN bit difference; do not normalize accepted state. */

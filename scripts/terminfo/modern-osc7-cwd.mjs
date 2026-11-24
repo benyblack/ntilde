@@ -10,8 +10,8 @@ export function requireCwd(condition, reason) {
 
 export function cwdPlan(runId) {
     requireCwd(/^[a-f\d]{32}$/.test(runId), 'invalid run id');
-    const nonce = [...runId.slice(0, 8)].map(digit => 'abcdefghjkmnpqrs'[Number.parseInt(digit, 16)]).join('');
-    const root = '/tmp/cwd-' + nonce;
+    const nonce = Array.from(runId.slice(0, 8), digit => 'abcdefghjkmnpqrs'[Number.parseInt(digit, 16)]).join('');
+    const root = '/qa-osc7/cwd-' + nonce;
     const uri = path => 'file://localhost' + path;
     const step = (phase, path, code = 7) => ({
         phase, path, uri: uri(path), bytes: `\x1b]${code};${uri(path)}\x07`,

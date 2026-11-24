@@ -98,9 +98,9 @@ func recognize(_ handler: VNImageRequestHandler) throws -> [Line] {
     }
 }
 
-func capture(_ image: URL, in window: Window) throws {
+func capture(_ image: URL, in window: Window, using executable: URL) throws {
     let screen = Process()
-    screen.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+    screen.executableURL = executable
     screen.arguments = ["-l", String(window.id), "-o", "-x", "-t", "png", image.path]
     try screen.run()
     screen.waitUntilExit()
@@ -121,7 +121,7 @@ func mainWindow(_ state: State) throws -> Window {
     return window
 }
 
-func readTooltip(pid: Int, image: URL) throws -> Reading {
+func readTooltip(pid: Int, image: URL, captureTool: URL) throws -> Reading {
     let initial = try state(pid)
     let startingWindow = try mainWindow(initial)
     let outside = CGPoint(x: startingWindow.x + 112, y: startingWindow.y + 95)
@@ -151,7 +151,7 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
             && window.width > 20 && window.height > 10 && window.height < 120
     }
     guard popups.count == 1, let window = popups.first else { throw CaptureError.noWindow }
-    try capture(image, in: window)
+    try capture(image, in: window, using: captureTool)
     let captured = try state(pid)
     try checkPointer("capture", captured.pointer, hover.pointer)
     for (stage, snapshot) in [("hover", hover), ("capture", captured)] {
@@ -201,8 +201,9 @@ do {
         let handler = VNImageRequestHandler(url: URL(fileURLWithPath: args[2]))
         try send(recognize(handler), encoder: encoder)
     } else {
-        guard args.count == 3, let pid = Int(args[1]), pid > 0 else { throw CaptureError.noState }
-        let reading = try readTooltip(pid: pid, image: URL(fileURLWithPath: args[2]))
+        guard args.count == 4, let pid = Int(args[1]), pid > 0 else { throw CaptureError.noState }
+        let captureTool = URL(fileURLWithPath: args[3])
+        let reading = try readTooltip(pid: pid, image: URL(fileURLWithPath: args[2]), captureTool: captureTool)
         try send(reading, encoder: encoder)
     }
 } catch {

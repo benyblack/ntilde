@@ -180,7 +180,7 @@ export class Collection {
             this.pane ??= frame.pane;
             frame.terminalOutput = readOwnedOutputMode(request.tty, budget());
             const file = fileAt(phase), path = join(this.run.output, file);
-            const result = await runFile(this.helper, [String(this.run.app.pid), path], { timeout: budget(), maxBuffer: 32768 });
+            const result = await runFile(this.helper, [String(this.run.app.pid), path, '/usr/sbin/screencapture'], { timeout: budget(), maxBuffer: 32768 });
             frame.native = JSON.parse(result.stdout);
             frame.image = { file, sha256: hash(bytes(this.run.output, file)) };
             frame.native.lines = await this.run.readTooltipText(path, budget);

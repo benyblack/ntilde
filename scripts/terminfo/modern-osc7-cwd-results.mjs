@@ -115,8 +115,8 @@ export function readableModernOscCwd(report) {
         '```', '',
         'On macOS, independently transcribe an extracted native screenshot with the retained Swift source.', '',
         '```sh',
-        'swiftc -o /tmp/observe-tab-tooltip sources/modern-osc7-cwd-native.swift',
-        '/tmp/observe-tab-tooltip --ocr tooltip-target-b.png',
+        'swiftc -o ./observe-tab-tooltip sources/modern-osc7-cwd-native.swift',
+        './observe-tab-tooltip --ocr tooltip-target-b.png',
         '```', '',
     ].join('\n');
 }

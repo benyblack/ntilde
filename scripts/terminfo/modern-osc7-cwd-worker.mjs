@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { assertPrivateFile, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { terminalFence } from './terminal-fence.mjs';
-import { ownedTerminalRestorer, prepareOwnedOutput, restoreOwnedTerminalState } from './terminal-output.mjs';
+import { withOwnedOutput } from './terminal-output.mjs';
 import { cwdPlan, expectedAction, prefix } from './modern-osc7-cwd.mjs';
 
 async function captureStep(owner, fence, step) {
@@ -13,6 +13,15 @@ async function captureStep(owner, fence, step) {
         throw error;
     }
     await owner('stage', { phase: step.phase, action });
+}
+
+async function emergencyRestore(fence, bytes, primary) {
+    try {
+        if (fence.failed) await fence.writeCleanup(bytes);
+        else await fence.write(bytes);
+    } catch (cleanupError) {
+        throw new AggregateError([primary, cleanupError], 'OSC 7 collection and emergency directory restoration failed.');
+    }
 }
 
 async function collect(owner, fence, runId) {
@@ -27,50 +36,31 @@ async function collect(owner, fence, runId) {
         }
         if (fence.failed) throw new Error('Unexpected input after final tooltip capture.');
     } catch (error) {
-        if (changed) {
-            try {
-                if (fence.failed) await fence.writeCleanup(restore.bytes);
-                else await fence.write(restore.bytes);
-            } catch (cleanupError) {
-                throw new AggregateError([error, cleanupError], 'OSC 7 collection and emergency directory restoration failed.');
-            }
-        }
+        if (changed) await emergencyRestore(fence, restore.bytes, error);
         throw error;
     }
 }
 
-async function run(config, binding) {
-    const tty = binding.tabTty, fence = terminalFence(process.stdin, process.stdout);
-    const owner = (kind, fields) => requestOwner(config, prefix + kind, { tty, ...fields });
-    let restoreOutput;
-    const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
-        () => restoreOwnedTerminalState(tty, binding.originalTerminalState)]);
-    let failure;
-    try {
-        restoreOutput = prepareOwnedOutput(tty);
-        await requestOwner(config, 'raw-output', { tty });
-        await collect(owner, fence, config.runId);
-    } catch (error) {
-        failure = error;
-    }
-    try { restore(); }
-    catch (cleanupError) {
-        if (failure) throw new AggregateError([failure, cleanupError], 'OSC 7 collection and kernel terminal restoration failed.');
-        throw cleanupError;
-    }
-    if (failure) throw failure;
-    await requestOwner(config, 'done', { tty });
+function failureMessage(error) {
+    return error instanceof AggregateError ? error.errors.map(failureMessage).join('; ') : error.message;
 }
 
 async function main(configPath) {
     assertPrivateFile(configPath);
     const config = JSON.parse(readFileSync(configPath, 'utf8'));
-    const binding = await verifyNtildeOutput(config, process.stdout);
+    const { tabTty: tty, originalTerminalState: original } = await verifyNtildeOutput(config, process.stdout);
+    const request = (kind, fields) => requestOwner(config, kind, { tty, ...fields });
+    const owner = (kind, fields) => request(prefix + kind, fields);
+    const fence = terminalFence(process.stdin, process.stdout);
     try {
-        await run(config, binding);
+        await withOwnedOutput({ tty, original, restoreInput: () => fence.dispose() }, async () => {
+            await request('raw-output');
+            await collect(owner, fence, config.runId);
+        });
+        await request('done');
     } catch (error) {
-        const message = error instanceof AggregateError ? error.errors.map(item => item.message).join('; ') : error.message;
-        await requestOwner(config, 'failed', { tty: binding.tabTty, error: message }).catch(() => {});
+        const message = failureMessage(error);
+        await request('failed', { error: message }).catch(() => {});
         throw new Error(message, { cause: error });
     }
 }
