@@ -42,9 +42,9 @@ The child read both incoming labels before any setter, saved them with CSI 22 ; 
 
 ## Evidence and reproduction
 
-[Owned run](owned-run.zip) `92a604e5bd20ef2520b08add3e6e9389` started 2026-11-24T17:40:21.331Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. App 0.14.0 was built from `0a99252e40265d209df886cd9c27f21c6c978d65`. The measured scripts were `834568238402d806d7cbb53a53156ebd3d1b1f31`.
+[Owned run](owned-run.zip) `92a604e5bd20ef2520b08add3e6e9389` started 2026-11-24T17:40:21.331Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. The operator recorded App 0.14.0 from build checkout `0a99252e40265d209df886cd9c27f21c6c978d65`. The measured scripts were `834568238402d806d7cbb53a53156ebd3d1b1f31`.
 
-The 41 × 140 direct-local fixture enabled AllowTitleReport in its disposable settings. The [manifest](manifest.json) pins the archive. The journal retains exact writes, ordered raw replies and DA barriers for both reads of each label. Source policy `readonly-owned-source-graph-v77` and receipt schema 1 bind the App identities and sources, settings, pane observations, label and kernel terminal restoration, and verified fixture cleanup. The archive includes the desktop lease release events. The [JSON report](report.json) retains all 69 rows.
+The 41 × 140 direct-local fixture enabled AllowTitleReport in its disposable settings. The [manifest](manifest.json) pins the archive. The journal retains exact writes, ordered raw replies and DA barriers for both reads of each label. Source policy `readonly-owned-source-graph-v77` and receipt schema 1 bind the measured executable and assembly hashes, collector source graph, settings, pane observations and verified fixture cleanup. The archive includes label and kernel terminal restoration and desktop lease release events. The [JSON report](report.json) retains all 69 rows.
 
 The App behavior already existed. The [OSC title qualification](../2026-11-12-osc-title-qualification.md) and [XTWINOPS query qualification](../2026-11-15-device-queries-qualification.md) retain their own evidence and outcomes. These observations apply to the frozen macOS App criteria. Stock and common-harness results retain their original scope.
 
@@ -56,7 +56,7 @@ Rederive the reports with Node 24 and Python 3.
 node scripts/terminfo-modern-results.mjs --check --osc-titles
 ```
 
-For a fresh measurement, build the recorded App revision and run the collector from the measured scripts revision on an awake macOS desktop. The launcher holds the repository desktop lease through verified cleanup.
+For a fresh measurement, run the build from the App checkout at `0a99252e40265d209df886cd9c27f21c6c978d65`. Then switch to the separate collector checkout at `834568238402d806d7cbb53a53156ebd3d1b1f31` and run the launcher on an awake macOS desktop. The launcher holds the repository desktop lease through verified cleanup.
 
 ```sh
 scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar

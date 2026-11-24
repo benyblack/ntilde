@@ -51,7 +51,8 @@ function readMeasurement(directory, manifest) {
             && receiptSchema === receipt.schemaVersion && ['appRevision', 'scriptsRevision'].every(field => /^[a-f\d]{40}$/.test(measurement[field])),
         'wrong OSC title manifest identity');
         return { report, measurement: { ...measurement, startedAt: context.startedAt, appVersion: context.appVersion,
-            appVersionSource: context.appVersionSource, executableSha256: context.executableSha256, assemblySha256: context.assemblySha256,
+            appRevisionSource: 'operator-attested build checkout', appVersionSource: context.appVersionSource,
+            executableSha256: context.executableSha256, assemblySha256: context.assemblySha256,
             nodeVersion: context.nodeVersion, sourceSnapshotManifestSha256: context.sourceSnapshotManifestSha256,
             fixtureRemoved: receipt.fixtureRemoved, leaseReleasedAt: leaseReleasedAt(scratch, context) } };
     } finally {
@@ -118,13 +119,13 @@ export function readableModernOscTitles(report) {
         'Each read uses public CSI 21 t and CSI 20 t in a DA-fenced exchange, then repeats the queries in the opposite order. The CSI 21 t reader reports the requested window title as OSC l and the CSI 20 t reader reports the requested icon label as OSC L. Empty denotes a complete reply with an empty payload. The icon result measures a label through the protocol. Native icon presentation is outside the measurement.', '',
         'The child read both incoming labels before any setter, saved them with CSI 22 ; 0 t and restored them with CSI 23 ; 0 t after each case. The unhandled OSC 9999 was checked against the App dispatch source. Each case used fresh distinguishable payloads. The OSC 0 icon reader had a separate OSC 1 control and retained its value through the OSC 2 title control.', '',
         '## Evidence and reproduction', '',
-        `[Owned run](owned-run.zip) \`${m.runId}\` started ${m.startedAt} on ${m.platform} with Node ${m.nodeVersion}. App ${m.appVersion} was built from \`${m.appRevision}\`. The measured scripts were \`${m.scriptsRevision}\`.`, '',
-        `The ${m.pane.rows} × ${m.pane.cols} direct-local fixture enabled AllowTitleReport in its disposable settings. The [manifest](manifest.json) pins the archive. The journal retains exact writes, ordered raw replies and DA barriers for both reads of each label. Source policy \`${m.sourcePolicy}\` and receipt schema ${m.receiptSchema} bind the App identities and sources, settings, pane observations, label and kernel terminal restoration, and verified fixture cleanup. The archive includes the desktop lease release events. The [JSON report](report.json) retains all 69 rows.`, '',
+        `[Owned run](owned-run.zip) \`${m.runId}\` started ${m.startedAt} on ${m.platform} with Node ${m.nodeVersion}. The operator recorded App ${m.appVersion} from build checkout \`${m.appRevision}\`. The measured scripts were \`${m.scriptsRevision}\`.`, '',
+        `The ${m.pane.rows} × ${m.pane.cols} direct-local fixture enabled AllowTitleReport in its disposable settings. The [manifest](manifest.json) pins the archive. The journal retains exact writes, ordered raw replies and DA barriers for both reads of each label. Source policy \`${m.sourcePolicy}\` and receipt schema ${m.receiptSchema} bind the measured executable and assembly hashes, collector source graph, settings, pane observations and verified fixture cleanup. The archive includes label and kernel terminal restoration and desktop lease release events. The [JSON report](report.json) retains all 69 rows.`, '',
         'The App behavior already existed. The [OSC title qualification](../2026-11-12-osc-title-qualification.md) and [XTWINOPS query qualification](../2026-11-15-device-queries-qualification.md) retain their own evidence and outcomes. These observations apply to the frozen macOS App criteria. Stock and common-harness results retain their original scope.', '',
         ...m.attempts.flatMap(attempt => [`[Retained attempt ${attempt.runId}](${attempt.archive}). ${attempt.reason}`, '']),
         'Rederive the reports with Node 24 and Python 3.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check --osc-titles', '```', '',
-        'For a fresh measurement, build the recorded App revision and run the collector from the measured scripts revision on an awake macOS desktop. The launcher holds the repository desktop lease through verified cleanup.', '',
+        `For a fresh measurement, run the build from the App checkout at \`${m.appRevision}\`. Then switch to the separate collector checkout at \`${m.scriptsRevision}\` and run the launcher on an awake macOS desktop. The launcher holds the repository desktop lease through verified cleanup.`, '',
         '```sh',
         'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
         `node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ${m.appVersion} --scope modern-osc-titles`,

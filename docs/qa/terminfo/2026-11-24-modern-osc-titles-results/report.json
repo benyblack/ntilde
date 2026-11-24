@@ -4287,6 +4287,7 @@
     "platform": "macOS 27.0.1 (26A434), arm64",
     "startedAt": "2026-11-24T17:40:21.331Z",
     "appVersion": "0.14.0",
+    "appRevisionSource": "operator-attested build checkout",
     "appVersionSource": "operator supplied; not independently verified",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "5f8d47d0636205e3de3223de12e690b70c20165bccec73bccfbcc8fd6f9bd2cd",
