@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,6 +21,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const fileAt = phase => 'tooltip-' + phase + '.png';
 const pointAt = (window, offsetY) => ({ x: window.x + 112, y: window.y + offsetY });
+const helperName = 'observe-tab-tooltip';
 const near = (actual, expected) => Math.abs(actual?.x - expected?.x) <= 1 && Math.abs(actual?.y - expected?.y) <= 1;
 
 function bytes(output, file) {
@@ -31,14 +32,17 @@ function bytes(output, file) {
 
 const json = (output, file) => JSON.parse(bytes(output, file));
 
-function validateNative(read, pid, expectedWindow) {
+function validateNative(read, pid, previous) {
     const { original, before, hover, captured, restored, window, lines } = read;
     requireCwd([before, hover, captured, restored].every(state => state?.frontPid === pid
         && Array.isArray(state.windows) && state.windows.every(item => item.pid === pid)),
     'the native reading is outside the owned foreground App');
+    const times = [before, hover, captured, restored].map(state => state.uptime);
+    requireCwd(times.every((time, index) => Number.isFinite(time) && time > (times[index - 1] ?? previous?.uptime ?? 0)),
+        'stale or out-of-order native reading');
     const mains = before.windows.filter(item => item.layer === 0 && item.width >= 400 && item.height >= 200);
     const [main] = mains;
-    requireCwd(mains.length === 1 && (!expectedWindow || same(main, expectedWindow)), 'the owned native window changed');
+    requireCwd(mains.length === 1 && (!previous || same(main, previous.main)), 'the owned native window changed');
     const target = pointAt(main, 18);
     requireCwd(near(before.pointer, pointAt(main, 95)) && near(hover.pointer, target)
         && near(captured.pointer, hover.pointer) && near(restored.pointer, original), 'unverified hover move or pointer restoration');
@@ -52,10 +56,10 @@ function validateNative(read, pid, expectedWindow) {
         && lines.every(line => typeof line.text === 'string' && line.text.length <= 256 && line.confidence >= 0 && line.confidence <= 1
             && line.bounds?.length === 4 && line.bounds.every(value => Number.isFinite(value) && value >= 0 && value <= 1)),
     'empty or malformed public tooltip reading');
-    return main;
+    return { main, uptime: restored.uptime };
 }
 
-function stageReading(output, frame, step, context, pane, previousWindow) {
+function stageReading(output, frame, step, context, pane, previous) {
     requireCwd(frame && !frame.error && frame.phase === step.phase && same(frame.pane, pane)
         && /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(pane?.id ?? '')
         && frame.terminalOutput?.outputProcessing === false, 'changed step, pane or PTY mode');
@@ -70,9 +74,16 @@ function stageReading(output, frame, step, context, pane, previousWindow) {
     requireCwd(hash(raw) === frame.image.sha256 && raw.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')),
         'changed screenshot bytes');
 
-    const main = validateNative(frame.native, context.ownerPid, previousWindow);
+    const native = validateNative(frame.native, context.ownerPid, previous);
     const publicPath = readPublicPath(frame.native.lines);
-    return { main, reading: { publicPath, metadataPath: workingDirectory, image: frame.image, lines: frame.native.lines } };
+    return { native, reading: { publicPath, metadataPath: workingDirectory, image: frame.image, lines: frame.native.lines } };
+}
+
+export function prepareFixture(run) {
+    requireCwd(process.platform === 'darwin', 'expected a macOS tooltip observer');
+    const helper = join(run.scratch, helperName);
+    execFileSync('/usr/bin/swiftc', ['-o', helper, swift], { timeout: 20000, maxBuffer: 8192 });
+    return { nativeHelperSha256: hash(readFileSync(helper)) };
 }
 
 export class Collection {
@@ -81,20 +92,13 @@ export class Collection {
         this.observer = new OwnedCellObserver({ appData: run.appData, ownerPid: run.app.pid, profileName: run.profileName });
         this.plan = cwdPlan(run.runId);
         this.stages = {};
-        this.helper = join(run.scratch, 'observe-tab-tooltip');
+        this.helper = join(run.scratch, helperName);
     }
 
     async observe(request, budget) {
         requireCwd(!this.busy && !this.restored, 'unexpected concurrent or completed tooltip reading');
         this.busy = true;
-        const kind = request.kind;
         try {
-            if (kind === prefix + 'prepare') {
-                requireCwd(!this.prepared && process.platform === 'darwin', 'expected a private macOS tooltip observer');
-                await runFile('/usr/bin/swiftc', ['-o', this.helper, swift], { timeout: budget(), maxBuffer: 8192 });
-                this.prepared = true;
-                return {};
-            }
             return await this.capture(request, budget);
         } finally {
             this.busy = false;
@@ -106,7 +110,7 @@ export class Collection {
         const step = this.plan[Object.keys(this.stages).length];
         const frame = { phase, action };
         try {
-            requireCwd(this.prepared && step?.phase === phase, 'out-of-order tooltip reading');
+            requireCwd(step?.phase === phase, 'out-of-order tooltip reading');
             if (request.kind === prefix + 'fault') throw new Error(request.error);
             requireCwd(request.kind === prefix + 'stage', 'unexpected request kind');
             checkAction(step, action);
@@ -123,8 +127,8 @@ export class Collection {
             frame.image = { file, sha256: hash(bytes(this.run.output, file)) };
             frame.metadata = await this.observer.request('readPaneMetadata', { paneId }, budget);
 
-            const { main, reading } = stageReading(this.run.output, frame, step, { ownerPid: this.run.app.pid }, this.pane, this.window);
-            this.window = main;
+            const { native, reading } = stageReading(this.run.output, frame, step, { ownerPid: this.run.app.pid }, this.pane, this.lastNative);
+            this.lastNative = native;
             this.stages[phase] = reading;
             if (phase === 'launch') requireCwd(reading.metadataPath === null && reading.publicPath === null, 'startup has a directory whose incoming URI is unknown');
             if (phase === 'incoming') requireCwd(gradeCwd(this.plan, this.stages).incomingVerified, 'the fixture URI could not be verified before the attempt');
@@ -162,7 +166,7 @@ function verifyOwnership(context, ownership, settings) {
     const terminal = proof?.privateClipboard;
     requireCwd(context.sourceSnapshotPolicy === capturedOscCwdSourcePolicy && same(context.collectionScope, scope)
         && /^[a-f\d]{32}$/.test(context.runId) && Number.isFinite(Date.parse(context.startedAt))
-        && isDigest(context.executableSha256) && isDigest(context.assemblySha256), 'wrong run, App or source identity');
+        && isDigest(context.executableSha256) && isDigest(context.assemblySha256) && isDigest(context.nativeHelperSha256), 'wrong run, App or source identity');
     requireCwd(settings.SessionPersistence === 'Off' && settings.TabStripOrientation === 'Horizontal' && settings.Profiles?.length === 1
         && settings.Profiles[0].Name === 'terminfo disposable worker ' + context.runId && settings.AgentAccessObserveEnabled === true
         && settings.AgentAccessActEnabled === false && settings.AllowOsc52ClipboardWrite === false, 'changed disposable settings');
@@ -180,17 +184,17 @@ function verifyOwnership(context, ownership, settings) {
 function replay(output, journal, context, terminalOutput) {
     const frames = journal.toString().trimEnd().split('\n').map(line => JSON.parse(line));
     const pane = frames[0]?.pane, plan = cwdPlan(context.runId);
-    let window;
+    let lastNative;
     requireCwd(frames.length === plan.length, 'missing or extra stages');
     const stages = Object.fromEntries(plan.map((step, index) => {
-        const { main, reading } = stageReading(output, frames[index], step, context, pane, window);
-        window = main;
+        const { native, reading } = stageReading(output, frames[index], step, context, pane, lastNative);
+        lastNative = native;
         return [step.phase, { ...reading, request: frames[index].action.request, barrier: frames[index].action.barrier }];
     }));
     validateOutputGeometry(terminalOutput.description, pane.rows, pane.cols);
     const result = gradeCwd(plan, stages);
     requireCwd(result.incomingVerified && result.restored, 'incomplete verified fixture setup or restoration');
-    return { runId: context.runId, pane, window, result };
+    return { runId: context.runId, pane, window: lastNative.main, result };
 }
 
 function derive(output) {

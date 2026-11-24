@@ -43,6 +43,7 @@ struct Window: Codable, Equatable {
 
 struct State: Codable {
     let frontPid: Int
+    let uptime: Double
     let pointer: Point
     let windows: [Window]
 }
@@ -73,7 +74,7 @@ func state(_ pid: Int) throws -> State {
           let rows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]],
           let active = NSWorkspace.shared.frontmostApplication else { throw CaptureError.noState }
     guard Int(active.processIdentifier) == pid else { throw CaptureError.notFrontmost }
-    return State(frontPid: pid, pointer: Point(pointer), windows: rows.compactMap { Window($0, owner: pid) })
+    return State(frontPid: pid, uptime: ProcessInfo.processInfo.systemUptime, pointer: Point(pointer), windows: rows.compactMap { Window($0, owner: pid) })
 }
 
 func move(_ point: CGPoint) throws {

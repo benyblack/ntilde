@@ -49,7 +49,6 @@ async function run(config, binding) {
     try {
         restoreOutput = prepareOwnedOutput(tty);
         await requestOwner(config, 'raw-output', { tty });
-        await owner('prepare', {});
         await collect(owner, fence, config.runId);
     } catch (error) {
         failure = error;

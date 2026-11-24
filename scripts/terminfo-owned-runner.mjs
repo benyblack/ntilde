@@ -4736,6 +4736,7 @@ function preparePersistentRunIn(scratch, args, executable, snapshot, lease, outp
         initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))), executable, executableSha256: hash(readFileSync(executable)),
         assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
         nodeVersion: process.version, startedAt: new Date().toISOString(), runId,
+        ...focusedSuite?.prepareFixture?.(run),
         ...(!focusedSuite ? { animationSuiteId: animationSuiteIds[version], ownedAnimationPolicy: ownedAnimationPolicies[version] } : {}) };
     if (focusedSuite) return run;
     const cases = animationCasesByVersion[version];
