@@ -51,7 +51,7 @@ Rederive the reports from the retained archives with Node 24 and Python 3.
 node scripts/terminfo-modern-results.mjs --check --viewport
 ```
 
-For a fresh measurement, build the recorded App revision and run the collector from the measured scripts revision on an awake macOS desktop. The launcher releases the repository desktop lease after verified cleanup. If it reports `DESKTOP LOCK RETAINED`, run `node scripts/terminfo-desktop-lock.mjs status` and follow the [guarded recovery instructions](../../QA_TERMINFO.md#desktop-collection-lock).
+For a fresh measurement, build the recorded App revision and run the collector from the measured scripts revision on an awake macOS desktop. The launcher releases the repository desktop lease after verified cleanup. If it reports `DESKTOP LOCK RETAINED`, start with the read-only status command in the [guarded recovery instructions](../../QA_TERMINFO.md#desktop-collection-lock).
 
 ```sh
 scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar
