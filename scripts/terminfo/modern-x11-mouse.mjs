@@ -60,22 +60,18 @@ export function actionFence(id, phase, index) {
 
 function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
 const timestamp = value => typeof value === 'string' && /^\d{1,22}$/.test(value);
-const before = (a, b) => timestamp(a) && timestamp(b) && BigInt(a) < BigInt(b);
+export const before = (a, b) => timestamp(a) && timestamp(b) && BigInt(a) < BigInt(b);
 const isHex = value => typeof value === 'string' && /^(?:[a-f\d]{2})*$/.test(value) && value.length <= 2048;
 
-function exchange(record, plan, previous) {
+export function exchange(record, plan, previous) {
     need(record?.writeHex === plan.writeHex && record.replyHex === plan.replyHex
         && before(previous, record.started) && before(record.started, record.finished), 'missing fresh mode observations');
     return record.finished;
 }
 
 function verifyAction(step, expected, previous, identity, key, tag) {
-    const { arm, native, capture } = step;
+    const { native } = step;
     const { point, beforeMask, afterMask, kind } = expected;
-    need(arm?.key === key && capture?.key === key && before(previous, arm.armed)
-        && before(arm.armed, native.started) && before(native.started, native.finished)
-        && before(native.finished, capture.sealed), 'stale or misordered action window');
-    need(BigInt(capture.sealed) - BigInt(native.finished) >= 200000000n, 'raw input window ended before the silence observation budget');
     need(same(native.request, expected) && native.serverPid === identity.serverPid
         && native.windowId === identity.window.id && native.appPid === identity.appPid
         && native.focus === identity.window.id && native.xtest === true
@@ -83,8 +79,17 @@ function verifyAction(step, expected, previous, identity, key, tag) {
         && native.after.window === identity.window.id && same(native.after.point, point)
         && (kind === 'move' || (native.before.window === identity.window.id && same(native.before.point, point))),
     'failed or unowned XTEST delivery');
+    return actionWindow(step, previous, key, tag, native.started);
+}
+
+export function actionWindow(step, previous, key, tag, firstInput) {
+    const { arm, native, capture } = step;
+    need(arm?.key === key && capture?.key === key && before(previous, arm.armed)
+        && before(arm.armed, native.started) && before(native.started, native.finished)
+        && before(native.finished, capture.sealed), 'stale or misordered action window');
+    need(BigInt(capture.sealed) - BigInt(native.finished) >= 200000000n, 'raw input window ended before the silence observation budget');
     need(Array.isArray(capture.chunks) && capture.chunks.every((chunk, index, all) =>
-        isHex(chunk.hex) && chunk.hex.length > 0 && before(all[index - 1]?.at ?? native.started, chunk.at)
+        isHex(chunk.hex) && chunk.hex.length > 0 && before(all[index - 1]?.at ?? firstInput, chunk.at)
         && before(chunk.at, capture.sealed)), 'stale or malformed raw reply');
     return { sealed: capture.sealed, raw: stripFence(capture, native, tag) };
 }

@@ -78,6 +78,7 @@ class XDisplay:
         self.move = bind(xtst, "XTestFakeMotionEvent", INT, PTR, INT, INT, INT, XID)
         self.button = bind(xtst, "XTestFakeButtonEvent", INT, PTR, UINT, INT, XID)
         self.key = bind(xtst, "XTestFakeKeyEvent", INT, PTR, UINT, INT, XID)
+        self.keymap = bind(x11, "XQueryKeymap", INT, PTR, ct.POINTER(ct.c_ubyte))
         self.keysym = bind(x11, "XStringToKeysym", XID, ct.c_char_p)
         self.keycode = bind(x11, "XKeysymToKeycode", ct.c_ubyte, PTR, XID)
         self.query_ids = bind(xres, "XResQueryClientIds", INT, PTR, ct.c_long,
@@ -150,6 +151,55 @@ class XDisplay:
         self.sync(self.display, 0)
         return {"tag": tag, "started": started, "keycodes": codes}
 
+    def pressed(self):
+        keys = (ct.c_ubyte * 32)()
+        self.keymap(self.display, keys)
+        return [code for code in range(8, 256) if keys[code // 8] & (1 << (code % 8))]
+
+    def chord(self, names, window_id):
+        held, events = [], []
+        mapping = {name: self.keycode(self.display, self.keysym(name.encode("ascii"))) for name in names}
+        demand(all(mapping.values()) and len(set(mapping.values())) == len(names), "bad chord key mapping")
+        try:
+            for down, order in ((True, names), (False, reversed(names))):
+                for name in order:
+                    code = mapping[name]
+                    demand(self.focus() == window_id, "XTEST keyboard focus changed")
+                    at = str(time.monotonic_ns())
+                    if down:
+                        held.append(code)
+                    demand(self.key(self.display, code, down, 0), "XTEST key dispatch failed")
+                    self.sync(self.display, 0)
+                    if not down:
+                        held.remove(code)
+                    pressed, mask = self.pressed(), self.pointer()["mask"]
+                    demand(pressed == sorted(held), "XTEST held keys differ")
+                    events.append({"name": name, "code": code, "down": down, "at": at,
+                                   "pressed": pressed, "mask": mask})
+        finally:
+            for code in reversed(held):
+                self.key(self.display, code, 0, 0)
+            self.sync(self.display, 0)
+        return events
+
+    def keyboard_action(self, command, window_id):
+        request, tag = command["request"], command["fence"]
+        permitted = {"a": (["a"], "zb"), "ctrl+i": (["Control_L", "i"], "zc")}
+        names, expected_tag = permitted[request["chord"]]
+        demand(tag == expected_tag and self.pressed() == [] and self.pointer()["mask"] == 0,
+               "unexpected keyboard fence or initial state")
+        started = str(time.monotonic_ns())
+        events = self.chord(names, window_id)
+        fence_start = str(time.monotonic_ns())
+        fence_events = [event for letter in tag for event in self.chord([letter], window_id)]
+        focus, pressed, mask = self.focus(), self.pressed(), self.pointer()["mask"]
+        demand(focus == window_id and not pressed and mask == 0, "XTEST keyboard restoration failed")
+        return {"request": request, "started": started, "events": events, "initialKeys": [],
+                "fence": {"tag": tag, "started": fence_start, "events": fence_events,
+                          "keycodes": [event["code"] for event in fence_events if event["down"]]},
+                "finished": str(time.monotonic_ns()), "serverPid": self.server_pid, "appPid": command["appPid"],
+                "windowId": window_id, "focus": focus, "finalKeys": pressed, "finalMask": mask, "xtest": True}
+
     def run(self, command):
         app_pid = command["appPid"]
         window = self.window(app_pid)
@@ -162,6 +212,8 @@ class XDisplay:
                     "focus": window_id, "xtestVersion": self.version}
         demand(window == command["window"] and self.focus() == window_id, "X window geometry or focus changed")
         request = command["request"]
+        if request["kind"] == "keyboard":
+            return self.keyboard_action(command, window_id)
         before = self.pointer()
         x, y = request["point"]
         demand(window["x"] < x < window["x"] + window["width"]

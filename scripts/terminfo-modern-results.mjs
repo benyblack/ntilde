@@ -17,6 +17,8 @@ import { buildModernChildEnvironmentPublication, modernChildEnvironmentOutputPat
 
 import { buildModernX11MousePublication, modernX11MouseOutputPaths, readableModernX11Mouse } from './terminfo/modern-x11-mouse-results.mjs';
 
+import { buildKeyboardPublication, keyboardPaths, readableKeyboard } from './terminfo/modern-x11-keyboard-results.mjs';
+
 const args = process.argv.slice(2);
 const publications = {
     baseline: [buildModernReport, modernOutputPaths, readableModern],
@@ -24,6 +26,7 @@ const publications = {
     '--modes': [buildModernModesPublication, modernModesOutputPaths, readableModernModes],
     '--blink': [buildModernBlinkPublication, modernBlinkOutputPaths, readableModernBlink],
     '--viewport': [buildModernViewportPublication, modernViewportOutputPaths, readableModernViewport],
+    '--modify-other-keys': [buildKeyboardPublication, keyboardPaths, readableKeyboard],
     '--x11-mouse': [buildModernX11MousePublication, modernX11MouseOutputPaths, readableModernX11Mouse],
     '--child-environment': [buildModernChildEnvironmentPublication, modernChildEnvironmentOutputPaths, readableModernChildEnvironment],
     '--osc7-cwd': [buildModernOscCwdPublication, modernOscCwdOutputPaths, readableModernOscCwd],
@@ -32,7 +35,7 @@ const publications = {
 const selected = args.length === 1 ? 'baseline' : args[1];
 if (!['--check', '--write'].includes(args[0])
     || (args.length !== 1 && !(args.length === 2 && Object.hasOwn(publications, selected) && selected.startsWith('--')))) {
-    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes|--blink|--viewport|--osc-titles|--osc7-cwd|--child-environment|--x11-mouse]');
+    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes|--blink|--viewport|--osc-titles|--osc7-cwd|--child-environment|--x11-mouse|--modify-other-keys]');
     process.exitCode = 2;
 } else {
     const [build, outputPaths, readable] = publications[selected];
