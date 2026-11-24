@@ -80,9 +80,6 @@ function stageReading(output, frame, step, context, pane, previous) {
     requireCwd(hash(raw) === frame.image.sha256 && raw.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')),
         'changed screenshot bytes');
 
-    const { activationRequested } = frame.native;
-    requireCwd(typeof activationRequested === 'boolean' && (!activationRequested || step.phase === 'launch'),
-        'unexpected native activation during the attempt');
     const native = validateNative(frame.native, context.ownerPid, previous);
     const publicPath = readPublicPath(frame.native.lines);
     return { native, reading: { publicPath, metadataPath: workingDirectory, image: frame.image, lines: frame.native.lines } };
@@ -183,8 +180,7 @@ export class Collection {
             this.pane ??= frame.pane;
             frame.terminalOutput = readOwnedOutputMode(request.tty, budget());
             const file = fileAt(phase), path = join(this.run.output, file);
-            const nativeArgs = [String(this.run.app.pid), path, '/usr/sbin/screencapture', phase === 'launch' ? 'launch' : 'stage'];
-            const result = await runFile(this.helper, nativeArgs, { timeout: budget(), maxBuffer: 32768 });
+            const result = await runFile(this.helper, [String(this.run.app.pid), path, '/usr/sbin/screencapture'], { timeout: budget(), maxBuffer: 32768 });
             frame.native = JSON.parse(result.stdout);
             frame.image = { file, sha256: hash(bytes(this.run.output, file)) };
             frame.native.lines = await this.run.readTooltipText(path, budget);

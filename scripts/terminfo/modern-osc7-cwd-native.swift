@@ -55,7 +55,6 @@ struct Line: Codable {
 }
 
 struct Reading: Codable {
-    let activationRequested: Bool
     let initial: State
     let before: State
     let hover: State
@@ -122,17 +121,7 @@ func mainWindow(_ state: State) throws -> Window {
     return window
 }
 
-func activateOwnedApp(_ pid: Int, allowed: Bool) throws -> Bool {
-    guard allowed, Int(NSWorkspace.shared.frontmostApplication?.processIdentifier ?? 0) != pid else { return false }
-    guard let owned = NSRunningApplication(processIdentifier: pid_t(pid)), owned.activate(options: []) else {
-        throw CaptureError.notFrontmost
-    }
-    Thread.sleep(forTimeInterval: 0.25)
-    return true
-}
-
-func readTooltip(pid: Int, image: URL, captureTool: URL, mayActivate: Bool) throws -> Reading {
-    let activationRequested = try activateOwnedApp(pid, allowed: mayActivate)
+func readTooltip(pid: Int, image: URL, captureTool: URL) throws -> Reading {
     let initial = try state(pid)
     let startingWindow = try mainWindow(initial)
     let outside = CGPoint(x: startingWindow.x + 112, y: startingWindow.y + 95)
@@ -173,7 +162,7 @@ func readTooltip(pid: Int, image: URL, captureTool: URL, mayActivate: Bool) thro
     Thread.sleep(forTimeInterval: 0.10)
     let restored = try state(pid)
     try checkPointer("restore", restored.pointer, initial.pointer)
-    return Reading(activationRequested: activationRequested, initial: initial, before: before, hover: hover, captured: captured,
+    return Reading(initial: initial, before: before, hover: hover, captured: captured,
                    restored: restored, window: window)
 }
 
@@ -212,11 +201,9 @@ do {
         let handler = VNImageRequestHandler(url: URL(fileURLWithPath: args[2]))
         try send(recognize(handler), encoder: encoder)
     } else {
-        guard args.count == 5, let pid = Int(args[1]), pid > 0, ["launch", "stage"].contains(args[4])
-        else { throw CaptureError.noState }
+        guard args.count == 4, let pid = Int(args[1]), pid > 0 else { throw CaptureError.noState }
         let captureTool = URL(fileURLWithPath: args[3])
-        let reading = try readTooltip(pid: pid, image: URL(fileURLWithPath: args[2]), captureTool: captureTool,
-                                      mayActivate: args[4] == "launch")
+        let reading = try readTooltip(pid: pid, image: URL(fileURLWithPath: args[2]), captureTool: captureTool)
         try send(reading, encoder: encoder)
     }
 } catch {
