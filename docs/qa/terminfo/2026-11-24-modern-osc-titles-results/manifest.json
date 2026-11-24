@@ -3,13 +3,20 @@
   "sourcePolicy": "readonly-owned-source-graph-v77",
   "receiptSchema": 1,
   "measurement": {
-    "runId": "25a4131e8260b5307f2dd4e388d26b43",
+    "runId": "92a604e5bd20ef2520b08add3e6e9389",
     "appRevision": "0a99252e40265d209df886cd9c27f21c6c978d65",
-    "scriptsRevision": "133f6f8158cb5dbb9cb8bf24a983fe44c4351bda",
+    "scriptsRevision": "834568238402d806d7cbb53a53156ebd3d1b1f31",
     "platform": "macOS 27.0.1 (26A434), arm64"
   },
   "archives": {
-    "owned-run.zip": "c52af2be10bcd3b943d399391c23772342288646c8e95a337622a036ad51bf77"
+    "owned-run.zip": "8655475564eb50d09f3286bf7e844b11ccb270e97d869316c1c91cc9c863c08d",
+    "attempt-1.zip": "c52af2be10bcd3b943d399391c23772342288646c8e95a337622a036ad51bf77"
   },
-  "attempts": []
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "25a4131e8260b5307f2dd4e388d26b43",
+      "reason": "Both requirements passed. This run preceded the SonarCloud fixes to worker cleanup and label validation."
+    }
+  ]
 }

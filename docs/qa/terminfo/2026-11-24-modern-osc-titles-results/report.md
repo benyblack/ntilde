@@ -12,11 +12,11 @@ Both OSC 2 targets read back exactly and the unhandled OSC left the title unchan
 | --- | --- | --- | --- |
 | incoming | — | empty | empty |
 | save | — | empty | empty |
-| control-a | `M-25a4131e8260b5307f2dd4e388d26b43-C2A` | `M-25a4131e8260b5307f2dd4e388d26b43-C2A` | empty |
-| control-b | `M-25a4131e8260b5307f2dd4e388d26b43-C2B` | `M-25a4131e8260b5307f2dd4e388d26b43-C2B` | empty |
-| target-a | `M-25a4131e8260b5307f2dd4e388d26b43-T2A` | `M-25a4131e8260b5307f2dd4e388d26b43-T2A` | empty |
-| target-b | `M-25a4131e8260b5307f2dd4e388d26b43-T2B` | `M-25a4131e8260b5307f2dd4e388d26b43-T2B` | empty |
-| unhandled | `M-25a4131e8260b5307f2dd4e388d26b43-NEG` | `M-25a4131e8260b5307f2dd4e388d26b43-T2B` | empty |
+| control-a | `M-92a604e5bd20ef2520b08add3e6e9389-C2A` | `M-92a604e5bd20ef2520b08add3e6e9389-C2A` | empty |
+| control-b | `M-92a604e5bd20ef2520b08add3e6e9389-C2B` | `M-92a604e5bd20ef2520b08add3e6e9389-C2B` | empty |
+| target-a | `M-92a604e5bd20ef2520b08add3e6e9389-T2A` | `M-92a604e5bd20ef2520b08add3e6e9389-T2A` | empty |
+| target-b | `M-92a604e5bd20ef2520b08add3e6e9389-T2B` | `M-92a604e5bd20ef2520b08add3e6e9389-T2B` | empty |
+| unhandled | `M-92a604e5bd20ef2520b08add3e6e9389-NEG` | `M-92a604e5bd20ef2520b08add3e6e9389-T2B` | empty |
 | restore | — | empty | empty |
 
 Incoming title restoration was verified and incoming icon label restoration was verified.
@@ -29,9 +29,9 @@ OSC 0 set the title and icon label to the same requested value in independent re
 | --- | --- | --- | --- |
 | incoming | — | empty | empty |
 | save | — | empty | empty |
-| icon-control | `M-25a4131e8260b5307f2dd4e388d26b43-C1` | empty | `M-25a4131e8260b5307f2dd4e388d26b43-C1` |
-| title-control | `M-25a4131e8260b5307f2dd4e388d26b43-C2` | `M-25a4131e8260b5307f2dd4e388d26b43-C2` | `M-25a4131e8260b5307f2dd4e388d26b43-C1` |
-| target | `M-25a4131e8260b5307f2dd4e388d26b43-T0` | `M-25a4131e8260b5307f2dd4e388d26b43-T0` | `M-25a4131e8260b5307f2dd4e388d26b43-T0` |
+| icon-control | `M-92a604e5bd20ef2520b08add3e6e9389-C1` | empty | `M-92a604e5bd20ef2520b08add3e6e9389-C1` |
+| title-control | `M-92a604e5bd20ef2520b08add3e6e9389-C2` | `M-92a604e5bd20ef2520b08add3e6e9389-C2` | `M-92a604e5bd20ef2520b08add3e6e9389-C1` |
+| target | `M-92a604e5bd20ef2520b08add3e6e9389-T0` | `M-92a604e5bd20ef2520b08add3e6e9389-T0` | `M-92a604e5bd20ef2520b08add3e6e9389-T0` |
 | restore | — | empty | empty |
 
 Incoming title restoration was verified and incoming icon label restoration was verified.
@@ -42,11 +42,13 @@ The child read both incoming labels before any setter, saved them with CSI 22 ; 
 
 ## Evidence and reproduction
 
-[Owned run](owned-run.zip) `25a4131e8260b5307f2dd4e388d26b43` started 2026-11-24T17:30:39.777Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. App 0.14.0 was built from `0a99252e40265d209df886cd9c27f21c6c978d65`. The measured scripts were `133f6f8158cb5dbb9cb8bf24a983fe44c4351bda`.
+[Owned run](owned-run.zip) `92a604e5bd20ef2520b08add3e6e9389` started 2026-11-24T17:40:21.331Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. App 0.14.0 was built from `0a99252e40265d209df886cd9c27f21c6c978d65`. The measured scripts were `834568238402d806d7cbb53a53156ebd3d1b1f31`.
 
 The 41 × 140 direct-local fixture enabled AllowTitleReport in its disposable settings. The [manifest](manifest.json) pins the archive. The journal retains exact writes, ordered raw replies and DA barriers for both reads of each label. Source policy `readonly-owned-source-graph-v77` and receipt schema 1 bind the App identities and sources, settings, pane observations, label and kernel terminal restoration, and verified fixture cleanup. The archive includes the desktop lease release events. The [JSON report](report.json) retains all 69 rows.
 
 The App behavior already existed. The [OSC title qualification](../2026-11-12-osc-title-qualification.md) and [XTWINOPS query qualification](../2026-11-15-device-queries-qualification.md) retain their own evidence and outcomes. These observations apply to the frozen macOS App criteria. Stock and common-harness results retain their original scope.
+
+[Retained attempt 25a4131e8260b5307f2dd4e388d26b43](attempt-1.zip). Both requirements passed. This run preceded the SonarCloud fixes to worker cleanup and label validation.
 
 Rederive the reports with Node 24 and Python 3.
 

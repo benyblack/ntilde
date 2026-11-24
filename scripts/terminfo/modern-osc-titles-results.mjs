@@ -9,7 +9,7 @@ import { osc0, osc2 } from './modern-osc-titles.mjs';
 import { reportFile, verifyOscTitlesRun } from './modern-osc-titles-owned.mjs';
 
 export const oscTitlesPublication = 'docs/qa/terminfo/2026-11-24-modern-osc-titles-results';
-const manifestSha256 = '8700bec549e0e61421dee8649c1ff0edc93d59a726fce46991316924c3a4ebc8';
+const manifestSha256 = '4c5462d37677b3c3573a5c2981380fe665dfd8d72d4b7d338a295e3391b4fa03';
 const criteria = {
     [osc2]: 'e25978542e8966ea9c3645b0a3b2f7c6693e2fd767817d655cf35af8d26096c7',
     [osc0]: '1b28b0fac150294d922f1107919fe644ca0e62c094fcc7b419784f2a532b6bb2',
