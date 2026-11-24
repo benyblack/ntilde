@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "fc2234cff3baa61dec82a6bb5cc117b5",
+    "sourcePolicy": "readonly-owned-source-graph-v75",
+    "receiptSchema": 1,
+    "appRevision": "fb83fbcdc6fa1026cc5ce89ca4f410725e074ce5",
+    "scriptsRevision": "0086ec934ca084796ba53676a41a3df2be63b135",
+    "platform": "macOS 27.0.1 (26A434), arm64"
+  },
+  "archives": {
+    "owned-run.zip": "ef3353928dd66e2a3aff4f0cf99880e0eca5097129720fadb85b13e1ddf8d47e",
+    "attempt-1.zip": "cde6abe792f80f2e3d539e153bf0cf4893a27f11c916bb1b5d106f07e225959d"
+  },
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "a6a13657fc2b6b509e0bc60ad185e468",
+      "scriptsRevision": "2bf559732f0697d9445d2871fb36da2fd09a4b55",
+      "reason": "The native window moved and resized during the blank calibration capture. The calibration geometry check refused the run after verified cleanup."
+    }
+  ]
+}

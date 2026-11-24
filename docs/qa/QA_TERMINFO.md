@@ -1,5 +1,10 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern SGR 5 blink assessment](terminfo/2026-11-24-modern-blink-results/report.md)
+reaches 52 pass, 0 fail, and 17 inconclusive across 69 frozen criteria. It records
+a visible change and return in the live App with a stable unstyled control.
+Run `node scripts/terminfo-modern-results.mjs --check --blink` to rederive the results offline.
+
 The [Modern mode assessment](terminfo/2026-11-24-modern-modes-results/report.md)
 reaches 51 pass, 0 fail, and 18 inconclusive across the same 69 criteria. It records
 the DECRPM reset, set, and restored states for modes 2026 and 2031.
