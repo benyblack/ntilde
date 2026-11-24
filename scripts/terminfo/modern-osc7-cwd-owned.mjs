@@ -36,19 +36,22 @@ function bytes(output, file) {
 const json = (output, file) => JSON.parse(bytes(output, file));
 
 function validateNative(read, pid, previous) {
-    const { original, before, hover, captured, restored, window, lines } = read;
-    requireCwd([before, hover, captured, restored].every(state => state?.frontPid === pid
+    const { initial, before, hover, captured, restored, window, lines } = read;
+    const states = [initial, before, hover, captured, restored];
+    requireCwd(states.every(state => state?.frontPid === pid
         && Array.isArray(state.windows) && state.windows.every(item => item.pid === pid)),
     'the native reading is outside the owned foreground App');
-    const times = [before, hover, captured, restored].map(state => state.uptime);
+    const times = states.map(state => state.uptime);
     requireCwd(times.every((time, index) => Number.isFinite(time) && time > (times[index - 1] ?? previous?.uptime ?? 0)),
         'stale or out-of-order native reading');
-    const mains = before.windows.filter(item => item.layer === 0 && item.width >= 400 && item.height >= 200);
-    const [main] = mains;
-    requireCwd(mains.length === 1 && (!previous || same(main, previous.main)), 'the owned native window changed');
+    const appWindows = state => state.windows.filter(item => item.layer === 0 && item.width >= 400 && item.height >= 200);
+    const initialWindows = appWindows(initial), departureWindows = appWindows(before);
+    const [startingWindow] = initialWindows, [main] = departureWindows;
+    requireCwd(initialWindows.length === 1 && departureWindows.length === 1 && startingWindow.id === main.id
+        && (!previous || same(main, previous.main)), 'the owned native window changed');
     const target = pointAt(main, 18);
-    requireCwd(near(before.pointer, pointAt(main, 95)) && near(hover.pointer, target)
-        && near(captured.pointer, hover.pointer) && near(restored.pointer, original), 'unverified hover move or pointer restoration');
+    requireCwd(near(before.pointer, pointAt(startingWindow, 95)) && near(hover.pointer, target)
+        && near(captured.pointer, hover.pointer) && near(restored.pointer, initial.pointer), 'unverified hover move or pointer restoration');
     const popups = hover.windows.filter(item => !before.windows.some(prior => prior.id === item.id)
         && Math.abs(item.x - target.x) < 80 && Math.abs(item.y - target.y) < 80
         && item.width > 20 && item.height > 10 && item.height < 120);

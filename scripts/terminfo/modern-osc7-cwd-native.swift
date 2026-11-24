@@ -55,7 +55,7 @@ struct Line: Codable {
 }
 
 struct Reading: Codable {
-    let original: Point
+    let initial: State
     let before: State
     let hover: State
     let captured: State
@@ -115,14 +115,16 @@ func checkPointer(_ stage: String, _ actual: Point, _ expected: Point) throws {
     guard near(actual, expected) else { throw CaptureError.pointerChanged(stage, actual, expected) }
 }
 
+func mainWindow(_ state: State) throws -> Window {
+    let windows = state.windows.filter { $0.layer == 0 && $0.width >= 400 && $0.height >= 200 }
+    guard windows.count == 1, let window = windows.first else { throw CaptureError.noWindow }
+    return window
+}
+
 func readTooltip(pid: Int, image: URL) throws -> Reading {
     let initial = try state(pid)
-    let main = initial.windows.filter { $0.layer == 0 && $0.width >= 400 && $0.height >= 200 }
-    guard main.count == 1, let tabWindow = main.first else { throw CaptureError.noWindow }
-    // The owned profile uses the horizontal strip. Its first tab sits just to
-    // the right of the macOS traffic-light reserve in the 36-point title band.
-    let target = CGPoint(x: tabWindow.x + 112, y: tabWindow.y + 18)
-    let outside = CGPoint(x: tabWindow.x + 112, y: tabWindow.y + 95)
+    let startingWindow = try mainWindow(initial)
+    let outside = CGPoint(x: startingWindow.x + 112, y: startingWindow.y + 95)
     var lastPosted = outside
     defer {
         if let pointer = CGEvent(source: nil)?.location, near(Point(pointer), Point(lastPosted)) {
@@ -133,6 +135,11 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
     Thread.sleep(forTimeInterval: 0.15)
     let before = try state(pid)
     try checkPointer("outside", before.pointer, Point(outside))
+    let tabWindow = try mainWindow(before)
+    guard tabWindow.id == startingWindow.id else { throw CaptureError.windowChanged("departure", before.windows) }
+    // Read the anchor after moving out, when the owned window is on screen.
+    // The first horizontal tab follows the macOS traffic-light reserve.
+    let target = CGPoint(x: tabWindow.x + 112, y: tabWindow.y + 18)
     lastPosted = target
     try move(target)
     Thread.sleep(forTimeInterval: 0.8)
@@ -147,7 +154,7 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
     try capture(image, in: window)
     let captured = try state(pid)
     try checkPointer("capture", captured.pointer, hover.pointer)
-    for (stage, snapshot) in [("before", before), ("hover", hover), ("capture", captured)] {
+    for (stage, snapshot) in [("hover", hover), ("capture", captured)] {
         guard snapshot.windows.contains(tabWindow) else { throw CaptureError.windowChanged(stage, snapshot.windows) }
     }
     guard captured.windows.contains(window) else { throw CaptureError.windowChanged("tooltip", captured.windows) }
@@ -155,7 +162,7 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
     Thread.sleep(forTimeInterval: 0.10)
     let restored = try state(pid)
     try checkPointer("restore", restored.pointer, initial.pointer)
-    return Reading(original: initial.pointer, before: before, hover: hover, captured: captured,
+    return Reading(initial: initial, before: before, hover: hover, captured: captured,
                    restored: restored, window: window)
 }
 
