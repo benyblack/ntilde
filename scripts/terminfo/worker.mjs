@@ -7,6 +7,7 @@ import { collectWrap } from './core-wrap-collector.mjs';
 import { collectTabStops } from './core-tab-stops.mjs';
 import { collectErase as collectCoreErase } from './core-erase.mjs';
 import { collectModernCursor } from './modern-cursor.mjs';
+import { collectModernModes } from './modern-modes.mjs';
 import { collectTextCursor } from './core-text-cursor.mjs';
 import { collectOsc133 } from './osc133-collector.mjs';
 import { collectOsc633 } from './osc633-collector.mjs';
@@ -419,7 +420,10 @@ try {
             writeFileSync(join(config.output, 'tc-run.json'), JSON.stringify(textCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
             const modernCursorRun = await collectModernCursor({ config, fence, owner });
             writeFileSync(join(config.output, 'mcur-run.json'), JSON.stringify(modernCursorRun) + '\n', { flag: 'wx', mode: 0o600 });
-            // The layered OSC 133 qualification follows the Modern cursor suite on the same exclusively owned fence. A typed refusal of its first
+            const modernModesRun = await collectModernModes({ config, fence, owner, retainFailed: attempt =>
+                writeFileSync(join(config.output, 'mmod-failed-exchanges.json'), JSON.stringify(attempt) + '\n', { flag: 'wx', mode: 0o600 }) });
+            writeFileSync(join(config.output, 'mmod-run.json'), JSON.stringify(modernModesRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered OSC 133 qualification follows the Modern modes suite on the same exclusively owned fence. A typed refusal of its first
             // observation is retained by the parent as its typed marker (written before it answers), so the worker writes nothing and the run continues.
             const osc133Source = readFileSync(config.osc133Bundle);
             if (createHash('sha256').update(osc133Source).digest('hex') !== config.osc133BundleSha256) throw new Error('Local OSC 133 adapter bundle changed.');
