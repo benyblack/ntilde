@@ -44,8 +44,12 @@ export function checkAction(step, action) {
 // ambiguous, partial or basename-only observation leaves the surface unqualified.
 export function readPublicPath(lines) {
     requireCwd(Array.isArray(lines) && lines.every(line => typeof line.text === 'string'), 'missing raw tooltip transcription');
-    const paths = lines.map(line => line.text).filter(text => /^\/(?:[a-z0-9-]+\/)+[a-z0-9-]+$/.test(text));
-    return paths.length === 1 ? paths[0] : null;
+    const paths = lines.filter(line => line.text.startsWith('/'));
+    const [path] = paths;
+    // A complete value is the last line of the tooltip and uses a full fixture
+    // leaf. Keep other complete fixture paths eligible to report stale readback.
+    if (paths.length !== 1 || path !== lines.at(-1)) return null;
+    return /^\/qa-osc7\/cwd-[a-hjkmnpqrs]{8}\/(?:start|check|other|[a-z]+\/repo)$/.test(path.text) ? path.text : null;
 }
 
 export function gradeCwd(plan, stages) {

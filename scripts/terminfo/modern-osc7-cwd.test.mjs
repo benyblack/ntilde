@@ -41,6 +41,15 @@ test('basenames and ambiguous reads cannot stand in for full paths even if metad
     assert.equal(readPublicPath([{ text: path('target-a') }, { text: path('target-b') }]), null);
 });
 
+test('a split OCR target remains unqualified even with exact pane metadata', () => {
+    const stages = baseline();
+    const prefix = path('target-a').slice(0, -'/repo'.length);
+    stages['target-a'].publicPath = readPublicPath([{ text: prefix }, { text: 'repo' }]);
+    assert.equal(stages['target-a'].publicPath, null);
+    assert.equal(readPublicPath([{ text: prefix }]), null);
+    assert.equal(gradeCwd(plan, stages).verdict, 'to-test');
+});
+
 test('an unhandled OSC that changes the public path invalidates the attempt', () => {
     const stages = baseline();
     stages.unhandled = reading(path('unhandled'));
