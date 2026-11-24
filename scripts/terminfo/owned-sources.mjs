@@ -9,6 +9,7 @@ export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
 export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
 export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
+export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph-v79';
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
@@ -16,6 +17,7 @@ const focusedSourcePolicies = [
     ['modernBlinkSourceSha256', capturedBlinkSourcePolicy],
     ['modernViewportSourceSha256', capturedViewportSourcePolicy],
     ['modernOscTitlesSourceSha256', capturedOscTitlesSourcePolicy],
+    ['modernChildEnvironmentSourceSha256', capturedChildEnvironmentSourcePolicy],
     ['modernOscCwdSourceSha256', capturedOscCwdSourcePolicy],
 ];
 export const sourceSnapshotPolicy = focusedSourcePolicies.find(([field]) => Object.hasOwn(ownedSourceFiles, field))?.[1]
@@ -1032,6 +1034,13 @@ export const capturedOscCwdSourceFiles = Object.freeze({
     modernOscCwdTabHeadersSourceSha256: 'modern-osc7-cwd-tab-headers.cs',
 });
 
+export const capturedChildEnvironmentSourceFiles = Object.freeze({
+    ...capturedV81SourceFiles,
+    modernChildEnvironmentSourceSha256: 'modern-child-environment.mjs',
+    modernChildEnvironmentOwnedSourceSha256: 'modern-child-environment-owned.mjs',
+    modernChildEnvironmentWorkerSourceSha256: 'modern-child-environment-worker.mjs',
+});
+
 /** Bind the private temporary root, selected inventory and manifest environment pin before trusting any captured source. */
 export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
@@ -1040,6 +1049,7 @@ export function readSourceSnapshot(root) {
         [capturedBlinkSourcePolicy]: capturedBlinkSourceFiles,
         [capturedViewportSourcePolicy]: capturedViewportSourceFiles,
         [capturedOscTitlesSourcePolicy]: capturedOscTitlesSourceFiles,
+        [capturedChildEnvironmentSourcePolicy]: capturedChildEnvironmentSourceFiles,
         [capturedOscCwdSourcePolicy]: capturedOscCwdSourceFiles,
     }[sourceSnapshotPolicy] ?? capturedV81SourceFiles;
     if (JSON.stringify(ownedSourceFiles) !== JSON.stringify(expected)) throw new Error('Invalid selected source inventory.');
