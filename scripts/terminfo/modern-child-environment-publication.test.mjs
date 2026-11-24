@@ -41,11 +41,20 @@ test('distinguishes absent and empty values and refuses unrelated environment da
     assert.throws(() => parseChildOutput(JSON.stringify({ ...observed, COLORTERM: { state: 'absent', value: '' } }) + '\n'), /invalid child value state/);
 });
 
-test('grades unsupported identity and a stripped user preference independently', () => {
-    const clean = snapshotEnvironment({ COLORTERM: 'truecolor', TERM_PROGRAM: 'Ntilde' });
-    const inherited = snapshotEnvironment({ COLORTERM: 'parent-color', TERM_PROGRAM: 'parent-program', NO_COLOR: '' });
-    const results = gradeEnvironment(clean, inherited);
-    assert.deepEqual(results.map(row => row.conclusion), ['fail', 'fail', 'fail', 'inconclusive']);
+test('grades a wrong value for each applicable row independently', () => {
+    const defaults = { COLORTERM: 'truecolor', TERM_PROGRAM: 'Ntilde' };
+    const clean = snapshotEnvironment(defaults);
+    const valid = { ...defaults, NO_COLOR: 'ntilde-qa-user-no-color' };
+    for (const [name, value, id] of [
+        ['COLORTERM', 'parent-color', 'device.env-colorterm'],
+        ['TERM_PROGRAM', 'parent-program', 'device.env-term-program'],
+        ['NO_COLOR', '', 'device.env-no-color'],
+    ]) {
+        const results = gradeEnvironment(clean, snapshotEnvironment({ ...valid, [name]: value }));
+        assert.deepEqual(results.filter(row => row.conclusion === 'fail').map(row => row.id), [id]);
+        assert.equal(results.filter(row => row.conclusion === 'pass').length, 2);
+        assert.equal(results.find(row => row.id === 'device.env-vte-version').conclusion, 'inconclusive');
+    }
 });
 
 test('refuses changed launch, child, lineage and lease records', () => {
@@ -71,6 +80,11 @@ test('refuses changed launch, child, lineage and lease records', () => {
         rejectMutation('child-pane.json', raw => raw.replace(/"workerPid": \d+/, '"workerPid": 1'), verify, /missing direct-local ownership/);
         rejectMutation('desktop-lease.jsonl', raw => raw.trimEnd().split('\n').slice(0, -1).join('\n'),
             () => leaseReleasedAt(scratch, context, ownership), /desktop lease did not verify and release/);
+        rejectMutation('desktop-lease.jsonl', raw => {
+            const events = raw.trimEnd().split('\n').map(line => JSON.parse(line));
+            events[2].at = events[1].at;
+            return events.map(event => JSON.stringify(event)).join('\n') + '\n';
+        }, () => leaseReleasedAt(scratch, context, ownership), /desktop lease did not verify and release/);
         writeFileSync(join(scratch, 'failure.json'), '{}');
         assert.throws(verify, /capture or cleanup failed/);
     } finally {

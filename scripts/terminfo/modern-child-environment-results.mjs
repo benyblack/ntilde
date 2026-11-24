@@ -5,7 +5,7 @@ import { isDeepStrictEqual as equal } from 'node:util';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 import { digest, pinnedJson, requireModern } from './modern-inputs.mjs';
 import { buildModernOscCwdPublication, oscCwdPublication } from './modern-osc7-cwd-results.mjs';
-import { controls, gradeEnvironment, ids, names } from './modern-child-environment.mjs';
+import { controls, gradeEnvironment, ids, names, scopeName } from './modern-child-environment.mjs';
 import { verifyChildEnvironmentRun } from './modern-child-environment-owned.mjs';
 import { modernRoot } from './modern-results.mjs';
 
@@ -16,11 +16,13 @@ const criterionSha256 = 'e48d44e88175d05493965f90e1046b0fcdf637a23f2abd22c9a689e
 export function leaseReleasedAt(directory, context, ownership) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     const times = events.map(event => Date.parse(event.at));
+    const [proof] = ownership.proofs;
     requireModern(equal(events.map(event => event.event), ['acquired', 'launch-attempt', 'cleanup-verified', 'released'])
-        && events.every(event => event.lease === context.runId && event.pid === ownership.proofs[0].app.ppid)
+        && events.every(event => event.lease === context.runId && event.pid === proof.app.ppid)
         && times.every((time, index) => Number.isFinite(time) && (index === 0 || time >= times[index - 1]))
         && times[0] <= Date.parse(context.startedAt) && Date.parse(context.startedAt) <= times[1]
-        && times[1] <= Date.parse(ownership.proofs[0].at) && times[2] <= Date.parse(ownership.cleanedUpAt)
+        && times[1] <= Date.parse(proof.at) && Date.parse(proof.privateClipboard.restoredAt) <= times[2]
+        && times[2] <= Date.parse(ownership.cleanedUpAt)
         && Date.parse(ownership.sourceSnapshot.removedAt) <= times[3]
         && events[0].entrypoint === 'terminfo-owned.mjs' && events[1].entrypoint === 'terminfo-owned.mjs'
         && events[2].by === 'marker-scan' && events[3].launch === 'attempted',
@@ -114,7 +116,7 @@ export function readableModernChildEnvironment(report) {
         'To collect fresh controls, build the recorded App checkout and run each launch from the recorded collector checkout on macOS. The launcher acquires and releases the desktop lease for each run.', '',
         '```sh',
         'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
-        ...controls.map(control => `NTILDE_TERMINFO_ENVIRONMENT_CONTROL=${control} node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ${clean.appVersion} --scope modern-child-environment`),
+        ...controls.map(control => `NTILDE_TERMINFO_ENVIRONMENT_CONTROL=${control} node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ${clean.appVersion} --scope ${scopeName}`),
         '```', '',
     ].join('\n');
 }
