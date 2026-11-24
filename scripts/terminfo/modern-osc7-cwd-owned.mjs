@@ -1,7 +1,10 @@
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { once } from 'node:events';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as same, promisify } from 'node:util';
 import { OwnedCellObserver } from './agent-observer.mjs';
@@ -79,11 +82,54 @@ function stageReading(output, frame, step, context, pane, previous) {
     return { native, reading: { publicPath, metadataPath: workingDirectory, image: frame.image, lines: frame.native.lines } };
 }
 
-export function prepareFixture(run) {
+async function within(work, timeout, reason) {
+    const controller = new AbortController();
+    try {
+        return await Promise.race([
+            work, delay(timeout, null, { signal: controller.signal }).then(() => { throw new Error(reason); }),
+        ]);
+    } finally {
+        controller.abort();
+    }
+}
+
+export async function withFixture(run, collect) {
     requireCwd(process.platform === 'darwin', 'expected a macOS tooltip observer');
     const helper = join(run.scratch, helperName);
-    execFileSync('/usr/bin/swiftc', ['-o', helper, swift], { timeout: 20000, maxBuffer: 8192 });
-    return { nativeHelperSha256: hash(readFileSync(helper)) };
+    await runFile('/usr/bin/swiftc', ['-o', helper, swift], { timeout: 20000, maxBuffer: 8192 });
+    run.context.nativeHelperSha256 = hash(readFileSync(helper));
+
+    const child = spawn(helper, ['--ocr-server'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    let diagnostic = '';
+    child.stderr.on('data', chunk => { diagnostic = (diagnostic + chunk).slice(-4096); });
+    const closed = once(child, 'close');
+    closed.catch(() => {});
+    child.stdin.on('error', () => {}); // A reader crash is reported by the closure of its output.
+    const lines = createInterface({ input: child.stdout });
+    const replies = lines[Symbol.asyncIterator]();
+    const receive = async timeout => {
+        const { value, done } = await within(replies.next(), timeout, 'native text reader timed out');
+        requireCwd(!done && value.length <= 32768, 'native text reader stopped: ' + diagnostic);
+        return JSON.parse(value);
+    };
+    try {
+        requireCwd(await Promise.race([run.done, receive(45000)]) === 'ready', 'native text reader did not warm up');
+        run.readTooltipText = (path, budget) => {
+            child.stdin.write(path + '\n');
+            return receive(budget());
+        };
+        return await collect();
+    } finally {
+        lines.close();
+        child.stdin.end();
+        try {
+            await within(closed, 3000, 'native text reader did not exit');
+        } catch (error) {
+            child.kill('SIGKILL');
+            await closed;
+            throw error;
+        }
+    }
 }
 
 export class Collection {
@@ -124,6 +170,7 @@ export class Collection {
             const file = fileAt(phase), path = join(this.run.output, file);
             const result = await runFile(this.helper, [String(this.run.app.pid), path], { timeout: budget(), maxBuffer: 32768 });
             frame.native = JSON.parse(result.stdout);
+            frame.native.lines = await this.run.readTooltipText(path, budget);
             frame.image = { file, sha256: hash(bytes(this.run.output, file)) };
             frame.metadata = await this.observer.request('readPaneMetadata', { paneId }, budget);
 

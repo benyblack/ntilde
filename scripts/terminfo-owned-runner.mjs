@@ -4736,7 +4736,6 @@ function preparePersistentRunIn(scratch, args, executable, snapshot, lease, outp
         initialSettingsSha256: hash(readFileSync(join(output, 'initial-settings.json'))), executable, executableSha256: hash(readFileSync(executable)),
         assemblySha256: existsSync(join(dirname(executable), 'Ntilde.dll')) ? hash(readFileSync(join(dirname(executable), 'Ntilde.dll'))) : null,
         nodeVersion: process.version, startedAt: new Date().toISOString(), runId,
-        ...focusedSuite?.prepareFixture?.(run),
         ...(!focusedSuite ? { animationSuiteId: animationSuiteIds[version], ownedAnimationPolicy: ownedAnimationPolicies[version] } : {}) };
     if (focusedSuite) return run;
     const cases = animationCasesByVersion[version];
@@ -4966,7 +4965,8 @@ async function persistentAnimationMain(args, executable, snapshot, collectionSco
 async function runPersistentAnimation(run) {
     const server = createPersistentOwnerServer(run);
     let evidence, failure;
-    try { evidence = await collectPersistentAnimation(run, server); }
+    const collect = () => collectPersistentAnimation(run, server);
+    try { evidence = await (focusedSuite?.withFixture ? focusedSuite.withFixture(run, collect) : collect()); }
     catch (error) { failure = error; }
     clearTimeout(run.deadline);
     // A relaunch still in flight must finish (or give up) before cleanup, or its new App could outlive the cleanup that targets the old one.

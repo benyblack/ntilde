@@ -61,7 +61,6 @@ struct Reading: Codable {
     let captured: State
     let restored: State
     let window: Window
-    let lines: [Line]
 }
 
 enum CaptureError: Error {
@@ -84,13 +83,13 @@ func move(_ point: CGPoint) throws {
     event.post(tap: .cghidEventTap)
 }
 
-func recognize(_ image: URL) throws -> [Line] {
+func recognize(_ handler: VNImageRequestHandler) throws -> [Line] {
     let request = VNRecognizeTextRequest()
-    request.recognitionLevel = .fast
+    request.recognitionLevel = .accurate
     request.revision = VNRecognizeTextRequestRevision3
     request.usesLanguageCorrection = false
     request.recognitionLanguages = ["en-US"]
-    try VNImageRequestHandler(url: image).perform([request])
+    try handler.perform([request])
     return (request.results ?? []).compactMap { result in
         guard let candidate = result.topCandidates(1).first else { return nil }
         let box = result.boundingBox
@@ -154,19 +153,46 @@ func readTooltip(pid: Int, image: URL) throws -> Reading {
     let restored = try state(pid)
     try checkPointer("restore", restored.pointer, initial.pointer)
     return Reading(original: initial.pointer, before: before, hover: hover, captured: captured,
-                   restored: restored, window: window, lines: try recognize(image))
+                   restored: restored, window: window)
+}
+
+func warmReader() throws {
+    let size = NSSize(width: 320, height: 64)
+    let sample = NSImage(size: size, flipped: false) { bounds in
+        NSColor.white.setFill()
+        NSBezierPath(rect: bounds).fill()
+        let attributes: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 22), .foregroundColor: NSColor.black]
+        ("Text recognition warmup" as NSString).draw(at: NSPoint(x: 12, y: 20), withAttributes: attributes)
+        return true
+    }
+    var bounds = NSRect(origin: .zero, size: size)
+    guard let pixels = sample.cgImage(forProposedRect: &bounds, context: nil, hints: nil),
+          !(try recognize(VNImageRequestHandler(cgImage: pixels))).isEmpty else { throw CaptureError.captureFailed }
+}
+
+func send<T: Encodable>(_ value: T, encoder: JSONEncoder) throws {
+    var data = try encoder.encode(value)
+    data.append(0x0a)
+    FileHandle.standardOutput.write(data)
 }
 
 do {
     let args = CommandLine.arguments
     let encoder = JSONEncoder()
-    if args.count == 3, args[1] == "--ocr" {
-        let lines = try recognize(URL(fileURLWithPath: args[2]))
-        FileHandle.standardOutput.write(try encoder.encode(lines))
+    if args.count == 2, args[1] == "--ocr-server" {
+        try warmReader()
+        try send("ready", encoder: encoder)
+        while let path = readLine() {
+            let handler = VNImageRequestHandler(url: URL(fileURLWithPath: path))
+            try send(recognize(handler), encoder: encoder)
+        }
+    } else if args.count == 3, args[1] == "--ocr" {
+        let handler = VNImageRequestHandler(url: URL(fileURLWithPath: args[2]))
+        try send(recognize(handler), encoder: encoder)
     } else {
         guard args.count == 3, let pid = Int(args[1]), pid > 0 else { throw CaptureError.noState }
         let reading = try readTooltip(pid: pid, image: URL(fileURLWithPath: args[2]))
-        FileHandle.standardOutput.write(try encoder.encode(reading))
+        try send(reading, encoder: encoder)
     }
 } catch {
     FileHandle.standardError.write(Data(("Native tab tooltip capture: \(error)\n").utf8))
