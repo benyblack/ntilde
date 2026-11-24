@@ -4,7 +4,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Threading;
+using Ntilde.Controls;
 using Ntilde.Shell;
 using Ntilde.Shell.TitleBar;
 using Ntilde.Tests.Controls;
@@ -147,7 +149,7 @@ public sealed class MainWindowTabListRefreshTests : IDisposable, IClassFixture<T
         window.Show();
         var tab = Assert.IsType<TabItem>(tabs.SelectedItem);
         var header = Assert.IsAssignableFrom<Control>(tab.Header);
-        var pane = Assert.IsType<Ntilde.Controls.TerminalPane>(tab.Content);
+        var pane = Assert.IsType<TerminalPane>(tab.Content);
         var initialTip = Assert.IsType<string>(ToolTip.GetTip(header));
         Assert.DoesNotContain('\n', initialTip);
 
@@ -157,6 +159,37 @@ public sealed class MainWindowTabListRefreshTests : IDisposable, IClassFixture<T
 
         pane.Parser.Process("\u001b]7;file://localhost/second/project\a");
         Dispatcher.UIThread.RunJobs();
+        Assert.EndsWith("\n/second/project", Assert.IsType<string>(ToolTip.GetTip(header)));
+    }
+
+    [AvaloniaTheory]
+    [InlineData("Horizontal", Orientation.Horizontal)]
+    [InlineData("Vertical", Orientation.Vertical)]
+    public void Tab_tooltip_follows_focus_between_panes_without_another_directory_report(string tabOrientation, Orientation split)
+    {
+        var services = AppServices.BuildForDesigner();
+        services.Settings!.TabStripOrientation = tabOrientation;
+        var window = TestMainWindowFactory.Create(services with { SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()) });
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        window.Show();
+        var tab = Assert.IsType<TabItem>(tabs.SelectedItem);
+        var first = Assert.IsType<TerminalPane>(tab.Content);
+        WindowTestSupport.Invoke(window, "SplitPane", split);
+        var layout = Assert.IsType<Grid>(tab.Content);
+        var second = layout.Children.OfType<TerminalPane>().Single(pane => !ReferenceEquals(pane, first));
+        var header = Assert.IsAssignableFrom<Control>(tab.Header);
+
+        Dispatcher.UIThread.RunJobs();
+        first.HandleWorkingDirectoryChangedForTest("/first/project");
+        second.HandleWorkingDirectoryChangedForTest("/second/project");
+        Dispatcher.UIThread.RunJobs();
+
+        WindowTestSupport.Invoke(window, "FocusFirstPane", first);
+        Assert.Equal(first.PaneId, window.GetActivePaneIdForTab(tab));
+        Assert.EndsWith("\n/first/project", Assert.IsType<string>(ToolTip.GetTip(header)));
+
+        WindowTestSupport.Invoke(window, "FocusFirstPane", second);
+        Assert.Equal(second.PaneId, window.GetActivePaneIdForTab(tab));
         Assert.EndsWith("\n/second/project", Assert.IsType<string>(ToolTip.GetTip(header)));
     }
 

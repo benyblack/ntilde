@@ -8,19 +8,19 @@ The [OSC title assessment](../2026-11-24-modern-osc-titles-results/report.md) ha
 
 Both same-basename targets read back with their distinct parent paths. The unhandled OSC held the path and the incoming URI was restored.
 
-The disposable worker launched with its reported directory unset. It emitted `file://localhost/qa-osc7/cwd-cdbshahs/start` as fixture setup. The App showed the expected path, and a fresh hover verified the incoming path before the first control. The two targets had the same basename and different parent directories. The checked OSC 9999 carried a different URI-shaped payload and left the second target path in place. Restoration replayed the exact fixture URI and reopened the tooltip for a separate verification.
+The disposable worker launched with its reported directory unset. It emitted `file://localhost/qa-osc7/cwd-rkpjpfcp/start` as fixture setup. The App showed the expected path, and a fresh hover verified the incoming path before the first control. The two targets had the same basename and different parent directories. The checked OSC 9999 carried a different URI-shaped payload and left the second target path in place. Restoration replayed the exact fixture URI and reopened the tooltip for a separate verification.
 
 | Stage | Public tooltip path | Private pane metadata |
 | --- | --- | --- |
 | launch | unset | unset |
-| fixture | `/qa-osc7/cwd-cdbshahs/start` | `/qa-osc7/cwd-cdbshahs/start` |
-| incoming | `/qa-osc7/cwd-cdbshahs/start` | `/qa-osc7/cwd-cdbshahs/start` |
-| control | `/qa-osc7/cwd-cdbshahs/check` | `/qa-osc7/cwd-cdbshahs/check` |
-| target-a | `/qa-osc7/cwd-cdbshahs/east/repo` | `/qa-osc7/cwd-cdbshahs/east/repo` |
-| target-b | `/qa-osc7/cwd-cdbshahs/west/repo` | `/qa-osc7/cwd-cdbshahs/west/repo` |
-| unhandled | `/qa-osc7/cwd-cdbshahs/west/repo` | `/qa-osc7/cwd-cdbshahs/west/repo` |
-| restore | `/qa-osc7/cwd-cdbshahs/start` | `/qa-osc7/cwd-cdbshahs/start` |
-| restored | `/qa-osc7/cwd-cdbshahs/start` | `/qa-osc7/cwd-cdbshahs/start` |
+| fixture | `/qa-osc7/cwd-rkpjpfcp/start` | `/qa-osc7/cwd-rkpjpfcp/start` |
+| incoming | `/qa-osc7/cwd-rkpjpfcp/start` | `/qa-osc7/cwd-rkpjpfcp/start` |
+| control | `/qa-osc7/cwd-rkpjpfcp/check` | `/qa-osc7/cwd-rkpjpfcp/check` |
+| target-a | `/qa-osc7/cwd-rkpjpfcp/east/repo` | `/qa-osc7/cwd-rkpjpfcp/east/repo` |
+| target-b | `/qa-osc7/cwd-rkpjpfcp/west/repo` | `/qa-osc7/cwd-rkpjpfcp/west/repo` |
+| unhandled | `/qa-osc7/cwd-rkpjpfcp/west/repo` | `/qa-osc7/cwd-rkpjpfcp/west/repo` |
+| restore | `/qa-osc7/cwd-rkpjpfcp/start` | `/qa-osc7/cwd-rkpjpfcp/start` |
+| restored | `/qa-osc7/cwd-rkpjpfcp/start` | `/qa-osc7/cwd-rkpjpfcp/start` |
 
 The App’s tab tooltip now adds the active pane’s reported full directory on a second line. Each DA-fenced action was followed by a fresh native hover and a screenshot of the owned tooltip window. Apple Vision transcribed the captured pixels. Read-only pane metadata corroborates the decoded path. The result covers the path shown on the macOS horizontal tab tooltip. The child’s working directory and the headless OSC 633 P control are separate measurements.
 
@@ -28,9 +28,9 @@ The [earlier OSC 7 metadata qualification](../2026-11-11-osc7-osc8-qualification
 
 ## Evidence and reproduction
 
-[Owned run](owned-run.zip) `231f707f7857ddc7b07b9e32a6f2943e` started 2026-11-24T18:37:53.997Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. The App `0.14.0` came from build checkout `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6`. The collector checkout was `af8aa04ef05d0204a759cd437f65e750f60105a2`.
+[Owned run](owned-run.zip) `e9c8c52c03d5cbf50f6788eb7ef3da79` started 2026-11-24T18:53:56.961Z on macOS 27.0.1 (26A434), arm64 with Node v24.22.2. The App `0.14.0` came from build checkout `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6`. The collector checkout was `88e369aac0de1b84f8460258c573af06e490c353`.
 
-The 41 × 140 direct-local pane used an isolated profile with persistence off. The journal retains exact writes, raw DA replies, native window identities and ordered hover samples, private corroboration, screenshot hashes and raw Vision lines with bounds. The [manifest](manifest.json) pins the archive. Source policy `readonly-owned-source-graph-v78` and receipt schema 1 bind the run, settings, App and native reader identities, kernel terminal mode restoration and verified fixture cleanup. The archive also includes the desktop lease release. [All 69 rows](report.json).
+The 41 × 140 direct-local pane used an isolated profile with persistence off. The archive retains the initial foreground proof. The journal retains exact writes, raw DA replies, native window identities and ordered hover samples, private corroboration, screenshot hashes and raw Vision lines with bounds. The [manifest](manifest.json) pins the archive. Source policy `readonly-owned-source-graph-v78` and receipt schema 1 bind the run, settings, App and native reader identities, kernel terminal mode restoration and verified fixture cleanup. The archive also includes the desktop lease release. [All 69 rows](report.json).
 
 [Retained attempt 868b8bcbd9821cc78c5f1531a40e569d](attempt-1.zip). The first native screenshot showed the startup tooltip. Cold accurate text recognition exceeded the per-request budget before fixture setup.
 
@@ -50,13 +50,21 @@ The 41 × 140 direct-local pane used an isolated profile with persistence off. T
 
 [Retained attempt 006f1fa42e3cd0e7e7b640fd8d2ba38b](attempt-9.zip). All OSC 7 App controls and restoration passed. The SonarCloud fixes changed the collector and fixture path, so this run is retained as superseded.
 
+[Retained attempt 231f707f7857ddc7b07b9e32a6f2943e](attempt-10.zip). All controls and targets passed before the review fix for partial OCR paths. The updated grader and verified initial App focus require fresh evidence.
+
+[Retained attempt 9df257fc7dcbaa3ec98e1c5c48458ba7](attempt-11.zip). The sidecar was not the foreground App at launch. No OSC 7 targets were sent.
+
+[Retained attempt d7f064e9555c232a65279bd69600e573](attempt-12.zip). The retry could not verify the sidecar as the foreground App. No OSC 7 targets were sent.
+
+[Retained attempt 9b5686ac8b6f59e133feb3bafc376228](attempt-13.zip). Native activation did not establish the disposable App as foreground. The collector refused the launch observation and the lock released after cleanup.
+
 Rederive the report with Node 24 and Python 3.
 
 ```sh
 node scripts/terminfo-modern-results.mjs --check --osc7-cwd
 ```
 
-Build the App at `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6` and launch the collector from `af8aa04ef05d0204a759cd437f65e750f60105a2` on an awake macOS desktop with screen capture and native pointer event access. The launcher acquires and releases the repository desktop lease.
+Build the App at `24dbfc89b83bd7d9d6e49b755108ea12014c5fc6` and launch the collector from `88e369aac0de1b84f8460258c573af06e490c353` on an awake macOS desktop with screen capture, native pointer events and System Events access. The launcher acquires and releases the repository desktop lease.
 
 ```sh
 scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar

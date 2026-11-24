@@ -9,7 +9,7 @@ import { caseId } from './modern-osc7-cwd.mjs';
 import { reportFile, verifyOscCwdRun } from './modern-osc7-cwd-owned.mjs';
 
 export const oscCwdPublication = 'docs/qa/terminfo/2026-11-24-modern-osc7-cwd-results';
-const manifestSha256 = 'f21217aed342f24dc4d6c43183786ae214d5b332e848f9a5daa0911d109f8590';
+const manifestSha256 = '802b51046e0f0c68158e03102aa55aa475d79835add048bafe797090a1e04092';
 const criterionSha256 = '4e754b43c1c20fe5b5012ac5472461339a777f62851a92f7f2fb031dd5a4407b';
 
 function leaseReleasedAt(directory, context) {
@@ -104,11 +104,11 @@ export function readableModernOscCwd(report) {
         'The [earlier OSC 7 metadata qualification](../2026-11-11-osc7-osc8-qualification.md) established decoded pane metadata. This batch adds the full-path tooltip and uses its native pixels for the frozen App criterion.', '',
         '## Evidence and reproduction', '',
         `[Owned run](owned-run.zip) \`${m.runId}\` started ${m.startedAt} on ${m.platform} with Node ${m.nodeVersion}. The App \`${m.appVersion}\` came from build checkout \`${m.appRevision}\`. The collector checkout was \`${m.scriptsRevision}\`.`, '',
-        `The ${m.pane.rows} × ${m.pane.cols} direct-local pane used an isolated profile with persistence off. The journal retains exact writes, raw DA replies, native window identities and ordered hover samples, private corroboration, screenshot hashes and raw Vision lines with bounds. The [manifest](manifest.json) pins the archive. Source policy \`${m.sourcePolicy}\` and receipt schema ${m.receiptSchema} bind the run, settings, App and native reader identities, kernel terminal mode restoration and verified fixture cleanup. The archive also includes the desktop lease release. [All 69 rows](report.json).`, '',
+        `The ${m.pane.rows} × ${m.pane.cols} direct-local pane used an isolated profile with persistence off. The archive retains the initial foreground proof. The journal retains exact writes, raw DA replies, native window identities and ordered hover samples, private corroboration, screenshot hashes and raw Vision lines with bounds. The [manifest](manifest.json) pins the archive. Source policy \`${m.sourcePolicy}\` and receipt schema ${m.receiptSchema} bind the run, settings, App and native reader identities, kernel terminal mode restoration and verified fixture cleanup. The archive also includes the desktop lease release. [All 69 rows](report.json).`, '',
         ...m.attempts.flatMap(attempt => [`[Retained attempt ${attempt.runId}](${attempt.archive}). ${attempt.reason}`, '']),
         'Rederive the report with Node 24 and Python 3.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check --osc7-cwd', '```', '',
-        `Build the App at \`${m.appRevision}\` and launch the collector from \`${m.scriptsRevision}\` on an awake macOS desktop with screen capture and native pointer event access. The launcher acquires and releases the repository desktop lease.`, '',
+        `Build the App at \`${m.appRevision}\` and launch the collector from \`${m.scriptsRevision}\` on an awake macOS desktop with screen capture, native pointer events and System Events access. The launcher acquires and releases the repository desktop lease.`, '',
         '```sh',
         'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
         `node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ${m.appVersion} --scope modern-osc7-cwd`,
