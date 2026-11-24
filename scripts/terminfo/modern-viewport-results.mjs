@@ -9,7 +9,7 @@ import { requirementId } from './modern-viewport.mjs';
 import { verifyViewportRun } from './modern-viewport-owned.mjs';
 
 export const viewportPublication = 'docs/qa/terminfo/2026-11-24-modern-viewport-results';
-const manifestSha256 = '65eefe9fd39652010365efea43266812ca8e891c2ed68cd250ffdb2f952c8acf';
+const manifestSha256 = '3438473ed70e5a893377d4d0ea161cb349180b53b0f4d5ca5a843ace15ca9578';
 
 function verifyLease(directory, runId) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
@@ -101,7 +101,7 @@ export function readableModernViewport(report) {
         'The collector used the OSC 720 generated App wheel route. Paired readbacks combined the App viewport offset, the retained history and the live rows to identify every visible row. The child wrote the plain marker with CRLF. For the synchronized phase it wrote the marker and CRLF in one write between `ESC [ ? 2026 h` and `ESC [ ? 2026 l`. The collector sent no keyboard input or PTY queries between the anchor and post-output snapshots.', '',
         '## Baseline and fix', '',
         ...table(m.baseline.observed), '',
-        'The [baseline run](baseline-run.zip) delivered both markers and drifted one row in each phase. Both baseline phases are inconclusive under the frozen criterion. The App had kept a constant distance from the growing bottom. The fix tracks the history tail and advances the offset with appended rows so the visible anchor stays in place. App regressions cover plain and synchronized output, a smooth wheel gesture, eviction of an older page and a cleared history generation.', '',
+        'The [baseline run](baseline-run.zip) delivered both markers and drifted one row in each phase. Both baseline phases are inconclusive under the frozen criterion. The App had kept a constant distance from the growing bottom. The fix tracks the history tail and advances the offset with appended rows so the visible anchor stays in place. App regressions cover plain and synchronized output, a smooth wheel gesture, a return to the live bottom during continuous output, eviction of an older page and a cleared history generation.', '',
         '## Evidence and reproduction', '',
         `[Fixed App run](owned-run.zip) \`${m.runId}\` started ${m.startedAt} on ${m.platform} with Node ${m.nodeVersion}. App ${m.appVersion} came from \`${m.appRevision}\`. The measured scripts were \`${m.scriptsRevision}\`. Baseline App \`${m.baseline.appRevision}\` and scripts \`${m.baseline.scriptsRevision}\` produced run \`${m.baseline.runId}\`.`, '',
         `The [manifest](manifest.json) pins the archives. Source policy \`${m.sourcePolicy}\` and receipt schema ${m.receiptSchema} bind the raw snapshots, wheel actions, exact PTY bytes, settings and geometry to the owned App and child. The runs verified restoration to the blank main pane with no history, the original PTY mode, fixture shutdown and desktop lease release. The [JSON report](report.json) retains the full visible row vectors and all 69 Modern rows.`, '',
