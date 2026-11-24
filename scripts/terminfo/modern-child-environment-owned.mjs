@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 import { isDeepStrictEqual as same } from 'node:util';
 import { OwnedCellObserver } from './agent-observer.mjs';
 import { names, parentValues, parseChildOutput, requireEnvironment, scope, snapshotEnvironment } from './modern-child-environment.mjs';
@@ -85,12 +85,13 @@ function verifyProfile(context, settings, launch, pane, proof) {
     const profile = settings.Profiles?.[0];
     requireEnvironment(settings.Profiles?.length === 1 && isGuid(profile.Id) && settings.DefaultProfileId === profile.Id
         && profile.Name === 'terminfo disposable worker ' + context.runId && pane.profileName === profile.Name
-        && profile.Type === 0 && join(profile.StartingDirectory, 'appdata') === launch.appData && settings.SessionPersistence === 'Off'
+        && profile.Type === 0 && posix.join(profile.StartingDirectory, 'appdata') === launch.appData && settings.SessionPersistence === 'Off'
         && settings.CommandAssistShellIntegrationEnabled === false && settings.CommandAssistPowerShellIntegrationEnabled === false
         && settings.AgentAccessObserveEnabled === true && settings.AgentAccessActEnabled === false && settings.AllowOsc52ClipboardWrite === false,
     'changed direct-local profile or settings');
-    const expected = workerProfile({ node: proof.worker.executable, workerScript: join(context.sourceSnapshotRoot, 'scripts', 'terminfo', workerFile),
-        configPath: join(profile.StartingDirectory, 'worker.json'), runId: context.runId });
+    // Archive extraction uses host paths, while the retained profile always came from macOS.
+    const expected = workerProfile({ node: proof.worker.executable, workerScript: posix.join(context.sourceSnapshotRoot, 'scripts', 'terminfo', workerFile),
+        configPath: posix.join(profile.StartingDirectory, 'worker.json'), runId: context.runId });
     requireEnvironment(profile.Command === expected.Command && profile.Arguments === expected.Arguments,
         'profile did not execute the retained worker without a shell');
 }
