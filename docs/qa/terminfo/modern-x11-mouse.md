@@ -9,8 +9,13 @@ Each case starts with its own mode 1000 plus 1006 click. A complete SGR left
 press and release in the same cell admits that case's delivery control. The
 worker opens a fresh raw PTY observation window before every XTEST action,
 including each part of the click and drag. It checks for pending bytes before
-opening the window and retains timestamped chunks. Only bytes from the case's
-target windows can grade the target. Mode writes and DECRPM replies use separate
+opening the window and retains timestamped chunks. A unique pair of XTEST key taps follows
+each pointer action on the same X11 connection. Avalonia queues X11 keyboard
+and pointer dispatch in the same input path, and Ntilde submits both to the
+same ordered PTY input queue. An observation admits only the bytes before its
+own delimiter and refuses missing, duplicate or trailing bytes. The next
+action waits for the whole window to seal. Only bytes from the case's target
+windows can grade the target. [Avalonia X11 input scheduling](https://github.com/AvaloniaUI/Avalonia/blob/12.1.3/src/Avalonia.X11/X11Window.cs#L963-L1046) · [Ntilde PTY input queue](../../../src/Ntilde.Pty/RustPtySession.cs#L1343). Mode writes and DECRPM replies use separate
 exchanges.
 
 | App criterion | Target and grading |

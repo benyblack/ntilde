@@ -53,6 +53,11 @@ export function actionPlan(window, id) {
     return { control: click(control, 1), target };
 }
 
+export function actionFence(id, phase, index) {
+    const offset = [0, 6, 13][ids.indexOf(id)] + (phase === 'target' ? 3 : 0);
+    return 'z' + 'abcdefghijklmnopqrs'[offset + index];
+}
+
 function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
 const timestamp = value => typeof value === 'string' && /^\d{1,22}$/.test(value);
 const before = (a, b) => timestamp(a) && timestamp(b) && BigInt(a) < BigInt(b);
@@ -64,7 +69,7 @@ function exchange(record, plan, previous) {
     return record.finished;
 }
 
-function verifyAction(step, expected, previous, identity, key) {
+function verifyAction(step, expected, previous, identity, key, tag) {
     const { arm, native, capture } = step;
     const { point, beforeMask, afterMask, kind } = expected;
     need(arm?.key === key && capture?.key === key && before(previous, arm.armed)
@@ -81,16 +86,33 @@ function verifyAction(step, expected, previous, identity, key) {
     need(Array.isArray(capture.chunks) && capture.chunks.every((chunk, index, all) =>
         isHex(chunk.hex) && chunk.hex.length > 0 && before(all[index - 1]?.at ?? native.started, chunk.at)
         && before(chunk.at, capture.sealed)), 'stale or malformed raw reply');
-    const raw = capture.chunks.map(chunk => chunk.hex).join('');
-    need(isHex(raw), 'oversized observation window');
-    return { sealed: capture.sealed, raw };
+    return { sealed: capture.sealed, raw: stripFence(capture, native, tag) };
 }
 
-function verifySteps(recorded, planned, previous, identity, key) {
+function stripFence(capture, native, tag) {
+    const fence = native.fence;
+    need(fence?.tag === tag && before(native.started, fence.started) && before(fence.started, native.finished)
+        && fence.keycodes?.length === 2 && fence.keycodes.every(code => Number.isInteger(code) && code >= 8 && code <= 255),
+    'missing native XTEST keyboard fence');
+    const raw = capture.chunks.map(chunk => chunk.hex).join('');
+    need(isHex(raw), 'oversized observation window');
+    const buffer = Buffer.from(raw, 'hex'), delimiter = Buffer.from(tag, 'ascii');
+    const offset = buffer.indexOf(delimiter);
+    need(offset >= 0 && offset + delimiter.length === buffer.length, 'missing, duplicated or trailing input around the PTY fence');
+    let pos = 0;
+    const first = capture.chunks.find(chunk => {
+        pos += chunk.hex.length / 2;
+        return pos > offset;
+    });
+    need(before(fence.started, first?.at), 'stale PTY fence bytes');
+    return buffer.subarray(0, offset).toString('hex');
+}
+
+function verifySteps(recorded, planned, previous, identity, id, phase) {
     need(Array.isArray(recorded) && recorded.length === planned.length, 'missing or extra XTEST action');
     const raw = [];
     for (const [index, step] of recorded.entries()) {
-        const result = verifyAction(step, planned[index], previous, identity, key + '/' + index);
+        const result = verifyAction(step, planned[index], previous, identity, id + '/' + phase + '/' + index, actionFence(id, phase, index));
         previous = result.sealed;
         raw.push(result.raw);
     }
@@ -110,9 +132,14 @@ const leftRelease = frame => frame?.code === 0 && !frame.press;
 const invalid = reason => ({ status: 'probe-invalid', conclusion: 'inconclusive', reason });
 const verdict = (supported, reason) => ({ status: supported ? 'supported' : 'unsupported', conclusion: supported ? 'pass' : 'fail', reason });
 
-function gradeX10(press, release) {
+function gradeX10(press, release, pane) {
     if (!press && !release) return verdict(false, 'The delivered X10 click was silent.');
-    if (press.startsWith('1b5b4d') && press.length === 12 && !release) return verdict(true, 'Legacy CSI M and three payload bytes arrived on the press.');
+    if (press.startsWith('1b5b4d20') && press.length === 12 && !release) {
+        const [x, y] = Buffer.from(press.slice(8), 'hex');
+        if (x > 32 && x <= pane.cols + 32 && y > 32 && y <= pane.rows + 32) {
+            return verdict(true, 'Legacy CSI M and three valid left-press payload bytes arrived on the press.');
+        }
+    }
     return invalid('The X10 click produced an SGR or otherwise unclassifiable report.');
 }
 
@@ -135,7 +162,7 @@ export function gradeCase(id, control, target, pane) {
     }
     const [position, press, moveOrRelease, release] = target;
     if (position) return invalid('Bytes arrived during the neutral positioning window.');
-    if (id === ids[0]) return gradeX10(press, moveOrRelease);
+    if (id === ids[0]) return gradeX10(press, moveOrRelease, pane);
     if (id === ids[1]) return gradeDrag(press, moveOrRelease, release, pane);
     need(id === ids[2], 'unknown case');
     const raw = press + moveOrRelease;
@@ -153,9 +180,9 @@ export function replayMouse(record) {
     for (const item of cases) {
         const { control, target } = actionPlan(identity.window, item.id);
         previous = exchange(item.control.modes, modePlan.control, previous);
-        const positive = verifySteps(item.control.steps, control, previous, identity, item.id + '/control');
+        const positive = verifySteps(item.control.steps, control, previous, identity, item.id, 'control');
         previous = exchange(item.target.modes, modePlan[item.id], positive.sealed);
-        const trial = verifySteps(item.target.steps, target, previous, identity, item.id + '/target');
+        const trial = verifySteps(item.target.steps, target, previous, identity, item.id, 'target');
         results.push({ id: item.id, ...gradeCase(item.id, positive.raw, trial.raw, identity.pane),
             controlHex: positive.raw, targetHex: trial.raw });
         previous = trial.sealed;

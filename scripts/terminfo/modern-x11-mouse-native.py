@@ -77,6 +77,9 @@ class XDisplay:
         self.sync = bind(x11, "XSync", INT, PTR, INT)
         self.move = bind(xtst, "XTestFakeMotionEvent", INT, PTR, INT, INT, INT, XID)
         self.button = bind(xtst, "XTestFakeButtonEvent", INT, PTR, UINT, INT, XID)
+        self.key = bind(xtst, "XTestFakeKeyEvent", INT, PTR, UINT, INT, XID)
+        self.keysym = bind(x11, "XStringToKeysym", XID, ct.c_char_p)
+        self.keycode = bind(x11, "XKeysymToKeycode", ct.c_ubyte, PTR, XID)
         self.query_ids = bind(xres, "XResQueryClientIds", INT, PTR, ct.c_long,
                               ct.POINTER(ClientSpec), ct.POINTER(ct.c_long), ct.POINTER(ct.POINTER(ClientId)))
         self.get_pid = bind(xres, "XResGetClientPid", INT, ct.POINTER(ClientId))
@@ -136,6 +139,17 @@ class XDisplay:
                                   ct.byref(y), ct.byref(wx), ct.byref(wy), ct.byref(mask)), "cannot read XTEST pointer")
         return {"window": child.value, "point": [x.value, y.value], "mask": mask.value}
 
+    def type_fence(self, tag):
+        demand(len(tag) == 2 and tag[0] == "z" and "a" <= tag[1] <= "s", "invalid XTEST fence")
+        codes = [self.keycode(self.display, self.keysym(letter.encode("ascii"))) for letter in tag]
+        demand(all(codes), "XTEST fence key mapping unavailable")
+        started = str(time.monotonic_ns())
+        for code in codes:
+            demand(self.key(self.display, code, 1, 0) and self.key(self.display, code, 0, 0),
+                   "XTEST fence dispatch failed")
+        self.sync(self.display, 0)
+        return {"tag": tag, "started": started, "keycodes": codes}
+
     def run(self, command):
         app_pid = command["appPid"]
         window = self.window(app_pid)
@@ -165,7 +179,9 @@ class XDisplay:
         after = self.pointer()
         demand(after == {"window": window_id, "point": [x, y], "mask": request["afterMask"]}
                and self.focus() == window_id, "XTEST action or post-action focus did not read back")
-        return {"request": request, "before": before, "after": after, "started": started,
+        fence = self.type_fence(command["fence"])
+        demand(self.focus() == window_id, "XTEST fence focus changed")
+        return {"request": request, "before": before, "after": after, "started": started, "fence": fence,
                 "finished": str(time.monotonic_ns()), "serverPid": self.server_pid,
                 "appPid": app_pid, "windowId": window_id, "focus": window_id, "xtest": True}
 

@@ -17,7 +17,7 @@ def stamp():
 
 
 def as_record(attributes):
-    return [*attributes[:6], [int.from_bytes(value) for value in attributes[6]]]
+    return [*attributes[:6], [value if isinstance(value, int) else int.from_bytes(value, "big") for value in attributes[6]]]
 
 
 def read_input():
@@ -135,8 +135,10 @@ def main():
             os.chmod(config["socket"], 0o600)
             server.listen(1)
             os.write(1, ("\x1b[2J\x1b[H" + config["marker"]).encode("ascii"))
-            with open(config["ready"], "x", encoding="utf-8") as output:
+            provisional = config["ready"] + ".tmp"
+            with open(provisional, "x", encoding="utf-8") as output:
                 json.dump({"pid": os.getpid(), "ppid": os.getppid(), "tty": os.ttyname(0)}, output)
+            os.replace(provisional, config["ready"])
             serve(config, server, reader)
     finally:
         if not reader.done:

@@ -5,7 +5,7 @@ import { dirname, join, relative } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { isDeepStrictEqual as equal, promisify } from 'node:util';
 import { readLinuxOwnedChildFacts, readLinuxProcessFacts } from './linux-process-provider.mjs';
-import { actionPlan, ids, modePlan, need, replayMouse, x11SocketPath } from './modern-x11-mouse.mjs';
+import { actionFence, actionPlan, ids, modePlan, need, replayMouse, x11SocketPath } from './modern-x11-mouse.mjs';
 
 const runFile = promisify(execFile);
 const stamp = () => process.hrtime.bigint().toString();
@@ -197,19 +197,19 @@ async function modes(run, key) {
     return result;
 }
 
-async function recordAction(run, step, request, key) {
+async function recordAction(run, step, request, key, fence) {
     checkLineage(run);
     step.arm = await worker(run, { kind: 'arm', key });
-    step.native = await x11(run, { kind: 'action', window: run.record.identity.window, request });
+    step.native = await x11(run, { kind: 'action', window: run.record.identity.window, request, fence });
     step.capture = await worker(run, { kind: 'seal', key });
 }
 
-async function recordPhase(run, phase, sequence, mode, label) {
-    phase.modes = await modes(run, mode);
+async function recordPhase(run, phase, sequence, id, kind) {
+    phase.modes = await modes(run, kind === 'control' ? kind : id);
     for (const [index, request] of sequence.entries()) {
         const step = {};
         phase.steps.push(step);
-        await recordAction(run, step, request, label + '/' + index); // NOSONAR: arm, drive and seal each exclusive observation window before the next.
+        await recordAction(run, step, request, id + '/' + kind + '/' + index, actionFence(id, kind, index)); // NOSONAR: arm, drive and seal each exclusive observation window before the next.
     }
 }
 
@@ -218,8 +218,8 @@ async function recordCase(run, id) {
     const planned = actionPlan(record.identity.window, id);
     const attempt = { id, control: { steps: [] }, target: { steps: [] } };
     record.cases.push(attempt);
-    await recordPhase(run, attempt.control, planned.control, 'control', id + '/control');
-    await recordPhase(run, attempt.target, planned.target, id, id + '/target');
+    await recordPhase(run, attempt.control, planned.control, id, 'control');
+    await recordPhase(run, attempt.target, planned.target, id, 'target');
 }
 
 async function observe(run) {

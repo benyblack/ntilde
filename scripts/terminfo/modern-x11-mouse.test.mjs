@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { actionPlan, gradeCase, ids, modePlan, replayMouse } from './modern-x11-mouse.mjs';
+import { actionFence, actionPlan, gradeCase, ids, modePlan, replayMouse } from './modern-x11-mouse.mjs';
 
 const pane = { paneId: 'pane', kind: 'local', isActive: true, cols: 120, rows: 40 };
 const hex = text => Buffer.from(text).toString('hex');
@@ -14,6 +14,8 @@ test('X10 distinguishes an exact legacy report, verified silence and invalid del
     assert.equal(gradeCase(ids[0], control, ['', '', ''], pane).status, 'unsupported');
     assert.equal(gradeCase(ids[0], control, ['', control[1], ''], pane).status, 'probe-invalid');
     assert.equal(gradeCase(ids[0], control, ['', '1b5b4d2066', ''], pane).status, 'probe-invalid');
+    assert.equal(gradeCase(ids[0], control, ['', '1b5b4d202020', ''], pane).status, 'probe-invalid');
+    assert.equal(gradeCase(ids[0], control, ['', '1b5b4d21662f', ''], pane).status, 'probe-invalid');
     assert.equal(gradeCase(ids[0], ['', '', ''], target[ids[0]], pane).status, 'probe-invalid');
 });
 
@@ -39,13 +41,16 @@ function fixture() {
     const tick = () => (++time).toString();
     const identity = { pane, window, marker: 'fixture', appPid: 200, serverPid: 201, admitted: tick() };
     const exchange = key => ({ ...modePlan[key], started: tick(), finished: tick() });
-    const steps = (sequence, outputs, label) => sequence.map((request, index) => {
-        const key = label + '/' + index, armed = tick(), started = tick(), finished = tick();
-        const chunks = outputs[index] ? [{ hex: outputs[index], at: tick() }] : [];
+    const steps = (sequence, outputs, id, phase) => sequence.map((request, index) => {
+        const key = id + '/' + phase + '/' + index, tag = actionFence(id, phase, index);
+        const armed = tick(), started = tick();
+        const output = outputs[index] ? [{ hex: outputs[index], at: tick() }] : [];
+        const fence = { tag, started: tick(), keycodes: [52, 41] }, finished = tick();
+        const chunks = [...output, { hex: hex(tag), at: tick() }];
         time += 240000000n;
         return {
             arm: { key, armed },
-            native: { request, started, finished, windowId: window.id, appPid: identity.appPid, serverPid: identity.serverPid, focus: window.id, xtest: true,
+            native: { request, started, finished, fence, windowId: window.id, appPid: identity.appPid, serverPid: identity.serverPid, focus: window.id, xtest: true,
                 before: { mask: request.beforeMask, window: window.id, point: request.point },
                 after: { mask: request.afterMask, window: window.id, point: request.point } },
             capture: { key, chunks, sealed: tick() },
@@ -54,8 +59,8 @@ function fixture() {
     const incoming = exchange('incoming');
     const cases = ids.map(id => {
         const plan = actionPlan(window, id);
-        return { id, control: { modes: exchange('control'), steps: steps(plan.control, control, id + '/control') },
-            target: { modes: exchange(id), steps: steps(plan.target, target[id], id + '/target') } };
+        return { id, control: { modes: exchange('control'), steps: steps(plan.control, control, id, 'control') },
+            target: { modes: exchange(id), steps: steps(plan.target, target[id], id, 'target') } };
     });
     const restore = { modes: exchange('restore'), marker: identity.marker, paneId: pane.paneId };
     const original = [3, 4, 5, 6, 7, 8, [0]];
@@ -76,6 +81,20 @@ test('replay refuses stale control/target bytes or a capture sealed before deliv
     const silent = short.cases[0].target.steps[0];
     silent.capture.sealed = (BigInt(silent.native.finished) + 1000n).toString();
     assert.throws(() => replayMouse(short), /silence observation budget/);
+});
+
+test('a late wheel byte after a neutral action fence cannot grade the next action', () => {
+    const record = fixture();
+    const neutral = record.cases[2].target.steps[0];
+    neutral.capture.chunks[0].hex += '1b5b41';
+    assert.throws(() => replayMouse(record), /trailing input around the PTY fence/);
+    const missing = fixture();
+    missing.cases[2].target.steps[1].capture.chunks.pop();
+    assert.throws(() => replayMouse(missing), /missing, duplicated or trailing input/);
+    const stale = fixture();
+    const press = stale.cases[2].target.steps[1];
+    press.capture.chunks.at(-1).hex = hex(actionFence(ids[2], 'target', 0));
+    assert.throws(() => replayMouse(stale), /missing, duplicated or trailing input/);
 });
 
 test('replay refuses failed native delivery and changed pane or kernel restoration', () => {

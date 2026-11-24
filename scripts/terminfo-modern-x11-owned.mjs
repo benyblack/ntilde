@@ -22,17 +22,28 @@ function copySources(scratch, output) {
         for (const root of [dir, retained]) writeFileSync(join(root, name), bytes, { flag: 'wx', mode: 0o400 });
         return [name, digest(bytes)];
     }));
-    chmodSync(dir, 0o500);
     writeFileSync(join(output, 'source-manifest.json'), JSON.stringify({ policy: 'owned-modern-x11-mouse-v1', files: manifest,
         launcherSha256: digest(readFileSync(fileURLToPath(import.meta.url))) }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     writeFileSync(join(output, 'launcher.mjs'), readFileSync(fileURLToPath(import.meta.url)), { flag: 'wx', mode: 0o400 });
     return { dir, manifest };
 }
 
+function readAudit(path) {
+    try { return readFileSync(path, 'utf8').trimEnd().split('\n'); }
+    catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        return [];
+    }
+}
+
 function captureLease(lease, output) {
-    const entries = readFileSync(desktopLockAuditPath(lease.lockPath), 'utf8').trimEnd().split('\n')
+    const path = desktopLockAuditPath(lease.lockPath);
+    const current = readAudit(path);
+    const entries = [...new Set([...readAudit(path + '.1'), ...current])]
         .filter(line => line.includes(lease.leaseId)).filter(line => JSON.parse(line).lease === lease.leaseId);
     writeFileSync(join(output, 'desktop-lease.jsonl'), entries.join('\n') + '\n', { flag: 'wx', mode: 0o600 });
+    const expected = lease.launchAttempted ? ['acquired', 'launch-attempt', 'cleanup-verified', 'released'] : ['acquired', 'released'];
+    if (JSON.stringify(entries.map(line => JSON.parse(line).event)) !== JSON.stringify(expected)) throw new Error('Incomplete X11 desktop lease audit.');
 }
 
 function validateInvocation() {
@@ -73,7 +84,7 @@ function assertUnchanged(sources) {
 }
 
 async function runOwnedFixture(lease, outputRoot, invocation) {
-    let scratch, output, sources, failure;
+    let scratch, output, sources, failure, verdicts;
     const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
     let interrupted;
     const onSignal = signal => { interrupted ??= signal; };
@@ -83,16 +94,19 @@ async function runOwnedFixture(lease, outputRoot, invocation) {
         console.log('Owned X11 result directory ' + output);
         scratch = realpathSync(mkdtempSync(join(tmpdir(), 'ntilde-x11-')));
         sources = copySources(scratch, output);
+        chmodSync(sources.dir, 0o500);
         const { collect } = await import(pathToFileURL(join(sources.dir, 'modern-x11-mouse-collect.mjs')).href);
-        const verdicts = await collect({ scratch, output, ...invocation, sources: sources.dir, lease, aborted: () => interrupted !== undefined });
+        verdicts = await collect({ scratch, output, ...invocation, sources: sources.dir, lease, aborted: () => interrupted !== undefined });
         if (interrupted) throw new Error('Interrupted by ' + interrupted);
         assertUnchanged(sources);
-        console.log(JSON.stringify({ runId: lease.leaseId, output, verdicts }));
     } catch (error) { failure = error; }
     try { finishLease(lease, scratch, sources, output); }
     catch (error) { failure = failure ? new AggregateError([failure, error], 'run and cleanup failed') : error; }
     finally { for (const signal of signals) process.removeListener(signal, onSignal); }
-    if (!failure) return;
+    if (!failure) {
+        console.log(JSON.stringify({ runId: lease.leaseId, output, verdicts }));
+        return;
+    }
     if (output) writeFileSync(join(output, 'failure.json'), JSON.stringify({
         errors: failure instanceof AggregateError ? failure.errors.map(error => error.message) : [failure.message],
     }) + '\n', { mode: 0o600 });
