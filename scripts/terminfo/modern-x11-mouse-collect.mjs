@@ -186,9 +186,9 @@ async function launchPane(run) {
     run.record.identity = { pane, marker, window, xtestVersion, serverPid, appPid, admitted: stamp() };
 }
 
-async function modes(run, key) {
+async function modes(run, key, plan = modePlan) {
     checkLineage(run);
-    const { writeHex, replyHex } = modePlan[key];
+    const { writeHex, replyHex } = plan[key];
     const result = await worker(run, { kind: 'modes', writeHex, size: replyHex.length / 2 });
     if (result.replyHex !== replyHex) {
         run.record.unexpectedModeExchange = { key, result };
@@ -200,8 +200,11 @@ async function modes(run, key) {
 async function recordAction(run, step, request, key, fence) {
     checkLineage(run);
     step.arm = await worker(run, { kind: 'arm', key });
-    step.native = await x11(run, { kind: 'action', window: run.record.identity.window, request, fence });
-    step.capture = await worker(run, { kind: 'seal', key });
+    try {
+        step.native = await x11(run, { kind: 'action', window: run.record.identity.window, request, fence });
+    } finally {
+        step.capture = await worker(run, { kind: 'seal', key });
+    }
 }
 
 async function recordPhase(run, phase, sequence, id, kind) {
@@ -226,14 +229,22 @@ async function observe(run) {
     await launchDisplay(run);
     await launchPane(run);
     const { record } = run;
-    record.incoming = await modes(run, 'incoming');
-    for (const id of ids) await recordCase(run, id); // NOSONAR: one pane, with distinct sequenced mode changes and byte windows.
-    record.restore = { modes: await modes(run, 'restore') };
+    let replay = replayMouse;
+    if (run.keyboard) {
+        const keyboard = await import('./modern-x11-keyboard.mjs');
+        const readModes = key => modes(run, key, keyboard.modePlan);
+        await keyboard.observeKeyboard(record, readModes, (step, request, key, fence) => recordAction(run, step, request, key, fence));
+        replay = keyboard.replayKeyboard;
+    } else {
+        record.incoming = await modes(run, 'incoming');
+        for (const id of ids) await recordCase(run, id); // NOSONAR: one pane, with distinct sequenced mode changes and byte windows.
+        record.restore = { modes: await modes(run, 'restore') };
+    }
     const pane = await listPane(run);
     need(equal(pane, record.identity.pane), 'pane changed during collection');
     Object.assign(record.restore, { paneId: pane.paneId, marker: await verifyMarker(run, pane) });
     record.terminal = await worker(run, { kind: 'restore' });
-    record.results = replayMouse(record);
+    record.results = replay(record);
     await waitFor(() => !existsSync('/proc/' + run.child.pid), 'direct worker did not exit and disappear', run.aborted, 2500);
     need(equal(readLinuxProcessFacts(run.app.child.pid), record.lineage.parent), 'original App exited before worker cleanup was observed');
     record.workerGoneAt = stamp();
@@ -243,12 +254,12 @@ async function observe(run) {
 function configure(run) {
     const home = join(run.scratch, 'home'), appData = join(run.scratch, 'appdata'), runtime = join(run.scratch, 'runtime');
     for (const path of [home, appData, runtime]) mkdirSync(path, { mode });
-    const runId = run.lease.leaseId, marker = 'x11-mouse-' + runId;
+    const runId = run.lease.leaseId, marker = (run.keyboard ? 'x11-key-' : 'x11-mouse-') + runId;
     const config = { runId, marker, ownerPid: process.pid, socket: join(run.scratch, 'child.sock'), ready: join(run.scratch, 'child.json') };
     const configPath = join(run.scratch, 'worker.json');
     writeJson(configPath, config);
     const python = realpathSync('/usr/bin/python3');
-    Object.assign(run, { appData, config, python, profile: 'X11 Mouse ' + runId,
+    Object.assign(run, { appData, config, python, profile: (run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ') + runId,
         workerArgs: ['-I', '-S', '-B', join(run.sources, 'modern-x11-mouse-worker.py'), configPath, '--ntilde-terminfo-worker=' + runId],
         env: { HOME: home, XDG_CONFIG_HOME: join(home, '.config'), XDG_DATA_HOME: join(home, '.local/share'), XDG_CACHE_HOME: join(home, '.cache'),
             XDG_RUNTIME_DIR: runtime, XDG_SESSION_TYPE: 'x11', NTILDE_APPDATA_ROOT: appData, TERMINFO_RUN_ID: runId, LANG: 'C.UTF-8', PATH: '/usr/bin:/bin' },

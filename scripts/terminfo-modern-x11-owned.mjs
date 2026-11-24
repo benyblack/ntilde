@@ -11,18 +11,19 @@ const files = ['desktop-lock.mjs', 'linux-process-core.mjs', 'linux-process-prov
     'modern-x11-mouse-collect.mjs', 'modern-x11-mouse-native.py', 'modern-x11-mouse-worker.py'];
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
-function copySources(scratch, output) {
+function copySources(scratch, output, keyboard) {
     const dir = join(scratch, 'sources'), retained = join(output, 'sources');
     mkdirSync(dir, { mode: 0o700 });
     mkdirSync(retained, { mode: 0o700 });
-    const manifest = Object.fromEntries(files.map(name => {
+    const selected = keyboard ? [...files, 'modern-x11-keyboard.mjs'] : files;
+    const manifest = Object.fromEntries(selected.map(name => {
         const path = join(here, 'terminfo', name);
         if (!lstatSync(path).isFile()) throw new Error('Expected regular scoped collector source.');
         const bytes = readFileSync(path);
         for (const root of [dir, retained]) writeFileSync(join(root, name), bytes, { flag: 'wx', mode: 0o400 });
         return [name, digest(bytes)];
     }));
-    writeFileSync(join(output, 'source-manifest.json'), JSON.stringify({ policy: 'owned-modern-x11-mouse-v1', files: manifest,
+    writeFileSync(join(output, 'source-manifest.json'), JSON.stringify({ policy: keyboard ? 'owned-modern-x11-keyboard-v1' : 'owned-modern-x11-mouse-v1', files: manifest,
         launcherSha256: digest(readFileSync(fileURLToPath(import.meta.url))) }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     writeFileSync(join(output, 'launcher.mjs'), readFileSync(fileURLToPath(import.meta.url)), { flag: 'wx', mode: 0o400 });
     return { dir, manifest };
@@ -47,16 +48,16 @@ function captureLease(lease, output) {
 }
 
 function validateInvocation() {
-    const [target, appVersion, ...extra] = process.argv.slice(2);
-    if (extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
+    const [target, appVersion, selection, ...extra] = process.argv.slice(2);
+    if ((selection !== undefined && selection !== '--modify-other-keys') || extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
         || process.platform !== 'linux' || Number(process.versions.node.split('.')[0]) < 24) {
-        throw new Error('Usage on Linux with Node 24+: node scripts/terminfo-modern-x11-owned.mjs /absolute/private/publish/Ntilde APP_VERSION');
+        throw new Error('Usage on Linux with Node 24+: node scripts/terminfo-modern-x11-owned.mjs /absolute/private/publish/Ntilde APP_VERSION [--modify-other-keys]');
     }
     const executable = realpathSync(target);
     const info = lstatSync(executable);
     if (target !== executable || basename(executable) !== 'Ntilde' || !info.isFile() || info.uid !== process.getuid()
         || (info.mode & 0o022) !== 0 || lstatSync(dirname(executable)).uid !== process.getuid()) throw new Error('Expected the owned regular Ntilde sidecar.');
-    return { executable, appVersion };
+    return { executable, appVersion, keyboard: selection === '--modify-other-keys' };
 }
 
 function finishLease(lease, scratch, sources, output) {
@@ -77,8 +78,8 @@ function finishLease(lease, scratch, sources, output) {
 }
 
 function assertUnchanged(sources) {
-    if (readdirSync(sources.dir).length !== files.length) throw new Error('Measured source membership changed.');
-    for (const name of files) {
+    if (readdirSync(sources.dir).length !== Object.keys(sources.manifest).length) throw new Error('Measured source membership changed.');
+    for (const name of Object.keys(sources.manifest)) {
         if (digest(readFileSync(join(sources.dir, name))) !== sources.manifest[name]) throw new Error('Measured source changed.');
     }
 }
@@ -93,7 +94,7 @@ async function runOwnedFixture(lease, outputRoot, invocation) {
         output = mkdtempSync(join(outputRoot, 'modern-x11-'));
         console.log('Owned X11 result directory ' + output);
         scratch = realpathSync(mkdtempSync(join(tmpdir(), 'ntilde-x11-')));
-        sources = copySources(scratch, output);
+        sources = copySources(scratch, output, invocation.keyboard);
         chmodSync(sources.dir, 0o500);
         const { collect } = await import(pathToFileURL(join(sources.dir, 'modern-x11-mouse-collect.mjs')).href);
         verdicts = await collect({ scratch, output, ...invocation, sources: sources.dir, lease, aborted: () => interrupted !== undefined });
