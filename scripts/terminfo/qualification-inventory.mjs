@@ -119,6 +119,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'cell-size-publication.test.mjs': 'frozen pre-integration source-policy v63 cell-size result; current integrated v64 remeasurement is the active suite claim',
     'osc633-publication.test.mjs': 'frozen historical unsupported OSC 633 result; the current implementing-App remeasurement is the active suite claim',
     'ascii-reflow-publication.test.mjs': 'frozen historical unsupported reflow result; current fixed-App retest is the active suite claim',
+    'modern-modes-publication.test.mjs': 'two protocol criteria within the frozen Modern assessment; no benchmark-suite claim is added',
     'modern-cursor-publication.test.mjs': 'four criteria within the frozen Modern assessment; the retained cursor run adds no benchmark-suite claim',
     'modern-publication.test.mjs': 'frozen Modern requirement reassessment; preserves separate stock and owned semantic results without adding benchmark-suite claims',
     'image-publication.test.mjs': 'frozen pre-inventory real-App dataset (not a graded benchmark-suite report)',

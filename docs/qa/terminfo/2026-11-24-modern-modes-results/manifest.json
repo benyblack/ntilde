@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "runId": "143a7ed6de7a05544364a898fc6fe975",
+    "sourcePolicy": "readonly-owned-source-graph-v74",
+    "receiptSchema": 81,
+    "appRevision": "faca305c5e915dbb6a3f5ffbe9e4c927b9c071f5",
+    "scriptsRevision": "4099739ce69ba5c0ba06f5eb581f699bb97f5f9e"
+  },
+  "archives": {
+    "owned-run.zip": "c0a5bd28fe747bd50c1d8204d228c7b596067f42fb300b854d5ff116a38a9af8"
+  },
+  "attempts": []
+}

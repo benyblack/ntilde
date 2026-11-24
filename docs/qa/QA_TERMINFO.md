@@ -1,5 +1,10 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern mode assessment](terminfo/2026-11-24-modern-modes-results/report.md)
+reaches 51 pass, 0 fail, and 18 inconclusive across the same 69 criteria. It records
+the DECRPM reset, set, and restored states for modes 2026 and 2031.
+Run `node scripts/terminfo-modern-results.mjs --check --modes` to rederive the results offline.
+
 The [four-cursor Modern assessment](terminfo/2026-11-23-modern-cursor-results/report.md)
 adds paired App and fenced cursor-report observations to the same 69 frozen
 criteria. Run `node scripts/terminfo-modern-results.mjs --check --cursor`
