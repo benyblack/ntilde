@@ -1,5 +1,11 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern OSC 7 directory assessment](terminfo/2026-11-24-modern-osc7-cwd-results/report.md)
+reaches 56 pass, 0 fail, and 13 inconclusive across 69 frozen criteria. The macOS
+tab tooltip showed both full target paths, held through the unhandled OSC, and
+returned to the recorded incoming path. Run
+`node scripts/terminfo-modern-results.mjs --check --osc7-cwd` to rederive the report.
+
 The [Modern OSC title assessment](terminfo/2026-11-24-modern-osc-titles-results/report.md)
 reaches 55 pass, 0 fail, and 14 inconclusive across 69 frozen criteria. It
 records paired public title and icon label replies and verified stack restoration.

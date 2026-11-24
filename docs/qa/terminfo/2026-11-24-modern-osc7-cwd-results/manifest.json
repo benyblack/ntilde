@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "c1f96a38230440f15db44bfe83d6f3fd6d2adc154894b0dc2f97dc603ab5969b",
+    "attempt-1.zip": "a579cbd3eb24ed022a23c96c1183f8c4a6ff9325b768987dde9861174e4b664f",
+    "attempt-2.zip": "9bf303a09144ecde27690419c3d1e0227372ab47b135aec011cf54df0333ab07",
+    "attempt-3.zip": "f6c19a09f2d443e5110f2428ce3943307bcb64cbac23451714097abc69fa3ccd",
+    "attempt-4.zip": "4eb7c8d1e6b527678e495039b81721e96d11da00f88dd13011301953e3542bcf",
+    "attempt-5.zip": "95219b6c93d3e95ae199bcb0c76caa25503c112d67d8fa131cb6a4a5c8d7cee7",
+    "attempt-6.zip": "9e9325820c758a910f1e64c9b9caf75efa1dfb59fe4c19249f72a3528f8b70bb",
+    "attempt-7.zip": "cf7b9f20f7b35049e92da2e3d43ce194430bbd6450607f45640dda9df665f174",
+    "attempt-8.zip": "4fb882e95a03646e8289b7766d5a429fb38c88570e82a1341ef7e8dee5b20798"
+  },
+  "measurement": {
+    "runId": "006f1fa42e3cd0e7e7b640fd8d2ba38b",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "appRevision": "24dbfc89b83bd7d9d6e49b755108ea12014c5fc6",
+    "scriptsRevision": "81c751de4c7a55443ba53651d9971f5519fe7412"
+  },
+  "sourcePolicy": "readonly-owned-source-graph-v78",
+  "receiptSchema": 1,
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "868b8bcbd9821cc78c5f1531a40e569d",
+      "scriptsRevision": "e05bfc7c2394bf94b3764a44d2ea62ed84c16d47",
+      "reason": "The first native screenshot showed the startup tooltip. Cold accurate text recognition exceeded the per-request budget before fixture setup."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "5009df62eb1736797c2bcacdfb59d450",
+      "scriptsRevision": "2b29008be69d872d015e45053593cc67faa20fa0",
+      "reason": "The cursor moved during the launch hover and the collector refused the reading before fixture setup."
+    },
+    {
+      "archive": "attempt-3.zip",
+      "runId": "e6630120b60be18dea2f13927a83a272",
+      "scriptsRevision": "481fcf80d63dee65cab882c994ee42489f4b62bc",
+      "reason": "The native helper build exceeded the per-request budget before the launch reading."
+    },
+    {
+      "archive": "attempt-4.zip",
+      "runId": "a904f10c15c0712bc54da5573fbc6222",
+      "scriptsRevision": "6a163f6faa790aac2965603786ccdf5697bbef33",
+      "reason": "The pointer was outside the required departure point and the collector refused the launch reading."
+    },
+    {
+      "archive": "attempt-5.zip",
+      "runId": "f781e7f67436d88e3344b837004d9963",
+      "scriptsRevision": "14278d3bf45f18cf29aeab2b2d30cfe19e861f4b",
+      "reason": "An intervening pointer movement invalidated the launch hover before fixture setup."
+    },
+    {
+      "archive": "attempt-6.zip",
+      "runId": "4d0bcbd58277f4f68af6ed6865b999b0",
+      "scriptsRevision": "14278d3bf45f18cf29aeab2b2d30cfe19e861f4b",
+      "reason": "The retained pixels showed the full fixture path. Fast Vision transcription misread slashes, so the collector refused to begin the attempt."
+    },
+    {
+      "archive": "attempt-7.zip",
+      "runId": "f87365f78fedbf82f873121046133637",
+      "scriptsRevision": "eb7d48786cdfc26017364f82bde18b4ceae23923",
+      "reason": "The captured tooltip pixels were retained. The App moved between the initial window lookup and hover, so the collector rejected the launch reading."
+    },
+    {
+      "archive": "attempt-8.zip",
+      "runId": "3af03447e94a9ed716cf07acaf4e664a",
+      "scriptsRevision": "d8cfeb0b7a7c875ee8509c0f39f1b669d7fc2435",
+      "reason": "The desktop bounds changed between the initial lookup and mouse departure. The collector kept the launch pixels and rejected the stale anchor."
+    }
+  ]
+}
