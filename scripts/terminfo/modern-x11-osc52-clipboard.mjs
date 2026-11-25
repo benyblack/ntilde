@@ -7,7 +7,7 @@ import {
 
 export const id = 'extensions.osc52-clipboard';
 const seedPattern = /^ntilde-osc52-seed-[a-f\d]{32}$/;
-const osc52Reply = /^\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)$/;
+const osc52Prefix = '\x1b]52;c;';
 const queryHex = '1b5d35323b633b3f07';
 const now = () => process.hrtime.bigint().toString();
 const hex = value => Buffer.from(value, 'ascii').toString('hex');
@@ -36,9 +36,12 @@ function classifyReply(rawHex, plan, trial, elapsed) {
     const reply = parts.join('');
     const replyHex = Buffer.from(reply, 'latin1').toString('hex');
     if (!replyHex && elapsed >= budget) return { outcome: 'silence', replyHex };
-    const match = parts[0] && parts[1] ? null : osc52Reply.exec(reply);
-    if (!match || match[0].length * 2 !== replyHex.length) return { outcome: 'invalid-reply', replyHex };
-    const encoded = match[1], decoded = Buffer.from(encoded, 'base64');
+    const terminator = reply.endsWith('\x07') ? '\x07' : '\x1b\\';
+    if ((parts[0] && parts[1]) || !reply.startsWith(osc52Prefix) || !reply.endsWith(terminator)) {
+        return { outcome: 'invalid-reply', replyHex };
+    }
+    const encoded = reply.slice(osc52Prefix.length, -terminator.length);
+    const decoded = Buffer.from(encoded, 'base64');
     if (decoded.toString('base64') !== encoded) return { outcome: 'invalid-reply', replyHex };
     if (!encoded) return { outcome: 'empty-denial', replyHex };
     if (decoded.equals(Buffer.from(trial.nonce))) return { outcome: 'own-write', replyHex };

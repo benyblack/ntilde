@@ -82,7 +82,7 @@ export function readableOsc52Clipboard(report) {
             `| Second nonce verified by a fresh GTK reader | \`${read.nonce}\` (GTK owner PID ${read.ownerPid}) |`,
             `| OSC 52 c query | \`${bytes(read.queryHex)}\` |`,
             ...read.attempts.map((attempt, index) => `| Raw PTY query capture ${index + 1}, including CPR | \`${bytes(attempt.rawHex)}\` |`),
-            `| Settled OSC 52 c reply | ${read.attempts.at(-1).replyHex ? '\`' + bytes(read.attempts.at(-1).replyHex) + '\`' : read.outcome} |`,
+            `| Settled OSC 52 c reply | ${read.attempts.at(-1).replyHex ? '`' + bytes(read.attempts.at(-1).replyHex) + '`' : read.outcome} |`,
         ] : []),
         `| Independent restoration read | \`${o.restored}\` (GTK owner PID ${m.restorationOwnerPid}) |`, '',
         `**Write.** ${o.write.reason}`, '',
@@ -95,11 +95,11 @@ export function readableOsc52Clipboard(report) {
         `App ${m.appVersion} was built from source \`${m.appRevision}\` with .NET SDK ${m.dotnetSdk}. The archive hashes the App publish tree. Collector \`${m.scriptsRevision}\` ran under Node ${m.nodeVersion} and retained its source bytes, PTY requests and complete replies, X11 ownership checks, settings and cleanup. [Manifest](manifest.json).`, '',
         'The frozen App path retries a canonical reply carrying the earlier OSC 52 write nonce at 25 ms intervals within the default one-second write deadline. The collector uses XTEST `a` with verified child input as the activation event. The query captures a cursor-position control in the same PTY window, and a fresh GTK reader confirms the second nonce before the first query. [Frozen upstream probe](https://github.com/beorn/terminfo.dev/blob/3eea0f130d87d64eab33ab342c96e668daab0292/packages/probe-defs/src/extensions.ts#L4597).', '',
         'Rederive the publication offline with Node 24 and Python 3.', '',
-        '\`\`\`sh', 'node scripts/terminfo-modern-results.mjs --check --osc52-clipboard', '\`\`\`', '',
+        '```sh', 'node scripts/terminfo-modern-results.mjs --check --osc52-clipboard', '```', '',
         'A fresh Linux run requires Node 24, Python 3 with PyGObject and GTK4, Xvfb, libX11, libXtst and libXRes. See the [App build prerequisites](../../../../CONTRIBUTING.md#1-prerequisites) for .NET and Rust.', '',
-        '\`\`\`sh', `# From an App checkout at ${m.appRevision}`,
+        '```sh', `# From an App checkout at ${m.appRevision}`,
         `scripts/build.sh publish src/Ntilde.App -c Release -r ${m.runtime} --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar`,
         'chmod -R go-w /absolute/private/sidecar', `# From a collector checkout at ${m.scriptsRevision}`,
-        `node scripts/terminfo-modern-x11-owned.mjs "$(realpath /absolute/private/sidecar/Ntilde)" ${m.appVersion} --osc52-clipboard`, '\`\`\`', '',
+        `node scripts/terminfo-modern-x11-owned.mjs "$(realpath /absolute/private/sidecar/Ntilde)" ${m.appVersion} --osc52-clipboard`, '```', '',
     ].join('\n');
 }
