@@ -65,6 +65,7 @@ function setAttemptTimes(sample, start, duration) {
     const at = delta => (start + delta * 1_000_000n).toString();
     sample.before.at = at(1n);
     sample.exchange.started = at(2n);
+    sample.exchange.lastReadAt = at(2n + duration / 2n);
     sample.exchange.finished = at(2n + duration);
     sample.after.at = at(3n + duration);
     sample.decidedAt = at(4n + duration);
@@ -107,11 +108,27 @@ test('retry only the earlier write and grade the last reply by the write deadlin
     setAttemptTimes(second, BigInt(first.decidedAt) + 25_000_000n, 20n);
     assert.equal(replayClipboard(run)[0].conclusion, 'pass');
 
-    setAttemptTimes(second, BigInt(first.decidedAt) + 25_000_000n, 1000n);
+    setAttemptTimes(second, start + 970_000_000n, 29n);
     second.exchange.rawHex = first.exchange.rawHex;
     const [stale] = replayClipboard(run);
     assert.equal(stale.read.outcome, 'own-write');
     assert.equal(stale.conclusion, 'inconclusive');
+
+    setAttemptTimes(second, start + 900_000_000n, 160n);
+    second.exchange.rawHex = frameHex(trial.queryNonce) + cpr;
+    second.exchange.lastReadAt = (start + 1_010_000_000n).toString();
+    const [late] = replayClipboard(run);
+    assert.equal(late.read.outcome, 'retry-deadline');
+    assert.equal(late.conclusion, 'inconclusive');
+    assert.equal(late.read.attempts.at(-1).rawHex, second.exchange.rawHex);
+
+    setAttemptTimes(second, start + 1_000_000_000n, 2n);
+    second.exchange.rawHex = '';
+    second.exchange.lastReadAt = null;
+    assert.throws(() => replayClipboard(run), /retry sent after the deadline/);
+    second.exchange.writeHex = '';
+    assert.equal(replayClipboard(run)[0].read.outcome, 'retry-deadline');
+
     first.exchange.rawHex = denial + cpr;
     assert.throws(() => replayClipboard(run), /missing or extra OSC 52 stale-nonce retry/);
 });

@@ -10,6 +10,7 @@ const seedPattern = /^ntilde-osc52-seed-[a-f\d]{32}$/;
 const osc52Prefix = '\x1b]52;c;';
 const queryHex = '1b5d35323b633b3f07';
 const now = () => process.hrtime.bigint().toString();
+const deadlineFor = trial => BigInt(trial.queryStarted) + budget;
 const hex = value => Buffer.from(value, 'ascii').toString('hex');
 
 function queryPlan(marker) {
@@ -49,22 +50,39 @@ function classifyReply(rawHex, plan, trial, elapsed) {
     return { outcome: 'other-value', replyHex };
 }
 
-function verifyQuery(sample, trial, plan, previous) {
+function verifyQuery(sample, trial, plan, previous, retryDeadline) {
     const { before: incoming, after, exchange } = sample;
     const owner = trial.querySeed.after;
     need([incoming, after].every(state =>
         ['selection', 'peerPid', 'peerWindow', 'serverPid', 'appPid', 'windowId', 'focus'].every(key => state[key] === owner[key])
         && sameOwner(state, owner)), 'independent seed lost X11 ownership or focus during the OSC 52 query');
-    need(exchange.writeHex === plan.writeHex && /^(?:[a-f\d]{2}){0,1024}$/.test(exchange.rawHex)
+    need(typeof exchange.rawHex === 'string' && /^(?:[a-f\d]{2}){0,1024}$/.test(exchange.rawHex)
         && before(previous, incoming.at) && before(incoming.at, exchange.started)
         && before(exchange.started, exchange.finished) && before(exchange.finished, after.at)
         && before(after.at, sample.decidedAt), 'stale or incomplete OSC 52 query window');
-    const elapsed = BigInt(exchange.finished) - BigInt(exchange.started);
-    return { rawHex: exchange.rawHex, ...classifyReply(exchange.rawHex, plan, trial, elapsed) };
+    const { rawHex, lastReadAt } = exchange;
+    need(rawHex ? before(exchange.started, lastReadAt) && before(lastReadAt, exchange.finished) : lastReadAt === null,
+        'missing or stale OSC 52 reply timestamp');
+    const start = BigInt(exchange.started);
+    const finish = BigInt(exchange.finished);
+    const cutoff = retryDeadline ?? start + budget;
+    if (start >= cutoff) {
+        need(exchange.writeHex === '' && !rawHex, 'OSC 52 retry sent after the deadline');
+        return { rawHex, outcome: 'retry-deadline' };
+    }
+    need(exchange.writeHex === plan.writeHex, 'changed OSC 52 query window');
+    const reply = classifyReply(rawHex, plan, trial, finish - start);
+    if (lastReadAt && BigInt(lastReadAt) >= cutoff) {
+        return { rawHex, ...reply, outcome: retryDeadline ? 'retry-deadline' : 'late-reply' };
+    }
+    if (retryDeadline && finish >= cutoff && !reply.replyHex) {
+        return { rawHex, ...reply, outcome: 'retry-deadline' };
+    }
+    return { rawHex, ...reply };
 }
 
-function retryRequired(outcome, startedAt, decidedAt) {
-    return outcome === 'own-write' && BigInt(decidedAt) - BigInt(startedAt) < budget;
+function retryRequired(outcome, deadline, decidedAt) {
+    return outcome === 'own-write' && BigInt(decidedAt) < deadline;
 }
 
 async function observeRead(record, trial, ops) {
@@ -78,15 +96,17 @@ async function observeRead(record, trial, ops) {
     trial.queries = [];
     trial.queryStarted = now();
     need(before(checked, trial.queryStarted), 'query started before verifying the seed');
-    let previous = trial.queryStarted;
+    const deadline = deadlineFor(trial);
+    let previous = trial.queryStarted, retryDeadline;
     for (;;) {
         const sample = {};
         trial.queries.push(sample);
-        await ops.query(sample, trial.querySeed.after, plan); // NOSONAR: each reply decides whether to issue another request.
+        await ops.query(sample, trial.querySeed.after, { ...plan, retryDeadline: retryDeadline?.toString() }); // NOSONAR: each reply decides whether to issue another request.
         sample.decidedAt = now();
-        const { outcome } = verifyQuery(sample, trial, plan, previous);
-        if (!retryRequired(outcome, trial.queryStarted, sample.decidedAt)) return;
+        const { outcome } = verifyQuery(sample, trial, plan, previous, retryDeadline);
+        if (!retryRequired(outcome, deadline, sample.decidedAt)) return;
         previous = sample.decidedAt;
+        retryDeadline = deadline;
         await delay(pollMs); // NOSONAR: serialize retries of the same clipboard query.
     }
 }
@@ -100,10 +120,11 @@ function replayRead(record, trial, write, written) {
     need(before(checked, trial.queryStarted) && Array.isArray(trial.queries)
         && trial.queries.length > 0 && trial.queries.length <= 41, 'missing or excessive OSC 52 query attempts');
     const plan = queryPlan(record.identity.marker);
+    const deadline = deadlineFor(trial);
     let previous = trial.queryStarted;
     const attempts = trial.queries.map((sample, index) => {
-        const result = verifyQuery(sample, trial, plan, previous);
-        const retry = retryRequired(result.outcome, trial.queryStarted, sample.decidedAt);
+        const result = verifyQuery(sample, trial, plan, previous, index ? deadline : undefined);
+        const retry = retryRequired(result.outcome, deadline, sample.decidedAt);
         need(retry === (index + 1 < trial.queries.length), 'missing or extra OSC 52 stale-nonce retry');
         if (index) need(BigInt(sample.exchange.started) - BigInt(previous) >= BigInt(pollMs) * 1_000_000n,
             'OSC 52 retry ran before the poll interval');
@@ -117,6 +138,8 @@ function replayRead(record, trial, write, written) {
 const readReasons = {
     'not-run': 'The OSC 52 write could not be verified, so the read leg was not run.',
     'empty-denial': 'OSC 52 c returned a complete empty-payload denial frame. The independently seeded nonce was absent from the reply.',
+    'retry-deadline': 'The original OSC 52 retry deadline elapsed without a verified settled reply.',
+    'late-reply': 'The OSC 52 c reply arrived after the query window.',
     'own-write': 'OSC 52 c still returned the earlier OSC 52 write nonce when the retry deadline elapsed.',
     'other-value': 'OSC 52 c replied with a value other than the independently seeded nonce.',
     silence: 'The cursor-position control answered, and OSC 52 c returned no bytes within the query window.',

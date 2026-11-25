@@ -52,24 +52,31 @@ def fenced(write_hex, size):
 OSC52_REPLY = re.compile(rb"\x1b\]52;c;[A-Za-z0-9+/=]*(?:\x07|\x1b\\)")
 
 
-def clipboard_query(write_hex, cpr_hex):
+def clipboard_query(write_hex, cpr_hex, retry_deadline):
     """Retain the entire stream, including the cursor-position control."""
     quiet()
     request, cpr = bytes.fromhex(write_hex), bytes.fromhex(cpr_hex)
-    started = stamp()
+    started = time.monotonic_ns()
+    deadline = started + 1_000_000_000
+    if retry_deadline is not None:
+        deadline = min(deadline, int(retry_deadline))
+    if started >= deadline:
+        return {"writeHex": "", "rawHex": "", "started": str(started), "finished": stamp(), "lastReadAt": None}
     if os.write(1, request) != len(request):
         raise OSError("short OSC 52 query write")
     reply = bytearray()
-    deadline = int(started) + 1_000_000_000
+    last_read_at = None
     while (remaining := (deadline - time.monotonic_ns()) / 1e9) > 0:
         if not select.select([0], [], [], remaining)[0]:
             continue
         reply.extend(read_input())
+        last_read_at = stamp()
         if len(reply) > 1024:
             raise ValueError("oversized OSC 52 query reply: " + reply.hex())
         if cpr in reply and OSC52_REPLY.search(reply):
             break
-    return {"writeHex": request.hex(), "rawHex": reply.hex(), "started": started, "finished": stamp()}
+    return {"writeHex": request.hex(), "rawHex": reply.hex(), "started": str(started),
+            "finished": stamp(), "lastReadAt": last_read_at}
 
 
 class Reader:
@@ -125,7 +132,7 @@ class Reader:
         if kind == "modes":
             return fenced(command["writeHex"], command["size"])
         if kind == "clipboard-query":
-            return clipboard_query(command["writeHex"], command["cprHex"])
+            return clipboard_query(command["writeHex"], command["cprHex"], command.get("retryDeadline"))
         if kind == "restore":
             quiet()
             termios.tcsetattr(0, termios.TCSANOW, self.original)
