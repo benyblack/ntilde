@@ -166,6 +166,11 @@ The [iTerm2 SGR timeout follow-up](iterm2/sgr-timeout-retest/cases.json) reruns 
 | ghostty · sgr.faint | Supported |
 | ghostty · sgr.italic | Supported |
 | ghostty · sgr.underline.single | Supported |
+
+### iTerm2 SGR timeout follow-up
+
+| Retested case | New outcome |
+|---|---|
 | iterm2 · reset.sgr | Supported |
 | iterm2 · sgr.bold | Supported |
 | iterm2 · sgr.faint | Supported |

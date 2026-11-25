@@ -210,13 +210,9 @@ const retestMarkdown = retestReports.length
                   `- ${retest.subjectId}: ${retest.counts.supported}/${retest.caseIds.length} supported in retest \`${retest.runId}\`; ${timeoutRetest && retest.kind === 'capture-custody' ? 'combined evidence at that stage' : 'latest combined evidence'} ${retest.currentCounts.supported} supported / ${retest.currentCounts.unsupported} unsupported / ${retest.currentCounts['probe-invalid']} invalid / ${retest.currentCounts['probe-todo']} not concluded / ${retest.currentCounts.untestable} untestable / ${retest.currentCounts['not-scheduled']} not tested. ${retest.kind === 'iterm-sgr-timeout' ? 'Prior custody retest' : 'Original run'} \`${retest.baselineRunId}\` remains retained.\n`,
           )
           .join('') +
-      '\n| Retested case | New outcome |\n|---|---|\n' +
-      retestReports
-          .flatMap((retest) =>
-              retest.caseIds.map((id) => `| ${historical ? id : retest.subjectId + ' · ' + id} | ${comparisonStatusLabels[retest.results[id].status]} |`),
-          )
-          .join('\n') +
-      '\n'
+      retestTable(retestReports.filter(({ kind }) => kind !== 'iterm-sgr-timeout')) +
+      (timeoutRetest ? '\n### iTerm2 SGR timeout follow-up\n' +
+          retestTable(retestReports.filter(({ kind }) => kind === 'iterm-sgr-timeout')) : '')
     : '';
 const calibrationNote = historical
     ? ''
@@ -285,6 +281,13 @@ for (const [path, expected] of outputs) {
 console.log(
     `Common-harness comparison ${mode === '--check' ? 'verified' : 'written'}: ${report.rows.length} requirements, ${report.subjects.length} applications.`,
 );
+
+function retestTable(stages) {
+    const rows = stages.flatMap((retest) => retest.caseIds.map((id) =>
+        `| ${historical ? id : retest.subjectId + ' · ' + id} | ${comparisonStatusLabels[retest.results[id].status]} |`,
+    ));
+    return '\n| Retested case | New outcome |\n|---|---|\n' + rows.join('\n') + '\n';
+}
 
 /** Verify the alternate suite against a Git proof of a collector-only extension to the full-run adapter. */
 function verifyCaptureRetestAdapter(retest, fullRunSource, parent = fullRunSource.adapterRevision) {
