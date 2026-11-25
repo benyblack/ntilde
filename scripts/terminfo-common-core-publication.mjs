@@ -202,6 +202,8 @@ const retestIntroduction = historical
     : '\n## Focused screenshot retests\n\nThe table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. iTerm2 reruns the Core cases that retained native frames, including the [seven earlier scrollback retests](iterm2/focused-retest/cases.json). The adapter checks the tab, session and worker TTY before and after screenshots and keeps the 250 ms paint wait and static-frame checks. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.\n\n';
 const timeoutNote = timeoutRetest ?
     'The [iTerm2 SGR timeout follow-up](iterm2/sgr-timeout-retest/cases.json) reruns only the nine probes that exceeded their original deadlines in the [custody retest](iterm2/custody-retest/cases.json). The adapter keeps the static-frame settle wait and uses the probes’ existing paint witnesses for the other SGR frames. The retained custody checks, 30- and 120-second deadlines, and graders still apply. Counts carry forward the other 35 custody retest outcomes.\n\n' : '';
+const timeoutTable = timeoutRetest ? '\n### iTerm2 SGR timeout follow-up\n' +
+    retestTable(retestReports.filter(({ kind }) => kind === 'iterm-sgr-timeout')) : '';
 const retestMarkdown = retestReports.length
     ? retestIntroduction + timeoutNote +
       retestReports
@@ -211,8 +213,7 @@ const retestMarkdown = retestReports.length
           )
           .join('') +
       retestTable(retestReports.filter(({ kind }) => kind !== 'iterm-sgr-timeout')) +
-      (timeoutRetest ? '\n### iTerm2 SGR timeout follow-up\n' +
-          retestTable(retestReports.filter(({ kind }) => kind === 'iterm-sgr-timeout')) : '')
+      timeoutTable
     : '';
 const calibrationNote = historical
     ? ''
