@@ -1,5 +1,5 @@
 // Versioned probe contract for the DECSCLM qualification batch: modes.decsclm (DEC private mode 4, smooth scrolling). This is not a publication or a measurement. The batch's first integrated graph is
-// v79; its receipt schema is 82.
+// v80; its receipt schema is 82.
 //
 // Pinned terminfo.dev@4.0.0 definition (bundle SHA-256 aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6), read from the bundle, never inferred from the name. The case is registered as
 // `decrpmModeProbe("modes.decsclm", 4, termlessFn)`:

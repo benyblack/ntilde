@@ -13,8 +13,8 @@ import { buildDslGradingReport } from './dsl-grading.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Every retained artifact this suffix owns. */
 const artifact = Object.freeze({ report: 'dsl-observations.json', run: 'dsl-run.json', journal: 'dsl-snapshots.jsonl', adapter: 'collector-dsl.mjs' });
-/** The first source policy whose worker always runs this suite. This suite has no scoped-collection fork era: it was born on the integrated v79 graph (receipt schema 82); the focused v75-v77 forks never carried it. */
-export const dslFirstPolicy = 79;
+/** The first source policy whose worker always runs this suite. This suite has no scoped-collection fork era: it was born on the integrated v80 graph (receipt schema 82); the focused v75-v77 forks never carried it. */
+export const dslFirstPolicy = 80;
 const isDigest = value => /^[a-f\d]{64}$/.test(value ?? '');
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const fail = message => { throw new Error(message); };
