@@ -3,8 +3,37 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { fixture, bytes, ids } from './common-core-fixture.mjs';
 import { buildCommonCoreComparison } from './common-core-comparison.mjs';
-import { buildCommonCoreRetest } from './common-core-retest-report.mjs';
+import { assertITermCaptureCustody, buildCommonCoreRetest } from './common-core-retest-report.mjs';
 const sha = (value) => createHash('sha256').update(value).digest('hex');
+
+test('iTerm2 calibration and result frames require both custody checks for the launched TTY', () => {
+    const window = { appPid: 41, windowId: 7, tty: '/dev/ttys001' };
+    const worker = { tty: window.tty };
+    const frame = { kind: 'pixels', ref: 'sha256:example' };
+    const capture = { frame, trace: {
+        platform: 'darwin',
+        window: { id: window.windowId, ownerPid: window.appPid },
+        itermSessionCustody: { windowId: window.windowId, tty: window.tty, beforeCapture: true, afterCapture: true },
+    } };
+    const journal = (entry) => JSON.stringify({ captures: [entry] });
+    const calibrationKey = 'collector.captureCalibration.trace';
+    const raw = {
+        results: [{ featureId: 'text.basic', frames: [frame] }],
+        rawReplies: { [calibrationKey]: journal(capture), 'text.basic': journal(capture) },
+    };
+    const verify = () => assertITermCaptureCustody(raw, ['text.basic'], window, worker);
+    verify();
+    assert.throws(() => assertITermCaptureCustody(raw, ['text.basic'], window, { tty: '/dev/ttys002' }), /TTY disagree/);
+    for (const key of [calibrationKey, 'text.basic']) {
+        const tampered = structuredClone(capture);
+        delete tampered.trace.itermSessionCustody.afterCapture;
+        raw.rawReplies[key] = journal(tampered);
+        assert.throws(verify, /paired session custody/);
+        raw.rawReplies[key] = journal(capture);
+    }
+    raw.results[0].frames = [{ ...frame, ref: 'sha256:unwitnessed' }];
+    assert.throws(verify, /without session custody/);
+});
 /** Mutate synthetic evidence while keeping unrelated bindings valid. */
 function update(subject, key, mutate) {
     const data = JSON.parse(subject[key]);

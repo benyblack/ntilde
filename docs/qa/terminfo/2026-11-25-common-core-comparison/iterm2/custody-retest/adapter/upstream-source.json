@@ -1,0 +1,23 @@
+{
+  "upstream": "https://github.com/beorn/terminfo.dev",
+  "baseRevision": "b0c8c62500199b381478a02b1f144a4de60693e5",
+  "adapterRevision": "c9ef2e4dc7f2bb520621cfe5fbb01c1125b9de68",
+  "modifiedPaths": [
+    "packages/admin/versions.ts",
+    "packages/terminfo.dev/src/darwin-capture.test.ts",
+    "packages/terminfo.dev/src/darwin-capture.ts",
+    "packages/terminfo.dev/src/identity-guard.ts",
+    "packages/terminfo.dev/src/iterm-capture-geometry.test.ts",
+    "packages/terminfo.dev/src/iterm-capture-geometry.ts",
+    "packages/terminfo.dev/src/iterm-window-owner.test.ts",
+    "packages/terminfo.dev/src/iterm-window-owner.ts",
+    "packages/terminfo.dev/src/owned-terminal.ts",
+    "packages/terminfo.dev/src/serve.ts"
+  ],
+  "probeDefinitionsUnchanged": true,
+  "sourceArchiveSha256": "7c0f9c52ef5d8f45a79e30cc31a33052ec0091732ec15cd1ab4b3f76a406fcec",
+  "adapterPatchSha256": "32543443f76dbeeb70d49270bcaa76858f2713996165195c4e86c3d1d2ee581a",
+  "adapterBundleSha256": "9c2370f0a4947d6b1ca3f379cd835ee16a136c9c6fb8aa3d11fd3a3b9620b7a4",
+  "identityGuardSha256": "8232508beb40a0b2dfd16596d5bc050b8e6f043fe0470a0085590b28b41c7964",
+  "sourceObjectProofSha256": "c5b8ec3b514b047d7f4cf542de5f0d62d0bbd5bd02e7290f879518d20c03d79f"
+}

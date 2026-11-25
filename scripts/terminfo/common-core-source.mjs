@@ -76,7 +76,7 @@ export function verifyCommonCoreSource(directory, source, metadataPath, subjects
                 source.adapterRevision,
                 metadataPath,
                 commonCoreGit(),
-                ...(captureExtension ? [captureExtension.parent, captureExtension.path] : []),
+                ...(captureExtension ? [captureExtension.parent, ...captureExtension.paths] : []),
             ],
             { timeout: 120000, maxBuffer: 16 * 1024 * 1024, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
         ),
