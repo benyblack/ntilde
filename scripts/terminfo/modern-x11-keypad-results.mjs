@@ -9,7 +9,7 @@ import { id, replayKeyboard } from './modern-x11-keypad.mjs';
 import { verifyAttempts, verifyX11Run } from './modern-x11-mouse-results.mjs';
 
 export const publication = 'docs/qa/terminfo/2026-11-25-modern-application-keypad-results';
-const manifestSha256 = '341b77f73ed6b4c30995684a0a9cb00360a8c05e161aeef571f4c0dcf8988e85';
+const manifestSha256 = '4580368043ac75714f81a7e02148e58a10a80670cbccf216861179188e32b41a';
 const criterionSha256 = 'fb806a22a93e926e26ff1e5c9616ab9856bfd23d59329d13918c1b408575e8a1';
 export const keypadPaths = base => ({ json: join(base, publication, 'report.json'), markdown: join(base, publication, 'report.md') });
 export const verifyKeypadRun = directory => verifyX11Run(directory, { policy: 'owned-modern-x11-keypad-v1',
@@ -70,6 +70,7 @@ export function readableKeypad(report) {
         '## Evidence and reproduction', '',
         `[Owned run](owned-run.zip) \`${m.runId}\` on ${m.platform}. XTEST ${m.xtest.join('.')} targeted window ${m.windowId} on display \`${m.display}\`. App PID ${m.appPid} owned pane \`${m.paneId}\` and child PID ${m.childPid} on \`${m.tty}\`. The worker exited, the App and Xvfb were reaped, the socket and scratch tree disappeared, and the lease released at ${m.leaseReleasedAt}.`, '',
         `[Initial attempt](${m.attempts[0].archive}) \`${m.attempts[0].runId}\` stopped before KP_Add injection. The original mapping check rejected the X11 table’s Ctrl+Alt video-mode symbol. The revised check verifies the effective XKB symbol at the actual NumLock mask. The first attempt also reset the mode and released its lease.`, '',
+        `Two earlier passing measurements captured the same bytes. The collector now retries an unverified XTEST release and can send DECKPNM after an interruption. The published verdict uses a fresh run after the code-review changes. [First passing run](${m.attempts[1].archive}) · [Cleanup hardening run](${m.attempts[2].archive}).`, '',
         `App ${m.appVersion} was built from a source archive at \`${m.appRevision}\` with .NET SDK ${m.dotnetSdk}. The archive hashes the complete publish tree. Collector \`${m.scriptsRevision}\` ran under Node ${m.nodeVersion} and retained the launcher and its measured source files. [Manifest](manifest.json).`, '',
         'Rederive the publication offline using Node 24 and Python 3.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check --application-keypad', '```', '',
