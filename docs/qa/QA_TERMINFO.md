@@ -1,5 +1,13 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern OSC 52 clipboard assessment](terminfo/2026-11-25-modern-osc52-clipboard-results/report.md)
+verified the App's OSC 52 write through an independent GTK peer on isolated
+Linux X11. With a second nonce independently seeded and verified, the App
+returned a complete empty-payload denial frame. The baseline was restored and
+verified. The combined result is inconclusive, giving 66 pass, 0 fail and
+3 inconclusive across the same 69 frozen criteria. Run
+`node scripts/terminfo-modern-results.mjs --check --osc52-clipboard` to rederive the report.
+
 The [Modern OSC 52 write assessment](terminfo/2026-11-25-modern-osc52-write-results/report.md)
 reaches 66 pass, 0 fail and 3 inconclusive across 69 frozen criteria. On the
 owned Linux X11 display, a raw PTY read verified XTEST delivery. An independent
