@@ -45,15 +45,16 @@ test('the Ntilde retest replaces ten capture results and preserves the six other
     ]);
 });
 
-for (const [label, args] of [
-    ['the refreshed comparison and site projection', ['--check']],
-    ['the November 11 comparison and focused retest', ['--check', '--historical']],
+// Windows needs longer to verify the additional Git proofs and capture archives in the refreshed comparison.
+for (const [label, args, timeout] of [
+    ['the refreshed comparison and site projection', ['--check'], 180_000],
+    ['the November 11 comparison and focused retest', ['--check', '--historical'], 120_000],
 ]) {
     test(label + ' rederives from retained upstream runs and native captures', () => {
         const output = execFileSync(
             process.execPath,
             [resolve(root, 'scripts/terminfo-common-core-publication.mjs'), ...args],
-            { cwd: root, encoding: 'utf8', timeout: 120000 },
+            { cwd: root, encoding: 'utf8', timeout },
         );
         assert.match(output, /verified: 80 requirements, 3 applications/);
     });
