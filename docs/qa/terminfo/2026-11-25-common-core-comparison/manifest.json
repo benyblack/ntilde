@@ -176,6 +176,26 @@
     {
       "path": "iterm2/sgr-timeout-retest/adapter/upstream-source.zip",
       "sha256": "c779038053677798deab136efdf04144f9bdfaeded2ecb5c3585cfffeeb3a0b2"
+    },
+    {
+      "path": "ntilde/capture-retest/adapter/native-adapter.bundle",
+      "sha256": "deecc36c99a95953375e511c4273dcacf3d8ddf508a6b7e027ac126e81ab766d"
+    },
+    {
+      "path": "ntilde/capture-retest/adapter/native-adapter.patch.gz",
+      "sha256": "cf5f85c769134965eabe69fbe9285c6a8676fc73dcc5bf04575cab77e5f5f7c5"
+    },
+    {
+      "path": "ntilde/capture-retest/adapter/source-proof.zip",
+      "sha256": "eddf44fe81d0b20fa121b575b0eb7b95a16cb702c483a2f6e4d09bdfdf6ab849"
+    },
+    {
+      "path": "ntilde/capture-retest/adapter/upstream-source.json",
+      "sha256": "5e7ad0929e60e5ea9911c1ba18de5fd1ea9af05c190693105352f24783819170"
+    },
+    {
+      "path": "ntilde/capture-retest/adapter/upstream-source.zip",
+      "sha256": "14f84b04511104a19cba80b9487b4b7a4be7413ec10ab18ab3c8f204fdb4d912"
     }
   ],
   "subjects": [
@@ -403,6 +423,54 @@
       "archive": {
         "path": "ghostty/timeout-retest/owned-run.zip",
         "sha256": "ca42fbc9d9c0522de89c9677638744ebd58513b6a85e5d467fa137d6efaaca18"
+      }
+    },
+    {
+      "id": "ntilde",
+      "label": "Ntilde",
+      "files": {
+        "identity": {
+          "path": "ntilde/capture-retest/identity-check.json",
+          "sha256": "d38659f86d799697d9634a35099a8ec5c6b351913e17586da786e5af825e7f5c"
+        },
+        "source": {
+          "path": "ntilde/capture-retest/source.json",
+          "sha256": "e7dd29f3cb73a9822c2a6ebefe4a6b268f2af4ecc1fbe57a55f44ba4778cf839"
+        },
+        "config": {
+          "path": "ntilde/capture-retest/config.json",
+          "sha256": "79ef86c789295c2ff56d95bb93f6b6074ae2f070b1abd098316521c9a20b26a2"
+        },
+        "ready": {
+          "path": "ntilde/capture-retest/worker-ready.json",
+          "sha256": "11a2207d9dadf519a297ecdbb84382a07516d96b0d24da616e4c2624caa6660e"
+        },
+        "completion": {
+          "path": "ntilde/capture-retest/worker-complete.json",
+          "sha256": "eba5f483a811502184925253044227f027b9b9c05735f338ef432f580fca1c39"
+        },
+        "cleanup": {
+          "path": "ntilde/capture-retest/cleanup.json",
+          "sha256": "cce42f84234e246acc3793f11ee7161e5ef8241142327db8f313a0a61317db07"
+        },
+        "geometry": {
+          "path": "ntilde/capture-retest/measurement-geometry.json",
+          "sha256": "fdd86d54536afa3705bfe174d8eb27be94e7595e856a128c575fed4eed5361da"
+        },
+        "window": {
+          "path": "ntilde/capture-retest/native-window.json",
+          "sha256": "f7094dddbb2a9a61e9ee6209d9a20611928417c471311441a6084fe74fa71393"
+        },
+        "raw": {
+          "path": "ntilde/capture-retest/owned-run.zip",
+          "sha256": "682ecfa4e8422eec672625d3ab31e56f8f236f41525f0393b6a25c65c8a39030",
+          "member": "raw.json",
+          "contentSha256": "64205e3d805c41e16ab68bebdcc334f6b96018ae118279dcb27633a90611f217"
+        }
+      },
+      "archive": {
+        "path": "ntilde/capture-retest/owned-run.zip",
+        "sha256": "682ecfa4e8422eec672625d3ab31e56f8f236f41525f0393b6a25c65c8a39030"
       }
     }
   ],

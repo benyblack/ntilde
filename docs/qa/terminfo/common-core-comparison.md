@@ -206,6 +206,43 @@ verified application identity and cleanup. The combined iTerm2 count is
 69 supported of 80. The earlier nine deadline failures remain in their
 original archive.
 
+## Ntilde screenshot follow-up
+
+The original Ntilde run recorded 64 supported of 80. Nine SGR probes exceeded
+an existing deadline while collecting frames. The three reset matrices each
+stopped after 98 or 99 of 132 frames, and the six single-attribute probes had
+already received their DECRQSS replies. In `cursor.hide`, the shown, hidden
+and restored frames all had the same blank cursor cell. The original frames
+cannot distinguish missed paint from loss of keyboard focus.
+
+The derivative adapter converts the macOS window census in bulk. The existing
+window identity and bounds checks still surround each capture. For
+`cursor.hide`, the adapter also waits 250 ms and checks that the owned Ntilde
+process is foreground before and after capture. Probe bytes, controls,
+graders and deadlines are identical to the original comparison.
+
+Run `b0e20a1117652fa6ee959e9765b97923` repeated just those ten cases on the
+original Ntilde 0.14.0 payload at 41 × 140. The median gap between successive
+frames of the same SGR probe fell from 1,211 ms to 412 ms. All three reset
+matrices completed 132 frames. The cursor's shown and restored images matched,
+and hiding it changed the same cell. All ten are supported. The combined
+comparison is 74 supported of 80, with the original full-run results retained
+in their own case records.
+
+The six remaining rows have no decisive common-harness result. The three
+history cases (`erase.screen.scrollback`, `scrollback.accumulate` and
+`scrollback.total-lines`) need evidence outside the visible viewport.
+`extensions.osc1-icon` needs icon-name readback, `reset.method` needs a backend
+reset API and `device.env-term` has no upstream terminal callback in the pinned
+suite.
+
+To reproduce the selection, extract the original Ntilde full-run archive,
+use it as `COMMON_CORE_RETEST_FROM`, set `COMMON_CORE_RETEST_KIND=ntilde-capture`
+and use the adapter snapshot in `ntilde/capture-retest/adapter/`. The driver
+verifies the original application payload before launching it. Run
+`node scripts/terminfo-common-core-publication.mjs --check` with Node 24 to
+rederive the combined report from the retained archives.
+
 ## Offline source proof and checkout formatting
 
 `source-proof.zip` retains content-addressed Git commit/tree objects and the base

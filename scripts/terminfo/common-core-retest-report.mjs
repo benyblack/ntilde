@@ -80,8 +80,27 @@ function assertRetestObservations(retest, selected, kind) {
     if (['capture-custody', 'iterm-sgr-timeout'].includes(kind))
         assertITermCaptureCustody(raw, selected, parse(retest.windowBytes), parse(retest.readyBytes),
             kind === 'iterm-sgr-timeout');
+    if (kind === 'ntilde-capture')
+        assertNtildeCursorForeground(raw, parse(retest.windowBytes), parse(retest.readyBytes));
     if (raw.results.some((result) => !selected.includes(result.featureId) && result.attempt?.scope === 'probe'))
         throw new Error('Retest executed a case outside the invalidated selection.');
+}
+
+/** Validate the cursor-specific foreground witness against the parent-owned application. */
+export function assertNtildeCursorForeground(raw, owner, worker) {
+    if (!Number.isSafeInteger(owner?.ownerPid) || owner.ownerPid < 1 ||
+        !/^\/dev\/tty[a-zA-Z0-9._-]+$/.test(owner.tty) || owner.tty !== worker?.tty)
+        throw new Error('Ntilde retest owner and worker TTY disagree.');
+    const row = raw.results.find(({ featureId }) => featureId === 'cursor.hide');
+    const captures = readCaptures(raw, row.rawReplyRef ?? row.featureId);
+    for (const { frame, trace } of captures) {
+        const attention = trace?.cursorForeground;
+        if (frame?.kind !== 'pixels' || trace?.platform !== 'darwin' ||
+            trace.window?.ownerPid !== owner.ownerPid || attention?.appPid !== owner.ownerPid ||
+            attention.beforeCapture !== true || attention.afterCapture !== true || trace.paintSettleMs !== 250)
+            throw new Error('Ntilde cursor frame lacks paired foreground checks for the owned window.');
+    }
+    assertWitnessedFrames(row, captures);
 }
 
 /** The nine-case follow-up can only refine the already validated custody retest. */
@@ -122,12 +141,16 @@ export function assertITermCaptureCustody(raw, ids, window, worker, witnessedSgr
         const captures = readCaptures(raw, row.rawReplyRef ?? row.featureId);
         validateCaptureCustody(captures, window);
         if (witnessedSgr) validateSgrPaintWait(captures, row.featureId);
-        const witnessed = new Set(captures.flatMap(({ frame }) => [frame.ref, frame.sourceRef]));
-        const frames = (row.frames ?? []).filter(({ kind }) => kind === 'pixels');
-        const references = [row.screenshotRef, ...frames.flatMap(({ ref, sourceRef }) => [ref, sourceRef])];
-        if (references.some((ref) => ref && !witnessed.has(ref)))
-            throw new Error(`iTerm2 result cites a frame without session custody: ${row.featureId}.`);
+        assertWitnessedFrames(row, captures);
     }
+}
+
+function assertWitnessedFrames(row, captures) {
+    const witnessed = new Set(captures.flatMap(({ frame }) => [frame.ref, frame.sourceRef]));
+    const frames = (row.frames ?? []).filter(({ kind }) => kind === 'pixels');
+    const references = [row.screenshotRef, ...frames.flatMap(({ ref, sourceRef }) => [ref, sourceRef])];
+    if (references.some((ref) => ref && !witnessed.has(ref)))
+        throw new Error(`Result cites a frame without capture custody: ${row.featureId}.`);
 }
 
 /** The feature captures keep the same static-pair wait and record the active paint-witness path. */

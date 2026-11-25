@@ -1,0 +1,547 @@
+{
+  "runId": "b0e20a1117652fa6ee959e9765b97923",
+  "rawSha256": "64205e3d805c41e16ab68bebdcc334f6b96018ae118279dcb27633a90611f217",
+  "fullRunArchive": "owned-run.zip",
+  "records": [
+    {
+      "featureId": "sgr.bold",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:03:33.930Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:03:33.930Z"
+          },
+          "assertionRefs": [
+            2
+          ],
+          "rawReplyRef": "sgr.bold"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bold",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.bold: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"frameDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:34c64e1c73fcb729f0293ea86bdb31b2235b11a564393eac022a7baeabe06bc5\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\"}}",
+          "rawReplyRef": "sgr.bold"
+        }
+      ],
+      "rawReplyRef": "sgr.bold",
+      "rawReplySha256": "70b93032b9fc7a13f64dd203f9ce125adf6cd1be0e1801945b3f235301a33915",
+      "screenshotRefs": [
+        "sha256:f3fbcd7faa034fc715461601d6af3c5f03b1bfbe4c2998b4ccd77fd0b731c615",
+        "sha256:5de4f164a415c37981c7e01dccd80079a7e72c9e49581c45d756f8d7cd6ce1cf",
+        "sha256:d5f2e8cb7212bc8291abf29cdda9ec760a07ad1646b4cb92bdaa035db929677e",
+        "sha256:d6d7ee82a871eaafd7f7a4fa79d6b06f45355e11c756c3bc4db07f62b4097bcf",
+        "sha256:714795c5fe272f2272f9e7c5d774e555c32eedc0c412af89f066a8ead407fe7e",
+        "sha256:4a75a0f9e726ddde559ad4b4824e3686eebc51f2944f375d3249ac74cbdb4fb6",
+        "sha256:b7aa13c05f3d7e44076c8d32c3432d1bb67689ce29112a899ba7f6f38bae1e6d",
+        "sha256:10899deb786c29834def0c9627fbe27e8aa28f1fd28288eaeb9dcfa3961817cc",
+        "sha256:0db5561a5db0cd712cf8968200eee056bc7d7861267d90d16e00d50e6338c616",
+        "sha256:c1a0484cd3fecb28b0de487a8ddf63a6dac41a5fa8b9f561d182ac518c51f167",
+        "sha256:d31d49cbf011086957c03f6483bbf7123c6ee3012824ff16d7517b962bdf3094",
+        "sha256:04c5ade52ff9ad312af26ddb94ddbccfaa0796b84c8e5c63a2202fcc6076ba03"
+      ]
+    },
+    {
+      "featureId": "sgr.faint",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:03:45.884Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:03:45.884Z"
+          },
+          "assertionRefs": [
+            3
+          ],
+          "rawReplyRef": "sgr.faint"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.faint",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.faint: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"frameDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:355899d6d04278836e6d5bd64e43aea05705bbe284702b7bfa4ef4e5c762bb4e\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\"}}",
+          "rawReplyRef": "sgr.faint"
+        }
+      ],
+      "rawReplyRef": "sgr.faint",
+      "rawReplySha256": "0f3831b396748940e00f3edce893d01bb0b648b26fcc85334932156ac0fac521",
+      "screenshotRefs": [
+        "sha256:f3fbcd7faa034fc715461601d6af3c5f03b1bfbe4c2998b4ccd77fd0b731c615",
+        "sha256:5de4f164a415c37981c7e01dccd80079a7e72c9e49581c45d756f8d7cd6ce1cf",
+        "sha256:78857ea623f06450d8edf1b4c658712c8c413c45a59fc927d00d176e0e503f66",
+        "sha256:e59a480fe7a1a0f48c3493b074ab7f61f22478337658b4a565df359f1598cdf2",
+        "sha256:bcc9d25a230f632bc3767327f445ad7562489aeb826601d1852b7bada7ed521a",
+        "sha256:3fd861eb811dcea0c19be18aa60b9ac9cca2758b81599e13344ed3938b05e3af",
+        "sha256:93d1cf096d79dbebdba292ba3a6f04caa7293c16044c335ee87d250e50b28c39",
+        "sha256:ffad4b04867151cbde63b214d74f356420409dc5a5cff6063898e117952061da",
+        "sha256:0db5561a5db0cd712cf8968200eee056bc7d7861267d90d16e00d50e6338c616",
+        "sha256:de4abb258e8018ed8d3706a894d9421964cccf61fff1b2321bb928108ebe9653",
+        "sha256:36b85a506b481420dd50bb969e5a4862bd1f426dea38d2a738d766a5807fb94b",
+        "sha256:0ab5c397973144bd101ed8cf6b8ffd8379fad8177095f06ae91ee563445e43bb"
+      ]
+    },
+    {
+      "featureId": "sgr.italic",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:04:10.846Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:04:10.846Z"
+          },
+          "assertionRefs": [
+            5
+          ],
+          "rawReplyRef": "sgr.italic"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.italic",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.italic: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"frameDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:32fdc9a61478f5c233585dd5c7a8f5f7fd35bf47b5944fc5c894c2aff942df9b\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\"}}",
+          "rawReplyRef": "sgr.italic"
+        }
+      ],
+      "rawReplyRef": "sgr.italic",
+      "rawReplySha256": "0b3b4c434f8186042cdbe6b62fed742cba6614ca117a0c2213b010a3ed0026d6",
+      "screenshotRefs": [
+        "sha256:f3fbcd7faa034fc715461601d6af3c5f03b1bfbe4c2998b4ccd77fd0b731c615",
+        "sha256:5de4f164a415c37981c7e01dccd80079a7e72c9e49581c45d756f8d7cd6ce1cf",
+        "sha256:9cce4cbff1d91e25b322f38f9807467b220f54298134f6ad4d1fab0ec4156d01",
+        "sha256:da81386f154d12879d619773c3f93d076261424d695323c8e4dc66b5e79b1276",
+        "sha256:6d3417a2633f9ad20875631cefdc6123804efd04311c8cdaa34cfa4409744064",
+        "sha256:2de5e1dbc0c6445890c0eaafaa562a84b264a7c62e6426108a9a47498fa296b7",
+        "sha256:18cdc07e03e3c2abe8f5e98c5183c78a0e39321e2983b67d66ba226131e21b42",
+        "sha256:d20b495585db0d70dcf5aaba7bca98937d665571f8159a58df2ecb1ac108ea34",
+        "sha256:0db5561a5db0cd712cf8968200eee056bc7d7861267d90d16e00d50e6338c616",
+        "sha256:0c221f199ba444dcb84d2e638a90dbb40864e6dac34b0ec1f979bc2be25b5c26",
+        "sha256:7a7445f3e4ec78d5779e22a9dd65344f9580aa90730119befd10780c20f201f8",
+        "sha256:5b5242c5b4b642c1487a850b94ee5fc6a557a354dc4ee33220177c4cd3fb9b7d"
+      ]
+    },
+    {
+      "featureId": "sgr.underline.single",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:06:23.810Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:06:23.810Z"
+          },
+          "assertionRefs": [
+            9
+          ],
+          "rawReplyRef": "sgr.underline.single"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.underline.single",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.underline.single: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"frameDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:b258a935da224dcc14913ca07c701a52a8f6170cdacc340260b09a2d60da701e\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\"}}",
+          "rawReplyRef": "sgr.underline.single"
+        }
+      ],
+      "rawReplyRef": "sgr.underline.single",
+      "rawReplySha256": "4929a32d39c7314a9a88c286b7f332336cb0c3a031a2fec52a8dd1ea9c5bf802",
+      "screenshotRefs": [
+        "sha256:f3fbcd7faa034fc715461601d6af3c5f03b1bfbe4c2998b4ccd77fd0b731c615",
+        "sha256:5de4f164a415c37981c7e01dccd80079a7e72c9e49581c45d756f8d7cd6ce1cf",
+        "sha256:7eced6d008e5988a12f3174f94ef679d84651d1c4dda3678d4225ec67919c970",
+        "sha256:6b2d33ded9f369b2e65e14ea74c57fd064883f7ca8e0c8688f85b0e453e9b752",
+        "sha256:e8fc7f5fd673a26c600c78a9a655aee8f1737b0f8fb119002532bf101583b59f",
+        "sha256:08463040b18e30f8ef72178cd90092a63535459be0b6c73a2ea40937a90fa247",
+        "sha256:8b4baff9a491a7b3e12fa45f6f171c713c673e0dc1f3763be54a1cc0fd5391e9",
+        "sha256:ecfe4bcfc6b7dedb39c1fb790bb17807c8051bb0bd6046cc0eb54c5078a66703",
+        "sha256:0db5561a5db0cd712cf8968200eee056bc7d7861267d90d16e00d50e6338c616",
+        "sha256:bac104f03b43a1138159a17909ab2158212c32fbb5a18c27ce2406e4b84f08b2",
+        "sha256:89b9892c5514ca8159d6449df2025b49741ae02ca1a7b295629420b2a0e7f027",
+        "sha256:1ba1e000c810cb29fe62b8673368c9806b110d25f45a57e1b17254381e0bc8a8"
+      ]
+    },
+    {
+      "featureId": "sgr.hidden",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:03:57.431Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.hidden: target equals the same-cell blank reference; sgr.hidden: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;8\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:03:57.431Z"
+          },
+          "assertionRefs": [
+            4
+          ],
+          "rawReplyRef": "sgr.hidden"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.hidden",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.hidden: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"frameDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"blank\":\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"}}",
+          "rawReplyRef": "sgr.hidden"
+        }
+      ],
+      "rawReplyRef": "sgr.hidden",
+      "rawReplySha256": "8c6afae74bd5fdd241afa779f03552fed2616d113095a9fca7e5bca338c8949b",
+      "screenshotRefs": [
+        "sha256:f3fbcd7faa034fc715461601d6af3c5f03b1bfbe4c2998b4ccd77fd0b731c615",
+        "sha256:5de4f164a415c37981c7e01dccd80079a7e72c9e49581c45d756f8d7cd6ce1cf",
+        "sha256:7b57ba6f6db3c142e9c2253749f4034040590bea38c416d4f301f38bf8594561",
+        "sha256:4fbe2869c904729f6f860864356655a637da677fba5fa52a59d1efd3cee57e7e",
+        "sha256:ccedfb6a6dbf66be86ff7a3fc02c3eb6f9f191f02c7198af4fd0b2b25742855e",
+        "sha256:7728e9e8fc9c2265970f4027379f8f32d62aa3cdaf681035ee62d49d9535d423",
+        "sha256:a108c3ed9dac23570d8987c41d60c531947ecbb75353e11523ad57c596ab2699",
+        "sha256:0db5561a5db0cd712cf8968200eee056bc7d7861267d90d16e00d50e6338c616",
+        "sha256:649cf864438f72aae6a47491a178b0bded61920329714b07fb85abf64a128cba",
+        "sha256:93d68b36271708ab3b10c522eeb551a49d4c55b934843669a402d7c392d76f24",
+        "sha256:307e36ff848845534f6c36944e5f852cc769a462dfca275abd8f5dffa45b77e8",
+        "sha256:7b7a3403774a502465fb50451a485326d6a13f701a4056e61e2f399642e24dc0"
+      ]
+    },
+    {
+      "featureId": "sgr.strikethrough",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:06:10.413Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.strikethrough: target differs from plain, made-up does not; sgr.strikethrough: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;9\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:06:10.413Z"
+          },
+          "assertionRefs": [
+            8
+          ],
+          "rawReplyRef": "sgr.strikethrough"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.strikethrough",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.strikethrough: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":17,\"cellHeight\":37,\"textWidth\":2380,\"textHeight\":1517},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\",\"sha256:63a5fa9f67beef83a60178f7188e0baa0d5c99934096771789cff44737e5b201\"],\"pixelsDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"frameDigest\":[\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\",\"sha256:d91be85c6dd9371748e605c35e92f484a450a88cd885eba31c710b23ab9f903c\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"target\":\"sha256:be7dcb9cd35c240d25068d926320ae3f5d3cdbfc51d7e767c3d2765f520659b5\",\"made-up\":\"sha256:f6b966f632d258858e54c46116aa3df17ff7d81e7beb951b5292bf4a06307d5c\",\"handled\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"inverse\":\"sha256:38a11f12edc0aae6baa0101c13c9895b8286fb5e9f85a1b9e87bf214789c8cef\",\"single underline\":\"sha256:b258a935da224dcc14913ca07c701a52a8f6170cdacc340260b09a2d60da701e\"}}",
+          "rawReplyRef": "sgr.strikethrough"
+        }
+      ],
+      "rawReplyRef": "sgr.strikethrough",
+      "rawReplySha256": "cc65f10d91bc703b3e6a6ad86bdef19c7f6b24805ff7b2fe225d144d3f6d712a",
+      "screenshotRefs": [
+        "sha256:f3fbcd7faa034fc715461601d6af3c5f03b1bfbe4c2998b4ccd77fd0b731c615",
+        "sha256:5de4f164a415c37981c7e01dccd80079a7e72c9e49581c45d756f8d7cd6ce1cf",
+        "sha256:e04bbffe51b8e3388226fa9f048005f410399e962f0f61eae1d6dc640947d416",
+        "sha256:2ed45caaf27f4c3cf3c2c36c18248fd26bede960d0667bc4785030a21a66f72d",
+        "sha256:09cfde3d7b78c3c18b1ca39cd32d418fa17722b49eaa51b9e3af65406e17cc44",
+        "sha256:d858bc20bbb6d982161f82cb5044a45029ce66c0f1fec6a3e3ab6bf53f797856",
+        "sha256:f044a0b75365968a3ae566e90af4b95c6b1b7d280bcab78ec14afed7f0b8341e",
+        "sha256:2a70c3b60e8aad4e124e8b4b22f2847a82456b0d6b5779d58e06845a65d00289",
+        "sha256:0db5561a5db0cd712cf8968200eee056bc7d7861267d90d16e00d50e6338c616",
+        "sha256:dd3d8b3247fc3570a0837b98c8069e39fc2b6546a4d3bfdf7b1cd8bdd297fc9e",
+        "sha256:c4f1e311fa7933f8f805df8d1455dab87e3b2f986ec01c26112ccb81a61eb7e9",
+        "sha256:c8beb31238ac965f2258b8e232a42eaeb349953232f5641443bbce1ef43a2e46",
+        "sha256:e8fc7f5fd673a26c600c78a9a655aee8f1737b0f8fb119002532bf101583b59f",
+        "sha256:d829e8584f4e5348ad51b1626c4675ca38394ee7e02da6def65255fa2093f174",
+        "sha256:3a323743a863c730c680124299b15761cd429ff7fef8bfda31993e9d90751bd8"
+      ]
+    },
+    {
+      "featureId": "sgr.selective-reset.bold",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:05:15.764Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:05:15.764Z"
+          },
+          "assertionRefs": [
+            7
+          ],
+          "rawReplyRef": "sgr.selective-reset.bold"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.bold",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.bold: reset returns the crop to the independently separated expected subset sha256:cdf7d8f7117ce7fcfdb93b5f6971d575ef33af1fdc5e543ae54722674c72abcd, after qualified subsets, restores and made-up SGR 99",
+          "observed": "sha256:cdf7d8f7117ce7fcfdb93b5f6971d575ef33af1fdc5e543ae54722674c72abcd",
+          "rawReplyRef": "sgr.selective-reset.bold"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.bold",
+      "rawReplySha256": "7561420064de06ce57cd2da9098c6fca4cab3d0e7df4f1bea05b433cdbe875fd",
+      "screenshotRefs": [
+        "sha256:07e64658bc328b40ac08b6f7efd0232e643ee8b43d77f7f6ba5f3e016161b1b6",
+        "sha256:aaf117672e3971d2af913d0466a67afaeb88a6406111440a87f2a3f02d1a8398",
+        "sha256:68d5c9f1521dd41ae923eea56ccce7969c08479124540e3decae16e32f022eb1",
+        "sha256:ea7efb423e5d6740e03c63ced93546544218e6ac78d6f20511d1a5fab334a275",
+        "sha256:9981a9dde53e27182c7638f3ef5607d6ab936d3455408ea4154aaba179c1a987",
+        "sha256:4acca59a5f85c3ef775224c3c7c2f45e8fc53affd0a648f68c265a84881ce1ba",
+        "sha256:681182973738c79780f8576a1b30c8a7122e7495c6ad43152b1ee5afc17dd3bd",
+        "sha256:47738582408ad47ba9179b9bcd570ea3498df1c9ef7839b5e88d90279d97c29a",
+        "sha256:a307b8ca154e0f095eac20e426c6ac1e1a405db938ff682757234d594b626c1c",
+        "sha256:ed35fcf5fb35bfbcd57debe5db6c823f4df0a75a6c5c75bc7aeacc66f0b9cf7a",
+        "sha256:237be7f02e711cf276c52273798ce4804164a04fd27f050619accb57b9cfe473",
+        "sha256:9e0dbcd38761f86e7e7b84129d5e3eaf06d4ddbed23498eba83f9bb1d8cbeb59",
+        "sha256:7a39b257d2eda6383d0498f1dcc12a12f1342434d2c71c2e895d25fa85f38b47",
+        "sha256:d9b638b0c732904841132b1338626639bcf243a67a13fefe5508b5bd9337e60c",
+        "sha256:cc0ea3deaac486a864c42b4255ec246c9386ea7436c36c8aa5e0b800a6bd73bf",
+        "sha256:c052aea867c64fbca9e81222a2b4c39d40db28aec04ff6abedf60f4e4b8ac538",
+        "sha256:db573688df553708b7f30eba55216386aba3501932731983cf7b2ce881019eec",
+        "sha256:fe6fbe494ba320dedd22a8e7d9f2f75908309cb57bb52e2b31c4b8ed78c740c6",
+        "sha256:ff25873bceb4958d77e73918b1d6e688c09916d4f567b1fc888d094632f8f7aa",
+        "sha256:3251358b1bbf23763f4bc89d3b9aa085a19f14c5ecc2a9ca5e2391e38b3ac5c4",
+        "sha256:02ce9ac84cb8355356e16dd3b141c063fdb0ea347188441740bdec4d1e080e80",
+        "sha256:707eb4cab40fdf1513060f515faceeb0df2c40a45ae771057b44d117e8558c80",
+        "sha256:4694c7baf2f0d1f91394561b30820634bc0a8d7babef83e4f8dbe112c0c8ecb4",
+        "sha256:3eda2b3adef6c00a767d7f9565e0c0463b597a4289cf7f791e5c3534473bc04e",
+        "sha256:4e0eb0584642b27a580f15a3bae3937ba4d6f3c7872c88e82515bb0b969c1bb7",
+        "sha256:ceb58b7e85cb09f76d6553db900ad759a0a92513b4e793fb492222f9c179058d",
+        "sha256:6ec4ffbc8534f7952497d5116199e47057bf5f9cd4c8fcf671f06abbdc22935c",
+        "sha256:c5458ea216c82f5df25c7b76c2b7631c004dbf4fc9bd8438a3182811bdbe2e36"
+      ]
+    },
+    {
+      "featureId": "sgr.reset",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:04:21.873Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:04:21.873Z"
+          },
+          "assertionRefs": [
+            6
+          ],
+          "rawReplyRef": "sgr.reset"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.reset",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.reset: reset returns the crop to immutable initial rendition sha256:cd189381a9fc22ebd69ccd2cc483febed9aaf06a0db9b9330c0a957c877327fa, after qualified subsets, restores and made-up SGR 99",
+          "observed": "sha256:cd189381a9fc22ebd69ccd2cc483febed9aaf06a0db9b9330c0a957c877327fa",
+          "rawReplyRef": "sgr.reset"
+        }
+      ],
+      "rawReplyRef": "sgr.reset",
+      "rawReplySha256": "484506ec297daf0c67cc6252b474c4cfb21714088070ba543935ddf3d55b4681",
+      "screenshotRefs": [
+        "sha256:07e64658bc328b40ac08b6f7efd0232e643ee8b43d77f7f6ba5f3e016161b1b6",
+        "sha256:aaf117672e3971d2af913d0466a67afaeb88a6406111440a87f2a3f02d1a8398",
+        "sha256:68d5c9f1521dd41ae923eea56ccce7969c08479124540e3decae16e32f022eb1",
+        "sha256:ea7efb423e5d6740e03c63ced93546544218e6ac78d6f20511d1a5fab334a275",
+        "sha256:9981a9dde53e27182c7638f3ef5607d6ab936d3455408ea4154aaba179c1a987",
+        "sha256:4acca59a5f85c3ef775224c3c7c2f45e8fc53affd0a648f68c265a84881ce1ba",
+        "sha256:681182973738c79780f8576a1b30c8a7122e7495c6ad43152b1ee5afc17dd3bd",
+        "sha256:9e0dbcd38761f86e7e7b84129d5e3eaf06d4ddbed23498eba83f9bb1d8cbeb59",
+        "sha256:c5458ea216c82f5df25c7b76c2b7631c004dbf4fc9bd8438a3182811bdbe2e36",
+        "sha256:ed35fcf5fb35bfbcd57debe5db6c823f4df0a75a6c5c75bc7aeacc66f0b9cf7a",
+        "sha256:237be7f02e711cf276c52273798ce4804164a04fd27f050619accb57b9cfe473",
+        "sha256:ada5d0f2c6cd2e130710791bf91c3fbcb10491da81c6bb77b711e889a2f8b0ba",
+        "sha256:1cc3088de5f4dcac0091afda478781c5f7448143cc783949f9bc9db1d7846fea",
+        "sha256:d9b638b0c732904841132b1338626639bcf243a67a13fefe5508b5bd9337e60c",
+        "sha256:fe6fbe494ba320dedd22a8e7d9f2f75908309cb57bb52e2b31c4b8ed78c740c6",
+        "sha256:46e769e3934cc4c674c6d6402ca9893c250c5c474e78a926d67e72eb28e458a2",
+        "sha256:db573688df553708b7f30eba55216386aba3501932731983cf7b2ce881019eec",
+        "sha256:b85ade82c791d782eb6cdbb19fdf7ec2e391bdd56466521aba3658f253b83007",
+        "sha256:f8d244a821806c02895b4ff12e470d2c27e66cb1eaaf8102d2f986cd0c59593f",
+        "sha256:3251358b1bbf23763f4bc89d3b9aa085a19f14c5ecc2a9ca5e2391e38b3ac5c4",
+        "sha256:3241a663d389cd70fd37d21e4a4d8770851ef2aa79414891b9df4ddeee582173",
+        "sha256:87beef211a5621133f976b367936a3fe057491a3f99c1a79864ec127243be1fe",
+        "sha256:4694c7baf2f0d1f91394561b30820634bc0a8d7babef83e4f8dbe112c0c8ecb4",
+        "sha256:ab956121453a64fcb8f2b9448b57b7d4f125cf7d9090b7952fc7a0e1a15534ad",
+        "sha256:77de3e85b8a72a919d123764ac10b55797839320dfb1862d5553206182a52455",
+        "sha256:1ec95d982809252b858c77ffe036cf12354f433d26b6db6269a5286f2f48807e",
+        "sha256:0a05c16eabd7d66e67239fb9940a23d6256eb6ef786658937dec58a3c6d7db9f"
+      ]
+    },
+    {
+      "featureId": "cursor.hide",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:02:36.456Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:02:36.456Z"
+          },
+          "assertionRefs": [
+            0
+          ],
+          "rawReplyRef": "cursor.hide",
+          "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.hide",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "The cursor cell at row 2 column 3 has one pixel digest while the cursor is shown, a different digest while DECTCEM hides it, and the shown digest again after restore",
+          "observed": "{\"rows\":41,\"cols\":140,\"cursor\":{\"row\":2,\"col\":3},\"digests\":[{\"cells\":\"sha256:f22a1acb59ce4b8b162aeba0bb4d0a03ea747e018bd84e3bafb4c3f41b61a2fb\"},{\"cells\":\"sha256:156d4a855b628328e6bd5f31754f299ba32c8a120fc4fd75db07d5b4ee248652\"},{\"cells\":\"sha256:f22a1acb59ce4b8b162aeba0bb4d0a03ea747e018bd84e3bafb4c3f41b61a2fb\"}],\"rectangles\":[{\"x\":42,\"y\":109,\"width\":17,\"height\":37},{\"x\":42,\"y\":109,\"width\":17,\"height\":37},{\"x\":42,\"y\":109,\"width\":17,\"height\":37}]}",
+          "rawReplyRef": "cursor.hide"
+        }
+      ],
+      "rawReplyRef": "cursor.hide",
+      "rawReplySha256": "2ed4c39a2263758bb61e6dafc319b758bd4ce786bf571b1d46961f9d28ece8f7",
+      "screenshotRefs": [
+        "sha256:62776bc3a74c65e80f61ebe0532a8ebcf2bf6e94731265048cbf2aceaf48ce3a",
+        "sha256:4da6e46d0e1fc2295053d72cf4746195e2c6b80c4b28100e50e277936b9b0dc2"
+      ]
+    },
+    {
+      "featureId": "reset.sgr",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T21:02:38.807Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "reset",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T21:02:38.807Z"
+          },
+          "assertionRefs": [
+            1
+          ],
+          "rawReplyRef": "reset.sgr"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "reset.sgr",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "reset.sgr: reset returns the crop to immutable initial rendition sha256:cd189381a9fc22ebd69ccd2cc483febed9aaf06a0db9b9330c0a957c877327fa, after qualified subsets, restores and made-up SGR 99",
+          "observed": "sha256:cd189381a9fc22ebd69ccd2cc483febed9aaf06a0db9b9330c0a957c877327fa",
+          "rawReplyRef": "reset.sgr"
+        }
+      ],
+      "rawReplyRef": "reset.sgr",
+      "rawReplySha256": "537a6dd412c0bf362f2bb1472fd10be59925745e46e20e373b65eb5bc16182e5",
+      "screenshotRefs": [
+        "sha256:07e64658bc328b40ac08b6f7efd0232e643ee8b43d77f7f6ba5f3e016161b1b6",
+        "sha256:aaf117672e3971d2af913d0466a67afaeb88a6406111440a87f2a3f02d1a8398",
+        "sha256:68d5c9f1521dd41ae923eea56ccce7969c08479124540e3decae16e32f022eb1",
+        "sha256:ea7efb423e5d6740e03c63ced93546544218e6ac78d6f20511d1a5fab334a275",
+        "sha256:9981a9dde53e27182c7638f3ef5607d6ab936d3455408ea4154aaba179c1a987",
+        "sha256:4acca59a5f85c3ef775224c3c7c2f45e8fc53affd0a648f68c265a84881ce1ba",
+        "sha256:681182973738c79780f8576a1b30c8a7122e7495c6ad43152b1ee5afc17dd3bd",
+        "sha256:9e0dbcd38761f86e7e7b84129d5e3eaf06d4ddbed23498eba83f9bb1d8cbeb59",
+        "sha256:c5458ea216c82f5df25c7b76c2b7631c004dbf4fc9bd8438a3182811bdbe2e36",
+        "sha256:ed35fcf5fb35bfbcd57debe5db6c823f4df0a75a6c5c75bc7aeacc66f0b9cf7a",
+        "sha256:237be7f02e711cf276c52273798ce4804164a04fd27f050619accb57b9cfe473",
+        "sha256:ada5d0f2c6cd2e130710791bf91c3fbcb10491da81c6bb77b711e889a2f8b0ba",
+        "sha256:1cc3088de5f4dcac0091afda478781c5f7448143cc783949f9bc9db1d7846fea",
+        "sha256:d9b638b0c732904841132b1338626639bcf243a67a13fefe5508b5bd9337e60c",
+        "sha256:fe6fbe494ba320dedd22a8e7d9f2f75908309cb57bb52e2b31c4b8ed78c740c6",
+        "sha256:46e769e3934cc4c674c6d6402ca9893c250c5c474e78a926d67e72eb28e458a2",
+        "sha256:db573688df553708b7f30eba55216386aba3501932731983cf7b2ce881019eec",
+        "sha256:b85ade82c791d782eb6cdbb19fdf7ec2e391bdd56466521aba3658f253b83007",
+        "sha256:f8d244a821806c02895b4ff12e470d2c27e66cb1eaaf8102d2f986cd0c59593f",
+        "sha256:3251358b1bbf23763f4bc89d3b9aa085a19f14c5ecc2a9ca5e2391e38b3ac5c4",
+        "sha256:3241a663d389cd70fd37d21e4a4d8770851ef2aa79414891b9df4ddeee582173",
+        "sha256:87beef211a5621133f976b367936a3fe057491a3f99c1a79864ec127243be1fe",
+        "sha256:4694c7baf2f0d1f91394561b30820634bc0a8d7babef83e4f8dbe112c0c8ecb4",
+        "sha256:ab956121453a64fcb8f2b9448b57b7d4f125cf7d9090b7952fc7a0e1a15534ad",
+        "sha256:77de3e85b8a72a919d123764ac10b55797839320dfb1862d5553206182a52455",
+        "sha256:1ec95d982809252b858c77ffe036cf12354f433d26b6db6269a5286f2f48807e",
+        "sha256:0a05c16eabd7d66e67239fb9940a23d6256eb6ef786658937dec58a3c6d7db9f"
+      ]
+    }
+  ]
+}

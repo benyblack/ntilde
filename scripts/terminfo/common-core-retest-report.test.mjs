@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { fixture, bytes, ids } from './common-core-fixture.mjs';
 import { buildCommonCoreComparison } from './common-core-comparison.mjs';
-import { assertITermCaptureCustody, buildCommonCoreRetest } from './common-core-retest-report.mjs';
+import { assertITermCaptureCustody, assertNtildeCursorForeground, buildCommonCoreRetest } from './common-core-retest-report.mjs';
 const sha = (value) => createHash('sha256').update(value).digest('hex');
 
 test('iTerm2 calibration and result frames require both custody checks for the launched TTY', () => {
@@ -32,7 +32,7 @@ test('iTerm2 calibration and result frames require both custody checks for the l
         raw.rawReplies[key] = journal(capture);
     }
     raw.results[0].frames = [{ ...frame, ref: 'sha256:unwitnessed' }];
-    assert.throws(verify, /without session custody/);
+    assert.throws(verify, /without capture custody/);
     raw.results[0].frames = [frame];
     const witness = structuredClone(capture);
     witness.frame.label = 'text.basic: capture stability 1';
@@ -43,6 +43,24 @@ test('iTerm2 calibration and result frames require both custody checks for the l
     witness.trace.paintSettleMs = 250;
     raw.rawReplies['text.basic'] = journal(witness);
     verifySettlePolicy();
+});
+
+test('Ntilde cursor pixels require the paired foreground checks on the owned process', () => {
+    const owner = { ownerPid: 41, tty: '/dev/ttys001' };
+    const frame = { kind: 'pixels', ref: 'sha256:cursor' };
+    const custody = { appPid: 41, beforeCapture: true, afterCapture: true };
+    const record = (cursorForeground) => JSON.stringify({
+        captures: [{ frame, trace: {
+            platform: 'darwin', window: { ownerPid: 41 }, paintSettleMs: 250, cursorForeground,
+        } }],
+    });
+    const raw = {
+        results: [{ featureId: 'cursor.hide', frames: [frame] }],
+        rawReplies: { 'cursor.hide': record(custody) },
+    };
+    assertNtildeCursorForeground(raw, owner, { tty: owner.tty });
+    raw.rawReplies['cursor.hide'] = record({ ...custody, afterCapture: false });
+    assert.throws(() => assertNtildeCursorForeground(raw, owner, { tty: owner.tty }), /paired foreground/);
 });
 /** Mutate synthetic evidence while keeping unrelated bindings valid. */
 function update(subject, key, mutate) {

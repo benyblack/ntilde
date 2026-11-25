@@ -30,15 +30,31 @@ test('the iTerm2 follow-up updates only the nine prior deadline results', () => 
     }
 });
 
-for (const [label, args] of [
-    ['the refreshed comparison and site projection', ['--check']],
-    ['the November 11 comparison and focused retest', ['--check', '--historical']],
+test('the Ntilde retest replaces ten capture results and preserves the six other gaps', () => {
+    const publication = resolve(root, 'docs/qa/terminfo/2026-11-25-common-core-comparison');
+    const report = JSON.parse(readFileSync(resolve(publication, 'report.json'), 'utf8'));
+    const results = report.rows.map(({ id, results }) => ({ id, ...results.ntilde }));
+    const changed = results.filter(({ retest }) => retest);
+    assert.equal(changed.length, 10);
+    assert.equal(results.filter(({ status }) => status === 'supported').length, 64);
+    assert.ok(changed.every(({ status, retest }) => status !== 'supported' && retest.status === 'supported'));
+    assert.deepEqual(results.filter(({ status, retest }) => status !== 'supported' && !retest)
+        .map(({ id }) => id), [
+        'erase.screen.scrollback', 'scrollback.accumulate', 'scrollback.total-lines',
+        'reset.method', 'device.env-term', 'extensions.osc1-icon',
+    ]);
+});
+
+// Windows needs longer to verify the additional Git proofs and capture archives in the refreshed comparison.
+for (const [label, args, timeout] of [
+    ['the refreshed comparison and site projection', ['--check'], 180_000],
+    ['the November 11 comparison and focused retest', ['--check', '--historical'], 120_000],
 ]) {
     test(label + ' rederives from retained upstream runs and native captures', () => {
         const output = execFileSync(
             process.execPath,
             [resolve(root, 'scripts/terminfo-common-core-publication.mjs'), ...args],
-            { cwd: root, encoding: 'utf8', timeout: 120000 },
+            { cwd: root, encoding: 'utf8', timeout },
         );
         assert.match(output, /verified: 80 requirements, 3 applications/);
     });
