@@ -20,20 +20,20 @@ const scope = 'Pinned terminfo.dev@4.0.0 criteria for modes.deccolm (decrpmModeP
 
 
 /** One cleaned-up owned run binds every projected file; the stock collector run has its own identity and must agree with its raw output. */
-function admit(dir, { context, stock, measured, raw, receipt }) {
+export function admit(dir, { context, stock, measured, raw, receipt }, { evidenceKey = 'dclEvidence', file = 'dcl-observations.json', label = 'deccolm' } = {}) {
     const digest = file => createHash('sha256').update(readFileSync(join(dir, file))).digest('hex');
-    const evidence = receipt.dclEvidence, counts = {};
+    const evidence = receipt[evidenceKey], counts = {};
     for (const { outcome } of raw.observations) counts[outcome] = (counts[outcome] ?? 0) + 1;
     const bound = [receipt.fixtureRemoved === true, receipt.runId === context.runId, measured.runId === context.runId,
         ...[['contextSha256', 'context.json'], ['rawSha256', 'raw.json'], ['ownershipProofSha256', 'ownership-proof.json']].map(([field, file]) => receipt[field] === digest(file)),
-        evidence?.runId === context.runId, evidence?.file === 'dcl-observations.json', evidence?.sha256 === digest('dcl-observations.json'),
+        evidence?.runId === context.runId, evidence?.file === file, evidence?.sha256 === digest(file),
         stock.runId === raw.runId, stock.rawSha256 === receipt.rawSha256, isDeepStrictEqual(stock.counts, counts), stock.observations === raw.observations.length,
         stock.suiteComplete === raw.suiteComplete, stock.measuredAt === raw.measuredAt];
-    if (!bound.every(Boolean)) throw new Error('Inconsistent deccolm publication run or receipt binding.');
+    if (!bound.every(Boolean)) throw new Error(`Inconsistent ${label} publication run or receipt binding.`);
 }
 
 /** A case as published: the contract, the observed groups and both pinned results beside the unchanged stock grade; a divergence only when the measurement recorded one. */
-const publishedCase = (item, raw) => {
+export const publishedCase = (item, raw) => {
     const stock = raw.observations.find(entry => entry.featureId === item.caseId);
     if (stock === undefined) throw new Error(`Missing stock outcome: ${item.caseId}`);
     const { caseId, pinnedCriterion, pinnedScript, effectContract, observed, pinned, contractResult, divergence, conclusion } = item;

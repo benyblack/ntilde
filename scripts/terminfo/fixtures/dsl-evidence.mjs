@@ -9,8 +9,7 @@ import { dslBurstCursor, dslContracts, dslContractsVersion, dslCursorAt, dslObse
 import { adaptDslCollector, dslAdapterId } from '../dsl-grading-collector.mjs';
 import { timingClock } from '../dsl-capture.mjs';
 import { syntheticColEditScreen, paletteBinding } from './col-edit-evidence.mjs';
-import { colorCell, literalChannel, plainCell, syntheticSgrPaletteScreen } from './sgr-palette-evidence.mjs';
-import { screenSnapshot } from '../agent-observer.mjs';
+import { colorCell, plainCell } from './sgr-palette-evidence.mjs';
 import { seedRows, frame, alternate } from './devq-evidence.mjs';
 
 const deviceAttribute = '\x1b[?62;4;22c';
@@ -37,7 +36,7 @@ export const dslSeedRows = (witness = plainCell('W')) => {
     rows[dslCursorAt[0]] = [...rows[dslCursorAt[0]], ...Array.from({ length: dslCursorAt[1] - rows[dslCursorAt[0]].length }, () => plainCell(' ')), witness];
     return rows;
 };
-export { colorCell, literalChannel };
+export { colorCell, literalChannel } from './sgr-palette-evidence.mjs';
 
 /** The rows a burst leaves: everything scrolled out of the margin band but the witness the exchange rewrote on the bottom margin row. */
 export const dslBurstRows = (witness = plainCell('W')) => [[], [], [], [], [], [witness]];
@@ -58,16 +57,8 @@ export function syntheticDslScreens(contract, binding = paletteBinding(), mutate
     });
 }
 
-/** A blank, valid alternate-screen state of another grid, for evidence in which the App's grid changed (the content differs too: the grid check is judged first). */
-export function resizedDslScreen(rows, cols, binding = paletteBinding()) {
-    const screen = syntheticSgrPaletteScreen(Array.from({ length: rows * cols }, () => plainCell(' ')), binding, { rows, cols });
-    const draft = { ...screen, lines: Array.from({ length: rows }, () => ''), cursorRow: 0, cursorCol: 0, cellDetails: screen.cellDetails.map(run => ({ ...run, protected: false })),
-        bufferState: { scrollTop: 1, scrollBottom: 5, originMode: false, autoWrap: true, insertMode: false, pendingWrap: false, alternateScreen: true, scrollbackLines: 0 },
-        history: { startLine: 0, totalLines: 0, lines: [] } };
-    // The canonical stored-detail key order is the observer's own.
-    const onAlternate = alternate(draft);
-    return { ...onAlternate, cellDetails: screenSnapshot(onAlternate, true, true, true, true, true, true, false, true, true).cellDetails };
-}
+/** A blank, valid alternate-screen state of another grid, for evidence in which the App's grid changed: the same canonical screen the DECCOLM fixture builds. */
+export { resizedDclScreen as resizedDslScreen } from './dcl-evidence.mjs';
 
 /** The bare main screen every observed screen starts and ends on: DECLRMM off with full-width margins. */
 const mainScreen = binding => {

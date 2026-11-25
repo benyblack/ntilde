@@ -1,9 +1,9 @@
 // A publication-only projection of the independently rederived retained owned run for the DECSCLM qualification (modes.decsclm).
-import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dslCaseIds } from './dsl-contracts.mjs';
+import { admit, publishedCase } from './dcl-publication.mjs';
 
 /** The measured scripts and App revisions (the App build is stamped into the sidecar assembly; the retained selected-source manifest independently pins the measured scripts). */
 export const measuredScriptsRevision = '7394fe6d707803f022999e834f58e88a17a3d703';
@@ -17,31 +17,12 @@ const scope = 'Pinned terminfo.dev@4.0.0 criteria for modes.decsclm (decrpmModeP
     + 'that reads a deliberate 2.5-second hold) and leave mode 4 answered not recognized, beside a recognised-mode control and a clear/home control. Raw replies, stored terminal state and parent timing, not a '
     + 'rendered frame, painted pixels, the wheel smooth-scroll setting, remote/mux, Windows/Linux or common-harness behavior; no stock-score claim.';
 
-/** One cleaned-up owned run binds every projected file; the stock collector run has its own identity and must agree with its raw output. */
-function admit(dir, { context, stock, measured, raw, receipt }) {
-    const digest = file => createHash('sha256').update(readFileSync(join(dir, file))).digest('hex');
-    const evidence = receipt.dslEvidence, counts = {};
-    for (const { outcome } of raw.observations) counts[outcome] = (counts[outcome] ?? 0) + 1;
-    const bound = [receipt.fixtureRemoved === true, receipt.runId === context.runId, measured.runId === context.runId,
-        ...[['contextSha256', 'context.json'], ['rawSha256', 'raw.json'], ['ownershipProofSha256', 'ownership-proof.json']].map(([field, file]) => receipt[field] === digest(file)),
-        evidence?.runId === context.runId, evidence?.file === 'dsl-observations.json', evidence?.sha256 === digest('dsl-observations.json'),
-        stock.runId === raw.runId, stock.rawSha256 === receipt.rawSha256, isDeepStrictEqual(stock.counts, counts), stock.observations === raw.observations.length,
-        stock.suiteComplete === raw.suiteComplete, stock.measuredAt === raw.measuredAt];
-    if (!bound.every(Boolean)) throw new Error('Inconsistent decsclm publication run or receipt binding.');
-}
-
-/** A case as published: the contract, the observed groups and both pinned results beside the unchanged stock grade; a divergence only when the measurement recorded one. */
-const publishedCase = (item, raw) => {
-    const stock = raw.observations.find(entry => entry.featureId === item.caseId);
-    if (stock === undefined) throw new Error(`Missing stock outcome: ${item.caseId}`);
-    const { caseId, pinnedCriterion, pinnedScript, effectContract, observed, pinned, contractResult, divergence, conclusion } = item;
-    return { caseId, pinnedCriterion, pinnedScript, effectContract, observed, pinned, contractResult, stock, ...(divergence === undefined ? {} : { divergence }), conclusion };
-};
+const binding = { evidenceKey: 'dslEvidence', file: 'dsl-observations.json', label: 'decsclm' };
 
 export function dslPublication(dir, { appRevision = measuredAppRevision, scriptsRevision = measuredScriptsRevision } = {}) {
     const [context, stock, measured, raw, receipt] = ['context.json', 'summary.json', 'dsl-observations.json', 'raw.json', 'cell-receipt.json']
         .map(file => JSON.parse(readFileSync(join(dir, file))));
-    admit(dir, { context, stock, measured, raw, receipt });
+    admit(dir, { context, stock, measured, raw, receipt }, binding);
     const cases = measured.cases.map(item => publishedCase(item, raw));
     if (!isDeepStrictEqual(cases.map(item => item.caseId), [...dslCaseIds])) throw new Error('The published cases differ from the contracted cases.');
     const { suiteId, contractsVersion, runId, adapter } = measured;
