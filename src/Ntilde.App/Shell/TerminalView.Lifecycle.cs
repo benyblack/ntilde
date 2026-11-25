@@ -11,6 +11,8 @@ namespace Ntilde.Shell
     /// </summary>
     public partial class TerminalView
     {
+        private bool _hasTerminalInputFocus;
+
         protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
         {
             base.OnAttachedToVisualTree(e);
@@ -23,6 +25,11 @@ namespace Ntilde.Shell
             {
                 _cachedTopLevel.ScalingChanged += OnTopLevelScalingChanged;
             }
+            if (_cachedTopLevel is WindowBase window)
+            {
+                window.PropertyChanged += OnWindowFocusChanged;
+            }
+            _hasTerminalInputFocus = HasTerminalInputFocus(IsKeyboardFocusWithin);
             // The interface scale in effect for THIS view comes from the resource chain (a window
             // may hold or be reduced to a scale other than the app's), and every change to it -
             // UiScale.Apply swapping the app resource, a window pinning or releasing its own -
@@ -59,6 +66,10 @@ namespace Ntilde.Shell
             CancelKittyAnimationWake();
             _metricsTimer.Stop();
 
+            if (_cachedTopLevel is WindowBase window)
+            {
+                window.PropertyChanged -= OnWindowFocusChanged;
+            }
             if (_cachedTopLevel != null)
             {
                 _cachedTopLevel.ScalingChanged -= OnTopLevelScalingChanged;
@@ -150,11 +161,7 @@ namespace Ntilde.Shell
         protected override void OnGotFocus(FocusChangedEventArgs e)
         {
             base.OnGotFocus(e);
-            string? sequence = TerminalInputModeEncoder.EncodeFocusChanged(_buffer?.Modes, isFocused: true);
-            if (_session != null && sequence != null)
-            {
-                _session.SendInput(sequence);
-            }
+            UpdateTerminalInputFocus(hasControlFocus: true);
             _isDirty = true;
             InvalidateVisual();
         }
@@ -163,13 +170,38 @@ namespace Ntilde.Shell
         {
             base.OnLostFocus(e);
             ResetKittyKeyTracking();
-            string? sequence = TerminalInputModeEncoder.EncodeFocusChanged(_buffer?.Modes, isFocused: false);
+            UpdateTerminalInputFocus(hasControlFocus: false);
+            _isDirty = true;
+            InvalidateVisual();
+        }
+
+        private void OnWindowFocusChanged(object? sender, AvaloniaPropertyChangedEventArgs change)
+        {
+            // Avalonia can retain the focused control while another OS window has focus.
+            // IsActive changes after Avalonia has restored the window's focus scope.
+            if (change.Property == WindowBase.IsActiveProperty)
+            {
+                UpdateTerminalInputFocus(IsKeyboardFocusWithin);
+            }
+        }
+
+        private bool HasTerminalInputFocus(bool hasControlFocus)
+            => hasControlFocus && (_cachedTopLevel is not WindowBase window || window.IsActive);
+
+        private void UpdateTerminalInputFocus(bool hasControlFocus)
+        {
+            bool isFocused = HasTerminalInputFocus(hasControlFocus);
+            if (isFocused == _hasTerminalInputFocus)
+            {
+                return;
+            }
+
+            _hasTerminalInputFocus = isFocused;
+            string? sequence = TerminalInputModeEncoder.EncodeFocusChanged(_buffer?.Modes, isFocused);
             if (_session != null && sequence != null)
             {
                 _session.SendInput(sequence);
             }
-            _isDirty = true;
-            InvalidateVisual();
         }
 
 

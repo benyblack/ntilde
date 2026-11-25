@@ -320,6 +320,52 @@ public sealed class TerminalViewKeyHandlingTests
     }
 
     [AvaloniaFact]
+    public void FocusReporting_WindowActivationRoundTrip_ReportsOnlyToTheFocusedTerminal()
+    {
+        var input = new List<string>();
+        var session = new Mock<ITerminalSession>();
+        session.Setup(x => x.SendInput(It.IsAny<string>())).Callback<string>(input.Add);
+        var buffer = new TerminalBuffer(80, 24);
+        var view = new TerminalView { Focusable = true };
+        view.SetBuffer(buffer);
+        view.SetSession(session.Object);
+        var otherSession = new Mock<ITerminalSession>();
+        var other = new TerminalView { Focusable = true };
+        var otherBuffer = new TerminalBuffer(80, 24);
+        otherBuffer.Modes.IsFocusEventReporting = true;
+        other.SetBuffer(otherBuffer);
+        other.SetSession(otherSession.Object);
+        var controls = new StackPanel { Children = { view, other } };
+        var window = new Window { Content = controls, Width = 400, Height = 300 };
+        window.Show();
+        try
+        {
+            var platform = window.PlatformImpl!;
+            platform.Activated!.Invoke();
+            Assert.True(view.Focus());
+            Assert.True(window.IsActive);
+            buffer.Modes.IsFocusEventReporting = true;
+
+            platform.Deactivated!.Invoke();
+            Assert.False(window.IsActive);
+            platform.Activated!.Invoke();
+            Assert.True(window.IsActive);
+            Assert.Equal(new[] { "\x1b[O", "\x1b[I" }, input);
+            otherSession.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+
+            input.Clear();
+            buffer.Modes.IsFocusEventReporting = false;
+            platform.Deactivated!.Invoke();
+            platform.Activated!.Invoke();
+            Assert.Empty(input);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void GetCommandAssistPromptHint_WhenMetricsAndCursorAreAvailable_ReturnsVisibleCursorRow()
     {
         var buffer = new TerminalBuffer(80, 24);
