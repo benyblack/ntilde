@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "baseline": "unicode",
+  "contractsVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "runId": "eb455801ddf173ab06638ecfbba1ec37",
+  "suite": "ntilde-owned-unicode-width-v1",
+  "rows": [
+    {
+      "id": "text.combining",
+      "sample": "é",
+      "utf8Hex": "65cc81",
+      "effect": "supported",
+      "terminal": "supported",
+      "asciiWidth": 1,
+      "sampleWidth": 1,
+      "controls": true,
+      "observed": {
+        "row": "éX",
+        "cursor": [
+          0,
+          2
+        ],
+        "flags": [
+          8960,
+          768,
+          768,
+          768,
+          768,
+          768
+        ]
+      }
+    },
+    {
+      "id": "text.wide.emoji",
+      "sample": "🎉",
+      "utf8Hex": "f09f8e89",
+      "effect": "supported",
+      "terminal": "supported",
+      "asciiWidth": 2,
+      "sampleWidth": 2,
+      "controls": true,
+      "observed": {
+        "row": "🎉",
+        "cursor": [
+          0,
+          2
+        ],
+        "flags": [
+          11008,
+          4864,
+          768,
+          768,
+          768,
+          768
+        ]
+      }
+    },
+    {
+      "id": "text.wide.emoji-flags",
+      "sample": "🇺🇸",
+      "utf8Hex": "f09f87baf09f87b8",
+      "effect": "supported",
+      "terminal": "supported",
+      "asciiWidth": 2,
+      "sampleWidth": 2,
+      "controls": true,
+      "observed": {
+        "row": "🇺🇸X",
+        "cursor": [
+          0,
+          3
+        ],
+        "flags": [
+          11008,
+          4864,
+          768,
+          768,
+          768,
+          768
+        ]
+      }
+    },
+    {
+      "id": "text.wide.emoji-vs16",
+      "sample": "☺️",
+      "utf8Hex": "e298baefb88f",
+      "effect": "supported",
+      "terminal": "supported",
+      "asciiWidth": 2,
+      "sampleWidth": 2,
+      "controls": true,
+      "observed": {
+        "row": "☺️X",
+        "cursor": [
+          0,
+          3
+        ],
+        "flags": [
+          11008,
+          4864,
+          768,
+          768,
+          768,
+          768
+        ]
+      }
+    },
+    {
+      "id": "text.wide.emoji-zwj",
+      "sample": "👨‍👩‍👧",
+      "utf8Hex": "f09f91a8e2808df09f91a9e2808df09f91a7",
+      "effect": "supported",
+      "terminal": "supported",
+      "asciiWidth": 2,
+      "sampleWidth": 2,
+      "controls": true,
+      "observed": {
+        "row": "👨‍👩‍👧X",
+        "cursor": [
+          0,
+          3
+        ],
+        "flags": [
+          11008,
+          4864,
+          768,
+          768,
+          768,
+          768
+        ]
+      }
+    }
+  ],
+  "measurement": {
+    "runId": "eb455801ddf173ab06638ecfbba1ec37",
+    "sourcePolicy": "readonly-owned-source-graph-v81",
+    "receiptSchema": 1,
+    "appRevision": "c3aea76129a49b5193e788c97c0858342a2aaef8",
+    "scriptsRevision": "7df112c65696c62fad68dcba72abc74944d314d6",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "appVersion": "0.14.0+c3aea76129a49b5193e788c97c0858342a2aaef8",
+    "nodeVersion": "v24.22.2",
+    "geometry": {
+      "rows": 41,
+      "columns": 140
+    },
+    "startedAt": "2026-11-25T21:45:56.292Z",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "bd2a51efbea1098f0f2703fb4bea1ccee01650e73a3df920610d195206100972",
+    "sourceSnapshotManifestSha256": "f2f5eaa4765704dad50d055764d2f5db1afd856a469ab24d3c2f12378c497958",
+    "releasedAt": "2026-11-25T21:45:58.530Z",
+    "archiveSha256": "a2ad59c5e30b109c650c267b3839e3ae20244e4dbc5beaa13f0c272a8997b909"
+  }
+}
