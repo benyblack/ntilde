@@ -1,6 +1,6 @@
 import { isDeepStrictEqual as equal } from 'node:util';
-import { keyboardModes, verifyKeyboardStep } from './modern-x11-keyboard.mjs';
-import { before, exchange, need } from './modern-x11-mouse.mjs';
+import { keyboardModes, verifyKeyboardRestoration, verifyKeyboardStep, withKeyboardRestore } from './modern-x11-keyboard.mjs';
+import { exchange, need } from './modern-x11-mouse.mjs';
 
 export const id = 'modes.application-keypad';
 const deckpam = '\x1b=', deckpnm = '\x1b>';
@@ -52,8 +52,7 @@ export async function observeKeyboard(record, modes, action) {
         const step = trial[phase] = {};
         await action(step, { kind: 'keyboard', chord }, id + '/' + phase, tag);
     }
-    let failure;
-    try {
+    await withKeyboardRestore(record, modes, async () => {
         await capture('control');
         const control = verifyStep(trial.control, 'control', record.incoming.finished, record.identity);
         if (control.raw === '61') {
@@ -62,14 +61,11 @@ export async function observeKeyboard(record, modes, action) {
             trial.disabled = await modes('numeric');
             await capture('numeric');
         }
-    } catch (error) { failure = error; }
-    try { record.restore = { modes: await modes('restore') }; }
-    catch (error) { throw failure ? new AggregateError([failure, error], 'keypad capture and restoration failed') : error; }
-    if (failure) throw failure;
+    });
 }
 
 export function replayKeyboard(record) {
-    const { identity, cases, restore, terminal } = record;
+    const { identity, cases } = record;
     need(identity?.pane?.kind === 'local' && identity.pane.isActive === true && cases?.length === 1
         && cases[0].id === id, 'expected one direct-local keypad trial');
     const incoming = exchange(record.incoming, modePlan.incoming, identity.admitted);
@@ -90,9 +86,6 @@ export function replayKeyboard(record) {
         need(['enabled', 'application', 'disabled', 'numeric'].every(phase => !Object.hasOwn(trial, phase)),
             'KP_Add dispatched after failed plain-a control');
     }
-    const restored = exchange(restore?.modes, modePlan.restore, previous);
-    need(restore.paneId === identity.pane.paneId && restore.marker === identity.marker
-        && terminal?.original?.length === 7 && equal(terminal.original, terminal.restored)
-        && before(restored, terminal.at), 'incomplete keypad, pane or kernel terminal restoration');
+    verifyKeyboardRestoration(record, modePlan.restore, previous);
     return [{ id, controlHex: control.raw, applicationHex, numericHex, mapping, ...gradeKeypad(control.raw, applicationHex, numericHex) }];
 }

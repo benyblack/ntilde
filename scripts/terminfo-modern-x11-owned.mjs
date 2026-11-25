@@ -16,10 +16,15 @@ function copySources(scratch, output, keyboard) {
     mkdirSync(dir, { mode: 0o700 });
     mkdirSync(retained, { mode: 0o700 });
     const selected = [...files];
-    if (keyboard) selected.push('modern-x11-keyboard.mjs');
-    if (keyboard === '--application-keypad') selected.push('modern-x11-keypad.mjs');
-    const policy = keyboard === '--application-keypad' ? 'owned-modern-x11-keypad-v1'
-        : keyboard ? 'owned-modern-x11-keyboard-v1' : 'owned-modern-x11-mouse-v1';
+    let policy = 'owned-modern-x11-mouse-v1';
+    if (keyboard) {
+        selected.push('modern-x11-keyboard.mjs');
+        policy = 'owned-modern-x11-keyboard-v1';
+    }
+    if (keyboard === '--application-keypad') {
+        selected.push('modern-x11-keypad.mjs');
+        policy = 'owned-modern-x11-keypad-v1';
+    }
     const manifest = Object.fromEntries(selected.map(name => {
         const path = join(here, 'terminfo', name);
         if (!lstatSync(path).isFile()) throw new Error('Expected regular scoped collector source.');

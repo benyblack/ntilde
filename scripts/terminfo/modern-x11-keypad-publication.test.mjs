@@ -66,6 +66,27 @@ test('failed plain-a delivery stops keypad dispatch and still attempts DECKPNM',
     assert.throws(() => replayKeyboard(record), /dispatched after failed plain-a/);
 });
 
+test('a failed application capture still resets DECKPAM and preserves the capture error', async () => {
+    const raw = retainedRun();
+    const { control, enabled } = raw.cases[0];
+    const record = { identity: raw.identity, cases: [] };
+    const phases = [];
+    const exchanges = { incoming: raw.incoming, application: enabled, restore: raw.restore.modes };
+    const failure = new Error('XTEST application capture failed');
+    const modes = phase => {
+        phases.push(phase);
+        return exchanges[phase];
+    };
+    const action = (step, _request, key) => {
+        if (key === id + '/application') throw failure;
+        assert.equal(key, id + '/control');
+        Object.assign(step, control);
+    };
+    await assert.rejects(observeKeyboard(record, modes, action), error => error === failure);
+    assert.deepEqual(phases, ['incoming', 'application', 'restore']);
+    assert.equal(record.restore.modes, raw.restore.modes);
+});
+
 test('replay rejects stale cross-phase reads, a changed mapping and incomplete restoration', () => {
     const raw = retainedRun();
     const replay = mutate => {
@@ -77,7 +98,12 @@ test('replay rejects stale cross-phase reads, a changed mapping and incomplete r
     assert.throws(() => replay((_, trial) => {
         trial.numeric.capture.chunks[0].at = trial.application.capture.chunks.at(-1).at;
     }), /stale/);
+    assert.throws(() => replay((_, trial) => {
+        const midpoint = (BigInt(trial.numeric.arm.armed) + BigInt(trial.numeric.native.events[0].at)) / 2n;
+        trial.numeric.capture.chunks[0].at = midpoint.toString();
+    }), /stale/);
     assert.throws(() => replay((_, trial) => { trial.numeric.native.mapping.numLockKeysym = 0xffad; }), /KP_Add mapping/);
+    assert.throws(() => replay((_, trial) => { trial.numeric.native.mapping.levels.push(0); }), /mapping changed between modes/);
     assert.throws(() => replay((_, trial) => { trial.application.native.finalKeys.push(86); }), /key restoration/);
     assert.throws(() => replay(copy => { copy.restore.modes.writeHex = copy.incoming.writeHex; }), /mode observations/);
     assert.throws(() => replay(copy => { copy.terminal.restored = []; }), /terminal restoration/);
