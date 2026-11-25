@@ -18,8 +18,10 @@ const phases = [
 ];
 
 function mode(enabled, write = true) {
+    const command = enabled ? 'h' : 'l';
+    const change = write ? csi + '?2004' + command : '';
     return {
-        writeHex: hex((write ? csi + '?2004' + (enabled ? 'h' : 'l') : '') + query),
+        writeHex: hex(change + query),
         replyHex: hex(csi + '?2004;' + (enabled ? '1' : '2') + '$y'),
     };
 }
