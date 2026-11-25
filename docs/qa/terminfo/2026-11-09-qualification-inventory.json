@@ -40,14 +40,14 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 154,
-    "suiteClaims": 156,
+    "uniqueBenchmarkIds": 155,
+    "suiteClaims": 157,
     "idsWithMultipleClaims": [
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
     "effectSupportedIds": 148,
-    "effectUnsupportedIds": 5,
+    "effectUnsupportedIds": 6,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 97,
     "effectSupportedPinnedInconclusiveIds": [
@@ -108,10 +108,11 @@
       "extensions.osc114-reset-pointer-bg",
       "extensions.osc720-scroll-up",
       "extensions.sixel",
-      "modes.deccolm"
+      "modes.deccolm",
+      "modes.decsclm"
     ],
     "effectSupportedOfStockInconclusive": 147,
-    "effectUnsupportedOfStockInconclusive": 5,
+    "effectUnsupportedOfStockInconclusive": 6,
     "pinnedSupportedOfStockInconclusive": 96,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -126,9 +127,9 @@
     },
     "remainingAgainstStockInconclusive": {
       "effectUnqualified": 21,
-      "effectMeasuredUnsupported": 5,
+      "effectMeasuredUnsupported": 6,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 15,
+      "effectNotMeasured": 14,
       "notPinnedSupported": 72
     }
   },
@@ -4165,7 +4166,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/kitty-placeholders-publication.test.mjs",
-        "testSha256": "b773a03b59193e9efde17d5c3dfbb45b5551063617c03d0dcc3c5d9b5f3f1b04"
+        "testSha256": "6b91dd4c6b07d29670d5db98133f134c3bcec10cee1970da437be6a69ad2d605"
       }
     },
     {
@@ -4518,6 +4519,76 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/dcl-publication.test.mjs",
         "testSha256": "3856c5ec9f01be79bd0d3b1c523d5feff4162d77cabd13427c7c855cf3e95847"
+      }
+    },
+    {
+      "suite": "dsl",
+      "suiteId": "ntilde-owned-decsclm-graded-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-25-decsclm/",
+      "doc": "2026-11-25-decsclm-qualification.md",
+      "caseCount": 1,
+      "caseIds": [
+        "modes.decsclm"
+      ],
+      "evidence": {
+        "files": 4,
+        "bytes": 17593979,
+        "sha256": "18e14e03753e430d597b16c8b659e1a83129d1ded6ca6e8daad4074896d0c6c4"
+      },
+      "receipt": {
+        "schemaVersion": 82,
+        "runId": "2f1fd55bc310836bb65d0fa51f0bc450",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "59e119943c8b470509136fe824a8b704327e31da2b85eb0859dacac6fcc43813"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-decsclm-graded-v1",
+          "file": "dsl-observations.json",
+          "sha256": "57fa76aba8cb1e06d773e1a254b41a1885c5ddd35e32e089054523155bae3b99",
+          "runFile": "dsl-run.json",
+          "runSha256": "d7c4debd53ed7f69fb58b0d51fb357da1012284fd4cb7f79e27174a601679e96",
+          "counts": {
+            "inconclusive": 1
+          },
+          "contractsVersion": 1
+        }
+      },
+      "run": {
+        "ownedRunId": "2f1fd55bc310836bb65d0fa51f0bc450",
+        "measuredAt": "2026-11-25T16:20:18.404Z",
+        "appRevision": "7394fe6d707803f022999e834f58e88a17a3d703",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "7394fe6d707803f022999e834f58e88a17a3d703",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "9a0c0ae5ccf3a4ba05d70a0da9d328a2e0b4b714b6de446e1587ea1032cb154e",
+        "gradingAdapterId": "ntilde-owned-decsclm-grading-v1",
+        "gradingAdapterBundleSha256": "797d004cfc9c3b8c92ac5717a676d2e49d667a666515876b1215e61e3e520c6e",
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v80",
+        "sourceSnapshotManifestSha256": "2d6f223995bcd52a93220bca1d97b90ff994f32f5699cb8b184e2193946d4390"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "9283eacf407b365f75fb92d84c8a30a3",
+        "counts": {
+          "inconclusive": 157,
+          "supported": 97,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "fe4ad02978e24adfd2d0b1f2495611298faef7d3dccc3a60814ec75447a202a7",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock terminal-path grades from the same owned run; the decsclm effect does not change the stock score."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/dsl-publication.test.mjs",
+        "testSha256": "11727421f848cf2632863b3229eaadfd44f4559b17f8f75ee25dad82d8a5a8ee"
       }
     }
   ],
@@ -9364,6 +9435,59 @@
             "app-and-kernel-pty-geometry"
           ],
           "evidenceTag": "owned-raw-replies-state-and-pty-geometry"
+        }
+      ]
+    },
+    {
+      "id": "modes.decsclm",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "dsl",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "dsl",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "modes.decsclm",
+          "suite": "dsl",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned-termless-replayed"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-effect-unsupported",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "DECRPM state does not measure scroll timing"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "parent-monotonic-timing"
+          ],
+          "evidenceTag": "owned-raw-replies-state-and-timing"
         }
       ]
     },

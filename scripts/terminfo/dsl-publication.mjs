@@ -6,8 +6,8 @@ import { join } from 'node:path';
 import { dslCaseIds } from './dsl-contracts.mjs';
 
 /** The measured scripts and App revisions (the App build is stamped into the sidecar assembly; the retained selected-source manifest independently pins the measured scripts). */
-export const measuredScriptsRevision = '0'.repeat(40); // set after the measurement
-export const measuredAppRevision = '0'.repeat(40); // set after the measurement
+export const measuredScriptsRevision = '7394fe6d707803f022999e834f58e88a17a3d703';
+export const measuredAppRevision = '7394fe6d707803f022999e834f58e88a17a3d703';
 const scope = 'Pinned terminfo.dev@4.0.0 criteria for modes.decsclm (decrpmModeProbe("modes.decsclm", 4, ...): the termless path feeds CSI ? 4 h, captures the CSI ? 4 $ p reply and feeds CSI ? 4 l and always returns '
     + 'parserStateResult(null, ...), inconclusive by construction; the terminal path asks queryMode(4) and returns decrpmResult, inconclusive while mode 4 is not recognized), decided by the unchanged stock '
     + 'collector against the App in this owned run and replayed byte-exactly on both pinned paths over the journaled replies of their own fenced exchanges, beside a separately identified effect contract graded '

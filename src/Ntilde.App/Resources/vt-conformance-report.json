@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "677b49b0d47a8b68cba0c43af1b7b1fc2875389cbd57bb91abbe3f0b13fea58e",
+  "matrixSha256": "ba141460222ecbd7884f96913fffce4d7b303d333be5de3f1325702c8c7ee6c6",
   "summary": {
     "totalRows": 158,
     "supportedCount": 75,
@@ -1825,7 +1825,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "VT\u002BApp",
-      "knownDeviations": "Deliberately not implemented (policy, #1001): the mode asks the terminal to rate-limit its own output scrolling, and letting a byte stream throttle the terminal is a product decision nobody has made, so private mode 4 is untracked. \u0060CSI ? 4 h\u0060 / \u0060l\u0060 and XTSAVE/XTRESTORE of it are ignored (other modes in the same list still apply), \u0060CSI ? 4 $ p\u0060 answers Pm 0 (not recognized, never set or reset), and output scrolls at full speed. ANSI mode 4 is insert mode (IRM), a separate feature that is unaffected, and the wheel-scroll animation (the \u0060SmoothScrolling\u0060 setting) is a different feature that a program cannot control. Parser and buffer tests only; no scroll timing has been measured. Any later implementation needs an output-rate contract with a hard cap and a user override, plus elapsed-time scroll captures with a mode-off comparison.",
+      "knownDeviations": "Deliberately not implemented (policy, #1001): the mode asks the terminal to rate-limit its own output scrolling, and letting a byte stream throttle the terminal is a product decision nobody has made, so private mode 4 is untracked. \u0060CSI ? 4 h\u0060 / \u0060l\u0060 and XTSAVE/XTRESTORE of it are ignored (other modes in the same list still apply), \u0060CSI ? 4 $ p\u0060 answers Pm 0 (not recognized, never set or reset), and output scrolls at full speed. ANSI mode 4 is insert mode (IRM), a separate feature that is unaffected, and the wheel-scroll animation (the \u0060SmoothScrolling\u0060 setting) is a different feature that a program cannot control. Parser and buffer tests, plus a measured owned run on the real App ([qualification](qa/terminfo/2026-11-25-decsclm-qualification.md)): a forty-line scroll burst with the mode set, held, reset and never touched ended in the identical state in 5\u20138 ms each (a six-lines-per-second pace needs 6.7 s) and \u0060?4$p\u0060 answered Pm 0 throughout; this measures output processing and stored state, not rendering or the wheel animation. Any later implementation needs an output-rate contract with a hard cap and a user override, plus elapsed-time scroll captures with a mode-off comparison.",
       "sourceLine": 148
     },
     {

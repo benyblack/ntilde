@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-decsclm-graded-v1",
+  "contractsVersion": 1,
+  "runId": "2f1fd55bc310836bb65d0fa51f0bc450",
+  "adapter": {
+    "id": "ntilde-owned-decsclm-grading-v1",
+    "derivedFromAdapterId": "ntilde-owned-left-right-margins-grading-v1",
+    "bundleSha256": "797d004cfc9c3b8c92ac5717a676d2e49d667a666515876b1215e61e3e520c6e",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6"
+  },
+  "scope": "Pinned terminfo.dev@4.0.0 criteria for modes.decsclm (decrpmModeProbe(\"modes.decsclm\", 4, ...): the termless path feeds CSI ? 4 h, captures the CSI ? 4 $ p reply and feeds CSI ? 4 l and always returns parserStateResult(null, ...), inconclusive by construction; the terminal path asks queryMode(4) and returns decrpmResult, inconclusive while mode 4 is not recognized), decided by the unchanged stock collector against the App in this owned run and replayed byte-exactly on both pinned paths over the journaled replies of their own fenced exchanges, beside a separately identified effect contract graded by independent literals written from DEC's DECSCLM contract (smooth scrolling paces scrolling output at about six lines per second): CSI ? 4 h / l alone and a forty-line scroll burst of the margin band with smooth scrolling selected, held, reset and never touched are ignored (policy, #1001: terminal output always jump-scrolls), leave the screen, cursor, rendition, margins, modes and active screen as contracted (identical across the bursts), finish every exchange inside a two-second bound that scrolling at six lines per second could not meet (read on the parent's monotonic clock, beside a control that reads a deliberate 2.5-second hold) and leave mode 4 answered not recognized, beside a recognised-mode control and a clear/home control. Raw replies, stored terminal state and parent timing, not a rendered frame, painted pixels, the wheel smooth-scroll setting, remote/mux, Windows/Linux or common-harness behavior; no stock-score claim.",
+  "cases": [
+    {
+      "caseId": "modes.decsclm",
+      "pinnedCriterion": "decrpmModeProbe(\"modes.decsclm\", 4, termlessFn): the termless path feeds CSI ? 4 h, captures the CSI ? 4 $ p reply and feeds CSI ? 4 l, then always returns parserStateResult(null, ...) (inconclusive, insufficient-evidence, parser-state, \"DECRPM state does not measure scroll timing\") whatever the reply was; the terminal path asks queryMode(4) and returns decrpmResult: supported only for a recognised set/reset state, inconclusive for Pm 0 (not recognized) or no reply; neither path measures any scroll timing",
+      "pinnedScript": {
+        "termless": [
+          [
+            "feed",
+            "\\e[?4h"
+          ],
+          [
+            "feedCapture",
+            "\\e[?4$p",
+            "replies"
+          ],
+          [
+            "feed",
+            "\\e[?4l"
+          ]
+        ],
+        "terminal": [
+          [
+            "queryMode",
+            4
+          ]
+        ]
+      },
+      "effectContract": {
+        "id": "ntilde-decsclm-unsupported-effect-v1",
+        "version": 1,
+        "outcome": "unsupported",
+        "note": "DECSCLM was ignored: with smooth scrolling selected, held, reset and never touched the processing of a forty-line scrolling burst finished identically inside the timing bound (the stored state, read after the fence, is the final scrolled state), mode 4 stayed not recognized and nothing else changed",
+        "attribution": "separately identified Ntilde effect contract; not the pinned probe"
+      },
+      "observed": {
+        "geometry": {
+          "rows": 40,
+          "cols": 140
+        },
+        "timing": {
+          "boundMs": 2000,
+          "pauseMs": 2500,
+          "burstLines": 40,
+          "smoothLinesPerSecond": 6,
+          "smoothFloorMs": 6667,
+          "clock": "parent-monotonic"
+        },
+        "effectContract": "ntilde-decsclm-unsupported-effect-v1",
+        "pinnedScript": {
+          "termless": [
+            [
+              "feed",
+              "\\e[?4h"
+            ],
+            [
+              "feedCapture",
+              "\\e[?4$p",
+              "replies"
+            ],
+            [
+              "feed",
+              "\\e[?4l"
+            ]
+          ],
+          "terminal": [
+            [
+              "queryMode",
+              4
+            ]
+          ]
+        },
+        "seed": {
+          "nonce": "NTILDE_DSL_2f1fd55bc310836bb65d0fa51f0bc450",
+          "margins": [
+            1,
+            5
+          ],
+          "origin": false,
+          "alternate": true,
+          "cells": true
+        },
+        "groups": {
+          "recognized": {
+            "kind": "control",
+            "request": "\\e[?7$p\\e[?2$pW\\e[D",
+            "demand": "the reply channel answers recognised modes (DECAWM set, DECANM set), so a Pm 0 answer for mode 4 is a real \"not recognized\" and silence is not a dead channel",
+            "demanded": [
+              "\\e[?7;1$y",
+              "\\e[?2;1$y"
+            ],
+            "received": [
+              "\\e[?7;1$y",
+              "\\e[?2;1$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 6,
+            "unchanged": true
+          },
+          "pinned": {
+            "kind": "protocol",
+            "request": "\\e[?4h\\e[?4$p\\e[?4lW\\e[D",
+            "demand": "the exact pinned termless exchange (CSI ? 4 h, the CSI ? 4 $ p query, CSI ? 4 l) leaves everything unchanged and mode 4 is answered not recognized",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 6,
+            "unchanged": true
+          },
+          "pinned-query": {
+            "kind": "protocol",
+            "request": "\\e[?4$pW\\e[D",
+            "demand": "the exact pinned terminal-path query alone (CSI ? 4 $ p) is answered not recognized",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 6,
+            "unchanged": true
+          },
+          "set": {
+            "kind": "protocol",
+            "request": "\\e[?4h\\e[?4$pW\\e[D",
+            "demand": "CSI ? 4 h alone changes nothing (the screen, the cursor, the rendition, the ANSI insert mode) and mode 4 stays not recognized",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 6,
+            "unchanged": true
+          },
+          "reset": {
+            "kind": "protocol",
+            "request": "\\e[?4l\\e[?4$pW\\e[D",
+            "demand": "CSI ? 4 l alone changes nothing and mode 4 stays not recognized",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 5,
+            "unchanged": true
+          },
+          "burst-off": {
+            "kind": "control",
+            "request": "\\e[6;1H\\e[?4l\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\\e[?4$pW\\e[D",
+            "demand": "the reference burst, with jump scrolling selected (CSI ? 4 l): forty line feeds scroll the margin band blank, the cursor ends on the bottom margin row, inside the timing bound",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 6,
+            "unchanged": null,
+            "burst": true
+          },
+          "burst-set": {
+            "kind": "protocol",
+            "request": "\\e[6;1H\\e[?4h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\\e[?4$pW\\e[D",
+            "demand": "with smooth scrolling selected (CSI ? 4 h) the same burst ends in the identical state, inside the timing bound that smooth scrolling at six lines per second could not meet",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 7,
+            "unchanged": null,
+            "burst": true
+          },
+          "burst-held": {
+            "kind": "protocol",
+            "request": "\\e[6;1H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\\e[?4$pW\\e[D",
+            "demand": "with the mode left set by the group before and not mentioned, the same burst again ends in the identical state inside the bound",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 6,
+            "unchanged": null,
+            "burst": true
+          },
+          "burst-reset": {
+            "kind": "protocol",
+            "request": "\\e[6;1H\\e[?4l\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\\e[?4$pW\\e[D",
+            "demand": "returning to jump scrolling (CSI ? 4 l) the burst ends in the identical state inside the bound",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 5,
+            "unchanged": null,
+            "burst": true
+          },
+          "restored": {
+            "kind": "protocol",
+            "request": "\\e[?4l\\e[?4$pW\\e[D",
+            "demand": "after all of them the mode is still not recognized and a plain exchange leaves everything unchanged",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 8,
+            "unchanged": true
+          },
+          "paced": {
+            "kind": "control",
+            "request": "\\e[6;1H\\e[?4h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\\e[?4$pW\\e[D",
+            "demand": "the timing instrument control: the worker holds 2.5 seconds after the burst exchange, and the same timing reading must reach that pause (it is longer than the bound), so a slow exchange is visible in that field",
+            "demanded": [
+              "\\e[?4;0$y"
+            ],
+            "received": [
+              "\\e[?4;0$y"
+            ],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 2508,
+            "pauseMs": 2500,
+            "unchanged": null,
+            "burst": true
+          },
+          "control-clear": {
+            "kind": "control",
+            "request": "\\e[2J\\e[H",
+            "demand": "ED 2 and CUP 1;1 visibly clear the screen and home the cursor in the same state reader, so it can see what a changed state looks like",
+            "demanded": [],
+            "received": [],
+            "matches": true,
+            "app": {
+              "rows": 40,
+              "cols": 140
+            },
+            "elapsedMs": 6,
+            "unchanged": null
+          }
+        }
+      },
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "{\"response\":\"\\u001b[?4;0$y\"}",
+          "note": "DECRPM state does not measure scroll timing",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "parser-state",
+            "note": "DECRPM state does not measure scroll timing"
+          },
+          "assertions": null
+        },
+        "terminal": {
+          "pass": false,
+          "response": "unknown",
+          "note": "DECRPM mode 4: not recognized; mode behavior unmeasured",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query",
+            "note": "DECRPM mode 4: not recognized; mode behavior unmeasured"
+          },
+          "assertions": null
+        }
+      },
+      "contractResult": {
+        "outcome": "unsupported",
+        "note": "DECSCLM was ignored: with smooth scrolling selected, held, reset and never touched the processing of a forty-line scrolling burst finished identically inside the timing bound (the stored state, read after the fence, is the final scrolled state), mode 4 stayed not recognized and nothing else changed"
+      },
+      "stock": {
+        "featureId": "modes.decsclm",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "query",
+        "note": "DECRPM mode 4: not recognized; mode behavior unmeasured",
+        "rawReplyRef": "modes.decsclm"
+      },
+      "divergence": {
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "unsupported",
+        "kind": "pinned-inconclusive-effect-unsupported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "evidence": "owned-raw-replies-state-and-timing",
+        "grading": "pinned-termless-replayed",
+        "note": "DECRPM state does not measure scroll timing",
+        "reason": "insufficient-evidence",
+        "scope": "DEC private mode 4 (DECSCLM) only: the exact pinned termless exchange, the exact pinned mode query, set and reset alone, and a forty-line scroll burst of the margin band with smooth scrolling selected, held, reset and never touched, each leaving the complete screen, the cursor, the current rendition (witnessed by a plain character rewritten after every exchange), margins, modes and active screen as contracted (identical across the burst groups) and every exchange inside a two-second bound that smooth scrolling at six lines per second could not meet, beside a timing instrument control that reads a deliberate 2.5-second hold, a recognised-mode control and a clear/home control; raw replies, stored terminal state and the parent's monotonic timing, not a rendered frame or painted pixels; no remote/mux, other-platform, common-harness or score claim; the pinned verdict stays inconclusive on both paths"
+      }
+    }
+  ]
+}

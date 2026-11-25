@@ -11,7 +11,7 @@ import { buildDslGradingReport } from './dsl-grading.mjs';
 import { dslCaseIds } from './dsl-contracts.mjs';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 
-const dir = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-24-decsclm/', import.meta.url));
+const dir = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-25-decsclm/', import.meta.url));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const read = name => readFileSync(join(dir, name));
 

@@ -109,7 +109,7 @@ export const benchmarkSuites = Object.freeze([
     // DECCOLM (#1000): the pinned termless probe is inconclusive by construction and the terminal probe is inconclusive while mode 3 is not recognized; the effect contract grades mode 3 and mode 40 ignored on both the App and the kernel PTY grid, a recorded divergence.
     { ...directory('dcl', '2026-11-23-deccolm', '2026-11-23-deccolm-qualification.md'), module: 'dcl-inventory.mjs', exports: ['dclSuiteId', 'dclContractsVersion', 'dclCaseIds'], test: 'dcl-publication.test.mjs' },
     // DECSCLM (#1001): the pinned termless probe is inconclusive by construction and the terminal probe is inconclusive while mode 4 is not recognized; the effect contract grades mode 4 ignored (a forty-line scroll burst identical and inside a timing bound that smooth scrolling could not meet), a recorded divergence.
-    { ...directory('dsl', '2026-11-24-decsclm', '2026-11-24-decsclm-qualification.md'), module: 'dsl-inventory.mjs', exports: ['dslSuiteId', 'dslContractsVersion', 'dslCaseIds'], test: 'dsl-publication.test.mjs' },
+    { ...directory('dsl', '2026-11-25-decsclm', '2026-11-25-decsclm-qualification.md'), module: 'dsl-inventory.mjs', exports: ['dslSuiteId', 'dslContractsVersion', 'dslCaseIds'], test: 'dsl-publication.test.mjs' },
 ]);
 
 /**
