@@ -8,7 +8,7 @@ import {
 import { publishCommonCoreJson } from './common-core-handshake.mjs';
 import { terminateCommonCoreOwner } from './common-core-cleanup.mjs';
 import { commonCoreGit, assertCleanCommonCoreSource } from './common-core-tools.mjs';
-import { focusedRetestCases, retestAdapterPath, retestReasons } from './common-core-retest.mjs';
+import { focusedRetestCases, retestAdapterPaths, retestReasons } from './common-core-retest.mjs';
 import {
     existsSync,
     mkdirSync,
@@ -505,10 +505,10 @@ end tell`,
     });
 }
 
-/** Require the baseline source or its approved one-file capture derivative. */
+/** Require the baseline source or its approved capture derivative. */
 function matchesRetestCollector(kind: string, baseline: any, revision: string, probeHash: string) {
-    const adapterPath = retestAdapterPath(kind);
-    if (!adapterPath) {
+    const adapterPaths = retestAdapterPaths(kind);
+    if (!adapterPaths) {
         return baseline.sourceRevision === revision && baseline.probeHash === probeHash;
     }
     const parents = String(execFileSync(commonCoreGit(), ['rev-list', '--parents', '-n', '1', revision], {
@@ -518,7 +518,7 @@ function matchesRetestCollector(kind: string, baseline: any, revision: string, p
     const changed = String(execFileSync(commonCoreGit(), ['diff', '--name-only', 'HEAD^', revision], {
         cwd: upstream,
     })).trim();
-    return changed === adapterPath;
+    return changed === adapterPaths.join('\n');
 }
 
 /** Close only the newly recorded iTerm window behind a current single-session TTY witness. */

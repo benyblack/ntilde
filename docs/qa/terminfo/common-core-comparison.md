@@ -148,6 +148,36 @@ Ghostty's original retry. Use capture-throughput with the retained Ghostty
 adapter snapshot to reproduce the faster census run. With the variable unset,
 the driver uses the original movement retest.
 
+## iTerm2 screenshot session custody
+
+The iTerm2 custody retest selects the 44 Core cases that retained at least one
+native screenshot in the original full run. This includes the seven previously
+retested scrollback cases and any query-result case with a retained screenshot.
+The earlier seven-case retry and the original full run remain archived.
+
+Each screenshot acquisition in the local adapter checks that the named iTerm2
+window contains one tab and one session, with the original worker's TTY. The
+adapter checks again after a successful screenshot, before admitting the PNG
+to calibration or a probe. Existing process, window ID and bounds checks
+still apply. The same 250 ms feature-capture wait and original per-probe
+deadlines apply. The bulk window census from the Ghostty work offsets the
+extra window checks. Publication verifies the frame receipts against the
+launch-recorded PID, window and worker TTY.
+
+To reproduce the selection, extract the original iTerm2 full-run archive and
+set `COMMON_CORE_RETEST_FROM` to that directory. Set
+`COMMON_CORE_RETEST_KIND=capture-custody` and use the adapter snapshot in
+`iterm2/custody-retest/adapter/`. The combined comparison includes all outcomes
+from this retest.
+
+Run `e66265a92483b4e9e9b34c9d6c684012` retained 895 custody-checked calibration
+and probe frames. Of the 44 retests, 33 were supported and 11 inconclusive,
+including nine timeouts. In particular, `reset.sgr` reached its 120-second
+deadline after 102 captures. The original supported result and the new timeout
+remain visible. Both application identity and owned-window cleanup verified.
+The measured selector is retained in the run archive. Its later refactor
+produces the same ordered case list when replayed over the original full run.
+
 ## Offline source proof and checkout formatting
 
 `source-proof.zip` retains content-addressed Git commit/tree objects and the base

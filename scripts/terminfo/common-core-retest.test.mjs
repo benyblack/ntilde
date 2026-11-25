@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { focusedRetestCases, invalidatedWindowCases, retestAdapterPath, retestEvidenceDirectory } from './common-core-retest.mjs';
+import { focusedRetestCases, invalidatedWindowCases, retestAdapterPaths, retestEvidenceDirectory } from './common-core-retest.mjs';
 const moved = (id) => ({
     featureId: id,
     status: 'probe-invalid',
@@ -38,11 +38,28 @@ test('focused Ghostty selection keeps both unrelated timeouts and non-timeout ou
 });
 
 test('each capture retest has a distinct allowed adapter path and timeout evidence URL', () => {
-    assert.equal(retestAdapterPath('capture-stability'), 'packages/terminfo.dev/src/serve.ts');
-    assert.equal(retestAdapterPath('capture-throughput'), 'packages/terminfo.dev/src/darwin-capture.ts');
-    assert.equal(retestAdapterPath('probe-timeout'), undefined);
+    assert.deepEqual(retestAdapterPaths('capture-stability'), ['packages/terminfo.dev/src/serve.ts']);
+    assert.deepEqual(retestAdapterPaths('capture-throughput'), ['packages/terminfo.dev/src/darwin-capture.ts']);
+    assert.equal(retestAdapterPaths('probe-timeout'), undefined);
     assert.equal(retestEvidenceDirectory('probe-timeout'), 'focused-retest');
     assert.equal(retestEvidenceDirectory('capture-throughput'), 'timeout-retest');
+});
+
+test('iTerm2 custody selection follows retained native frames across verdicts and criterion types', () => {
+    const cases = ['invalid-visual', 'query-with-frame', 'pure-query', 'non-native', 'unscheduled'];
+    const input = {
+        ...raw(cases.map((featureId, index) => ({
+            featureId, status: index === 0 ? 'probe-invalid' : 'supported',
+            attempt: { scope: index === 4 ? 'none' : 'probe' },
+        }))),
+        subject: { id: 'iterm2' },
+        rawReplies: Object.fromEntries(cases.filter((id) => id !== 'pure-query').map((id) => [
+            id, JSON.stringify({ captures: [{ frame: { kind: 'pixels' },
+                trace: { platform: id === 'non-native' ? 'linux' : 'darwin' } }] }),
+        ])),
+    };
+    assert.deepEqual(focusedRetestCases(input, cases, 'capture-custody'), cases.slice(0, 2));
+    assert.throws(() => focusedRetestCases(input, ['pure-query'], 'capture-custody'), /native captures/);
 });
 
 test('focused iTerm2 selection requires the complete seven-case stability failure set', () => {

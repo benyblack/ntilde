@@ -1,0 +1,1826 @@
+{
+  "runId": "e66265a92483b4e9e9b34c9d6c684012",
+  "rawSha256": "bc07e2a6a72432eb4a493d36132b50881bd01a62ba669813697f97e14d9a02c4",
+  "fullRunArchive": "owned-run.zip",
+  "records": [
+    {
+      "featureId": "sgr.bold",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:27:54.626Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.bold",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.bold",
+      "rawReplySha256": "381c791377b8c179e486539d2902cd556eb77afdbbda4b839f1946537b41fae2",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.faint",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:28:25.255Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.faint",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.faint",
+      "rawReplySha256": "561333305648661dea7b96f9574471a33ba82830623951b252df6949e12f7c3a",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.italic",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:30:25.442Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.italic",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.italic",
+      "rawReplySha256": "a897e8929f50a6e084dc9440ce60ceb686081b1dec9a1e9007bba916e2b2c8ad",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.underline.single",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:36:29.703Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.underline.single",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.underline.single",
+      "rawReplySha256": "90d6f6c59c9c6094a842335c59dfe23fb511fd94e37d840b72f12cc287b748bb",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.inverse",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:29:59.925Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.inverse: target differs from plain, made-up does not; sgr.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;7\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:29:59.925Z"
+          },
+          "assertionRefs": [
+            29
+          ],
+          "rawReplyRef": "sgr.inverse"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.inverse",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.inverse: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:d38eff21017eaa3ef1c06b07556920c0c1d909c7b4a666a19cb0ff2424498ceb\",\"sha256:d38eff21017eaa3ef1c06b07556920c0c1d909c7b4a666a19cb0ff2424498ceb\"],\"pixelsDigest\":[\"sha256:8c6e7fe7b07af5a38472c5fcbcd2b1ec10854b269df509769e3a2ab409e6eaec\",\"sha256:8c6e7fe7b07af5a38472c5fcbcd2b1ec10854b269df509769e3a2ab409e6eaec\"],\"frameDigest\":[\"sha256:8c6e7fe7b07af5a38472c5fcbcd2b1ec10854b269df509769e3a2ab409e6eaec\",\"sha256:8c6e7fe7b07af5a38472c5fcbcd2b1ec10854b269df509769e3a2ab409e6eaec\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:5b98ce139bc2153e9770260cfd50533a48e4b0de334440cd7c6adbfef6c80c5c\",\"target\":\"sha256:a5dcfbffd19f096a1ba39f891a342d1da050e12bf61510a2a4ae15ba65267040\",\"made-up\":\"sha256:5b98ce139bc2153e9770260cfd50533a48e4b0de334440cd7c6adbfef6c80c5c\",\"handled\":\"sha256:1ca787d9af4ea96d48066212021b086e84147315c818bb721527dfcba57d08df\"}}",
+          "rawReplyRef": "sgr.inverse"
+        }
+      ],
+      "rawReplyRef": "sgr.inverse",
+      "rawReplySha256": "b2fff71cda5841b2ce407e3bca32242168612f03d4e1f97b95c19377db0e744e",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:a130d20d2413e9d094f3b59c688dca67a0208322cf09bd7880a9ba8bc06b939e",
+        "sha256:c08c57246a05d1cf875082024c8a1cc3836defd3a4f19542df944b8abd0bea58",
+        "sha256:a25bd0ec11c06b5151339ae1542ba7f86931edc50d8c4b785608f968fb0f15e3",
+        "sha256:5a27a325fc9276e7202525d393220343663cb368f7ee4ecb497a9f18f42d8cb8",
+        "sha256:64b80d95a8ce38af304aa5c49d9208efdbdda781879fe061a55164b576da087a",
+        "sha256:504bb73f1eec17aa0f340d0be0141de3d809db216e68cce5391ef48639da924e",
+        "sha256:f44e2fc203d665e0d25a0c182be690fa5b77d4092d0a6254f960e0c036b9b9ec",
+        "sha256:a9ff9a4f8e048663432242b15de28d6d84b5fd66dc6616f52a04872a8c7f1d24",
+        "sha256:c8ae8356b59e23722ba3f03667dbe4ac156e76921b99d5af4c0d014c9feec45d",
+        "sha256:d52949f2d4b1feb788fb038a3cd0763b8d96d6e330bb0e3e19706259148f9b49"
+      ]
+    },
+    {
+      "featureId": "sgr.hidden",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:29:29.388Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.hidden",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.hidden",
+      "rawReplySha256": "4208f23aac7032aa5f81717bdee6ad6b9d6e960987577460dbe0e4846642abaa",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.strikethrough",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:35:59.131Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.strikethrough",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.strikethrough",
+      "rawReplySha256": "ce57c39582f21674350ff37b25df58fb501d659a90aacc13bfebdee74487a2f4",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.fg.standard",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:29:12.766Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:29:12.766Z"
+          },
+          "assertionRefs": [
+            28
+          ],
+          "rawReplyRef": "sgr.fg.standard",
+          "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.fg.standard",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.fg.standard: cell-aligned region {\"top\":3,\"left\":3,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[0m\\u001b[2J\\u001b[3;3H\\u001b[31mAaBb\\u001b[5;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:5b3bde515213defa668a7c438b8432efef0a191c92c95384c81e806821193974",
+          "rawReplyRef": "sgr.fg.standard"
+        }
+      ],
+      "rawReplyRef": "sgr.fg.standard",
+      "rawReplySha256": "31c2daf0d5d5bca1a32875e7c755591e81d9ba743458e25048332d4542fbffee",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:ce1bff32a333db89518cae4b3a32517aac07d8867633bd0b9f281f4fa08fe498",
+        "sha256:e4338dbe9c37c6e05b53bc81d2fc095d39b3b8b5491ac2a5c05a8f38badb326d",
+        "sha256:06a079735a170cce195515ee3f8aef2b09ed90309793706062420fe4d35abbcc",
+        "sha256:9f2997d1a471f2b4810ec48c67fe3de4c7ceb9fc004436329f267f4e63a4ee3c",
+        "sha256:adc3332c6cb4f69f55144e4b4d7df4db6485f6c2bf588acba7e0394272bb22a9",
+        "sha256:ae9d998d6aab4334fe72d71fdc19590d44b60e3952f75025831a4fac0aaad242",
+        "sha256:13f4e1bba0e4d40efdf2967c8a50348c410afcef89d7b83046293f5e7fd60887"
+      ]
+    },
+    {
+      "featureId": "sgr.bg.standard",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:27:37.723Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:27:37.723Z"
+          },
+          "assertionRefs": [
+            26
+          ],
+          "rawReplyRef": "sgr.bg.standard",
+          "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bg.standard",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.bg.standard: cell-aligned region {\"top\":3,\"left\":3,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[0m\\u001b[2J\\u001b[3;3H\\u001b[41mAaBb\\u001b[5;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:3eef6220ada0d7d6f261e68c213fe1d8e5cf293962e7047930f946180375289a",
+          "rawReplyRef": "sgr.bg.standard"
+        }
+      ],
+      "rawReplyRef": "sgr.bg.standard",
+      "rawReplySha256": "e60e801523c8e6ea7521bd108f6445bd30d07a4ecf1e0a728e59dc2ff0fdf9f9",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:ce1bff32a333db89518cae4b3a32517aac07d8867633bd0b9f281f4fa08fe498",
+        "sha256:e4338dbe9c37c6e05b53bc81d2fc095d39b3b8b5491ac2a5c05a8f38badb326d",
+        "sha256:a4f0491f261394f4fac18fc4f21ea71f900da60eb0485ba293c7c18af5f5075c",
+        "sha256:441312384bc4b8ed42c750fc91132aff18ed6442d6927eeb91fd474a79096244",
+        "sha256:fc5d1dc539bd36e8112a7aa925c956c9ae6813c91ad8b04f677918284cd5bcfc",
+        "sha256:4b69294fa2643ad01791e3fb434511479beaa702e772d5d15de968090c8988f5",
+        "sha256:53312466d98db7e976633ab93cb247ae1f5fd1fa47be54f024bd60644e1dbcb2"
+      ]
+    },
+    {
+      "featureId": "sgr.fg.default",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:28:55.806Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:28:55.806Z"
+          },
+          "assertionRefs": [
+            27
+          ],
+          "rawReplyRef": "sgr.fg.default",
+          "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.fg.default",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.fg.default: cell-aligned region {\"top\":3,\"left\":5,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[3;3H\\u001b[31mXX\\u001b[39mYY\\u001b[4;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:0640c751f56cbbc93f5df259c05a98f7c2c08f6d44f0960cafa8fcf40d444d0f",
+          "rawReplyRef": "sgr.fg.default"
+        }
+      ],
+      "rawReplyRef": "sgr.fg.default",
+      "rawReplySha256": "6b775c4af4d3c13b1e4f10d747a5ad3127890bde3261fd5874d5ca5e67b75383",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:4a7bf271a342fef60b4960f61d4190a7dcdcace5c3790017a0a0ed4316a83344",
+        "sha256:7d2ef905263fc9d6ba4a869aa28504ddeb498c6b6fce21f60d8cc072e590b9f7",
+        "sha256:142df51c6aec6b52bcb261b1d737cb20b2ea54109128a70e2710fa1b1d066dcb",
+        "sha256:bc410bdadc69428cca960499994105c75e845a357aeca12500a729b2cb4c8315",
+        "sha256:90b425ccf0dafd07af20a7c9a5d8da463d2345b630557535b4aa468763753f82",
+        "sha256:2f8089bb523bf0d35bec720885c5c5494c1b22763236510af13706f8752e13b6"
+      ]
+    },
+    {
+      "featureId": "sgr.bg.default",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:27:21.044Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:27:21.044Z"
+          },
+          "assertionRefs": [
+            25
+          ],
+          "rawReplyRef": "sgr.bg.default",
+          "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bg.default",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.bg.default: cell-aligned region {\"top\":3,\"left\":5,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[3;3H\\u001b[42mXX\\u001b[49mYY\\u001b[4;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:0640c751f56cbbc93f5df259c05a98f7c2c08f6d44f0960cafa8fcf40d444d0f",
+          "rawReplyRef": "sgr.bg.default"
+        }
+      ],
+      "rawReplyRef": "sgr.bg.default",
+      "rawReplySha256": "04bd6bac76774f30997e1a82ac08c88694ca9bbcb155d16067be6df9c38ceb60",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:341068a3f6c7824022e231764001acd1cbacb3e143c179ae1734ccc3c5e78c3f",
+        "sha256:8ebde38459e779b20da3851a0a38e3477526a188fd3e9b1439bbf60cc801b3cb",
+        "sha256:1649067deb0f952f393404d0a2f110ed08a40155394e1d9081c474db60f2dc49",
+        "sha256:19d98df9de3c005487219674a1b563906cd48188622f2d936ca77b85b1f6a83d",
+        "sha256:876c07fa5f3ebaa2ef4f56bd4073061720e358b21f4ca55cf4085990a266210c",
+        "sha256:4562f51fc2c4d27696291625f1508b8afcce23311a3b25668d8e6496dc5e72a6",
+        "sha256:e59f2c0c4e8edafc8792d7a43ada1e2e4ffaeb0e89eaba50daf8a3614c3d253e"
+      ]
+    },
+    {
+      "featureId": "sgr.selective-reset.bold",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:32:56.660Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 120000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.selective-reset.bold",
+          "reason": "Probe exceeded 120000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.selective-reset.bold",
+      "rawReplySha256": "fe0e792d1b635c192043f2380e5f7955545ca871f853c86aac2a2789743d7a61",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.selective-reset.underline",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:35:38.334Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:35:38.334Z"
+          },
+          "assertionRefs": [
+            32
+          ],
+          "rawReplyRef": "sgr.selective-reset.underline",
+          "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.underline",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.underline: cell-aligned region {\"top\":3,\"left\":5,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[3;3H\\u001b[1;4mXX\\u001b[24mYY\\u001b[4;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:3019dee486dd45a82a7fbda74e16e2a6f28b4d44f61a4ffd6cce3500b68a2c6c",
+          "rawReplyRef": "sgr.selective-reset.underline"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.underline",
+      "rawReplySha256": "09619c5d93d464f33639f03da3233a59bc0b034406b3860ccbd27ebc0c3d851b",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:70c90d0f50bb96679394d69b55d96dad5fc39f032e2796ea47c6e2539da519a6",
+        "sha256:c7826e9b97e052516f5d7bf4b4049f9ebeecbe12a2e5500db92ca9b894984ef0",
+        "sha256:3e6a32dbb6a78909a0d8d1f63de0923a93f7f64f22fb097b2b0cbd73ce11dcc7",
+        "sha256:e3656a57326a405444d736f568d7eddf4c6e195925e23de4d0144ea17b5af736",
+        "sha256:be6cd406758dc834ebb222a83ac45c76a48456e804a4211ffdd93ba5d5991a01",
+        "sha256:7e6ae680b2f5844b81e867d0b32833897b7649f0788adf17c27a9a3ae459fe2d",
+        "sha256:2f8be7a23c83d6c2c1e42a3d3756ceab8ea9f5cc4ceaaea352f45543140264fb",
+        "sha256:7673d6c9fac3a69b0853db95f17708f0de4dea424fd2e99c2b1618dc5ae4d1f6"
+      ]
+    },
+    {
+      "featureId": "sgr.selective-reset.inverse",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:34:57.235Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:34:57.235Z"
+          },
+          "assertionRefs": [
+            30
+          ],
+          "rawReplyRef": "sgr.selective-reset.inverse",
+          "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.inverse",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.inverse: cell-aligned region {\"top\":3,\"left\":5,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[3;3H\\u001b[1;7mXX\\u001b[27mYY\\u001b[4;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:f2d4397c76bc63816355f3a377acef853dc5cc4d40db14640bf4937b6814e336",
+          "rawReplyRef": "sgr.selective-reset.inverse"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.inverse",
+      "rawReplySha256": "e7cfe02dbb3c166fabd5038ca1957077e981e00ffd13dbe973ca0635445b30b4",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:eef7ff08061118655a658b6c258d8cfd7380cb84bd5d8020e24c4b5d76b1aca3",
+        "sha256:5d10cc1b143cb773f1c64562131fd6f721160a2154a5962ac979f69ba083fce6",
+        "sha256:7ffbfd01c6aca5df80df85416fefc663d99020e6ba361e8ef1d3c55184f4bee7",
+        "sha256:e9807c1d78a2bea552e3ac1c4663390c77c271675f1c5c5308e99fa0cbdfe526",
+        "sha256:2941eeab2bbf18f40ba19141df589e41253c4ad13233cfd16ae5de14f35c1a45",
+        "sha256:b409f23a72b493b034f22a785f680547d0267050945857cabab05509982639e8",
+        "sha256:a48edc83211fcb5853bc2481b99afcc265d142da6d5e24fcccd7eb145d902969",
+        "sha256:5aa79e665f82bede1c2a7b539869413b1fc67e66f59ccade831e93e06dce3a85"
+      ]
+    },
+    {
+      "featureId": "sgr.selective-reset.italic",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:35:17.827Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:35:17.827Z"
+          },
+          "assertionRefs": [
+            31
+          ],
+          "rawReplyRef": "sgr.selective-reset.italic",
+          "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.selective-reset.italic",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.selective-reset.italic: cell-aligned region {\"top\":3,\"left\":5,\"bottom\":3,\"right\":6} equals the same-run expected frame after \"\\u001b[3;3H\\u001b[1;3mXX\\u001b[23mYY\\u001b[4;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:0ee2539c9e83385a4a075eea9501249229e951f530fd7d724e4a701397040c33",
+          "rawReplyRef": "sgr.selective-reset.italic"
+        }
+      ],
+      "rawReplyRef": "sgr.selective-reset.italic",
+      "rawReplySha256": "08261270c7348f6b776c58adaff859c2e45162e15a69adc0cab25b227800c4a0",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:22398dcf4b5bda8e2a2095cd0ab3de9b6381f68e5818779e53cd198a0a4fdc61",
+        "sha256:22d0e924098bba8b8dca2edca1664d590d83b28642fcefee9f83b364fa3fe654",
+        "sha256:25aff655f9d6c59e7b5747d312b737c515b69f8cb79ebb1d0adafa5f0f4aa1a4",
+        "sha256:46d301b041b387be78e8cd649adfd110f8f9779e95b4377669c31d48a5bc4952",
+        "sha256:ede6698a298080b5663019c95473fc1991b1fb797c68e15a44d8d806590141df",
+        "sha256:13369792c3d6be45cc2a303624ba442971943f1c7c71cdd12387e44bb5e1cd2f",
+        "sha256:46678c67a91e4fd730b12ed2fc737bf04bfe2b3c5a96cbdf201f4c96ebb72831",
+        "sha256:bbf8982e2d78300982ca47a5d823d8e49cd3d738b27a6bd4cef80883d4ea8b46"
+      ]
+    },
+    {
+      "featureId": "sgr.reset",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:30:56.029Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 120000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.reset",
+          "reason": "Probe exceeded 120000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.reset",
+      "rawReplySha256": "46efa04df14ccf30661f84f10f608fdfaed3f1956d620244ea2881994578b30d",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "cursor.hide",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:20:52.847Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:20:52.847Z"
+          },
+          "assertionRefs": [
+            5
+          ],
+          "rawReplyRef": "cursor.hide",
+          "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.hide",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "The cursor cell at row 2 column 3 has one pixel digest while the cursor is shown, a different digest while DECTCEM hides it, and the shown digest again after restore",
+          "observed": "{\"rows\":41,\"cols\":140,\"cursor\":{\"row\":2,\"col\":3},\"digests\":[{\"cells\":\"sha256:416c850b37d2af6df2a06c45ce6bc5be99d814264aad9c751b47645089c2da28\"},{\"cells\":\"sha256:18804dc5675f30c9e17ee47e88c8bda83f84ec35a05c4b4b50f9909b4fb3dea0\"},{\"cells\":\"sha256:416c850b37d2af6df2a06c45ce6bc5be99d814264aad9c751b47645089c2da28\"}],\"rectangles\":[{\"x\":38,\"y\":100,\"width\":14,\"height\":30},{\"x\":38,\"y\":100,\"width\":14,\"height\":30},{\"x\":38,\"y\":100,\"width\":14,\"height\":30}]}",
+          "rawReplyRef": "cursor.hide"
+        }
+      ],
+      "rawReplyRef": "cursor.hide",
+      "rawReplySha256": "3bbf460f32d24485cb7fe23f2d208e2a454d07422e71b8261bc5bf4bf5f8d591",
+      "screenshotRefs": [
+        "sha256:1ae39182b80d02544c3603b443b57a9a1422db70145e63a2afef58fafb15472a",
+        "sha256:2a0bc306577bd656e6c6ec0de88470fa6860de20ef052668e6d578c0fe324244"
+      ]
+    },
+    {
+      "featureId": "cursor.cup-scroll-region",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:20:39.212Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:20:39.212Z"
+          },
+          "assertionRefs": [
+            4
+          ],
+          "rawReplyRef": "cursor.cup-scroll-region"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "cursor.cup-scroll-region",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "cursor.cup-scroll-region: cell-aligned region {\"top\":5,\"left\":1,\"bottom\":5,\"right\":2} equals the same-run expected frame after \"\\u001b[5;15r\\u001b[?6h\\u001b[1;1H<\\u001b[?6l\\u001b[r\\u001b[16;1H\", behind a paint witness in cell 1,1",
+          "observed": "sha256:bbbe5770c58bcae9f2c5098d5e7596b4f966505841558942ffa253540f2ae823",
+          "rawReplyRef": "cursor.cup-scroll-region"
+        }
+      ],
+      "rawReplyRef": "cursor.cup-scroll-region",
+      "rawReplySha256": "a4ed0912dfdbc9c45c294badba174f5d8530f83fcc7d9b14df55ad4ad2cb063a",
+      "screenshotRefs": [
+        "sha256:385946c3d72a834e5bd2bccaed92cfea087701234a002dbfde02252f21432cac",
+        "sha256:428252c21ca8cc4af31c903f66b6c2dbe4ac3d652b6eda06315713b556f50942",
+        "sha256:458a0cfb90a9ab8a98ac77fadf6e0ae7f41fa8f01af351efae357fc95a67eac4",
+        "sha256:afdbd059f3f6c342cc61a651371e250bb50351d750d5afd3b243d8ac8d093c92",
+        "sha256:c5130d75c39f2bb986acdc748f00a576cc48c18fc24af945cd00c91335b20f96"
+      ]
+    },
+    {
+      "featureId": "erase.line.right",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:22:09.203Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:22:09.203Z"
+          },
+          "assertionRefs": [
+            11
+          ],
+          "rawReplyRef": "erase.line.right"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.line.right",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.line.right: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":2,\"right\":5} equals the same-run expected frame after \"\\u001b[1;3H\\u001b[K\\u001b[3;1H\", behind a paint witness in cell 4,1",
+          "observed": "sha256:1699f2266bdc0ea0da2c2bcbb7c5d1204acd0c869412b71fe8112937bb3c2dd2",
+          "rawReplyRef": "erase.line.right"
+        }
+      ],
+      "rawReplyRef": "erase.line.right",
+      "rawReplySha256": "0cd464c3b3500f23cc2b7cb0972d380dde0d9e19106f1382ea5ca331bd0aa7ee",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:759a0890321c563abd2c74654d791faf8d90ae4b5936837111841dc3fbff59fe",
+        "sha256:489f02bdebacc35e1f235a1e70e515f2ec73d1cab8a54d1842c99bca2b1ce5bc",
+        "sha256:bc83dbd31bd74186d3e224b4920328ad003ef928ce1cf18fe5d64cbfcf8d0732",
+        "sha256:e56eaa5806965f187eebf14ff3728fe1b7abb5d555d16216a7edd11f968689d3",
+        "sha256:83131fa03e99f5a04d743b39ead950cb9ec85feaf82b8a6d44e812b200f3ec26"
+      ]
+    },
+    {
+      "featureId": "erase.line.left",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:21:55.391Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:21:55.391Z"
+          },
+          "assertionRefs": [
+            10
+          ],
+          "rawReplyRef": "erase.line.left"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.line.left",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.line.left: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":2,\"right\":5} equals the same-run expected frame after \"\\u001b[1;3H\\u001b[1K\\u001b[3;1H\", behind a paint witness in cell 4,1",
+          "observed": "sha256:d85dd0603036d15b7653c62f28f806e15dbe05c2b656ffa0f429900eb65856b3",
+          "rawReplyRef": "erase.line.left"
+        }
+      ],
+      "rawReplyRef": "erase.line.left",
+      "rawReplySha256": "d16198f5c9c386ff4881a8521845f464b9c5c27a6570cad5441c0ff663761659",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:759a0890321c563abd2c74654d791faf8d90ae4b5936837111841dc3fbff59fe",
+        "sha256:489f02bdebacc35e1f235a1e70e515f2ec73d1cab8a54d1842c99bca2b1ce5bc",
+        "sha256:6cff796246723d5e7a5779c12913738ddb93c0227e1b572c551f437ae07175b5",
+        "sha256:77a2c4ef19f9e7b623af48494532c9c104c886cebd6943288b2be0ae53438d30",
+        "sha256:348c4780fe4b757a8e96544c60e08ba1401091db6904b210caca649aab9676db"
+      ]
+    },
+    {
+      "featureId": "erase.line.all",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:21:41.925Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:21:41.925Z"
+          },
+          "assertionRefs": [
+            9
+          ],
+          "rawReplyRef": "erase.line.all"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.line.all",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.line.all: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":2,\"right\":5} equals the same-run expected frame after \"\\u001b[1;3H\\u001b[2K\\u001b[3;1H\", behind a paint witness in cell 4,1",
+          "observed": "sha256:768bd14bacba8732dc6747807f2de54601b72691b69cebd63b8bf008310c077c",
+          "rawReplyRef": "erase.line.all"
+        }
+      ],
+      "rawReplyRef": "erase.line.all",
+      "rawReplySha256": "14bc677c2e9663a878a40dafa2358ba88c8698814bb3732fab436fbf416c9c1c",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:759a0890321c563abd2c74654d791faf8d90ae4b5936837111841dc3fbff59fe",
+        "sha256:489f02bdebacc35e1f235a1e70e515f2ec73d1cab8a54d1842c99bca2b1ce5bc",
+        "sha256:6028e7271c27384214d306b338ee6618ea76733a20caeff467e709bc806e30bd",
+        "sha256:9483c74c89dd35da47b4595fd4f7166ab743716d708ff3d0ac9a6fc7ad776ba4",
+        "sha256:4a3f0538b3fe4624bad918049809f445409ed16a2a7158bf440ac2f89542eff0"
+      ]
+    },
+    {
+      "featureId": "erase.screen.above",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:22:22.162Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:22:22.162Z"
+          },
+          "assertionRefs": [
+            12
+          ],
+          "rawReplyRef": "erase.screen.above"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.screen.above",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.screen.above: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":5} equals the same-run expected frame after \"\\u001b[2;3H\\u001b[1J\\u001b[4;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:2ce58451b72d3ff6cad7d6dae3679ad95d90e2afc2e21748505fc4ae403890f1",
+          "rawReplyRef": "erase.screen.above"
+        }
+      ],
+      "rawReplyRef": "erase.screen.above",
+      "rawReplySha256": "2d4df98752cdd2b7ba10881066c7bd1a9aadaf8623e723cdaa43485333554659",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:5b90398d2fdbfc58b9f884ff0b2dda69ae628715cdddcaa1775923f2806d74f0",
+        "sha256:f7b7005164b965fea170ba66a39f580e9a8676e90570c613eeecbbec027efe7a",
+        "sha256:edd6120c6f4db2e58140817e928ecea1ab81ab8607c31f67d511197cb4e36e53",
+        "sha256:d5df21a18bae4fc4944702d61b8941f23081157d86f064e69edef42797076929",
+        "sha256:50bf85ee7d2eb366c1046b9820528705b168968e14ba02327e928abc9f1a06d9"
+      ]
+    },
+    {
+      "featureId": "erase.screen.all",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:22:41.974Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:22:41.974Z"
+          },
+          "assertionRefs": [
+            13
+          ],
+          "rawReplyRef": "erase.screen.all"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.screen.all",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.screen.all: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":5} equals the same-run expected frame after \"\\u001b[2;3H\\u001b[2J\\u001b[4;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:b59e8bd92433d99fceb57c9f42dd6f615b0c3fd359c929784c01db05f1837178",
+          "rawReplyRef": "erase.screen.all"
+        }
+      ],
+      "rawReplyRef": "erase.screen.all",
+      "rawReplySha256": "1fe39588cdb84d38ea704e0b75a46b9fd1ad26a6e40694ae7762ecced02b00dc",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:5b90398d2fdbfc58b9f884ff0b2dda69ae628715cdddcaa1775923f2806d74f0",
+        "sha256:f7b7005164b965fea170ba66a39f580e9a8676e90570c613eeecbbec027efe7a",
+        "sha256:5ed42a0e947eccf0ea2574433f511ccf9b1dfacb64df55576a410b241c351042",
+        "sha256:cb6e951953d8d145a1f4223c502ac0cb8644ae02f5fab35389178787b39ae69d"
+      ]
+    },
+    {
+      "featureId": "erase.screen.below",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:22:55.072Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:22:55.072Z"
+          },
+          "assertionRefs": [
+            14
+          ],
+          "rawReplyRef": "erase.screen.below"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.screen.below",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.screen.below: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":5} equals the same-run expected frame after \"\\u001b[2;3H\\u001b[J\\u001b[4;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:f04b2c11a59f4fcb0f5ea46a21dc92fbc1b911fcfa40dec579440c806431148f",
+          "rawReplyRef": "erase.screen.below"
+        }
+      ],
+      "rawReplyRef": "erase.screen.below",
+      "rawReplySha256": "057f4311c6eaf8a1b55029520ba5462937f3651b904adb354985e0aa1f124407",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:5b90398d2fdbfc58b9f884ff0b2dda69ae628715cdddcaa1775923f2806d74f0",
+        "sha256:f7b7005164b965fea170ba66a39f580e9a8676e90570c613eeecbbec027efe7a",
+        "sha256:8035732666717b76a30d4d839f644e46e9393a0a32aace40e5121ae3a1c64271",
+        "sha256:0c7ade1dd7bd66736aec7c105d55a753f6feaef18a526a1f9ce569def788cdd5",
+        "sha256:514417e29dd823570f841cf97052b3d9e2ea0812a8ce66262b09d3747ffb943f"
+      ]
+    },
+    {
+      "featureId": "erase.character",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:20:57.134Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:20:57.134Z"
+          },
+          "assertionRefs": [
+            6
+          ],
+          "rawReplyRef": "erase.character"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.character",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.character: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":5} equals the same-run expected frame after \"\\u001b[1;2H\\u001b[2X\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:fb414dd421d959d5d0733c376cd3fbf4eaf85a370729d93f871a6ad489b3409b",
+          "rawReplyRef": "erase.character"
+        }
+      ],
+      "rawReplyRef": "erase.character",
+      "rawReplySha256": "071ade164ded96f12c55cd140fb8fc4b4d32c24e6335da2d296ca6ff721b6079",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:571865f3165b96551a8b5cdb36b631d79dd72d74efba04d2cea5e8fc5ae98078",
+        "sha256:6f1b3bf9c7b516fa389c37287a17274ab98f441ab98e7a7fcd1d4df5fbecd499",
+        "sha256:13e8e61e28fb991670f181c9c769c60cdb2597a3308eb32c96946a9fa4024fed",
+        "sha256:347a0f18cfa9971dfc6b562455372be0ed10ee93c0748073a30e5d2893871dfa",
+        "sha256:3c97c65ad16e750f5df5d20f4490aa3a5d901e212bd44c0e0202d55ada4d0d4d"
+      ]
+    },
+    {
+      "featureId": "erase.el-with-attrs",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:21:25.137Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:21:25.137Z"
+          },
+          "assertionRefs": [
+            8
+          ],
+          "rawReplyRef": "erase.el-with-attrs"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.el-with-attrs",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.el-with-attrs: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":5} equals the same-run expected frame after \"\\u001b[1;1H\\u001b[42m\\u001b[0K\\u001b[0m\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:e100b867c438bb77c41607fffce81c9a64e36ba8bcb5b622a9a9df4a6a3e82bd",
+          "rawReplyRef": "erase.el-with-attrs"
+        }
+      ],
+      "rawReplyRef": "erase.el-with-attrs",
+      "rawReplySha256": "e15e49cfcd95957df7c61cfa263292db3943f35a55e4f5ca8ae1d03753f56fa8",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:acdce96f968bb671dda09c140083f2836336d9a6741014081ff6ebdd79a5d664",
+        "sha256:453aefddeae92e7f9fa0fd60a25dfb95966891cb39fda37ca40572a6701f91df",
+        "sha256:ffb1a5a05728ff56bc25b5a17d722190bc9fc0d42e2e0a4bf408de39382b22d3",
+        "sha256:3b3a447907f04f097a7c3679e01c480d5067aa2966bc7fa6cb4bcda87ce72d87",
+        "sha256:d12fcad2817045b78b140a1a2a2e0894d21cd685a09d029349be36ca280c5495",
+        "sha256:5959d4bd07604f5809e317749ff6ab1b4b84f2a016046e31ea51ac8ce1c38106",
+        "sha256:ddbe94cbf41139d336c526bb175a06c17e841a7b0ecb60d819656ce0168c099b"
+      ]
+    },
+    {
+      "featureId": "erase.ed-scroll-region",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:21:11.310Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:21:11.310Z"
+          },
+          "assertionRefs": [
+            7
+          ],
+          "rawReplyRef": "erase.ed-scroll-region"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "erase.ed-scroll-region",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "erase.ed-scroll-region: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":5} equals the same-run expected frame after \"\\u001b[3;10r\\u001b[3;1H\\u001b[J\\u001b[4;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:e5b658c84914644baa691a264f787ec7252966fa46f75f13610e1bf9d51961e6",
+          "rawReplyRef": "erase.ed-scroll-region"
+        }
+      ],
+      "rawReplyRef": "erase.ed-scroll-region",
+      "rawReplySha256": "07528df6ec54d3b584a827cd0f91c5b529ca9153f02d34cf075dddffd30d53d9",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:e7302d3f052b1e92511758ef6e94a8f59d7e187e3ce31e855407752d905ab41f",
+        "sha256:f2480436646c2d47bae7208b5f0f57702110e5431bb2b0cb45df1219e3e0fa88",
+        "sha256:2af11b78cb742261c274c7876db36a6e51c0765905a874762f434b76acb25656",
+        "sha256:da041c2bd1059110decad0ae5e68da9ac7bd4417766796d8b4a8114a3775f269",
+        "sha256:9d3c979ad8c7c7d5d4b406b7ddd311e5b72c1bd2c1e9f1337c32d66d83e3be02"
+      ]
+    },
+    {
+      "featureId": "modes.alt-screen.exit",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:23:08.289Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+      "tests": [
+        {
+          "id": "primary-marker-restored",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:23:08.289Z"
+          },
+          "assertionRefs": [
+            15
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "id": "alternate-marker-control",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:23:08.289Z"
+          },
+          "assertionRefs": [
+            16
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "id": "saved-cursor-restored",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:23:08.289Z"
+          },
+          "assertionRefs": [
+            17
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "modes.alt-screen.exit (primary-marker-restored, expected change): cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":7} equals the same-run expected frame after \"\\u001b[?1049l\", behind a paint witness in cell 2,1",
+          "observed": "sha256:bab3f426e411e2ba684301d39aa8e5ea8f1605d884a84c2d65d664096c806fc8",
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "modes.alt-screen.exit: actual alternate marker ALTONLY differs from the independently painted primary PRIMARY in the same crop behind its paint witness",
+          "observed": "{\"stability\":{\"regionDigest\":[\"sha256:7c1cb56fe457ac20d41ac21316ab4a5e32602da469661306b37db996f81300f6\",\"sha256:7c1cb56fe457ac20d41ac21316ab4a5e32602da469661306b37db996f81300f6\"],\"pixelsDigest\":[\"sha256:8c6e7fe7b07af5a38472c5fcbcd2b1ec10854b269df509769e3a2ab409e6eaec\",\"sha256:8c6e7fe7b07af5a38472c5fcbcd2b1ec10854b269df509769e3a2ab409e6eaec\"],\"frameDigest\":[\"sha256:8c6e7fe7b07af5a38472c5fcbcd2b1ec10854b269df509769e3a2ab409e6eaec\",\"sha256:8c6e7fe7b07af5a38472c5fcbcd2b1ec10854b269df509769e3a2ab409e6eaec\"],\"wholeWindowChanged\":false},\"region\":{\"top\":1,\"left\":1,\"bottom\":1,\"right\":7},\"sentinel\":{\"row\":2,\"col\":1},\"cursorRow\":3,\"pixelGeometry\":{\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230},\"geometrySource\":\"measured by complete raster calibration\",\"seed\":\"sha256:768d806764768572c05c998276674efe17b65b8782282d4fbcb29d1b2738fcdf\",\"after\":\"sha256:bab3f426e411e2ba684301d39aa8e5ea8f1605d884a84c2d65d664096c806fc8\",\"expected\":\"sha256:bab3f426e411e2ba684301d39aa8e5ea8f1605d884a84c2d65d664096c806fc8\",\"ignored\":\"sha256:768d806764768572c05c998276674efe17b65b8782282d4fbcb29d1b2738fcdf\",\"discriminator\":{\"signal\":\"primary-marker-restored\",\"expected\":\"change\"}}",
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+          "observed": "{\"before\":{\"row\":2,\"col\":3},\"inside\":{\"row\":3,\"col\":2},\"after\":{\"row\":2,\"col\":3}}",
+          "rawReplyRef": "modes.alt-screen.exit"
+        }
+      ],
+      "rawReplyRef": "modes.alt-screen.exit",
+      "rawReplySha256": "d68d751bfdbffcf6c258e3af673e8f7bbe5d2c1fc0aef49b87163b57a58936ba",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:da5a84f14c1757c5355acd5b3cd30bac2444e346306d8b28a33aa8ee572de711",
+        "sha256:6f0161f5c3258af50a713b231d6b3f6064d763b6e187f58a4b6a0b56ac91160f",
+        "sha256:7b2cb7a7b06e19099eab1956e47845e7a2fc0e7391a033d81f4fb57aae3b046a",
+        "sha256:c13ac6c10d7ab7de960f16402ad963e3f40d5b795419d0564d48e9c665459756",
+        "sha256:726efd8da959d523fbf740ff5fcb0a1162e8fa0d3bddc8f47b638d4cac4c3b00",
+        "sha256:263c824c5d6efa48578a5e220d1b563014d9c7b7cde005ebddfa8e6c31c48dc9"
+      ]
+    },
+    {
+      "featureId": "scrollback.accumulate",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:25:34.951Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen",
+      "tests": [
+        {
+          "id": "review",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.accumulate",
+          "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.accumulate",
+      "rawReplySha256": "87292c6ce3080db383f065c9f81d397c7d4eb6bafb7ce3a6015fcb8fc3537cc7",
+      "screenshotRefs": [
+        "sha256:d786d684d983e6d268d513512ad22d96485a78ba6a588976a3a8eabcebf098d5",
+        "sha256:cb784436792e6b934dbb86895233c8e1e3c40389ef878db653220b2da8572ecc"
+      ]
+    },
+    {
+      "featureId": "scrollback.total-lines",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:27:18.216Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen",
+      "tests": [
+        {
+          "id": "review",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "scrollback.total-lines",
+          "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "scrollback.total-lines",
+      "rawReplySha256": "6aacd454f68b78562f1cd53fb9b3f854bf2e45baa839d999c99c0ee9fb659581",
+      "screenshotRefs": [
+        "sha256:1ca1c96fcbd752ac3adf539fe3a776ca8ff284d382ca130b5995c8476f720d66",
+        "sha256:105f7f09da6920199eba96c353177168338cd59dec125476223c9e68708c8aa2"
+      ]
+    },
+    {
+      "featureId": "scrollback.scroll-up",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:26:51.866Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:26:51.866Z"
+          },
+          "assertionRefs": [
+            23
+          ],
+          "rawReplyRef": "scrollback.scroll-up"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.scroll-up",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.scroll-up: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":5,\"right\":1} equals the same-run expected frame after \"\\u001b[2;1H\\u001b[S\\u001b[r\\u001b[6;1H\", behind a paint witness in cell 7,1",
+          "observed": "sha256:adaf54d8d972503afddb6c46d34691bef83f2194d70ab8cc5be0fd2987baf45c",
+          "rawReplyRef": "scrollback.scroll-up"
+        }
+      ],
+      "rawReplyRef": "scrollback.scroll-up",
+      "rawReplySha256": "cdd39a63ff10c50fdfd974ad29de920a3e2d441d38e7d28ea6877697d81757f0",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:afbf172766de04511074545209961a88f143b452c345b8dd1395e99e5b6600d5",
+        "sha256:cc4a02827958fc82a78c1c7a27c73c48bbb0ce2295a8d35e9b2967118b1c2dc6",
+        "sha256:3583c8f93da0af825037e1ff370e1a03e927f3567b7d68e82c09f16d769edbae",
+        "sha256:c7f5b63cb06b4a80818c9e1c574d75485d3efdf23cb68106ee535939ff7c306a",
+        "sha256:8e70ec9c92212ce255b83dec6e4d3b8a806d29af77466c91a956659dc99fe53c"
+      ]
+    },
+    {
+      "featureId": "scrollback.scroll-down",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:26:38.273Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:26:38.273Z"
+          },
+          "assertionRefs": [
+            22
+          ],
+          "rawReplyRef": "scrollback.scroll-down"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.scroll-down",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.scroll-down: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":4,\"right\":5} equals the same-run expected frame after \"\\u001b[H\\u001b[T\\u001b[5;1H\", behind a paint witness in cell 6,1",
+          "observed": "sha256:6ea266021a42b5f3c1af34a6ed7b0b644696843cb93a0e82e866fc937ae6dae2",
+          "rawReplyRef": "scrollback.scroll-down"
+        }
+      ],
+      "rawReplyRef": "scrollback.scroll-down",
+      "rawReplySha256": "98de219e2e1dd9c6516cedd678ea597cf3da242e8457e7c919cc76a559e703a2",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:b25fd456507fa441e9fb3069f2df4a011379a1caa68b7548dd3019a8908e1eaf",
+        "sha256:199b6b7b7e895657b9b6d51f5b89f5a1b5cf0395e1f565f237a00e0640b60e2c",
+        "sha256:4c499a243c26b559a2a272897035cc102567d252783735dae80333aae317b387",
+        "sha256:cde587702574f855d2d7e3359ea110de4ad6bc2a9d23a1361483b37c237cf2e8",
+        "sha256:fa3cb3e7bd2d75846def5532f0a654ad150b7fbd689697efbf8f651de24b3952"
+      ]
+    },
+    {
+      "featureId": "scrollback.reverse-index",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:26:24.504Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:26:24.504Z"
+          },
+          "assertionRefs": [
+            21
+          ],
+          "rawReplyRef": "scrollback.reverse-index"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.reverse-index",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.reverse-index: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":3,\"right\":1} equals the same-run expected frame after \"\\u001b[H\\u001bM\\u001b[6;1H\", behind a paint witness in cell 5,1",
+          "observed": "sha256:f410b370486643c9cd0540e0d435bbddcea2161f0afe6183729957653ba9cbf1",
+          "rawReplyRef": "scrollback.reverse-index"
+        }
+      ],
+      "rawReplyRef": "scrollback.reverse-index",
+      "rawReplySha256": "5321c76e1e1d8aaa9cc6c7baa909818fb20aec8f9e265a8e91ea91e17fefba7c",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:a45ba146c25e310fb9e6ca0dc794405661c669be87f59fb460fbedecb58289c1",
+        "sha256:e1e0591448359cdc280bd7d8c712c7f2eb626da10e63963541afeef4b5c0262b",
+        "sha256:3def5693118de38c43d047b6e6010dfaf7cc341e2f39b4c143e717e442c50e24",
+        "sha256:456c1edbaeec5f13d487a2d9f08a4e8ca3d610542e85d8f05982e4587be16064",
+        "sha256:880fa92bbe62f44f4db1148d3e9711ee4d01e893d4191355fce5bb069cfb9d9a",
+        "sha256:70b030741994cb3fc7657f427d90f0e2d799a6b43f0794a1664e1b573683cd37"
+      ]
+    },
+    {
+      "featureId": "scrollback.set-region",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:27:05.148Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:27:05.148Z"
+          },
+          "assertionRefs": [
+            24
+          ],
+          "rawReplyRef": "scrollback.set-region"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.set-region",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.set-region: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":7,\"right\":1} equals the same-run expected frame after \"\\u001b[5;10r\\u001b[10;1H\\n\\u001b[r\\u001b[11;1H\", behind a paint witness in cell 12,1",
+          "observed": "sha256:8338638854c114a2c762786a8e4703789118f7d78fe93e8e23904fded076c8a0",
+          "rawReplyRef": "scrollback.set-region"
+        }
+      ],
+      "rawReplyRef": "scrollback.set-region",
+      "rawReplySha256": "de42061e5e131fdc294347c52adcadea7be70e030c19f25f82990f8b8555304d",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:2c5cecfea0e9103fd1eb20d6c51d7b7854f221c6d2d20d4f1b8941b8037c5d15",
+        "sha256:b262b7d0faa41cb6e0fcd214c1726c52acad1e572aeb7f697be0884c21545288",
+        "sha256:06cae08a5569ce83505ea6f3aedc2f88c38dc586d14b60b6842cc6d3f42826ee",
+        "sha256:8e3b167948ccc14157cf4d8bb451d59b46031d46313677c28b76dda717f8205a",
+        "sha256:2ac1ab7c81784ac9f924ad929b48384cd8555044986b3734f42acbb1ad19d937",
+        "sha256:9d0118921e86b58f193422d6a67048ba60de9e83aa6677149e565bbfa17708f0"
+      ]
+    },
+    {
+      "featureId": "scrollback.alt-screen",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:25:37.837Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:25:37.837Z"
+          },
+          "assertionRefs": [
+            18
+          ],
+          "rawReplyRef": "scrollback.alt-screen"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.alt-screen",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.alt-screen: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":2,\"right\":18} equals the same-run expected frame after \"\\u001b[?1049h\\u001b[2;1HALT_SCREEN_MARKER\\u001b[?1049l\\u001b[2;1HOK\\u001b[3;1H\", behind a paint witness in cell 4,1",
+          "observed": "sha256:c214367a2e7af948c140b8278b4e456a5ba4edc32b0b7654dafa54b0f2829ea4",
+          "rawReplyRef": "scrollback.alt-screen"
+        }
+      ],
+      "rawReplyRef": "scrollback.alt-screen",
+      "rawReplySha256": "8cf76b366213eafe4873117be778d86516ddfbf356c7db579f162b7bb2918daa",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:1863646c475426149119c9f298bf794deef227042b2f1e91a6ceb9b877e4ef1c",
+        "sha256:5d5fea46613bfd03105913f850a7b4580229e76ceb92e22206824d06b1ea4c37",
+        "sha256:0b93ff0047de8bb71b68d18c7da6341a63d10c0b67223c24bc82995a63f6bb52",
+        "sha256:5fa3b2cbcb554ea9b4d86e96254c6f801721e1c33e901ce27e38b5fd2fac1bf4",
+        "sha256:03a2b19c5d808a77c4888fd4940ef22ce370c58f76380b7cf3709ed2f688abde",
+        "sha256:63a075324222f1b404011a7dd3261034f6198a90a90783ed5f1d6939e2d8ec3b",
+        "sha256:f7cd19796759948d1e293aeac12ae78c2b519374367a577522e3b5ab357d593a"
+      ]
+    },
+    {
+      "featureId": "scrollback.decstbm",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:25:54.536Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:25:54.536Z"
+          },
+          "assertionRefs": [
+            19
+          ],
+          "rawReplyRef": "scrollback.decstbm"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.decstbm",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.decstbm: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":5,\"right\":1} equals the same-run expected frame after \"\\u001b[3;6r\\u001b[6;1H\\n\\u001b[r\\u001b[7;1H\", behind a paint witness in cell 8,1",
+          "observed": "sha256:54243d77595c3b2646269314e43ff8e928e43d901e77a534f817b1f666771e94",
+          "rawReplyRef": "scrollback.decstbm"
+        }
+      ],
+      "rawReplyRef": "scrollback.decstbm",
+      "rawReplySha256": "ea70b15fed338949b2cf0bac869f63672370f23acbbae2f0fc9d70fc9731c8d5",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:68e6465c3d778e60ba05e2218de0a7bb11f05f150eae851204094e9a5a25abbd",
+        "sha256:e15e129f65a42617f6b6485feb246d6b69199c0bf00b46b4a485ad6c327f9559",
+        "sha256:f9c6b93a1d887369d3f06327fb93b18d962cdb6d00ef7f51f421f9d8f76292a9",
+        "sha256:78b419ec4fac4fa45968ce273d4a15c5a85dd40c26e9d2559e4da7995a7f0734",
+        "sha256:78daaff7433e174ceb3af21afbe81d56b4f0ff563a31942d677d8f6126497eb1",
+        "sha256:ca145b7d5224b35f8aa0980cbb0f6675c7bc17ee6889e1c783e58d1d4e98688a"
+      ]
+    },
+    {
+      "featureId": "scrollback.decstbm-reset",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:26:07.971Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:26:07.971Z"
+          },
+          "assertionRefs": [
+            20
+          ],
+          "rawReplyRef": "scrollback.decstbm-reset"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "scrollback.decstbm-reset",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "scrollback.decstbm-reset: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":6,\"right\":1} equals the same-run expected frame after \"\\u001b[4;6r\\u001b[4;1H\\u001bM\\u001b[r\\u001b[1;1H\\u001bM\\u001b[7;1H\", behind a paint witness in cell 8,1",
+          "observed": "sha256:f578d451c78e2cba08f180bd1ffd8fb826d0c39d47fae628811e278e197c3b90",
+          "rawReplyRef": "scrollback.decstbm-reset"
+        }
+      ],
+      "rawReplyRef": "scrollback.decstbm-reset",
+      "rawReplySha256": "9613acd9a93acbe579ce81830a44da90bdd73f82ebf26a181396c92462d798f2",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:cf124c4dd3cb57fcce74d42adda0daa8f998eedbdcefda7b931d57f6d5e2d3fa",
+        "sha256:c6c649af8a57c97f80896d9b87f76f9eeb00289bfbc75645042d9f83b04e22cd",
+        "sha256:98ff53f284c1d225fd0c9d098caf8def409b133eac4e7c54cd13678f0bd97137",
+        "sha256:bd47475fc6b47dc4de97d44a4d99c92660344150be39d86abb64b653c9d169d1",
+        "sha256:0354a3c06d2427303b049549da173599827643a3c20625f9031d27097ffea0d0",
+        "sha256:c4db6e929a0298f24adf4024875ee620a7b83ab41172d2579f1c321a6667bbbc",
+        "sha256:5684d3816dba0742dd4c347d83c77b623c0efe0930fa3c3fae262bfb12007cfa"
+      ]
+    },
+    {
+      "featureId": "text.reverse-index-scroll",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:37:13.729Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:37:13.729Z"
+          },
+          "assertionRefs": [
+            34
+          ],
+          "rawReplyRef": "text.reverse-index-scroll"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.reverse-index-scroll",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "text.reverse-index-scroll: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":4,\"right\":6} equals the same-run expected frame after \"\\u001b[3;1H\\u001bM\\u001b[5;1H\", behind a paint witness in cell 6,1",
+          "observed": "sha256:316da5821eb51d3a87fca5f9343c754b47a56fb46ee48def9785655809d301d5",
+          "rawReplyRef": "text.reverse-index-scroll"
+        }
+      ],
+      "rawReplyRef": "text.reverse-index-scroll",
+      "rawReplySha256": "743980028ff7f653985a3dc98803a6d9d500bef32fa79b79b7583b39658f9181",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:aa944d5b2b861ad9bc92dc0e84580a6c11f6df08defb625b5fa1c36138b58854",
+        "sha256:a63d90236885529c21f7a240cdf59179356b7a22ff4caeac0ecc05d90782ca23",
+        "sha256:67a24932305eec91f0f491edac447b630aa74d082b00e2b23afa48469db0fc07",
+        "sha256:ae160f3adb00c1d426f9219769e42b5ed0f3a4c3355c352eb5b84f9c4ce1cf4d",
+        "sha256:e6767b617311ca5c7368f397ba6aba4d7da7c9c9a3cbc2851f2f8c7328dcdef2",
+        "sha256:962e877e90ca4847f62c2f63d2551d32b827aa689a985945a05a7daad539d429"
+      ]
+    },
+    {
+      "featureId": "text.overwrite",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:37:00.468Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:37:00.468Z"
+          },
+          "assertionRefs": [
+            33
+          ],
+          "rawReplyRef": "text.overwrite"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "text.overwrite",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "text.overwrite: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":2} equals the same-run expected frame after \"\\u001b[1;2HX\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:3524fa6a5fd58c53d63130c9249f53b42e549ea0560dc15259a76dac61615beb",
+          "rawReplyRef": "text.overwrite"
+        }
+      ],
+      "rawReplyRef": "text.overwrite",
+      "rawReplySha256": "438055672f409d6e3c8e4f2246906048bc8c20cc0a9890fda1d63bd934b6e1f9",
+      "screenshotRefs": [
+        "sha256:f5f95ecb82bc86041a83b8985bab8482f7733ffe69ab5604f564544f73f17076",
+        "sha256:ec258235c119435a03939e76a203c635a57347a9ff10eeded8461838484367bd",
+        "sha256:c4218c8e799b928f434463fc04985123f1de2e856f7a6b5a7b66dcec5ee08283",
+        "sha256:053fe8e358816e1707cbb9af3ff20ae442e4d4ef7f70ce5ded0bc81676f6c6d0",
+        "sha256:af90f24de25daac860ce48e824fcdec8a5c0c80d67e9d077912a25db8c2bde36",
+        "sha256:4e6e2bfd168d96f8c25d38ad92b573f3b022c324deb243049ccf0c9b7ec3f208"
+      ]
+    },
+    {
+      "featureId": "reset.sgr",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:23:34.409Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 120000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "reset.sgr",
+          "reason": "Probe exceeded 120000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "reset.sgr",
+      "rawReplySha256": "88cd8f8872fc0cce7ed6c7b8667b3a97a0b2737e4b0349f23ce2f8fffa97dc96",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "charsets.dec-special",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:19:59.870Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:19:59.870Z"
+          },
+          "assertionRefs": [
+            1
+          ],
+          "rawReplyRef": "charsets.dec-special"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "charsets.dec-special",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "charsets.dec-special: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":3} equals the same-run expected frame after \"\\u001b[1;2H\\u001b(0q\\u001b(B\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:63b65c0ea0f8eb47a514f7997844c0da8780783d8ed29bd62e05f3d4ba7a3ee7",
+          "rawReplyRef": "charsets.dec-special"
+        }
+      ],
+      "rawReplyRef": "charsets.dec-special",
+      "rawReplySha256": "5f0908d6421295b4a4c12da818483703d1f63f9d5f4952a53d1cadfd30515ed8",
+      "screenshotRefs": [
+        "sha256:5ab027d042b2b345bf29d77eeffb34bc7216f3fad8fed632fbcdb31ad1a5b2ca",
+        "sha256:55de805ce3e0ab24795344b026366b5f69404bc7dee4e737881d708ea2de09c5",
+        "sha256:0375e237d61e02a6f9ee8a9758c14835bd72a9fa72413daa3ebe926f64e7dd1c",
+        "sha256:3efa7a7b787a6172c8daf7d55c4f00add697f827fb15b91ee2ec56618e9f7b32",
+        "sha256:b1925b45b13731564d196993b928267d9ace57e064f3163974858f5c2b92648f",
+        "sha256:bf98279df3b38fb999de1e0cb3a09fe98453552b12faaadf96030be9f61c0812",
+        "sha256:78ee7d7a14b7ec505b1e0792f9c797826adf7b1d877fc0088682450cb2f7b9f0"
+      ]
+    },
+    {
+      "featureId": "charsets.utf8",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:20:26.049Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:20:26.049Z"
+          },
+          "assertionRefs": [
+            3
+          ],
+          "rawReplyRef": "charsets.utf8"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "charsets.utf8",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "charsets.utf8: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":5} equals the same-run expected frame after \"\\u001b[1;2Hé\\u001b[1;3H世\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:95c5c59981f26987e939a9b1f71c8acf2a9a5f50b4dcad5e024dfee59435ef76",
+          "rawReplyRef": "charsets.utf8"
+        }
+      ],
+      "rawReplyRef": "charsets.utf8",
+      "rawReplySha256": "62abb4744efa4de2055ee996862faed8bd21691208f5367798a3b2098923891c",
+      "screenshotRefs": [
+        "sha256:385946c3d72a834e5bd2bccaed92cfea087701234a002dbfde02252f21432cac",
+        "sha256:234d7c46d8b08123d5539d611a51e1d65a47206b7b8127f43ecfbfeb71574d09",
+        "sha256:59556ed868391bc7acefce78944d3cd65a06249325b9f239b1429660ce596c93",
+        "sha256:8a552480a161d33cd271c99cbfb2e55c3e0c917d3d6ab2d365235b6ac736bb02",
+        "sha256:0caf756569907e541fc0f6dab22a7c813e69699bbc4f92c75fcc53fff8e8e77d",
+        "sha256:02a595541e1f39ce3180e3947da06cc9c4132329538d734e71598155cea2d5c2"
+      ]
+    },
+    {
+      "featureId": "charsets.g0-g1-switching",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:20:12.884Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:20:12.884Z"
+          },
+          "assertionRefs": [
+            2
+          ],
+          "rawReplyRef": "charsets.g0-g1-switching"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "charsets.g0-g1-switching",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "charsets.g0-g1-switching: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":5} equals the same-run expected frame after \"\\u001b[1;2H\\u001b(B\\u001b)0l\\u000el\\u000fl\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:980557d90d7f2d60a0c766f6ad266a1d7ad26f60cb931b5af6de5f2ed3fc58f2",
+          "rawReplyRef": "charsets.g0-g1-switching"
+        }
+      ],
+      "rawReplyRef": "charsets.g0-g1-switching",
+      "rawReplySha256": "2a67ebadb42bbcaee426d6c411d5f9fd4b1d1fb68372de35ea00d61c090d4cd0",
+      "screenshotRefs": [
+        "sha256:385946c3d72a834e5bd2bccaed92cfea087701234a002dbfde02252f21432cac",
+        "sha256:e47ffab699e9dba6fb6b5a2cdddcaf352702c366e81bfbd897445049c350aff6",
+        "sha256:eff278e76f205b7fa4af1daffec511501493a868ebd82965cc964c2c0eaea05b",
+        "sha256:859609f26965c3f6b1367f09392d8f8f3d86dcf4cdb3eb07cd9579d38cdbf789",
+        "sha256:70fbbb6434e5722ef136a9dc384fea89c3678357ccae663cef6067a28b5bacf9",
+        "sha256:06221b4fd5f8e1ebdd75addb736f5792f73bed8863de16ec7b6c6fd550e5686b"
+      ]
+    },
+    {
+      "featureId": "charsets.dec-line-drawing",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T15:19:46.756Z"
+      },
+      "assertionType": "screenshot",
+      "reason": null,
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T15:19:46.756Z"
+          },
+          "assertionRefs": [
+            0
+          ],
+          "rawReplyRef": "charsets.dec-line-drawing"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "charsets.dec-line-drawing",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "charsets.dec-line-drawing: cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":7} equals the same-run expected frame after \"\\u001b[1;1H\\u001b(0jklmqx\\u001b(B\\u001b[2;1H\", behind a paint witness in cell 3,1",
+          "observed": "sha256:cb18976dbf3b2719c80b3d467c3dc134782e4b1dcae2ee5af79b38d00cfba3b0",
+          "rawReplyRef": "charsets.dec-line-drawing"
+        }
+      ],
+      "rawReplyRef": "charsets.dec-line-drawing",
+      "rawReplySha256": "f8183a01e9df6d4d99b04cbd3a648ef1ad39f61e875e666925e3be28ece859b6",
+      "screenshotRefs": [
+        "sha256:5ab027d042b2b345bf29d77eeffb34bc7216f3fad8fed632fbcdb31ad1a5b2ca",
+        "sha256:1e06d192b94c7bb606a48d564d0736f77e92906d025d4edf8cdc4b170f728e79",
+        "sha256:b05a2c54d356725fba2e91fa174baf04974341c61b2b1ad3b3e446017bff2d3c",
+        "sha256:ab6d72d505dbbcaa5ab0f3b4984740598693e4e0f3e7a68042f20944d64c6c4f",
+        "sha256:07b7da23c91daf0ef731e0a05e2f88aefdc102473a4c5ab89492e162eda9b507",
+        "sha256:3607f18fa59369a6d09f03dc862b4fc25abf5b1260a9968e8c411f4f67dd47b6"
+      ]
+    }
+  ]
+}

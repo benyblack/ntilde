@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { verifiedEvidenceFile, verifyCommonCoreArchive, readCommonCoreRaw } from './terminfo/common-core-evidence.mjs';
 import { verifyCommonCoreSource } from './terminfo/common-core-source.mjs';
 import { buildCommonCoreRetest } from './terminfo/common-core-retest-report.mjs';
-import { retestAdapterPath, retestEvidenceDirectory } from './terminfo/common-core-retest.mjs';
+import { retestAdapterPaths, retestEvidenceDirectory } from './terminfo/common-core-retest.mjs';
 import { buildCommonCoreComparison, comparisonStatusLabels } from './terminfo/common-core-comparison.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -89,7 +89,7 @@ const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.j
 if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true)
     throw new Error('Retained upstream source differs from the measured comparison.');
 const retestKind = (subject) => JSON.parse(subject.configBytes).retest?.kind;
-const sameSourceRetests = retests.filter((subject) => !retestAdapterPath(retestKind(subject)));
+const sameSourceRetests = retests.filter((subject) => !retestAdapterPaths(retestKind(subject)));
 verifyCommonCoreSource(
     publication,
     sourceProof,
@@ -182,7 +182,7 @@ const limits = report.subjects
     .join('\n');
 const retestIntroduction = historical
     ? '\n## Focused movement retest\n\nThe original full-run results remain retained above. One unattempted manual position is labeled not tested while its original raw status is preserved. Every movement-invalidated case was retested with the same upstream collector, shared worker, executable/payload identity and grid. Latest combined counts include every retest outcome, including any unsupported or inconclusive result.\n\n'
-    : '\n## Focused screenshot retests\n\nThe table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. The iTerm2 adapter waits 250 ms before each feature capture so the renderer can complete the cursor hide. The original two-frame stability check still decides validity. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.\n\n';
+    : '\n## Focused screenshot retests\n\nThe table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. iTerm2 reruns the Core cases that retained native frames, including the [seven earlier scrollback retests](iterm2/focused-retest/cases.json). The adapter checks the tab, session and worker TTY before and after screenshots and keeps the 250 ms paint wait and static-frame checks. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.\n\n';
 const retestMarkdown = retestReports.length
     ? retestIntroduction +
       retestReports
@@ -270,9 +270,9 @@ console.log(
 /** Verify the alternate suite against a Git proof of a collector-only extension to the full-run adapter. */
 function verifyCaptureRetestAdapter(retest, fullRunSource) {
     const kind = retestKind(retest);
-    const path = retestAdapterPath(kind);
-    if (!path) return undefined;
-    const expectedId = kind === 'capture-stability' ? 'iterm2' : 'ghostty';
+    const paths = retestAdapterPaths(kind);
+    if (!paths) return undefined;
+    const expectedId = kind === 'capture-throughput' ? 'ghostty' : 'iterm2';
     if (historical || retest.id !== expectedId)
         throw new Error('Unexpected capture-adapter retest.');
     const prefix = `${retest.id}/${retestEvidenceDirectory(kind)}/adapter/`;
@@ -290,7 +290,7 @@ function verifyCaptureRetestAdapter(retest, fullRunSource) {
         adapter,
         verifiedEvidenceFile(publication, retestEntry.files.source).path,
         [retest],
-        { parent: fullRunSource.adapterRevision, path },
+        { parent: fullRunSource.adapterRevision, paths },
     );
     return { sourceRevision: measured.upstreamRevision, probeHash: measured.suite.probeHash };
 }

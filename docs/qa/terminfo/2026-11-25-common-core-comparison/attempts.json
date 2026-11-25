@@ -107,6 +107,15 @@
         "path": "attempts/ghostty-census-source-change.zip",
         "sha256": "1921c6b3eec96fc864f538a06817d9f69f97a01e0aa56ebd4576483886a97a9f"
       }
+    },
+    {
+      "name": "iterm2-original-scrollback-retest",
+      "disposition": "All seven scrollback retests supported the pinned criteria after the cursor paint wait. The run and case records remain at their original URLs and are superseded by the broader custody retest.",
+      "runId": "6bde71e7ae9df87579ee1717e96dac64",
+      "archive": {
+        "path": "iterm2/focused-retest/owned-run.zip",
+        "sha256": "090959e4f15111f59af5006f3cb682bbad42422a8d33ccc80f6706377ff61664"
+      }
     }
   ]
 }

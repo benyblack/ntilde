@@ -24,18 +24,24 @@ export const retestReasons = {
     'capture-stability': 'iTerm2 scrollback cases invalidated by the cursor repaint during the static-frame control',
     'probe-timeout': 'the five Ghostty Core cases that lost their supported verdict to a probe timeout',
     'capture-throughput': 'the five Ghostty Core timeouts after reducing native window census overhead',
+    'capture-custody': 'iTerm2 Core cases that retained native frames before per-frame session custody was verified',
 };
 
-/** The only upstream source file a focused capture adapter may change. */
-export function retestAdapterPath(kind) {
-    if (kind === 'capture-stability') return 'packages/terminfo.dev/src/serve.ts';
-    if (kind === 'capture-throughput') return 'packages/terminfo.dev/src/darwin-capture.ts';
+/** The complete allowed upstream diff for each focused capture adapter. */
+export function retestAdapterPaths(kind) {
+    const prefix = 'packages/terminfo.dev/src/';
+    if (kind === 'capture-stability') return [prefix + 'serve.ts'];
+    if (kind === 'capture-throughput') return [prefix + 'darwin-capture.ts'];
+    if (kind === 'capture-custody')
+        return ['darwin-capture.test.ts', 'darwin-capture.ts', 'iterm-window-owner.ts', 'serve.ts']
+            .map((path) => prefix + path);
     return undefined;
 }
 
 /** Retain the earlier timeout run at its original publication URL. */
 export function retestEvidenceDirectory(kind) {
     if (kind === 'capture-throughput') return 'timeout-retest';
+    if (kind === 'capture-custody') return 'custody-retest';
     return kind ? 'focused-retest' : 'movement-retest';
 }
 
@@ -57,9 +63,28 @@ export function focusedRetestCases(raw, coreIds, kind = 'window-movement') {
                 row.status === 'probe-todo' && row.reason === 'Probe exceeded 30000ms',
         ).map((row) => row.featureId).sort();
         if (cases.length !== ghosttyLostCases.size) throw new Error('Expected all five Ghostty timeout rows.');
+    } else if (kind === 'capture-custody' && raw.subject?.id === 'iterm2') {
+        cases = itermNativeCases(raw, coreIds);
     } else {
         throw new Error('Retest kind does not match its baseline terminal.');
     }
     if (new Set(cases).size !== cases.length) throw new Error('Retest selection contains duplicate cases.');
     return cases;
+}
+
+/** Select all affected cases irrespective of their first verdict. */
+function itermNativeCases(raw, coreIds) {
+    const cases = raw.results.filter((row) => coreIds.includes(row.featureId) && retainedNativeCase(raw, row))
+        .map((row) => row.featureId).sort();
+    if (cases.length === 0) throw new Error('Expected retained iTerm2 native captures.');
+    return cases;
+}
+
+/** Follow each executed case's capture journal, including inconclusive cases and query criteria. */
+function retainedNativeCase(raw, row) {
+    if (row.attempt?.scope !== 'probe') return false;
+    const journal = raw.rawReplies?.[row.rawReplyRef ?? row.featureId];
+    return typeof journal === 'string' && JSON.parse(journal).captures?.some(
+        ({ frame, trace }) => frame?.kind === 'pixels' && trace?.platform === 'darwin',
+    );
 }

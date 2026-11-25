@@ -13,7 +13,7 @@
     },
     "upstreamBaseRevision": "b0c8c62500199b381478a02b1f144a4de60693e5"
   },
-  "manifestSha256": "6dabbd745d6f70afceb1dcdf4681db5e0c8fc31cd8d3be3fd764fa03616bc042",
+  "manifestSha256": "65524393d82930aa0d4f11e298b12d704c7fc905a1e6638d809bc59ff07b697d",
   "subjects": [
     {
       "id": "ntilde",
@@ -71,38 +71,75 @@
       },
       "supportedShare": 61.25000000000001,
       "focusedRetest": {
-        "kind": "capture-stability",
-        "probeHash": "3fff7f9c94f9",
-        "sourceRevision": "06b733cc7838c9a6dc57aa18d64ecc95a3e98e66",
+        "kind": "capture-custody",
+        "probeHash": "fd79b3cd33a4",
+        "sourceRevision": "c9ef2e4dc7f2bb520621cfe5fbb01c1125b9de68",
         "subjectId": "iterm2",
-        "runId": "6bde71e7ae9df87579ee1717e96dac64",
-        "measuredAt": "2026-11-25T13:50:11.396Z",
+        "runId": "e66265a92483b4e9e9b34c9d6c684012",
+        "measuredAt": "2026-11-25T15:37:31.529Z",
         "baselineRunId": "e7b598f31bb6b0d7648ff4fb8c6bdab1",
         "baselineRawSha256": "1c5b2ccc4c9705d732ceaf920424083ee176f40eca44bb2b1d5ab6b2260b8f23",
-        "rawSha256": "cd2992d479b1919d8c12a71f5c25e35673bb69b08c623cae0c1e5acb01eacdac",
-        "launchDriverSha256": "e96430658ffcdfbca9a45c2aaee2af60aff05b7480d6053c59d8c3b685d57b98",
+        "rawSha256": "bc07e2a6a72432eb4a493d36132b50881bd01a62ba669813697f97e14d9a02c4",
+        "launchDriverSha256": "3b398559c5aa639584ffe148244bf671ce7272269935f472e865cdef57f81aeb",
         "caseIds": [
+          "charsets.dec-line-drawing",
+          "charsets.dec-special",
+          "charsets.g0-g1-switching",
+          "charsets.utf8",
+          "cursor.cup-scroll-region",
+          "cursor.hide",
+          "erase.character",
+          "erase.ed-scroll-region",
+          "erase.el-with-attrs",
+          "erase.line.all",
+          "erase.line.left",
+          "erase.line.right",
+          "erase.screen.above",
+          "erase.screen.all",
+          "erase.screen.below",
+          "modes.alt-screen.exit",
+          "reset.sgr",
+          "scrollback.accumulate",
           "scrollback.alt-screen",
           "scrollback.decstbm",
           "scrollback.decstbm-reset",
           "scrollback.reverse-index",
           "scrollback.scroll-down",
           "scrollback.scroll-up",
-          "scrollback.set-region"
+          "scrollback.set-region",
+          "scrollback.total-lines",
+          "sgr.bg.default",
+          "sgr.bg.standard",
+          "sgr.bold",
+          "sgr.faint",
+          "sgr.fg.default",
+          "sgr.fg.standard",
+          "sgr.hidden",
+          "sgr.inverse",
+          "sgr.italic",
+          "sgr.reset",
+          "sgr.selective-reset.bold",
+          "sgr.selective-reset.inverse",
+          "sgr.selective-reset.italic",
+          "sgr.selective-reset.underline",
+          "sgr.strikethrough",
+          "sgr.underline.single",
+          "text.overwrite",
+          "text.reverse-index-scroll"
         ],
         "counts": {
-          "supported": 7,
+          "supported": 33,
           "unsupported": 0,
           "untestable": 0,
-          "probe-todo": 0,
+          "probe-todo": 11,
           "probe-invalid": 0,
           "not-scheduled": 0
         },
         "currentCounts": {
-          "supported": 56,
+          "supported": 60,
           "unsupported": 0,
           "untestable": 1,
-          "probe-todo": 22,
+          "probe-todo": 18,
           "probe-invalid": 0,
           "not-scheduled": 1
         }
@@ -191,7 +228,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 7,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.bold",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 7,
           "status": "probe-todo",
           "method": "screenshot",
@@ -252,7 +313,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 33,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.faint",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 42,
           "status": "probe-todo",
           "method": "screenshot",
@@ -313,7 +398,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 59,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.italic",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 77,
           "status": "probe-todo",
           "method": "screenshot",
@@ -374,7 +483,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 85,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.underline.single",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 111,
           "status": "probe-todo",
           "method": null,
@@ -435,7 +568,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 111,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.inverse: target differs from plain, made-up does not; sgr.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;7\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:29:59.925Z"
+                },
+                "assertionRefs": [
+                  29
+                ],
+                "rawReplyRef": "sgr.inverse"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 137,
           "status": "probe-todo",
           "method": null,
@@ -470,7 +629,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 160,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.hidden",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 163,
           "status": "probe-todo",
           "method": "screenshot",
@@ -505,7 +688,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 186,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.strikethrough",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 197,
           "status": "probe-todo",
           "method": null,
@@ -540,7 +747,34 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 212,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:29:12.766Z"
+                },
+                "assertionRefs": [
+                  28
+                ],
+                "rawReplyRef": "sgr.fg.standard",
+                "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 223,
           "status": "supported",
           "method": "screenshot",
@@ -575,7 +809,34 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 259,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:27:37.723Z"
+                },
+                "assertionRefs": [
+                  26
+                ],
+                "rawReplyRef": "sgr.bg.standard",
+                "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 271,
           "status": "supported",
           "method": "screenshot",
@@ -610,7 +871,34 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 306,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:28:55.806Z"
+                },
+                "assertionRefs": [
+                  27
+                ],
+                "rawReplyRef": "sgr.fg.default",
+                "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 318,
           "status": "supported",
           "method": "screenshot",
@@ -645,7 +933,34 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 352,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:27:21.044Z"
+                },
+                "assertionRefs": [
+                  25
+                ],
+                "rawReplyRef": "sgr.bg.default",
+                "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 364,
           "status": "supported",
           "method": "screenshot",
@@ -680,7 +995,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 399,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 120000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.selective-reset.bold",
+                "reason": "Probe exceeded 120000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 412,
           "status": "probe-todo",
           "method": "query_reply",
@@ -715,7 +1054,34 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 425,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:35:38.334Z"
+                },
+                "assertionRefs": [
+                  32
+                ],
+                "rawReplyRef": "sgr.selective-reset.underline",
+                "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 459,
           "status": "probe-todo",
           "method": null,
@@ -750,7 +1116,34 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 473,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:34:57.235Z"
+                },
+                "assertionRefs": [
+                  30
+                ],
+                "rawReplyRef": "sgr.selective-reset.inverse",
+                "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 485,
           "status": "supported",
           "method": "screenshot",
@@ -785,7 +1178,34 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 521,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:35:17.827Z"
+                },
+                "assertionRefs": [
+                  31
+                ],
+                "rawReplyRef": "sgr.selective-reset.italic",
+                "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 533,
           "status": "probe-todo",
           "method": null,
@@ -820,7 +1240,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 569,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 120000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.reset",
+                "reason": "Probe exceeded 120000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 559,
           "status": "probe-todo",
           "method": "query_reply",
@@ -855,7 +1299,34 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 595,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:20:52.847Z"
+                },
+                "assertionRefs": [
+                  5
+                ],
+                "rawReplyRef": "cursor.hide",
+                "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 606,
           "status": "supported",
           "method": "screenshot",
@@ -1240,7 +1711,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 636,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:20:39.212Z"
+                },
+                "assertionRefs": [
+                  4
+                ],
+                "rawReplyRef": "cursor.cup-scroll-region"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1017,
           "status": "supported",
           "method": "screenshot",
@@ -1380,7 +1877,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 679,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:22:09.203Z"
+                },
+                "assertionRefs": [
+                  11
+                ],
+                "rawReplyRef": "erase.line.right"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1171,
           "status": "supported",
           "method": "screenshot",
@@ -1415,7 +1938,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 723,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:21:55.391Z"
+                },
+                "assertionRefs": [
+                  10
+                ],
+                "rawReplyRef": "erase.line.left"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1215,
           "status": "supported",
           "method": "screenshot",
@@ -1450,7 +1999,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 767,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:21:41.925Z"
+                },
+                "assertionRefs": [
+                  9
+                ],
+                "rawReplyRef": "erase.line.all"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1259,
           "status": "supported",
           "method": "screenshot",
@@ -1485,7 +2060,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 811,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:22:22.162Z"
+                },
+                "assertionRefs": [
+                  12
+                ],
+                "rawReplyRef": "erase.screen.above"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1303,
           "status": "supported",
           "method": "screenshot",
@@ -1520,7 +2121,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 855,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:22:41.974Z"
+                },
+                "assertionRefs": [
+                  13
+                ],
+                "rawReplyRef": "erase.screen.all"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1347,
           "status": "supported",
           "method": "screenshot",
@@ -1555,7 +2182,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 898,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:22:55.072Z"
+                },
+                "assertionRefs": [
+                  14
+                ],
+                "rawReplyRef": "erase.screen.below"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1390,
           "status": "supported",
           "method": "screenshot",
@@ -1625,7 +2278,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 942,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:20:57.134Z"
+                },
+                "assertionRefs": [
+                  6
+                ],
+                "rawReplyRef": "erase.character"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1460,
           "status": "supported",
           "method": "screenshot",
@@ -1660,7 +2339,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 986,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:21:25.137Z"
+                },
+                "assertionRefs": [
+                  8
+                ],
+                "rawReplyRef": "erase.el-with-attrs"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1504,
           "status": "supported",
           "method": "screenshot",
@@ -1695,7 +2400,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 1032,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:21:11.310Z"
+                },
+                "assertionRefs": [
+                  7
+                ],
+                "rawReplyRef": "erase.ed-scroll-region"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1550,
           "status": "supported",
           "method": "screenshot",
@@ -1765,7 +2496,57 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 1076,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+            "note": null,
+            "tests": [
+              {
+                "id": "primary-marker-restored",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:23:08.289Z"
+                },
+                "assertionRefs": [
+                  15
+                ],
+                "rawReplyRef": "modes.alt-screen.exit"
+              },
+              {
+                "id": "alternate-marker-control",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:23:08.289Z"
+                },
+                "assertionRefs": [
+                  16
+                ],
+                "rawReplyRef": "modes.alt-screen.exit"
+              },
+              {
+                "id": "saved-cursor-restored",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:23:08.289Z"
+                },
+                "assertionRefs": [
+                  17
+                ],
+                "rawReplyRef": "modes.alt-screen.exit"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1618,
           "status": "supported",
           "method": "screenshot",
@@ -1920,7 +2701,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 1161,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen",
+            "note": null,
+            "tests": [
+              {
+                "id": "review",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "scrollback.accumulate",
+                "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1751,
           "status": "probe-todo",
           "method": "screenshot",
@@ -1955,7 +2760,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 1190,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen",
+            "note": null,
+            "tests": [
+              {
+                "id": "review",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "scrollback.total-lines",
+                "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 1780,
           "status": "probe-todo",
           "method": "screenshot",
@@ -1992,7 +2821,7 @@
           "evidencePath": "iterm2/cases.json",
           "retest": {
             "rawStatus": "supported",
-            "evidenceLine": 7,
+            "evidenceLine": 1219,
             "status": "supported",
             "scheduled": true,
             "probeId": null,
@@ -2005,17 +2834,17 @@
                 "status": "supported",
                 "attempt": {
                   "scope": "probe",
-                  "startedAt": "2026-11-25T13:49:37.037Z"
+                  "startedAt": "2026-11-25T15:26:51.866Z"
                 },
                 "assertionRefs": [
-                  5
+                  23
                 ],
                 "rawReplyRef": "scrollback.scroll-up"
               }
             ],
-            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
             "previousStatus": "probe-invalid",
-            "evidencePath": "iterm2/focused-retest/cases.json"
+            "evidencePath": "iterm2/custody-retest/cases.json"
           },
           "evidenceLine": 1809,
           "status": "probe-invalid",
@@ -2053,7 +2882,7 @@
           "evidencePath": "iterm2/cases.json",
           "retest": {
             "rawStatus": "supported",
-            "evidenceLine": 51,
+            "evidenceLine": 1263,
             "status": "supported",
             "scheduled": true,
             "probeId": null,
@@ -2066,17 +2895,17 @@
                 "status": "supported",
                 "attempt": {
                   "scope": "probe",
-                  "startedAt": "2026-11-25T13:49:20.372Z"
+                  "startedAt": "2026-11-25T15:26:38.273Z"
                 },
                 "assertionRefs": [
-                  4
+                  22
                 ],
                 "rawReplyRef": "scrollback.scroll-down"
               }
             ],
-            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
             "previousStatus": "probe-invalid",
-            "evidencePath": "iterm2/focused-retest/cases.json"
+            "evidencePath": "iterm2/custody-retest/cases.json"
           },
           "evidenceLine": 1836,
           "status": "probe-invalid",
@@ -2114,7 +2943,7 @@
           "evidencePath": "iterm2/cases.json",
           "retest": {
             "rawStatus": "supported",
-            "evidenceLine": 95,
+            "evidenceLine": 1307,
             "status": "supported",
             "scheduled": true,
             "probeId": null,
@@ -2127,17 +2956,17 @@
                 "status": "supported",
                 "attempt": {
                   "scope": "probe",
-                  "startedAt": "2026-11-25T13:49:03.670Z"
+                  "startedAt": "2026-11-25T15:26:24.504Z"
                 },
                 "assertionRefs": [
-                  3
+                  21
                 ],
                 "rawReplyRef": "scrollback.reverse-index"
               }
             ],
-            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
             "previousStatus": "probe-invalid",
-            "evidencePath": "iterm2/focused-retest/cases.json"
+            "evidencePath": "iterm2/custody-retest/cases.json"
           },
           "evidenceLine": 1863,
           "status": "probe-invalid",
@@ -2175,7 +3004,7 @@
           "evidencePath": "iterm2/cases.json",
           "retest": {
             "rawStatus": "supported",
-            "evidenceLine": 140,
+            "evidenceLine": 1352,
             "status": "supported",
             "scheduled": true,
             "probeId": null,
@@ -2188,17 +3017,17 @@
                 "status": "supported",
                 "attempt": {
                   "scope": "probe",
-                  "startedAt": "2026-11-25T13:49:53.807Z"
+                  "startedAt": "2026-11-25T15:27:05.148Z"
                 },
                 "assertionRefs": [
-                  6
+                  24
                 ],
                 "rawReplyRef": "scrollback.set-region"
               }
             ],
-            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
             "previousStatus": "probe-invalid",
-            "evidencePath": "iterm2/focused-retest/cases.json"
+            "evidencePath": "iterm2/custody-retest/cases.json"
           },
           "evidenceLine": 1890,
           "status": "probe-invalid",
@@ -2236,7 +3065,7 @@
           "evidencePath": "iterm2/cases.json",
           "retest": {
             "rawStatus": "supported",
-            "evidenceLine": 185,
+            "evidenceLine": 1397,
             "status": "supported",
             "scheduled": true,
             "probeId": null,
@@ -2249,17 +3078,17 @@
                 "status": "supported",
                 "attempt": {
                   "scope": "probe",
-                  "startedAt": "2026-11-25T13:48:03.842Z"
+                  "startedAt": "2026-11-25T15:25:37.837Z"
                 },
                 "assertionRefs": [
-                  0
+                  18
                 ],
                 "rawReplyRef": "scrollback.alt-screen"
               }
             ],
-            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
             "previousStatus": "probe-invalid",
-            "evidencePath": "iterm2/focused-retest/cases.json"
+            "evidencePath": "iterm2/custody-retest/cases.json"
           },
           "evidenceLine": 1917,
           "status": "probe-invalid",
@@ -2297,7 +3126,7 @@
           "evidencePath": "iterm2/cases.json",
           "retest": {
             "rawStatus": "supported",
-            "evidenceLine": 231,
+            "evidenceLine": 1443,
             "status": "supported",
             "scheduled": true,
             "probeId": null,
@@ -2310,17 +3139,17 @@
                 "status": "supported",
                 "attempt": {
                   "scope": "probe",
-                  "startedAt": "2026-11-25T13:48:25.283Z"
+                  "startedAt": "2026-11-25T15:25:54.536Z"
                 },
                 "assertionRefs": [
-                  1
+                  19
                 ],
                 "rawReplyRef": "scrollback.decstbm"
               }
             ],
-            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
             "previousStatus": "probe-invalid",
-            "evidencePath": "iterm2/focused-retest/cases.json"
+            "evidencePath": "iterm2/custody-retest/cases.json"
           },
           "evidenceLine": 1944,
           "status": "probe-invalid",
@@ -2358,7 +3187,7 @@
           "evidencePath": "iterm2/cases.json",
           "retest": {
             "rawStatus": "supported",
-            "evidenceLine": 276,
+            "evidenceLine": 1488,
             "status": "supported",
             "scheduled": true,
             "probeId": null,
@@ -2371,17 +3200,17 @@
                 "status": "supported",
                 "attempt": {
                   "scope": "probe",
-                  "startedAt": "2026-11-25T13:48:42.250Z"
+                  "startedAt": "2026-11-25T15:26:07.971Z"
                 },
                 "assertionRefs": [
-                  2
+                  20
                 ],
                 "rawReplyRef": "scrollback.decstbm-reset"
               }
             ],
-            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
             "previousStatus": "probe-invalid",
-            "evidencePath": "iterm2/focused-retest/cases.json"
+            "evidencePath": "iterm2/custody-retest/cases.json"
           },
           "evidenceLine": 1971,
           "status": "probe-invalid",
@@ -2767,7 +3596,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 1534,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:37:13.729Z"
+                },
+                "assertionRefs": [
+                  34
+                ],
+                "rawReplyRef": "text.reverse-index-scroll"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 2356,
           "status": "probe-todo",
           "method": null,
@@ -2802,7 +3657,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 1579,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:37:00.468Z"
+                },
+                "assertionRefs": [
+                  33
+                ],
+                "rawReplyRef": "text.overwrite"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "probe-todo",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 2382,
           "status": "probe-todo",
           "method": null,
@@ -2977,7 +3858,31 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 1623,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 120000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "reset.sgr",
+                "reason": "Probe exceeded 120000ms"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 2556,
           "status": "supported",
           "method": "query_reply",
@@ -3117,7 +4022,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 1649,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:19:59.870Z"
+                },
+                "assertionRefs": [
+                  1
+                ],
+                "rawReplyRef": "charsets.dec-special"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 2683,
           "status": "supported",
           "method": "screenshot",
@@ -3152,7 +4083,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 1694,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:20:26.049Z"
+                },
+                "assertionRefs": [
+                  3
+                ],
+                "rawReplyRef": "charsets.utf8"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 2727,
           "status": "supported",
           "method": "screenshot",
@@ -3187,7 +4144,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 1738,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:20:12.884Z"
+                },
+                "assertionRefs": [
+                  2
+                ],
+                "rawReplyRef": "charsets.g0-g1-switching"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 2771,
           "status": "supported",
           "method": "screenshot",
@@ -3222,7 +4205,33 @@
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 1782,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T15:19:46.756Z"
+                },
+                "assertionRefs": [
+                  0
+                ],
+                "rawReplyRef": "charsets.dec-line-drawing"
+              }
+            ],
+            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "previousStatus": "supported",
+            "evidencePath": "iterm2/custody-retest/cases.json"
+          },
           "evidenceLine": 2815,
           "status": "supported",
           "method": "screenshot",

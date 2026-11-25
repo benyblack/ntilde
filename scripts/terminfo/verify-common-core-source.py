@@ -101,12 +101,12 @@ with read_zip(proof_path) as proof, read_zip(source_path) as source:
             cursor = parents[0]
         if cursor != base: raise ValueError('adapter bundle does not reproduce its source ancestry')
         if capture_extension:
-            parent, expected_path = capture_extension
+            parent, *expected_paths = capture_extension
             parent_tokens = command('rev-list', '--parents', '-n', '1', head).decode().split()
             if parent_tokens != [head, parent]:
                 raise ValueError('capture adapter must directly extend the measured full-run adapter')
             paths = command('diff', '--name-only', '--no-ext-diff', '--no-textconv', parent, head)
-            if paths.splitlines() != [expected_path.encode()]:
+            if paths.decode().splitlines() != expected_paths:
                 raise ValueError('capture retest changed source outside the collector adapter')
         advertised = command('bundle','list-heads',str(Path(bundle_path).resolve())).decode().splitlines()
         if advertised != [head+' HEAD']: raise ValueError('bundle advertises a different source head')

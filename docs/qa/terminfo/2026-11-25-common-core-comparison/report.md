@@ -107,13 +107,31 @@ Reproduce the published projection: `node scripts/terminfo-common-core-publicati
 
 ## Focused screenshot retests
 
-The table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. The iTerm2 adapter waits 250 ms before each feature capture so the renderer can complete the cursor hide. The original two-frame stability check still decides validity. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.
+The table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. iTerm2 reruns the Core cases that retained native frames, including the [seven earlier scrollback retests](iterm2/focused-retest/cases.json). The adapter checks the tab, session and worker TTY before and after screenshots and keeps the 250 ms paint wait and static-frame checks. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.
 
-- iterm2: 7/7 supported in retest `6bde71e7ae9df87579ee1717e96dac64`; latest combined evidence 56 supported / 0 unsupported / 0 invalid / 22 not concluded / 1 untestable / 1 not tested. Original run `e7b598f31bb6b0d7648ff4fb8c6bdab1` remains retained.
+- iterm2: 33/44 supported in retest `e66265a92483b4e9e9b34c9d6c684012`; latest combined evidence 60 supported / 0 unsupported / 0 invalid / 18 not concluded / 1 untestable / 1 not tested. Original run `e7b598f31bb6b0d7648ff4fb8c6bdab1` remains retained.
 - ghostty: 5/5 supported in retest `54669577db59a6415860e338b58fcc5a`; latest combined evidence 69 supported / 0 unsupported / 0 invalid / 9 not concluded / 1 untestable / 1 not tested. Original run `3cd3c30494767f72682a764f347db873` remains retained.
 
 | Retested case | New outcome |
 |---|---|
+| iterm2 · charsets.dec-line-drawing | Supported |
+| iterm2 · charsets.dec-special | Supported |
+| iterm2 · charsets.g0-g1-switching | Supported |
+| iterm2 · charsets.utf8 | Supported |
+| iterm2 · cursor.cup-scroll-region | Supported |
+| iterm2 · cursor.hide | Supported |
+| iterm2 · erase.character | Supported |
+| iterm2 · erase.ed-scroll-region | Supported |
+| iterm2 · erase.el-with-attrs | Supported |
+| iterm2 · erase.line.all | Supported |
+| iterm2 · erase.line.left | Supported |
+| iterm2 · erase.line.right | Supported |
+| iterm2 · erase.screen.above | Supported |
+| iterm2 · erase.screen.all | Supported |
+| iterm2 · erase.screen.below | Supported |
+| iterm2 · modes.alt-screen.exit | Supported |
+| iterm2 · reset.sgr | Not concluded |
+| iterm2 · scrollback.accumulate | Not concluded |
 | iterm2 · scrollback.alt-screen | Supported |
 | iterm2 · scrollback.decstbm | Supported |
 | iterm2 · scrollback.decstbm-reset | Supported |
@@ -121,6 +139,25 @@ The table above records the original full runs. The focused retests keep the sam
 | iterm2 · scrollback.scroll-down | Supported |
 | iterm2 · scrollback.scroll-up | Supported |
 | iterm2 · scrollback.set-region | Supported |
+| iterm2 · scrollback.total-lines | Not concluded |
+| iterm2 · sgr.bg.default | Supported |
+| iterm2 · sgr.bg.standard | Supported |
+| iterm2 · sgr.bold | Not concluded |
+| iterm2 · sgr.faint | Not concluded |
+| iterm2 · sgr.fg.default | Supported |
+| iterm2 · sgr.fg.standard | Supported |
+| iterm2 · sgr.hidden | Not concluded |
+| iterm2 · sgr.inverse | Supported |
+| iterm2 · sgr.italic | Not concluded |
+| iterm2 · sgr.reset | Not concluded |
+| iterm2 · sgr.selective-reset.bold | Not concluded |
+| iterm2 · sgr.selective-reset.inverse | Supported |
+| iterm2 · sgr.selective-reset.italic | Supported |
+| iterm2 · sgr.selective-reset.underline | Supported |
+| iterm2 · sgr.strikethrough | Not concluded |
+| iterm2 · sgr.underline.single | Not concluded |
+| iterm2 · text.overwrite | Supported |
+| iterm2 · text.reverse-index-scroll | Supported |
 | ghostty · modes.alt-screen.exit | Supported |
 | ghostty · sgr.bold | Supported |
 | ghostty · sgr.faint | Supported |
