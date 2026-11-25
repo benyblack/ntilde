@@ -20,6 +20,7 @@ import { buildModernX11MousePublication, modernX11MouseOutputPaths, readableMode
 import { buildKeyboardPublication, keyboardPaths, readableKeyboard } from './terminfo/modern-x11-keyboard-results.mjs';
 
 import { buildKeypadPublication, keypadPaths, readableKeypad } from './terminfo/modern-x11-keypad-results.mjs';
+import { buildFocusPublication, focusPaths, readableFocus } from './terminfo/modern-x11-focus-results.mjs';
 
 const args = process.argv.slice(2);
 const publications = {
@@ -29,6 +30,7 @@ const publications = {
     '--blink': [buildModernBlinkPublication, modernBlinkOutputPaths, readableModernBlink],
     '--viewport': [buildModernViewportPublication, modernViewportOutputPaths, readableModernViewport],
     '--application-keypad': [buildKeypadPublication, keypadPaths, readableKeypad],
+    '--focus-tracking': [buildFocusPublication, focusPaths, readableFocus],
     '--modify-other-keys': [buildKeyboardPublication, keyboardPaths, readableKeyboard],
     '--x11-mouse': [buildModernX11MousePublication, modernX11MouseOutputPaths, readableModernX11Mouse],
     '--child-environment': [buildModernChildEnvironmentPublication, modernChildEnvironmentOutputPaths, readableModernChildEnvironment],
@@ -38,7 +40,7 @@ const publications = {
 const selected = args.length === 1 ? 'baseline' : args[1];
 if (!['--check', '--write'].includes(args[0])
     || (args.length !== 1 && !(args.length === 2 && Object.hasOwn(publications, selected) && selected.startsWith('--')))) {
-    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [--cursor|--modes|--blink|--viewport|--osc-titles|--osc7-cwd|--child-environment|--x11-mouse|--modify-other-keys|--application-keypad]');
+    console.error('Usage: node scripts/terminfo-modern-results.mjs --check|--write [' + Object.keys(publications).slice(1).join('|') + ']');
     process.exitCode = 2;
 } else {
     const [build, outputPaths, readable] = publications[selected];

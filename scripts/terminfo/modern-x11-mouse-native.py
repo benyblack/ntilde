@@ -138,6 +138,25 @@ class XDisplay:
         self.get_focus(self.display, ct.byref(window), ct.byref(revert))
         return window.value
 
+    def focus_transition(self, target):
+        requested = str(time.monotonic_ns())
+        self.set_focus(self.display, target, 1, 0)
+        self.sync(self.display, 0)
+        observed = self.focus()
+        return {"target": target, "requested": requested, "observed": observed, "at": str(time.monotonic_ns())}
+
+    def focus_round_trip(self, window_id):
+        restored = None
+        try:
+            out = self.focus_transition(self.root)
+        finally:
+            back = self.focus_transition(window_id)
+            if back["observed"] != window_id:
+                restored = self.focus_transition(window_id)
+                demand(restored["observed"] == window_id, "cannot restore owned X11 focus")
+        return {"root": self.root, "windowId": window_id, "serverPid": self.server_pid,
+                "out": out, "back": back, "recovery": restored}
+
     def pointer(self):
         root, child, x, y, wx, wy, mask = XID(), XID(), INT(), INT(), INT(), INT(), UINT()
         demand(self.query_pointer(self.display, self.root, ct.byref(root), ct.byref(child), ct.byref(x),
@@ -222,7 +241,7 @@ class XDisplay:
 
     def keyboard_action(self, command, window_id):
         request, tag = command["request"], command["fence"]
-        permitted = {"a": (["a"], ("zb",)), "ctrl+i": (["Control_L", "i"], ("zc",)),
+        permitted = {"a": (["a"], ("zb", "zf", "zg")), "ctrl+i": (["Control_L", "i"], ("zc",)),
                      "KP_Add": (["KP_Add"], ("zd", "ze"))}
         names, tags = permitted[request["chord"]]
         demand(tag in tags and self.pressed() == [] and self.pointer()["mask"] == 0,
@@ -250,8 +269,10 @@ class XDisplay:
             self.sync(self.display, 0)
             demand(self.focus() == window_id, "owned window did not receive focus")
             return {"window": window, "serverPid": self.server_pid, "appPid": app_pid,
-                    "focus": window_id, "xtestVersion": self.version}
+                    "focus": window_id, "root": self.root, "xtestVersion": self.version}
         demand(window == command["window"] and self.focus() == window_id, "X window geometry or focus changed")
+        if command["kind"] == "focus-round-trip":
+            return self.focus_round_trip(window_id)
         request = command["request"]
         if request["kind"] == "keyboard":
             return self.keyboard_action(command, window_id)

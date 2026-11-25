@@ -21,9 +21,10 @@ function copySources(scratch, output, keyboard) {
         selected.push('modern-x11-keyboard.mjs');
         policy = 'owned-modern-x11-keyboard-v1';
     }
-    if (keyboard === '--application-keypad') {
-        selected.push('modern-x11-keypad.mjs');
-        policy = 'owned-modern-x11-keypad-v1';
+    const extra = { '--application-keypad': 'keypad', '--focus-tracking': 'focus' }[keyboard];
+    if (extra) {
+        selected.push(`modern-x11-${extra}.mjs`);
+        policy = `owned-modern-x11-${extra}-v1`;
     }
     const manifest = Object.fromEntries(selected.map(name => {
         const path = join(here, 'terminfo', name);
@@ -58,9 +59,9 @@ function captureLease(lease, output) {
 
 function validateInvocation() {
     const [target, appVersion, selection, ...extra] = process.argv.slice(2);
-    if (![undefined, '--modify-other-keys', '--application-keypad'].includes(selection) || extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
+    if (![undefined, '--modify-other-keys', '--application-keypad', '--focus-tracking'].includes(selection) || extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
         || process.platform !== 'linux' || Number(process.versions.node.split('.')[0]) < 24) {
-        throw new Error('Usage on Linux with Node 24+: node scripts/terminfo-modern-x11-owned.mjs /absolute/private/publish/Ntilde APP_VERSION [--modify-other-keys|--application-keypad]');
+        throw new Error('Usage on Linux with Node 24+: node scripts/terminfo-modern-x11-owned.mjs /absolute/private/publish/Ntilde APP_VERSION [--modify-other-keys|--application-keypad|--focus-tracking]');
     }
     const executable = realpathSync(target);
     const info = lstatSync(executable);

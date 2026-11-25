@@ -51,7 +51,7 @@ function verifyChord(events, keys, start, end) {
     }
 }
 
-export function verifyKeyboardStep(step, key, { chord, keys, tag }, previous, identity) {
+export function verifyKeyboardStep(step, key, { chord, keys, tag, firstInput }, previous, identity) {
     const native = step?.native;
     need(native?.xtest === true && native.serverPid === identity.serverPid && native.appPid === identity.appPid
         && native.windowId === identity.window.id && native.focus === identity.window.id
@@ -62,7 +62,7 @@ export function verifyKeyboardStep(step, key, { chord, keys, tag }, previous, id
     need(events?.length === 4 && equal(native.fence.keycodes, [events[0].code, events[2].code]), 'invalid keyboard delimiter');
     verifyChord(events.slice(0, 2), [tag[0]], native.fence.started, events[2].at);
     verifyChord(events.slice(2), [tag[1]], events[1].at, native.finished);
-    return actionWindow(step, previous, key, tag, native.events[keys.length - 1].at);
+    return actionWindow(step, previous, key, tag, firstInput ?? native.events[keys.length - 1].at);
 }
 
 const verifyStep = (step, phase, previous, identity) => verifyKeyboardStep(step, id + '/' + phase, plan[phase], previous, identity);
