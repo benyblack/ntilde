@@ -3,6 +3,7 @@
 import ctypes as ct
 import json
 import os
+import signal
 import socket
 import struct
 import sys
@@ -156,9 +157,29 @@ class XDisplay:
         self.keymap(self.display, keys)
         return [code for code in range(8, 256) if keys[code // 8] & (1 << (code % 8))]
 
-    def chord(self, names, window_id):
+    def keypad_mapping(self):
+        get_mapping = bind(ct.CDLL("libX11.so.6"), "XGetKeyboardMapping",
+                           XIDP, PTR, ct.c_ubyte, INT, INTP)
+        name = "KP_Add"
+        keysym = self.keysym(name.encode("ascii"))
+        code = self.keycode(self.display, keysym)
+        demand(code >= 8, "KP_Add keycode unavailable")
+        count = INT()
+        entries = get_mapping(self.display, code, 1, ct.byref(count))
+        try:
+            demand(entries and 1 <= count.value <= 32, "KP_Add symbol levels unavailable")
+            levels = entries[:count.value]
+            demand(levels[0] == keysym and all(level in (keysym, 0) for level in levels),
+                   "KP_Add depends on a different keyboard level")
+            return {"name": name, "keysym": keysym, "code": code, "levels": levels}
+        finally:
+            if entries:
+                self.free(entries)
+
+    def chord(self, names, window_id, mapping=None):
         held, events = [], []
-        mapping = {name: self.keycode(self.display, self.keysym(name.encode("ascii"))) for name in names}
+        if mapping is None:
+            mapping = {name: self.keycode(self.display, self.keysym(name.encode("ascii"))) for name in names}
         demand(all(mapping.values()) and len(set(mapping.values())) == len(names), "bad chord key mapping")
         try:
             for down, order in ((True, names), (False, reversed(names))):
@@ -180,21 +201,26 @@ class XDisplay:
             for code in reversed(held):
                 self.key(self.display, code, 0, 0)
             self.sync(self.display, 0)
+            if held:
+                demand(not self.pressed(), "XTEST key cleanup failed")
         return events
 
     def keyboard_action(self, command, window_id):
         request, tag = command["request"], command["fence"]
-        permitted = {"a": (["a"], "zb"), "ctrl+i": (["Control_L", "i"], "zc")}
-        names, expected_tag = permitted[request["chord"]]
-        demand(tag == expected_tag and self.pressed() == [] and self.pointer()["mask"] == 0,
+        permitted = {"a": (["a"], ("zb",)), "ctrl+i": (["Control_L", "i"], ("zc",)),
+                     "KP_Add": (["KP_Add"], ("zd", "ze"))}
+        names, tags = permitted[request["chord"]]
+        demand(tag in tags and self.pressed() == [] and self.pointer()["mask"] == 0,
                "unexpected keyboard fence or initial state")
         started = str(time.monotonic_ns())
-        events = self.chord(names, window_id)
+        mapping = self.keypad_mapping() if names == ["KP_Add"] else None
+        events = self.chord(names, window_id, {mapping["name"]: mapping["code"]} if mapping else None)
         fence_start = str(time.monotonic_ns())
         fence_events = [event for letter in tag for event in self.chord([letter], window_id)]
         focus, pressed, mask = self.focus(), self.pressed(), self.pointer()["mask"]
         demand(focus == window_id and not pressed and mask == 0, "XTEST keyboard restoration failed")
         return {"request": request, "started": started, "events": events, "initialKeys": [],
+                **({"mapping": mapping} if mapping else {}),
                 "fence": {"tag": tag, "started": fence_start, "events": fence_events,
                           "keycodes": [event["code"] for event in fence_events if event["down"]]},
                 "finished": str(time.monotonic_ns()), "serverPid": self.server_pid, "appPid": command["appPid"],
@@ -238,11 +264,18 @@ class XDisplay:
                 "appPid": app_pid, "windowId": window_id, "focus": window_id, "xtest": True}
 
 
+def interrupt(_signum, _frame):
+    raise InterruptedError("XTEST action interrupted")
+
+
 def main():
     command = json.loads(sys.argv[1])
     if command["kind"] == "rpc":
         result = request_peer(command["socket"], command["pid"], command["request"])
     else:
+        if command.get("request", {}).get("kind") == "keyboard":
+            for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+                signal.signal(signum, interrupt)
         display = XDisplay(command["serverPid"])
         try:
             result = display.run(command)

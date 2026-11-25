@@ -5,9 +5,9 @@ export const id = 'input.modify-other-keys';
 const csi = '\x1b[';
 const hex = value => Buffer.from(value, 'ascii').toString('hex');
 const decModes = [1, 66, 1049];
-function keyboardModes(level, write = '') {
-    const query = decModes.map(mode => csi + '?' + mode + '$p').join('') + csi + '?u' + csi + '?4m';
-    const reply = decModes.map(mode => csi + '?' + mode + ';2$y').join('') + csi + '?0u' + csi + '>4;' + level + 'm';
+export function keyboardModes(level, write = '', modes = decModes) {
+    const query = modes.map(mode => csi + '?' + mode + '$p').join('') + csi + '?u' + csi + '?4m';
+    const reply = modes.map(mode => csi + '?' + mode + ';2$y').join('') + csi + '?0u' + csi + '>4;' + level + 'm';
     return { writeHex: hex(write + query), replyHex: hex(reply) };
 }
 export const modePlan = {
@@ -51,8 +51,7 @@ function verifyChord(events, keys, start, end) {
     }
 }
 
-function verifyStep(step, phase, previous, identity) {
-    const { chord, keys, tag } = plan[phase];
+export function verifyKeyboardStep(step, key, { chord, keys, tag }, previous, identity) {
     const native = step?.native;
     need(native?.xtest === true && native.serverPid === identity.serverPid && native.appPid === identity.appPid
         && native.windowId === identity.window.id && native.focus === identity.window.id
@@ -63,8 +62,10 @@ function verifyStep(step, phase, previous, identity) {
     need(events?.length === 4 && equal(native.fence.keycodes, [events[0].code, events[2].code]), 'invalid keyboard delimiter');
     verifyChord(events.slice(0, 2), [tag[0]], native.fence.started, events[2].at);
     verifyChord(events.slice(2), [tag[1]], events[1].at, native.finished);
-    return actionWindow(step, previous, id + '/' + phase, tag, native.events[keys.length - 1].at);
+    return actionWindow(step, previous, key, tag, native.events[keys.length - 1].at);
 }
+
+const verifyStep = (step, phase, previous, identity) => verifyKeyboardStep(step, id + '/' + phase, plan[phase], previous, identity);
 
 export async function observeKeyboard(record, modes, action) {
     record.incoming = await modes('incoming');

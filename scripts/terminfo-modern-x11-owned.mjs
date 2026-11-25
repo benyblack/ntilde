@@ -15,7 +15,11 @@ function copySources(scratch, output, keyboard) {
     const dir = join(scratch, 'sources'), retained = join(output, 'sources');
     mkdirSync(dir, { mode: 0o700 });
     mkdirSync(retained, { mode: 0o700 });
-    const selected = keyboard ? [...files, 'modern-x11-keyboard.mjs'] : files;
+    const selected = [...files];
+    if (keyboard) selected.push('modern-x11-keyboard.mjs');
+    if (keyboard === '--application-keypad') selected.push('modern-x11-keypad.mjs');
+    const policy = keyboard === '--application-keypad' ? 'owned-modern-x11-keypad-v1'
+        : keyboard ? 'owned-modern-x11-keyboard-v1' : 'owned-modern-x11-mouse-v1';
     const manifest = Object.fromEntries(selected.map(name => {
         const path = join(here, 'terminfo', name);
         if (!lstatSync(path).isFile()) throw new Error('Expected regular scoped collector source.');
@@ -23,7 +27,7 @@ function copySources(scratch, output, keyboard) {
         for (const root of [dir, retained]) writeFileSync(join(root, name), bytes, { flag: 'wx', mode: 0o400 });
         return [name, digest(bytes)];
     }));
-    writeFileSync(join(output, 'source-manifest.json'), JSON.stringify({ policy: keyboard ? 'owned-modern-x11-keyboard-v1' : 'owned-modern-x11-mouse-v1', files: manifest,
+    writeFileSync(join(output, 'source-manifest.json'), JSON.stringify({ policy, files: manifest,
         launcherSha256: digest(readFileSync(fileURLToPath(import.meta.url))) }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     writeFileSync(join(output, 'launcher.mjs'), readFileSync(fileURLToPath(import.meta.url)), { flag: 'wx', mode: 0o400 });
     return { dir, manifest };
@@ -49,15 +53,15 @@ function captureLease(lease, output) {
 
 function validateInvocation() {
     const [target, appVersion, selection, ...extra] = process.argv.slice(2);
-    if ((selection !== undefined && selection !== '--modify-other-keys') || extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
+    if (![undefined, '--modify-other-keys', '--application-keypad'].includes(selection) || extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
         || process.platform !== 'linux' || Number(process.versions.node.split('.')[0]) < 24) {
-        throw new Error('Usage on Linux with Node 24+: node scripts/terminfo-modern-x11-owned.mjs /absolute/private/publish/Ntilde APP_VERSION [--modify-other-keys]');
+        throw new Error('Usage on Linux with Node 24+: node scripts/terminfo-modern-x11-owned.mjs /absolute/private/publish/Ntilde APP_VERSION [--modify-other-keys|--application-keypad]');
     }
     const executable = realpathSync(target);
     const info = lstatSync(executable);
     if (target !== executable || basename(executable) !== 'Ntilde' || !info.isFile() || info.uid !== process.getuid()
         || (info.mode & 0o022) !== 0 || lstatSync(dirname(executable)).uid !== process.getuid()) throw new Error('Expected the owned regular Ntilde sidecar.');
-    return { executable, appVersion, keyboard: selection === '--modify-other-keys' };
+    return { executable, appVersion, keyboard: selection };
 }
 
 function finishLease(lease, scratch, sources, output) {

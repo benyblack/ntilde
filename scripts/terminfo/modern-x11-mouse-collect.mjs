@@ -231,7 +231,8 @@ async function observe(run) {
     const { record } = run;
     let replay = replayMouse;
     if (run.keyboard) {
-        const keyboard = await import('./modern-x11-keyboard.mjs');
+        const keyboard = run.keyboard === '--application-keypad'
+            ? await import('./modern-x11-keypad.mjs') : await import('./modern-x11-keyboard.mjs');
         const readModes = key => modes(run, key, keyboard.modePlan);
         await keyboard.observeKeyboard(record, readModes, (step, request, key, fence) => recordAction(run, step, request, key, fence));
         replay = keyboard.replayKeyboard;
