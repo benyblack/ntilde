@@ -59,7 +59,7 @@ def text_transaction():
 
     if request == {"kind": "read"}:
         clipboard.read_text_async(None, read_done)
-    elif request.get("kind") == "seed" and re.fullmatch(r"ntilde-osc52-(?:baseline|seed)-[a-f0-9]{32}", request.get("text", "")):
+    elif request.get("kind") == "seed" and re.fullmatch(r"ntilde-(?:osc52|paste)-(?:baseline|seed)-[a-f0-9]{32}", request.get("text", "")):
         text = request["text"]
         if not clipboard.set_content(Gdk.ContentProvider.new_for_value(text)):
             raise RuntimeError("Native CLIPBOARD seed refused")
