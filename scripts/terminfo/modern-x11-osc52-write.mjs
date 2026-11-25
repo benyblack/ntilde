@@ -5,8 +5,8 @@ import { verifyKeyboardStep } from './modern-x11-keyboard.mjs';
 import { before, exchange, need } from './modern-x11-mouse.mjs';
 
 export const id = 'extensions.osc52-write';
-const budget = 1_000_000_000n;
-const pollMs = 25;
+export const budget = 1_000_000_000n;
+export const pollMs = 25;
 const baselinePattern = /^ntilde-osc52-baseline-[a-f\d]{32}$/;
 const noncePattern = /^ntilde-osc52-probe-[a-f\d]{32}$/;
 const keyPlan = { chord: 'a', keys: ['a'], tag: 'zh' };
@@ -40,30 +40,30 @@ function verifyPeer(step, record, previous) {
     return after.at;
 }
 
-function reading(step, record, previous, owners) {
+export function reading(step, record, previous, owners) {
     const at = verifyPeer(step, record, previous);
     need(owners.includes(step.before.ownerPid) && step.after.ownerPid === step.before.ownerPid
         && step.after.ownerWindow === step.before.ownerWindow, 'unattributed CLIPBOARD read');
     return at;
 }
 
-function seed(step, record, previous, baseline, owners) {
+export function seed(step, record, previous, baseline, owners) {
     const at = verifyPeer(step, record, previous);
     need(owners.includes(step.before.ownerPid) && step.result.text === baseline
         && step.after.ownerPid === step.process.pid, 'unverified CLIPBOARD seed');
     return at;
 }
 
-function delivery(record, step, previous) {
-    const result = verifyKeyboardStep(step, id, keyPlan, previous, record.identity);
+function delivery(record, trial, previous) {
+    const result = verifyKeyboardStep(trial.key, trial.id, keyPlan, previous, record.identity);
     need(result.raw === '61', 'XTEST a did not reach the armed child as 61');
     return result;
 }
 
-export async function observeClipboard(record, ops) {
+export async function observeClipboard(record, ops, roundTrip) {
     const baseline = 'ntilde-osc52-baseline-' + randomBytes(16).toString('hex');
     const nonce = 'ntilde-osc52-probe-' + randomBytes(16).toString('hex');
-    const trial = { id, baseline, nonce, seed: {}, baselineRead: {}, key: {}, reads: [], restoreSeed: {}, restoreRead: {} };
+    const trial = { id: roundTrip?.id ?? id, baseline, nonce, seed: {}, baselineRead: {}, key: {}, reads: [], restoreSeed: {}, restoreRead: {} };
     record.cases.push(trial);
     const request = { kind: 'seed', text: baseline };
     const read = { kind: 'read' };
@@ -76,14 +76,17 @@ export async function observeClipboard(record, ops) {
         const admitted = reading(trial.baselineRead, record, seeded, [seedPid]);
         need(trial.baselineRead.result.text === baseline, 'the independent peer did not read back the baseline');
         await ops.key(trial.key);
-        delivery(record, trial.key, admitted);
+        delivery(record, trial, admitted);
         trial.write = await ops.write(writePlan(nonce, record.identity.marker));
         await pollTarget(record, trial, ops.peer, seedPid);
+        if (roundTrip && grade(trial, record.identity).conclusion === 'pass') {
+            await roundTrip.observeRead(record, trial, ops);
+        }
     } catch (error) { failure = error; }
     if (!trial.seed.dispatched) throw failure;
     try {
         const restoringAt = now();
-        const restoreOwners = [null, trial.seed.process?.pid, record.identity.appPid];
+        const restoreOwners = [null, ...restoreOwnerPids(record, trial)];
         await ops.peer(trial.restoreSeed, request, restoreOwners, true);
         await ops.peer(trial.restoreRead, read, [trial.restoreSeed.process.pid], true);
         verifyRestoration(trial, record, restoringAt, restoreOwners);
@@ -94,7 +97,7 @@ export async function observeClipboard(record, ops) {
     record.restore = {};
 }
 
-function sameOwner(left, right) {
+export function sameOwner(left, right) {
     return left.ownerPid === right.ownerPid && left.ownerWindow === right.ownerWindow;
 }
 
@@ -165,10 +168,22 @@ function verifyRestoration(trial, record, previous, owners) {
     return verified;
 }
 
-export function replayClipboard(record) {
+function restoreOwnerPids(record, trial) {
+    const owners = [trial.seed.process?.pid, record.identity.appPid];
+    if (trial.querySeed?.process) owners.push(trial.querySeed.process.pid);
+    return owners;
+}
+
+export function clipboardPeerSteps(trial) {
+    const steps = [trial.seed, trial.baselineRead, ...trial.reads];
+    if (trial.querySeed) steps.push(trial.querySeed, trial.querySeedRead);
+    return [...steps, trial.restoreSeed, trial.restoreRead];
+}
+
+export function replayClipboard(record, roundTrip) {
     const { identity, cases, restore, terminal } = record;
     need(identity?.pane?.kind === 'local' && identity.pane.isActive === true && cases?.length === 1
-        && cases[0].id === id, 'expected one direct-local clipboard trial');
+        && cases[0].id === (roundTrip?.id ?? id), 'expected one direct-local clipboard trial');
     const [trial] = cases;
     need(baselinePattern.test(trial.baseline) && noncePattern.test(trial.nonce), 'wrong synthetic clipboard fixtures');
     const seedPid = trial.seed.process.pid;
@@ -176,19 +191,21 @@ export function replayClipboard(record) {
     const checked = reading(trial.baselineRead, record, seeded, [seedPid]);
     need(trial.baselineRead.result.text === trial.baseline && trial.baselineRead.after.ownerWindow === trial.seed.after.ownerWindow,
         'baseline did not read back from the original owner');
-    const key = delivery(record, trial.key, checked);
+    const key = delivery(record, trial, checked);
     const plan = writePlan(trial.nonce, identity.marker);
-    const owners = [seedPid, identity.appPid];
-    const observed = verifyTarget(trial, record, plan, key.sealed);
-    const verified = verifyRestoration(trial, record, observed, owners);
+    const written = verifyTarget(trial, record, plan, key.sealed);
+    const write = grade(trial, identity);
+    const { observedAt, read } = roundTrip?.replayRead(record, trial, write, written) ?? { observedAt: written };
+    const verified = verifyRestoration(trial, record, observedAt, restoreOwnerPids(record, trial));
     need(restore?.paneId === identity.pane.paneId && restore.marker === identity.marker
         && terminal?.original?.length === 7 && same(terminal.original, terminal.restored)
         && before(verified, terminal.at), 'unverified pane or kernel terminal restoration');
-    const peers = [trial.seed, trial.baselineRead, ...trial.reads, trial.restoreSeed, trial.restoreRead].map(step => step.process.pid);
+    const peers = clipboardPeerSteps(trial).map(step => step.process.pid);
     need(new Set([...peers, record.coordinatorPid, identity.serverPid, identity.appPid, record.lineage.child.pid]).size === peers.length + 4,
         'clipboard peers are not independent processes');
-    return [{ id, ...grade(trial, identity), osc52Hex: plan.osc52Hex, keyHex: key.raw,
+    const result = { id: trial.id, ...write, osc52Hex: plan.osc52Hex, keyHex: key.raw,
         cprHex: trial.write.replyHex, baseline: trial.baselineRead.result.text, nonce: trial.nonce,
         reads: trial.reads.map(({ result, after }) => ({ text: result.text, ownerPid: after.ownerPid })),
-        restored: trial.restoreRead.result.text }];
+        restored: trial.restoreRead.result.text };
+    return [roundTrip ? roundTrip.combine(result, read) : result];
 }

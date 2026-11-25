@@ -80,7 +80,7 @@ function verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite) {
 
 const reaped = exit => exit && (Number.isSafeInteger(exit.code) || ['SIGTERM', 'SIGKILL'].includes(exit.signal));
 
-function verifyCleanup(directory, run, clipboardWrite) {
+function verifyCleanup(directory, run, clipboardWrite, peerSteps) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     const instants = events.map(event => Date.parse(event.at));
     const fixture = parseJson(join(directory, 'fixture-cleanup.json'));
@@ -96,8 +96,7 @@ function verifyCleanup(directory, run, clipboardWrite) {
         && [run.cleanup.app, run.cleanup.display].every(reaped),
     'unverified X11 App, worker or display cleanup');
     if (clipboardWrite) {
-        const { seed, baselineRead, reads, restoreSeed, restoreRead } = run.cases[0];
-        const pids = [seed, baselineRead, ...reads, restoreSeed, restoreRead].map(step => step.process.pid);
+        const pids = peerSteps(run.cases[0]).map(step => step.process.pid);
         requireModern(Array.isArray(run.cleanup.peers) && same(run.cleanup.peers.map(peer => peer.pid), pids)
             && run.cleanup.peers.every(reaped), 'unproved GTK peer cleanup');
     }
@@ -109,7 +108,13 @@ export function verifyX11MouseRun(directory) {
         markerPrefix: 'x11-mouse-', replay: replayMouse });
 }
 
-export function verifyX11Run(directory, { policy, profilePrefix, markerPrefix, replay, extraSources = [], clipboardWrite = false }) {
+function writePeerSteps({ seed, baselineRead, reads, restoreSeed, restoreRead }) {
+    return [seed, baselineRead, ...reads, restoreSeed, restoreRead];
+}
+
+export function verifyX11Run(directory, {
+    policy, profilePrefix, markerPrefix, replay, extraSources = [], clipboardWrite = false, peerSteps = writePeerSteps,
+}) {
     requireModern(!existsSync(join(directory, 'failure.json')), 'X11 collection failed');
     const frame = readFileSync(join(directory, 'observation.json'));
     const run = JSON.parse(frame);
@@ -119,7 +124,7 @@ export function verifyX11Run(directory, { policy, profilePrefix, markerPrefix, r
     verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite);
     const results = replay(run);
     requireModern(same(results, run.results), 'X11 recorded grading does not rederive');
-    const cleanup = verifyCleanup(directory, run, clipboardWrite);
+    const cleanup = verifyCleanup(directory, run, clipboardWrite, peerSteps);
     return { run, results, measurement: { ...cleanup, sha256: digest(frame), source } };
 }
 

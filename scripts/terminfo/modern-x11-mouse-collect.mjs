@@ -115,7 +115,7 @@ function profileSettings(run) {
         DefaultProfileId: profileId, SessionPersistence: 'Off', ShellExitPolicy: 'Never', PaneClosePolicy: 'Always',
         AlternateScroll: false, AutomaticUpdateChecks: false, QuakeModeEnabled: false,
         CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false, CommandAssistPowerShellIntegrationEnabled: false,
-        AgentAccessObserveEnabled: true, AgentAccessActEnabled: false, AllowOsc52ClipboardWrite: run.keyboard === '--osc52-write',
+        AgentAccessObserveEnabled: true, AgentAccessActEnabled: false, AllowOsc52ClipboardWrite: run.clipboard,
     };
 }
 
@@ -167,7 +167,7 @@ async function verifyMarker(run, pane) {
 
 async function launchPane(run) {
     const appArgv = [run.executable, '--ntilde-terminfo-owner=' + run.config.runId];
-    if (run.keyboard !== '--osc52-write') appArgv.push('--ntilde-terminfo-private-clipboard=' + run.config.runId);
+    if (!run.clipboard) appArgv.push('--ntilde-terminfo-private-clipboard=' + run.config.runId);
     run.appArgv = appArgv;
     const settings = profileSettings(run);
     run.record.settings = settings;
@@ -246,6 +246,10 @@ async function observeFocus(run) {
     return focus.replayFocus;
 }
 
+function clipboardState(run, peerPid, peerWindow) {
+    return x11(run, { kind: 'clipboard-state', window: run.record.identity.window, peerPid, peerWindow });
+}
+
 async function clipboardPeer(run, step, request, ownerPids, restoring) {
     checkLineage(run, restoring);
     const directory = join(run.scratch, 'gtk-' + run.clipboardPeers.length);
@@ -269,8 +273,7 @@ async function clipboardPeer(run, step, request, ownerPids, restoring) {
     const pane = await listPane(run);
     need(equal(pane, run.record.identity.pane), 'wrong current clipboard pane');
     await verifyMarker(run, pane);
-    const state = () => x11(run, { kind: 'clipboard-state', window: run.record.identity.window,
-        peerPid: ready.pid, peerWindow: ready.window });
+    const state = () => clipboardState(run, ready.pid, ready.window);
     step.before = await state();
     need(ownerPids.includes(step.before.ownerPid), 'clipboard owner is outside this phase');
     step.dispatched = stamp();
@@ -287,11 +290,26 @@ async function clipboardPeer(run, step, request, ownerPids, restoring) {
 }
 
 async function observeClipboard(run) {
-    const clipboard = await import('./modern-x11-osc52-write.mjs');
+    const clipboard = run.keyboard === '--osc52-clipboard'
+        ? await import('./modern-x11-osc52-clipboard.mjs') : await import('./modern-x11-osc52-write.mjs');
     await clipboard.observeClipboard(run.record, {
         peer: (...args) => clipboardPeer(run, ...args),
         key: step => recordAction(run, step, { kind: 'keyboard', chord: 'a' }, clipboard.id, 'zh'),
         write: plan => modes(run, 'osc52', { osc52: plan }),
+        query: async (sample, owner, plan) => {
+            checkLineage(run);
+            const pane = await listPane(run);
+            need(equal(pane, run.record.identity.pane), 'wrong current clipboard query pane');
+            await verifyMarker(run, pane);
+            const state = () => clipboardState(run, owner.peerPid, owner.peerWindow);
+            sample.before = await state();
+            need(sample.before.focus === run.record.identity.window.id
+                && sample.before.ownerPid === owner.ownerPid && sample.before.ownerWindow === owner.ownerWindow,
+            'clipboard seed lost ownership before OSC 52 query');
+            sample.exchange = await worker(run, { kind: 'clipboard-query', ...plan });
+            checkLineage(run);
+            sample.after = await state();
+        },
     });
     return clipboard.replayClipboard;
 }
@@ -342,7 +360,7 @@ async function observe(run) {
     await launchPane(run);
     const { record } = run;
     let replay;
-    if (run.keyboard === '--osc52-write') {
+    if (run.clipboard) {
         replay = await restoreClipboardPane(run);
     } else {
         replay = await observeRoutedInput(run);
@@ -360,9 +378,10 @@ function configure(run) {
     const home = join(run.scratch, 'home'), appData = join(run.scratch, 'appdata'), runtime = join(run.scratch, 'runtime');
     for (const path of [home, appData, runtime]) mkdirSync(path, { mode });
     const runId = run.lease.leaseId;
+    run.clipboard = run.keyboard === '--osc52-write' || run.keyboard === '--osc52-clipboard';
     let markerPrefix = run.keyboard ? 'x11-key-' : 'x11-mouse-';
     let profilePrefix = run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ';
-    if (run.keyboard === '--osc52-write') {
+    if (run.clipboard) {
         markerPrefix = 'x11-osc52-';
         profilePrefix = 'X11 OSC 52 ';
     }
@@ -394,7 +413,7 @@ export async function collect(run) {
         need(socketGone, 'allocated X11 display socket still exists');
         await run.lease.verifyCleanup();
         run.record.cleanup = { app, display, socketGone, at: stamp() };
-        if (run.keyboard === '--osc52-write') run.record.cleanup.peers = peerExits.map((exit, index) => ({
+        if (run.clipboard) run.record.cleanup.peers = peerExits.map((exit, index) => ({
             pid: run.clipboardPeers[index].child.pid, ...exit.value,
         }));
     } catch (error) {
