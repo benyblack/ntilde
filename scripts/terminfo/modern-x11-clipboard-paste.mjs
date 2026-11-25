@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { verifyKeyboardRestoration, verifyKeyboardStep } from './modern-x11-keyboard.mjs';
 import { before, exchange, need } from './modern-x11-mouse.mjs';
 import { reading, sameOwner, seed } from './modern-x11-osc52-write.mjs';
@@ -97,7 +97,7 @@ export async function observePaste(record, ops) {
     record.incoming = await ops.mode('incoming', plan);
     const incoming = incomingMode(record.incoming, record.identity);
     const trial = { id, baseline: 'ntilde-paste-baseline-' + randomBytes(16).toString('hex'),
-        nonce: 'ntilde-paste-seed-' + randomBytes(16).toString('hex'), seed: {}, baselineRead: {}, key: {},
+        nonce: 'terminfo-paste-' + randomUUID(), seed: {}, baselineRead: {}, key: {},
         nonceSeed: {}, nonceRead: {}, phases: [], restoreSeed: {}, restoreRead: {} };
     record.cases.push(trial);
     record.restore = {};
@@ -128,11 +128,11 @@ function grade(nonce, [offBefore, on, offAfter]) {
 
 export function replayPaste(record) {
     const { identity, cases, restore } = record;
-    need(!Object.hasOwn(record.settings, 'Keybindings'), 'paste run has custom shortcut settings');
+    need(!Object.keys(record.settings).some(name => name.toLowerCase() === 'keybindings'), 'paste run has custom shortcut settings');
     const [trial] = cases;
     need(identity?.pane?.kind === 'local' && identity.pane.isActive === true && cases.length === 1
         && trial.id === id && /^ntilde-paste-baseline-[a-f\d]{32}$/.test(trial.baseline)
-        && /^ntilde-paste-seed-[a-f\d]{32}$/.test(trial.nonce), 'wrong direct-local clipboard paste trial');
+        && /^terminfo-paste-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(trial.nonce), 'wrong direct-local clipboard paste trial');
     const incoming = incomingMode(record.incoming, identity);
     const baseline = seed(trial.seed, record, incoming.at, trial.baseline, [null]);
     const checked = checkedRead(trial.baselineRead, record, baseline, trial.seed.after, trial.baseline);
