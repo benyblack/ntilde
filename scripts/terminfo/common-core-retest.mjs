@@ -92,7 +92,8 @@ function ntildeCaptureCases(raw, coreIds) {
         row.attempt?.scope === 'probe' && row.harnessOutcome === 'probe-exceeded' && row.status === 'probe-todo');
     const cursors = raw.results.filter((row) => row.featureId === 'cursor.hide' && coreIds.includes(row.featureId) &&
         row.attempt?.scope === 'probe' && row.status === 'probe-invalid' && row.reason?.includes('no visible-cursor control was established'));
-    const cases = [...deadlines, ...cursors].map((row) => row.featureId).sort();
+    const cases = [...deadlines, ...cursors].map((row) => row.featureId)
+        .sort((left, right) => left.localeCompare(right, 'en'));
     if (deadlines.length !== 9 || cursors.length !== 1 || new Set(cases).size !== 10)
         throw new Error('Expected nine distinct Ntilde deadlines and one missing cursor control.');
     return cases;
