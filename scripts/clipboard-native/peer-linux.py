@@ -13,15 +13,10 @@ if os.environ.get("CI") != "true" or len(sys.argv) != 3:
 
 import gi
 gi.require_version("Gdk", "4.0")
-gi.require_version("Gtk", "4.0")
-from gi.repository import Gdk, GLib, Gtk
+from gi.repository import Gdk, GLib
 
 SELECTION_KEY = "NTILDE_CLIPBOARD_SELECTION"
 root = Path(sys.argv[2])
-Gtk.init()
-display = Gdk.Display.get_default()
-if display is None:
-    raise RuntimeError("No isolated display")
 loop = GLib.MainLoop()
 reader = None
 
@@ -40,12 +35,14 @@ def text_transaction():
     gi.require_version("GdkX11", "4.0")
     from gi.repository import GdkX11
 
+    display = Gdk.Display.open(os.environ["DISPLAY"])
     if not isinstance(display, GdkX11.X11Display):
         raise RuntimeError("GTK did not connect to X11")
-    window = Gtk.Window()
-    window.realize()
+    # This peer only needs a native XID for XRes. A GDK surface avoids
+    # initializing a GTK widget renderer on the disposable display.
+    surface = Gdk.Surface.new_toplevel(display)
     display.sync()
-    receipt("ready", {"pid": os.getpid(), "window": window.get_surface().get_xid()})
+    receipt("ready", {"pid": os.getpid(), "window": surface.get_xid()})
     request = json.loads(sys.stdin.readline(1024))
     clipboard = display.get_clipboard()
     started = str(time.monotonic_ns())
@@ -77,6 +74,13 @@ if sys.argv[1] == "text":
     text_transaction()
     sys.exit(0)
 
+gi.require_version("Gtk", "4.0")
+from gi.repository import Gtk
+
+Gtk.init()
+display = Gdk.Display.get_default()
+if display is None:
+    raise RuntimeError("No isolated display")
 clipboard = display.get_primary_clipboard() if os.environ.get(SELECTION_KEY) == "primary" else display.get_clipboard()
 filename = "peer-fixture.json" if sys.argv[1] == "write" else "fixture.json"
 values = {k: base64.b64decode(v) for k, v in json.loads((root / filename).read_text()).items()}
