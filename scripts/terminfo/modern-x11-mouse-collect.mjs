@@ -181,9 +181,9 @@ async function launchPane(run) {
     const pane = await listPane(run);
     const marker = await verifyMarker(run, pane);
     const geometry = await x11(run, { kind: 'admit' });
-    const { window, xtestVersion, serverPid, appPid, focus } = geometry;
+    const { window, xtestVersion, serverPid, appPid, focus, root } = geometry;
     need(window.id === focus && xtestVersion[0] === 2, 'owned X11 window admission failed');
-    run.record.identity = { pane, marker, window, xtestVersion, serverPid, appPid, admitted: stamp() };
+    run.record.identity = { pane, marker, window, xtestVersion, serverPid, appPid, root, admitted: stamp() };
 }
 
 async function modes(run, key, plan = modePlan, restoring = false) {
@@ -197,14 +197,27 @@ async function modes(run, key, plan = modePlan, restoring = false) {
     return result;
 }
 
-async function recordAction(run, step, request, key, fence) {
+async function recordAction(run, step, request, key, fence, prepare) {
     checkLineage(run);
     step.arm = await worker(run, { kind: 'arm', key });
+    let failure;
     try {
+        if (prepare) await prepare();
         step.native = await x11(run, { kind: 'action', window: run.record.identity.window, request, fence });
-    } finally {
-        step.capture = await worker(run, { kind: 'seal', key });
+    } catch (error) { failure = error; }
+    try { step.capture = await worker(run, { kind: 'seal', key }); }
+    catch (error) {
+        throw failure ? new AggregateError([failure, error], 'action and capture sealing failed') : error;
     }
+    if (failure) throw failure;
+}
+
+async function recordFocus(run, step, key, fence, writeHex) {
+    await recordAction(run, step, { kind: 'keyboard', chord: 'a' }, key, fence, async () => {
+        step.checkpoint = await worker(run, { kind: 'checkpoint', key, writeHex });
+        checkLineage(run);
+        step.focus = await x11(run, { kind: 'focus-round-trip', window: run.record.identity.window });
+    });
 }
 
 async function recordPhase(run, phase, sequence, id, kind) {
@@ -225,12 +238,21 @@ async function recordCase(run, id) {
     await recordPhase(run, attempt.target, planned.target, id, 'target');
 }
 
+async function observeFocus(run) {
+    const focus = await import('./modern-x11-focus.mjs');
+    const readModes = key => modes(run, key, focus.modePlan, key === 'restore');
+    await focus.observeFocus(run.record, readModes, (...args) => recordFocus(run, ...args));
+    return focus.replayFocus;
+}
+
 async function observe(run) {
     await launchDisplay(run);
     await launchPane(run);
     const { record } = run;
     let replay = replayMouse;
-    if (run.keyboard) {
+    if (run.keyboard === '--focus-tracking') {
+        replay = await observeFocus(run);
+    } else if (run.keyboard) {
         const keypad = run.keyboard === '--application-keypad';
         const keyboard = keypad ? await import('./modern-x11-keypad.mjs') : await import('./modern-x11-keyboard.mjs');
         const readModes = key => modes(run, key, keyboard.modePlan, keypad && key === 'restore');

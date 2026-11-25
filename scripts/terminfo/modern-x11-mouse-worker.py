@@ -63,19 +63,35 @@ class Reader:
             raise ValueError("oversized raw observation")
         self.active["chunks"].append({"at": stamp(), "hex": data.hex()})
 
-    def seal(self, key):
-        if self.active is None or self.active["key"] != key:
-            raise ValueError("stale capture key")
+    def drain(self):
         deadline = time.monotonic() + 0.24
         while (remaining := deadline - time.monotonic()) > 0 and select.select([0], [], [], remaining)[0]:
             self.receive()
+
+    def seal(self):
+        self.drain()
         capture, self.active = self.active, None
         return {**capture, "sealed": stamp()}
 
+    def checkpoint(self, write_hex):
+        if self.active["chunks"]:
+            raise ValueError("stale input before mode write: " + repr(self.active["chunks"]))
+        quiet()
+        request = bytes.fromhex(write_hex)
+        started = stamp()
+        if os.write(1, request) != len(request):
+            raise OSError("short armed mode write")
+        self.drain()
+        chunks, self.active["chunks"] = self.active["chunks"], []
+        return {"key": self.active["key"], "writeHex": request.hex(), "started": started,
+                "chunks": chunks, "finished": stamp()}
+
     def command(self, command):
         kind = command["kind"]
-        if kind == "seal":
-            return self.seal(command["key"])
+        if kind in ("seal", "checkpoint"):
+            if self.active is None or self.active["key"] != command["key"]:
+                raise ValueError("stale capture key")
+            return self.seal() if kind == "seal" else self.checkpoint(command["writeHex"])
         if self.active is not None:
             raise ValueError("observation window remains armed")
         if kind == "arm":
