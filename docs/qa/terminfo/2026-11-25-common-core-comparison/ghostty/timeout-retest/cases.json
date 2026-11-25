@@ -1,0 +1,292 @@
+{
+  "runId": "54669577db59a6415860e338b58fcc5a",
+  "rawSha256": "8bf5874cfe1703f089eeb0c4904729a09c5e9c466ff8568e54cef660717b1a50",
+  "fullRunArchive": "owned-run.zip",
+  "records": [
+    {
+      "featureId": "sgr.bold",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T14:38:12.613Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T14:38:12.613Z"
+          },
+          "assertionRefs": [
+            3
+          ],
+          "rawReplyRef": "sgr.bold"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.bold",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.bold: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":16,\"cellHeight\":34,\"textWidth\":2240,\"textHeight\":1394},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:2868c02113b80611a25ce0248f2a9b5fcd52298590b1953a7e1c16827ccf4d0e\",\"sha256:2868c02113b80611a25ce0248f2a9b5fcd52298590b1953a7e1c16827ccf4d0e\"],\"pixelsDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"frameDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:7cd7fd459c743ba8230184d3cbb8c2d784097fb725a5d5ae0ee302ed55b19c90\",\"target\":\"sha256:e82a90208d77acb145f72c8478a3574b6ca8679aa95b6d0b9738036c232b03ee\",\"made-up\":\"sha256:7cd7fd459c743ba8230184d3cbb8c2d784097fb725a5d5ae0ee302ed55b19c90\",\"handled\":\"sha256:197dfaa94ebe22f85866bc8181de1f82a56826a22cfd70cc1ec8893dec473275\",\"inverse\":\"sha256:197dfaa94ebe22f85866bc8181de1f82a56826a22cfd70cc1ec8893dec473275\"}}",
+          "rawReplyRef": "sgr.bold"
+        }
+      ],
+      "rawReplyRef": "sgr.bold",
+      "rawReplySha256": "304fe9dbe66be90186cb9e33fc9235908f518cb090bc9464bd6f480b3b44e955",
+      "screenshotRefs": [
+        "sha256:7a2f8075a4a127a04b54234b0229fd1c3efe250b56e431d8d96df3a855026459",
+        "sha256:e34d82173bc1ae964f4d6863fce520e8cbfd26c43715e2cf96da380bdbc91b4f",
+        "sha256:6282ed6584bcf610a2561f326e41b89cc5d0471342c9088ca9b45a868be54ab1",
+        "sha256:af53bdca3ddefb73fd149a3062afb5017320417abd17cdd97f0c3ee2671de94c",
+        "sha256:e066c8274fa74f0c98e2f87332f8a3673239f1d91511a32c562b079f4388068c",
+        "sha256:4bfaf2e81cf0abb9e81419a068311daf0670826f5d0bd23ac7c5b4b4e33bc675",
+        "sha256:136f278f84f9a29e5358080f26e0d99e1662eccca435af483a2b54d60ebaa6e3",
+        "sha256:e4188bc28bd1be5f0c28775bb45c03e60b0918b73a396fa5bfe5ee2514b4d2e1",
+        "sha256:0e63b25e8a99635d879436fcae3b5703291a5a879f970f00675eda89a9936eed",
+        "sha256:21faf2636e63a9b0acdbc35a710ce4fe093ce7bea55dc0c899485932e798d789",
+        "sha256:1c31003c6de42226c69cfe789b56a71879a4a4a84466605bdeceec0edf63b7e8",
+        "sha256:cf23ebe04f7caa2361c28b42cafeb8188133d4a02237b4e9e2398ca2771fc92b"
+      ]
+    },
+    {
+      "featureId": "sgr.faint",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T14:38:25.799Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T14:38:25.799Z"
+          },
+          "assertionRefs": [
+            4
+          ],
+          "rawReplyRef": "sgr.faint"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.faint",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.faint: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":16,\"cellHeight\":34,\"textWidth\":2240,\"textHeight\":1394},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:2868c02113b80611a25ce0248f2a9b5fcd52298590b1953a7e1c16827ccf4d0e\",\"sha256:2868c02113b80611a25ce0248f2a9b5fcd52298590b1953a7e1c16827ccf4d0e\"],\"pixelsDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"frameDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:7cd7fd459c743ba8230184d3cbb8c2d784097fb725a5d5ae0ee302ed55b19c90\",\"target\":\"sha256:6ccd0b94729f32e39b18008510e023bed7f3d9f2e45c1f03af3c3b0cfa7ae155\",\"made-up\":\"sha256:7cd7fd459c743ba8230184d3cbb8c2d784097fb725a5d5ae0ee302ed55b19c90\",\"handled\":\"sha256:197dfaa94ebe22f85866bc8181de1f82a56826a22cfd70cc1ec8893dec473275\",\"inverse\":\"sha256:197dfaa94ebe22f85866bc8181de1f82a56826a22cfd70cc1ec8893dec473275\"}}",
+          "rawReplyRef": "sgr.faint"
+        }
+      ],
+      "rawReplyRef": "sgr.faint",
+      "rawReplySha256": "475d92faca7494c9be34fc9668234a9c55805880730d1265317440d3fccb641f",
+      "screenshotRefs": [
+        "sha256:7a2f8075a4a127a04b54234b0229fd1c3efe250b56e431d8d96df3a855026459",
+        "sha256:e34d82173bc1ae964f4d6863fce520e8cbfd26c43715e2cf96da380bdbc91b4f",
+        "sha256:198c79890d21d39e99790996a6bdb21e8ca36a267d48344e23fd3c61667d829d",
+        "sha256:d036ef49a2ac041d1b75cca1883b577ae5932e6dfeaebe336f13bb8b60916509",
+        "sha256:263cf468e15679e86d277303826ec1235112a72f347b23567d252706c182a03f",
+        "sha256:9a2cd7b276c8130100b6f1b6587edaa85e0ca754049f6e928fc1195591b100c6",
+        "sha256:87ef7a3abb4bd5ea8f71a75c44d417949d8de8f769e607a60b12419a70fe474e",
+        "sha256:235519d518c5e0d3f200069851aef449725230a8fd3a46878b89ef2c26e6832e",
+        "sha256:0e63b25e8a99635d879436fcae3b5703291a5a879f970f00675eda89a9936eed",
+        "sha256:038c5f12dd1056fbbfe96661834a0ba1a58561695e25c04be534722ba596f5ae",
+        "sha256:33aa1278d22bf71ee19ee4cd8507cd14c54a92dd2a710996eac63a0a1f24478a",
+        "sha256:b7e2ca48d8454baf54f584ce0d67f917f21b1e295d8bce885acdd41b6838d239"
+      ]
+    },
+    {
+      "featureId": "sgr.italic",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T14:38:38.484Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T14:38:38.484Z"
+          },
+          "assertionRefs": [
+            5
+          ],
+          "rawReplyRef": "sgr.italic"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.italic",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.italic: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":16,\"cellHeight\":34,\"textWidth\":2240,\"textHeight\":1394},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:2868c02113b80611a25ce0248f2a9b5fcd52298590b1953a7e1c16827ccf4d0e\",\"sha256:2868c02113b80611a25ce0248f2a9b5fcd52298590b1953a7e1c16827ccf4d0e\"],\"pixelsDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"frameDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:7cd7fd459c743ba8230184d3cbb8c2d784097fb725a5d5ae0ee302ed55b19c90\",\"target\":\"sha256:8b88d8198eb4b918cc05dc69639bc9c1d7804c437867f4c5c6d0baf11b317fde\",\"made-up\":\"sha256:7cd7fd459c743ba8230184d3cbb8c2d784097fb725a5d5ae0ee302ed55b19c90\",\"handled\":\"sha256:197dfaa94ebe22f85866bc8181de1f82a56826a22cfd70cc1ec8893dec473275\",\"inverse\":\"sha256:197dfaa94ebe22f85866bc8181de1f82a56826a22cfd70cc1ec8893dec473275\"}}",
+          "rawReplyRef": "sgr.italic"
+        }
+      ],
+      "rawReplyRef": "sgr.italic",
+      "rawReplySha256": "f47d408ffce1d6f280b92ae78955e33e4253b254321718971b032cb4fffa072d",
+      "screenshotRefs": [
+        "sha256:7a2f8075a4a127a04b54234b0229fd1c3efe250b56e431d8d96df3a855026459",
+        "sha256:e34d82173bc1ae964f4d6863fce520e8cbfd26c43715e2cf96da380bdbc91b4f",
+        "sha256:541fba4358dde9296a6df97227ccb06ea972b4ed7dce13e9075734ecab755fcf",
+        "sha256:69af2fb06a09b976602f905e3c9638ee18a84b8676d26c4b6f752578acc6120d",
+        "sha256:ec2f28ce52d0644e696b5f352a54bc14bb3a54fb33b88c649a74519f163aa1d5",
+        "sha256:8f12741ebcac5ee9ed27769117f20a3b32b25b6d83c4fad125e26778eff70172",
+        "sha256:2e589343ca6aac1807261cb50e5ab9d7f9353727dab820747b7bb9412ef8d32a",
+        "sha256:0ee5007c18dbbe07583eca405359c3b8253705e590e6ebb3ca5a74af2cc58e5f",
+        "sha256:0e63b25e8a99635d879436fcae3b5703291a5a879f970f00675eda89a9936eed",
+        "sha256:e5a7ae75241e903ea4d55859b3cd758c655fc14eb0c010f4eb6fa61847017714",
+        "sha256:0fb2ec2eb1010529d336bad9064b184954c6ff1402648a946b84aa7e03b39ba2",
+        "sha256:5cb7d283b974808ad59abff86e1d0b56b3dd1311a4538c2801e538f395ae0b51"
+      ]
+    },
+    {
+      "featureId": "sgr.underline.single",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T14:38:51.086Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
+      "tests": [
+        {
+          "id": "attribute",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T14:38:51.086Z"
+          },
+          "assertionRefs": [
+            6
+          ],
+          "rawReplyRef": "sgr.underline.single"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "sgr.underline.single",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "sgr.underline.single: same-run plain, made-up and handled controls qualify the attribute",
+          "observed": "{\"region\":{\"top\":3,\"left\":3,\"bottom\":3,\"right\":33},\"pixelGeometry\":{\"cellWidth\":16,\"cellHeight\":34,\"textWidth\":2240,\"textHeight\":1394},\"geometrySource\":\"measured by complete raster calibration\",\"stability\":{\"regionDigest\":[\"sha256:2868c02113b80611a25ce0248f2a9b5fcd52298590b1953a7e1c16827ccf4d0e\",\"sha256:2868c02113b80611a25ce0248f2a9b5fcd52298590b1953a7e1c16827ccf4d0e\"],\"pixelsDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"frameDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"wholeWindowChanged\":false},\"samples\":{\"plain\":\"sha256:7cd7fd459c743ba8230184d3cbb8c2d784097fb725a5d5ae0ee302ed55b19c90\",\"target\":\"sha256:b66b64e54f8cca866b7eb74ef168a0925280e72035f2acda5ae120c2a406c565\",\"made-up\":\"sha256:7cd7fd459c743ba8230184d3cbb8c2d784097fb725a5d5ae0ee302ed55b19c90\",\"handled\":\"sha256:197dfaa94ebe22f85866bc8181de1f82a56826a22cfd70cc1ec8893dec473275\",\"inverse\":\"sha256:197dfaa94ebe22f85866bc8181de1f82a56826a22cfd70cc1ec8893dec473275\"}}",
+          "rawReplyRef": "sgr.underline.single"
+        }
+      ],
+      "rawReplyRef": "sgr.underline.single",
+      "rawReplySha256": "bf7bc8b92b0753d46ca0277681e7fccea0920b60927631264ae32dcf9e9bc77b",
+      "screenshotRefs": [
+        "sha256:7a2f8075a4a127a04b54234b0229fd1c3efe250b56e431d8d96df3a855026459",
+        "sha256:e34d82173bc1ae964f4d6863fce520e8cbfd26c43715e2cf96da380bdbc91b4f",
+        "sha256:714168e97f16f573fa3bd61c72bc52cccb82b81f5796fe86174ebc1888830855",
+        "sha256:22ab3af7826df15c4b77d9df221861ee2f497e1d377cdf098e6da3b54e34f1a1",
+        "sha256:9ea2e4df7cc5ff62dee8e720dd8f52f7a4212fb01ef28d4d734aa70393c24bae",
+        "sha256:4af674ce9befb8e9f2bc3152e6d534b0e44c181001d0cc609e9a5ae9a466c1ab",
+        "sha256:c14983ed4236e44e852bff168814f75a75bb8a2519fbb556b98658543d7352c6",
+        "sha256:323e9c0f1f0b930b1bd96fec00ac6e187ba825e95d2b31c3db4453d6eb85e69e",
+        "sha256:0e63b25e8a99635d879436fcae3b5703291a5a879f970f00675eda89a9936eed",
+        "sha256:1a782d08aa6734aa74721e7df17732bb0e97c0944098ef0936e4a3e8ab3d32fc",
+        "sha256:e70ff246760fe88bf3e9c2ab7a7bd68fe320b9d9310253b511f9410e7ced9934",
+        "sha256:0f2f788180dee553e6c494322f9fe4a4f0537092c8cb43d37b65ba9253200da0"
+      ]
+    },
+    {
+      "featureId": "modes.alt-screen.exit",
+      "status": "supported",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T14:38:02.065Z"
+      },
+      "assertionType": "screenshot",
+      "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+      "tests": [
+        {
+          "id": "primary-marker-restored",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T14:38:02.065Z"
+          },
+          "assertionRefs": [
+            0
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "id": "alternate-marker-control",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T14:38:02.065Z"
+          },
+          "assertionRefs": [
+            1
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "id": "saved-cursor-restored",
+          "status": "supported",
+          "attempt": {
+            "scope": "probe",
+            "startedAt": "2026-11-25T14:38:02.065Z"
+          },
+          "assertionRefs": [
+            2
+          ],
+          "rawReplyRef": "modes.alt-screen.exit"
+        }
+      ],
+      "assertions": [
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "modes.alt-screen.exit (primary-marker-restored, expected change): cell-aligned region {\"top\":1,\"left\":1,\"bottom\":1,\"right\":7} equals the same-run expected frame after \"\\u001b[?1049l\", behind a paint witness in cell 2,1",
+          "observed": "sha256:e65ea61afe65cff9ca25e152b12b8d0c3c479f3fa019a7dfbddedaf712913d08",
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "screenshot",
+          "kind": "positive",
+          "expected": "modes.alt-screen.exit: actual alternate marker ALTONLY differs from the independently painted primary PRIMARY in the same crop behind its paint witness",
+          "observed": "{\"stability\":{\"regionDigest\":[\"sha256:e1ac0addfc9be6926f65cda950ea57e5705c1450dd564e3ba1c04e37370d670d\",\"sha256:e1ac0addfc9be6926f65cda950ea57e5705c1450dd564e3ba1c04e37370d670d\"],\"pixelsDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"frameDigest\":[\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\",\"sha256:0b4cd95bd9e6d879da867bdff564928237495725f9813e345dae04580424da8a\"],\"wholeWindowChanged\":false},\"region\":{\"top\":1,\"left\":1,\"bottom\":1,\"right\":7},\"sentinel\":{\"row\":2,\"col\":1},\"cursorRow\":3,\"pixelGeometry\":{\"cellWidth\":16,\"cellHeight\":34,\"textWidth\":2240,\"textHeight\":1394},\"geometrySource\":\"measured by complete raster calibration\",\"seed\":\"sha256:b5a299090f5bfa2333f238e78c9d10567837acb718a5a96ca32e532754aeb79d\",\"after\":\"sha256:e65ea61afe65cff9ca25e152b12b8d0c3c479f3fa019a7dfbddedaf712913d08\",\"expected\":\"sha256:e65ea61afe65cff9ca25e152b12b8d0c3c479f3fa019a7dfbddedaf712913d08\",\"ignored\":\"sha256:b5a299090f5bfa2333f238e78c9d10567837acb718a5a96ca32e532754aeb79d\",\"discriminator\":{\"signal\":\"primary-marker-restored\",\"expected\":\"change\"}}",
+          "rawReplyRef": "modes.alt-screen.exit"
+        },
+        {
+          "featureId": "modes.alt-screen.exit",
+          "assertionType": "query_reply",
+          "kind": "positive",
+          "expected": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+          "observed": "{\"before\":{\"row\":2,\"col\":3},\"inside\":{\"row\":3,\"col\":2},\"after\":{\"row\":2,\"col\":3}}",
+          "rawReplyRef": "modes.alt-screen.exit"
+        }
+      ],
+      "rawReplyRef": "modes.alt-screen.exit",
+      "rawReplySha256": "0fe7e27647a4b504378c1b8b2607ca9f96964037fa3e61bf2f0bbfdc869bf170",
+      "screenshotRefs": [
+        "sha256:7a2f8075a4a127a04b54234b0229fd1c3efe250b56e431d8d96df3a855026459",
+        "sha256:891efde47a9c90b56563a5684fe1c837717603f98ddfbd334e2b7aa8d10203f0",
+        "sha256:3573645de6222997240490e7a51516013f13a26494ed38b52e0b7a21acbee6a5",
+        "sha256:73b7cb8875a2a30a00a3bb0aa1f7c6e5d9a4175004186107a57bf8335a41438e",
+        "sha256:c07ce022b34018a584c73576a56335b15a9d9716ab62fd6f20dec5ef7853fc56",
+        "sha256:af4b645c19a2926cbc304322564fc929905d73a15264bc724aaa8feb001bf38b",
+        "sha256:21c619279ce1fa7da093b29aaa17e8d2f772a4c000725cbefdcfc3750388375c"
+      ]
+    }
+  ]
+}

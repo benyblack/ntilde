@@ -23,7 +23,21 @@ export const retestReasons = {
     'window-movement': 'all Core cases invalidated by native-window movement',
     'capture-stability': 'iTerm2 scrollback cases invalidated by the cursor repaint during the static-frame control',
     'probe-timeout': 'the five Ghostty Core cases that lost their supported verdict to a probe timeout',
+    'capture-throughput': 'the five Ghostty Core timeouts after reducing native window census overhead',
 };
+
+/** The only upstream source file a focused capture adapter may change. */
+export function retestAdapterPath(kind) {
+    if (kind === 'capture-stability') return 'packages/terminfo.dev/src/serve.ts';
+    if (kind === 'capture-throughput') return 'packages/terminfo.dev/src/darwin-capture.ts';
+    return undefined;
+}
+
+/** Retain the earlier timeout run at its original publication URL. */
+export function retestEvidenceDirectory(kind) {
+    if (kind === 'capture-throughput') return 'timeout-retest';
+    return kind ? 'focused-retest' : 'movement-retest';
+}
 
 /** Derive the selected cases from their retained status and measurement reason. */
 export function focusedRetestCases(raw, coreIds, kind = 'window-movement') {
@@ -37,7 +51,7 @@ export function focusedRetestCases(raw, coreIds, kind = 'window-movement') {
                 row.status === 'probe-invalid' && row.reason?.includes('two captures of one static frame were not byte-stable'),
         ).map((row) => row.featureId).sort();
         if (cases.length !== 7) throw new Error('Expected all seven iTerm2 static-frame invalidations.');
-    } else if (kind === 'probe-timeout' && raw.subject?.id === 'ghostty') {
+    } else if (['probe-timeout', 'capture-throughput'].includes(kind) && raw.subject?.id === 'ghostty') {
         cases = raw.results.filter(
             (row) => coreIds.includes(row.featureId) && ghosttyLostCases.has(row.featureId) &&
                 row.status === 'probe-todo' && row.reason === 'Probe exceeded 30000ms',

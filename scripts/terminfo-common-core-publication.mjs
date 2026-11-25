@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { verifiedEvidenceFile, verifyCommonCoreArchive, readCommonCoreRaw } from './terminfo/common-core-evidence.mjs';
 import { verifyCommonCoreSource } from './terminfo/common-core-source.mjs';
 import { buildCommonCoreRetest } from './terminfo/common-core-retest-report.mjs';
+import { retestAdapterPath, retestEvidenceDirectory } from './terminfo/common-core-retest.mjs';
 import { buildCommonCoreComparison, comparisonStatusLabels } from './terminfo/common-core-comparison.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -87,10 +88,8 @@ if (!historical && report.subjects.some((subject) => subject.measurementLimits.c
 const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.json'), 'utf8'));
 if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true)
     throw new Error('Retained upstream source differs from the measured comparison.');
-const captureRetests = retests.filter((subject) =>
-    JSON.parse(subject.configBytes).retest?.kind === 'capture-stability',
-);
-const sameSourceRetests = retests.filter((subject) => !captureRetests.includes(subject));
+const retestKind = (subject) => JSON.parse(subject.configBytes).retest?.kind;
+const sameSourceRetests = retests.filter((subject) => !retestAdapterPath(retestKind(subject)));
 verifyCommonCoreSource(
     publication,
     sourceProof,
@@ -102,13 +101,12 @@ const sourcePath = 'upstream-source.json';
 if (!(manifest.artifacts ?? []).some((entry) => entry.path === sourcePath))
     throw new Error('Source proof is not digest-bound to the manifest.');
 report.manifestSha256 = digest(manifestBytes);
-const captureAdapter = verifyCaptureRetestAdapter(captureRetests, sourceProof);
 const retestReports = retests.map((retest) =>
     buildCommonCoreRetest({
         comparison: report,
         baseline: subjects.find((subject) => subject.id === retest.id),
         retest,
-        captureAdapter,
+        captureAdapter: verifyCaptureRetestAdapter(retest, sourceProof),
     }),
 );
 for (const retest of retestReports) {
@@ -118,8 +116,7 @@ for (const retest of retestReports) {
 }
 const caseOutputs = [...subjects, ...retests].map((subject, index) => {
     const isRetest = index >= subjects.length;
-    const kind = JSON.parse(subject.configBytes).retest?.kind;
-    const retestDirectory = kind ? 'focused-retest' : 'movement-retest';
+    const retestDirectory = retestEvidenceDirectory(retestKind(subject));
     const evidenceDirectory = isRetest ? `${subject.id}/${retestDirectory}` : subject.id;
     const raw = JSON.parse(subject.rawBytes);
     const cases = {
@@ -185,7 +182,7 @@ const limits = report.subjects
     .join('\n');
 const retestIntroduction = historical
     ? '\n## Focused movement retest\n\nThe original full-run results remain retained above. One unattempted manual position is labeled not tested while its original raw status is preserved. Every movement-invalidated case was retested with the same upstream collector, shared worker, executable/payload identity and grid. Latest combined counts include every retest outcome, including any unsupported or inconclusive result.\n\n'
-    : '\n## Focused screenshot retests\n\nThe table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. The iTerm2 adapter waits 250 ms before each feature capture so the renderer can complete the cursor hide. The original two-frame stability check still decides validity. Ghostty reruns the five cases that lost a supported verdict to a timeout, using the original adapter and time budget. Combined evidence includes every retest outcome.\n\n';
+    : '\n## Focused screenshot retests\n\nThe table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. The iTerm2 adapter waits 250 ms before each feature capture so the renderer can complete the cursor hide. The original two-frame stability check still decides validity. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.\n\n';
 const retestMarkdown = retestReports.length
     ? retestIntroduction +
       retestReports
@@ -271,16 +268,18 @@ console.log(
 );
 
 /** Verify the alternate suite against a Git proof of a collector-only extension to the full-run adapter. */
-function verifyCaptureRetestAdapter(retests, fullRunSource) {
-    if (!retests.length) return undefined;
-    if (historical || retests.length !== 1 || retests[0].id !== 'iterm2')
+function verifyCaptureRetestAdapter(retest, fullRunSource) {
+    const kind = retestKind(retest);
+    const path = retestAdapterPath(kind);
+    if (!path) return undefined;
+    const expectedId = kind === 'capture-stability' ? 'iterm2' : 'ghostty';
+    if (historical || retest.id !== expectedId)
         throw new Error('Unexpected capture-adapter retest.');
-    const prefix = 'iterm2/focused-retest/adapter/';
+    const prefix = `${retest.id}/${retestEvidenceDirectory(kind)}/adapter/`;
     for (const filename of ['upstream-source.json', 'upstream-source.zip', 'source-proof.zip', 'native-adapter.bundle', 'native-adapter.patch.gz']) {
         if (!manifest.artifacts.some((entry) => entry.path === prefix + filename))
             throw new Error('Capture retest adapter input is missing from the evidence manifest: ' + filename);
     }
-    const retest = retests[0];
     const measured = JSON.parse(retest.sourceBytes);
     const adapter = JSON.parse(readFileSync(join(publication, prefix, 'upstream-source.json'), 'utf8'));
     if (adapter.baseRevision !== fullRunSource.baseRevision || adapter.adapterRevision !== measured.upstreamRevision)
@@ -290,8 +289,8 @@ function verifyCaptureRetestAdapter(retests, fullRunSource) {
         join(publication, prefix),
         adapter,
         verifiedEvidenceFile(publication, retestEntry.files.source).path,
-        retests,
-        fullRunSource.adapterRevision,
+        [retest],
+        { parent: fullRunSource.adapterRevision, path },
     );
     return { sourceRevision: measured.upstreamRevision, probeHash: measured.suite.probeHash };
 }

@@ -13,7 +13,7 @@
     },
     "upstreamBaseRevision": "b0c8c62500199b381478a02b1f144a4de60693e5"
   },
-  "manifestSha256": "0119c8b15d3ca85c948bd62aaf9dd8e11e755ed50a816cf8647864af4fd05b40",
+  "manifestSha256": "6dabbd745d6f70afceb1dcdf4681db5e0c8fc31cd8d3be3fd764fa03616bc042",
   "subjects": [
     {
       "id": "ntilde",
@@ -136,16 +136,16 @@
       },
       "supportedShare": 80,
       "focusedRetest": {
-        "kind": "probe-timeout",
-        "probeHash": "ef9c0a6b2d4a",
-        "sourceRevision": "0f01f9013053086354c941390bfd7d678c6a7e2b",
+        "kind": "capture-throughput",
+        "probeHash": "dcef0754e65b",
+        "sourceRevision": "7f3148eed9c84bb59153e21dcf82f19e8f375977",
         "subjectId": "ghostty",
-        "runId": "e5f875a59d201103db1b0b10ea41da51",
-        "measuredAt": "2026-11-25T13:47:44.818Z",
+        "runId": "54669577db59a6415860e338b58fcc5a",
+        "measuredAt": "2026-11-25T14:39:04.513Z",
         "baselineRunId": "3cd3c30494767f72682a764f347db873",
         "baselineRawSha256": "61aa7fa453d7fa6c6a6cec39c7dc0db5af69d0ca25910761fb150c2d288ed25d",
-        "rawSha256": "c4a5318ef34c9d4a15eddfcdab2682eb452ceb73bfd77fd0a38f0934d481c67f",
-        "launchDriverSha256": "e96430658ffcdfbca9a45c2aaee2af60aff05b7480d6053c59d8c3b685d57b98",
+        "rawSha256": "8bf5874cfe1703f089eeb0c4904729a09c5e9c466ff8568e54cef660717b1a50",
+        "launchDriverSha256": "1a77b8ff68f6759dd2bac252cafcb1d65b4e5bf40260df33920bf0a909a11840",
         "caseIds": [
           "modes.alt-screen.exit",
           "sgr.bold",
@@ -154,18 +154,18 @@
           "sgr.underline.single"
         ],
         "counts": {
-          "supported": 0,
+          "supported": 5,
           "unsupported": 0,
           "untestable": 0,
-          "probe-todo": 5,
+          "probe-todo": 0,
           "probe-invalid": 0,
           "not-scheduled": 0
         },
         "currentCounts": {
-          "supported": 64,
+          "supported": 69,
           "unsupported": 0,
           "untestable": 1,
-          "probe-todo": 14,
+          "probe-todo": 9,
           "probe-invalid": 0,
           "not-scheduled": 1
         }
@@ -201,29 +201,31 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": {
-            "rawStatus": "probe-todo",
+            "rawStatus": "supported",
             "evidenceLine": 7,
-            "status": "probe-todo",
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T14:38:12.613Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.bold",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  3
+                ],
+                "rawReplyRef": "sgr.bold"
               }
             ],
-            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "runId": "54669577db59a6415860e338b58fcc5a",
             "previousStatus": "probe-todo",
-            "evidencePath": "ghostty/focused-retest/cases.json"
+            "evidencePath": "ghostty/timeout-retest/cases.json"
           },
           "evidenceLine": 7,
           "status": "probe-todo",
@@ -260,29 +262,31 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 33,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 57,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T14:38:25.799Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.faint",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  4
+                ],
+                "rawReplyRef": "sgr.faint"
               }
             ],
-            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "runId": "54669577db59a6415860e338b58fcc5a",
             "previousStatus": "probe-todo",
-            "evidencePath": "ghostty/focused-retest/cases.json"
+            "evidencePath": "ghostty/timeout-retest/cases.json"
           },
           "evidenceLine": 33,
           "status": "probe-todo",
@@ -319,29 +323,31 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 59,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 107,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T14:38:38.484Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.italic",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  5
+                ],
+                "rawReplyRef": "sgr.italic"
               }
             ],
-            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "runId": "54669577db59a6415860e338b58fcc5a",
             "previousStatus": "probe-todo",
-            "evidencePath": "ghostty/focused-retest/cases.json"
+            "evidencePath": "ghostty/timeout-retest/cases.json"
           },
           "evidenceLine": 59,
           "status": "probe-todo",
@@ -378,29 +384,31 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 85,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 157,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T14:38:51.086Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.underline.single",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  6
+                ],
+                "rawReplyRef": "sgr.underline.single"
               }
             ],
-            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "runId": "54669577db59a6415860e338b58fcc5a",
             "previousStatus": "probe-todo",
-            "evidencePath": "ghostty/focused-retest/cases.json"
+            "evidencePath": "ghostty/timeout-retest/cases.json"
           },
           "evidenceLine": 85,
           "status": "probe-todo",
@@ -1767,29 +1775,55 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 111,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 207,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "primary-marker-restored",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T14:38:02.065Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "modes.alt-screen.exit",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  0
+                ],
+                "rawReplyRef": "modes.alt-screen.exit"
+              },
+              {
+                "id": "alternate-marker-control",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T14:38:02.065Z"
+                },
+                "assertionRefs": [
+                  1
+                ],
+                "rawReplyRef": "modes.alt-screen.exit"
+              },
+              {
+                "id": "saved-cursor-restored",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T14:38:02.065Z"
+                },
+                "assertionRefs": [
+                  2
+                ],
+                "rawReplyRef": "modes.alt-screen.exit"
               }
             ],
-            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "runId": "54669577db59a6415860e338b58fcc5a",
             "previousStatus": "probe-todo",
-            "evidencePath": "ghostty/focused-retest/cases.json"
+            "evidencePath": "ghostty/timeout-retest/cases.json"
           },
           "evidenceLine": 1620,
           "status": "probe-todo",
