@@ -1,12 +1,61 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "1dce8b57672bd46a75f2400da5e5ef4069e5e99d0ed8055f9b89365f5a8d83a7"
+    "owned-run.zip": "b5dcb7e74e7441b63ef1483430d73798a2f727ba3e44828788af4db2a8d0f5bf",
+    "attempt-1.zip": "1dce8b57672bd46a75f2400da5e5ef4069e5e99d0ed8055f9b89365f5a8d83a7",
+    "attempt-2.zip": "22ebb9448499b7b956f6a3967f523ead7daaa8123a900e5f5cb804112bf3ddeb",
+    "attempt-3.zip": "ef697880dfdfcad1f2ed459ef6fec51bf87bebebad1cbeef420ca8535df3c6ba",
+    "attempt-4.zip": "f1f7ec52028f1dd9979a6e48ba2942a7c8146a80e265e158d065e35f4e059e70",
+    "attempt-5.zip": "d69eadfdbe2a873cb15cb36e4c2139cbcb945a3bc4613349b51952b1c1523277",
+    "attempt-6.zip": "64f3207f3a4995a20824088004de18a835043ac8a8481abbeefc027ec256b39d"
   },
-  "attempts": [],
-  "runId": "aa59d5428eb0f2a5799b31b769596275",
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "aa59d5428eb0f2a5799b31b769596275",
+      "scriptsRevision": "5a4350fd0d0da6faa80817c2660d2a2019cb12b8",
+      "appRevision": "61252b56a3e769d714b0d2635727f94d1b775bc9",
+      "reason": "The first run passed before collector review changes."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "a59061d3e234fec876d17f72920a36fd",
+      "scriptsRevision": "990b5714a847a58abed6ab8c9d5eeea3fc4e02ba",
+      "appRevision": "61252b56a3e769d714b0d2635727f94d1b775bc9",
+      "reason": "GTK widget startup exceeded the peer admission deadline before any clipboard operation."
+    },
+    {
+      "archive": "attempt-3.zip",
+      "runId": "be6a3277b78f477f6fd084c797984560",
+      "scriptsRevision": "990b5714a847a58abed6ab8c9d5eeea3fc4e02ba",
+      "appRevision": "61252b56a3e769d714b0d2635727f94d1b775bc9",
+      "reason": "A retry hit the same GTK peer admission deadline before any clipboard operation."
+    },
+    {
+      "archive": "attempt-4.zip",
+      "runId": "9f46b85276fed8bd6cf4ebce40956bf9",
+      "scriptsRevision": "990b5714a847a58abed6ab8c9d5eeea3fc4e02ba",
+      "appRevision": "61252b56a3e769d714b0d2635727f94d1b775bc9",
+      "reason": "A diagnostic launch under strace exceeded the App readiness deadline before peer startup."
+    },
+    {
+      "archive": "attempt-5.zip",
+      "runId": "2d7b576c4ab86173212efe50f7888092",
+      "scriptsRevision": "990b5714a847a58abed6ab8c9d5eeea3fc4e02ba",
+      "appRevision": "61252b56a3e769d714b0d2635727f94d1b775bc9",
+      "reason": "A process-state diagnostic reproduced the GTK widget admission timeout before any clipboard operation."
+    },
+    {
+      "archive": "attempt-6.zip",
+      "runId": "b0e2b6d31bc32ae40d04b30dbb1802f7",
+      "scriptsRevision": "fe0909d02126300fd3cc23be065711bc781a4133",
+      "appRevision": "61252b56a3e769d714b0d2635727f94d1b775bc9",
+      "reason": "The native GDK surface admitted the text peers and the run passed. The final run includes further review changes."
+    }
+  ],
+  "runId": "0a796d875f77a89f76a10eb94c83e2c0",
   "appRevision": "61252b56a3e769d714b0d2635727f94d1b775bc9",
-  "scriptsRevision": "5a4350fd0d0da6faa80817c2660d2a2019cb12b8",
+  "scriptsRevision": "00e45cbef63fb037b5a94aaa0e014929ec117c69",
   "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
   "runtime": "linux-arm64",
   "dotnetSdk": "10.0.403",

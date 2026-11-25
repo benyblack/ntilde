@@ -69,9 +69,14 @@ test('apply the frozen negative rule only to an unchanged owned baseline after t
         state.ownerPid = trial.seed.process.pid;
         state.ownerWindow = trial.seed.after.ownerWindow;
     }
-    assert.equal(replayClipboard(run)[0].conclusion, 'inconclusive');
+    assert.throws(() => replayClipboard(run), /incomplete or extra settled CLIPBOARD reads/);
+    shiftClipboardEnd(run, [sample, trial.restoreSeed, trial.restoreRead]);
+    assert.equal(replayClipboard(run)[0].conclusion, 'fail');
+});
+
+function shiftClipboardEnd(run, steps) {
     const later = timestamp => (BigInt(timestamp) + 1_000_000_000n).toString();
-    for (const step of [sample, trial.restoreSeed, trial.restoreRead]) {
+    for (const step of steps) {
         step.before.at = later(step.before.at);
         step.dispatched = later(step.dispatched);
         step.result.started = later(step.result.started);
@@ -79,7 +84,31 @@ test('apply the frozen negative rule only to an unchanged owned baseline after t
         step.after.at = later(step.after.at);
     }
     run.terminal.at = later(run.terminal.at);
-    assert.equal(replayClipboard(run)[0].conclusion, 'fail');
+}
+
+test('a seed-to-App transfer during read requires a fresh read from the settled App owner', () => {
+    const run = retained(), [trial] = run.cases, sample = trial.reads.at(-1);
+    const transition = structuredClone(sample);
+    transition.process.pid = 65535;
+    transition.process.argv[6] = transition.process.argv[6].replace(/gtk-\d+$/, 'gtk-80');
+    transition.before.peerPid = transition.after.peerPid = transition.process.pid;
+    transition.before.peerWindow = transition.after.peerWindow = sample.before.peerWindow + 100;
+    transition.before.ownerPid = trial.seed.process.pid;
+    transition.before.ownerWindow = trial.seed.after.ownerWindow;
+    transition.result.text = trial.baseline;
+    shiftClipboardEnd(run, [sample, trial.restoreSeed, trial.restoreRead]);
+    trial.reads.splice(-1, 0, transition);
+    assert.equal(replayClipboard(run)[0].conclusion, 'pass');
+    trial.reads.pop();
+    assert.throws(() => replayClipboard(run), /incomplete or extra settled CLIPBOARD reads/);
+});
+
+test('protect a clipboard read containing Markdown delimiters in the readable result', () => {
+    const [{ result }] = retained().cases[0].reads;
+    const report = JSON.parse(readFileSync(osc52WritePaths(modernRoot).json));
+    const row = report.rows.find(item => item.id === id);
+    row.observed.reads[0].text = result.text + '|`';
+    assert.ok(readableOsc52Write(report).includes(result.text + '\\u007c\\u0060'));
 });
 
 test('refuse a success archive with policy drift or missing GTK process cleanup', () => {

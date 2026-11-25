@@ -9,7 +9,7 @@ import { verifyAttempts, verifyX11Run } from './modern-x11-mouse-results.mjs';
 import { id, replayClipboard } from './modern-x11-osc52-write.mjs';
 
 export const publication = 'docs/qa/terminfo/2026-11-25-modern-osc52-write-results';
-const manifestSha256 = 'd461b7308ced327a340bcd86b682847f1fc1bcfc3031db37a8b9803634b0b1fc';
+const manifestSha256 = 'c46123aaca756f7459c869d469ae0dbc4cdc97aad88d08eda2e83696c41ddc0a';
 const criterionSha256 = 'f8da38dda3400b796ec83a9d44d423641086197ea7a18e8066baeb1c556525db';
 export const osc52WritePaths = base => ({ json: join(base, publication, 'report.json'), markdown: join(base, publication, 'report.md') });
 export const verifyOsc52WriteRun = directory => verifyX11Run(directory, {
@@ -65,6 +65,7 @@ export function buildOsc52WritePublication(base = modernRoot) {
 }
 
 const bytes = value => value.match(/../g).join(' ');
+const tableText = value => JSON.stringify(value).replaceAll('|', '\\u007c').replaceAll('`', '\\u0060');
 
 export function readableOsc52Write(report) {
     const { totals, predecessor, osc52WriteMeasurement: m } = report;
@@ -77,7 +78,7 @@ export function readableOsc52Write(report) {
         `| XTEST a in the armed direct PTY | \`${bytes(o.keyHex)}\` |`,
         `| Exact OSC 52 c write | \`${bytes(o.osc52Hex)}\` |`,
         `| Cursor-position reply after the write | \`${bytes(o.cprHex)}\` |`,
-        ...o.reads.map(({ text, ownerPid }) => `| Independent post-write CLIPBOARD read | \`${JSON.stringify(text)}\` (owner PID ${ownerPid}) |`),
+        ...o.reads.map(({ text, ownerPid }) => `| Independent post-write CLIPBOARD read | \`${tableText(text)}\` (owner PID ${ownerPid}) |`),
         `| Independent restoration read | \`${o.restored}\` (GTK owner PID ${m.restorationOwnerPid}) |`, '',
         o.reason,
         'The disposable profile used `AllowOsc52ClipboardWrite=true` and the production native clipboard path. The App write setting defaults to enabled. This case measures App output to X11 CLIPBOARD. The OSC 52 round-trip and native paste rows retain their prior verdicts.', '',
