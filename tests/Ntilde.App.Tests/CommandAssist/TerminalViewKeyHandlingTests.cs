@@ -340,23 +340,26 @@ public sealed class TerminalViewKeyHandlingTests
         window.Show();
         try
         {
+            // Drive the callbacks registered with Avalonia's headless platform implementation.
             var platform = window.PlatformImpl!;
-            platform.Activated!.Invoke();
+            var activate = Assert.IsType<Action>(platform.GetType().GetProperty("Activated")?.GetValue(platform));
+            var deactivate = Assert.IsType<Action>(platform.GetType().GetProperty("Deactivated")?.GetValue(platform));
+            activate();
             Assert.True(view.Focus());
             Assert.True(window.IsActive);
             buffer.Modes.IsFocusEventReporting = true;
 
-            platform.Deactivated!.Invoke();
+            deactivate();
             Assert.False(window.IsActive);
-            platform.Activated!.Invoke();
+            activate();
             Assert.True(window.IsActive);
             Assert.Equal(new[] { "\x1b[O", "\x1b[I" }, input);
             otherSession.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
 
             input.Clear();
             buffer.Modes.IsFocusEventReporting = false;
-            platform.Deactivated!.Invoke();
-            platform.Activated!.Invoke();
+            deactivate();
+            activate();
             Assert.Empty(input);
         }
         finally

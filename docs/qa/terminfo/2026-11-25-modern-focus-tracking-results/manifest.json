@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "98ed385563fcdaad3d087d4bc452f3c4f5c2d7adb6d1eab7ef7b7c7c8b4cf90d",
+    "attempt-1.zip": "606461b86d979d12d65b76349998db60f8254d4f287d4ba8dab3816931af71b3"
+  },
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "64f49f176397f0205a006507323805be",
+      "scriptsRevision": "89c67d544707a33b6794f8c09d15f0f26127d489",
+      "appRevision": "38979ba8b6800b496d6776039d804f340350113a",
+      "reason": "The baseline App delivered 61 in both modes even though X11 verified both focus changes. The frozen criterion grades this run unsupported. The App fix observes native window activation in addition to control focus."
+    }
+  ],
+  "runId": "8a1b73d0b074c2ef0ca499ddd31ada9c",
+  "appRevision": "cf04b2385192f9fadf71dd8b31f465d54154ee0e",
+  "scriptsRevision": "89c67d544707a33b6794f8c09d15f0f26127d489",
+  "platform": "Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64",
+  "dotnetSdk": "10.0.403",
+  "x11Packages": {
+    "xvfb": "2:21.1.22-1ubuntu1",
+    "libx11-6": "2:1.8.13-1ubuntu0.1",
+    "libxtst6": "2:1.2.5-1ubuntu0.1",
+    "libxres1": "2:1.2.1-1build2"
+  }
+}

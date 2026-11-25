@@ -1,5 +1,11 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern focus-tracking assessment](terminfo/2026-11-25-modern-focus-tracking-results/report.md)
+reaches 65 pass, 0 fail and 4 inconclusive across 69 frozen criteria. After the
+App focus fix, the owned Linux X11 round trip produced `CSI O`, `CSI I` and
+plain `a` with mode 1004 set. It produced only `a` with the mode reset. Run
+`node scripts/terminfo-modern-results.mjs --check --focus-tracking` to rederive the report.
+
 The [Modern application keypad assessment](terminfo/2026-11-25-modern-application-keypad-results/report.md)
 reaches 64 pass, 0 fail and 5 inconclusive across 69 frozen criteria. On an
 owned Linux X11 display, the child received plain `a`, then `SS3 k` for
