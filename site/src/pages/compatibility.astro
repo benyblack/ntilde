@@ -11,7 +11,7 @@ const qualification = `${base}qualification/`;
 type ComparisonSubject = (typeof comparison.subjects)[number];
 type OutcomeCounts = ComparisonSubject['counts'];
 const subjects: (ComparisonSubject & {
-  focusedRetest?: { counts: OutcomeCounts; currentCounts: OutcomeCounts; caseIds: string[] };
+  focusedRetest?: { counts: OutcomeCounts; currentCounts: OutcomeCounts; caseIds: string[]; kind?: string };
 })[] = comparison.subjects;
 const baselines = [
   { id: 'core', label: 'Core', totals: core.totals, dateLabel: 'Report dated', captured: core.measurement.asOf,
@@ -86,10 +86,10 @@ const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!)
             <dt class="text-ink-400">Untestable / not tested</dt><dd class="text-right text-ink-200">{subject.counts.untestable + subject.counts['not-scheduled']}</dd>
           </dl>
           {subject.focusedRetest && <div class="mt-5 rounded-lg border border-ink-700 p-3 text-sm leading-relaxed text-ink-200">
-            <p class="font-medium">Focused movement retest</p>
+            <p class="font-medium">Focused retest</p>
             <p class="mt-2">{subject.focusedRetest.counts.supported} of {subject.focusedRetest.caseIds.length} retested cases supported. The original full run remains unchanged.</p>
             <p class="mt-2 text-xs text-ink-300">Latest combined evidence: {subject.focusedRetest.currentCounts.supported} supported, {subject.focusedRetest.currentCounts.unsupported} unsupported, {subject.focusedRetest.currentCounts['probe-invalid']} invalid, {subject.focusedRetest.currentCounts['probe-todo']} not concluded, {subject.focusedRetest.currentCounts.untestable} untestable, {subject.focusedRetest.currentCounts['not-scheduled']} not tested.</p>
-            <a class="mt-2 inline-block text-xs text-ntilde-300 underline" href={`${evidence}/${subject.id}/movement-retest`}>Inspect the focused retest →</a>
+            <a class="mt-2 inline-block text-xs text-ntilde-300 underline" href={`${evidence}/${subject.id}/${subject.focusedRetest.kind ? 'focused-retest' : 'movement-retest'}`}>Inspect the focused retest →</a>
           </div>}
           {subject.measurementLimits.captureRefusal && <div class="mt-5 rounded border border-amber-800/60 bg-amber-950/30 p-3 text-xs leading-relaxed text-amber-200">Screenshot calibration was refused. Visual cases remain unconcluded: this count cannot rank terminal support. <details class="mt-2"><summary class="cursor-pointer">Recorded reason</summary><p class="mt-2 break-words">{subject.measurementLimits.captureRefusal}</p></details></div>}
           {subject.counts['probe-invalid'] > 0 && <p class="mt-3 text-xs leading-relaxed text-amber-200">Some measurements were invalid because their controls or capture conditions were not established. {subject.measurementLimits.invalidWindowBoundsCount > 0 && <span> {subject.measurementLimits.invalidWindowBoundsCount} were invalidated after the native window bounds changed.</span>} Expand the affected rows for the recorded reasons.</p>}
@@ -127,7 +127,7 @@ const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!)
               {comparison.subjects.map(subject => {
                 const original = row.results[subject.id as keyof typeof row.results];
                 const result = original.retest ?? original;
-                return <td class="max-w-xs px-5 py-4"><span class={`font-medium ${statusClass(result.status)}`}>{statusNames[result.status]}</span>{result.method && <p class="mt-2 text-xs text-ink-500">{result.method.replaceAll('_', ' ')}</p>}{original.retest && <p class="mt-2 text-xs text-ink-300">Focused retest · initial result: {statusNames[original.status]}</p>}{result.evidenceLine && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${result.evidencePath}#L${result.evidenceLine}`}>{original.retest ? 'Retest record ↗' : 'Run record ↗'}</a>}{original.retest && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${original.evidencePath}#L${original.evidenceLine}`}>Original invalidation ↗</a>}{result.reason && <details class="mt-2 text-xs leading-relaxed text-ink-400"><summary class="cursor-pointer">Measurement note</summary><p class="mt-2 break-words">{result.reason}</p></details>}</td>;
+                return <td class="max-w-xs px-5 py-4"><span class={`font-medium ${statusClass(result.status)}`}>{statusNames[result.status]}</span>{result.method && <p class="mt-2 text-xs text-ink-500">{result.method.replaceAll('_', ' ')}</p>}{original.retest && <p class="mt-2 text-xs text-ink-300">Focused retest · initial result: {statusNames[original.status]}</p>}{result.evidenceLine && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${result.evidencePath}#L${result.evidenceLine}`}>{original.retest ? 'Retest record ↗' : 'Run record ↗'}</a>}{original.retest && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${original.evidencePath}#L${original.evidenceLine}`}>Original run record ↗</a>}{result.reason && <details class="mt-2 text-xs leading-relaxed text-ink-400"><summary class="cursor-pointer">Measurement note</summary><p class="mt-2 break-words">{result.reason}</p></details>}</td>;
               })}
             </tr>
           ))}

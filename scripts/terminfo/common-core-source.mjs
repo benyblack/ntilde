@@ -61,7 +61,7 @@ export function verifyRetainedSuite(proof, suite) {
 }
 
 /** Verify source Git objects, bundle, patch and the executed suite independently of declarations. */
-export function verifyCommonCoreSource(directory, source, metadataPath, subjects) {
+export function verifyCommonCoreSource(directory, source, metadataPath, subjects, captureParent) {
     const verification = fileURLToPath(new URL('./verify-common-core-source.py', import.meta.url));
     const proof = JSON.parse(
         execFileSync(
@@ -76,6 +76,7 @@ export function verifyCommonCoreSource(directory, source, metadataPath, subjects
                 source.adapterRevision,
                 metadataPath,
                 commonCoreGit(),
+                ...(captureParent ? [captureParent] : []),
             ],
             { timeout: 120000, maxBuffer: 16 * 1024 * 1024, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
         ),

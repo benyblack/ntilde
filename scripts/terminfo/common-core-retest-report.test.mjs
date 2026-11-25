@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { fixture, bytes, ids } from './common-core-fixture.mjs';
 import { buildCommonCoreComparison } from './common-core-comparison.mjs';
-import { buildWindowMovementRetest } from './common-core-retest-report.mjs';
+import { buildCommonCoreRetest } from './common-core-retest-report.mjs';
 const sha = (value) => createHash('sha256').update(value).digest('hex');
 /** Mutate synthetic evidence while keeping unrelated bindings valid. */
 function update(subject, key, mutate) {
@@ -58,7 +58,7 @@ function scenario() {
 }
 test('preserves the original full run while all six movement cases gain separately identified evidence', () => {
     const input = scenario(),
-        result = buildWindowMovementRetest(input);
+        result = buildCommonCoreRetest(input);
     assert.equal(result.counts.supported, 6);
     assert.equal(result.currentCounts.supported, 79);
     assert.equal(result.currentCounts['probe-invalid'], 1);
@@ -72,7 +72,7 @@ test('a valid unsupported retest is recorded instead of selecting only favorable
     update(input.retest, 'rawBytes', (raw) => {
         raw.results[0].status = 'unsupported';
     });
-    const result = buildWindowMovementRetest(input);
+    const result = buildCommonCoreRetest(input);
     assert.equal(result.currentCounts.unsupported, 1);
     assert.equal(result.counts.supported, 5);
 });
@@ -137,5 +137,5 @@ for (const [name, key, change] of [
     test('refuses retest ' + name, () => {
         const input = scenario();
         update(input.retest, key, change);
-        assert.throws(() => buildWindowMovementRetest(input));
+        assert.throws(() => buildCommonCoreRetest(input));
     });

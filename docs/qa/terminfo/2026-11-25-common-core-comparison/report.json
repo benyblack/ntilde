@@ -70,7 +70,44 @@
         "probe-invalid": 7,
         "not-scheduled": 1
       },
-      "supportedShare": 61.25000000000001
+      "supportedShare": 61.25000000000001,
+      "focusedRetest": {
+        "kind": "capture-stability",
+        "probeHash": "3fff7f9c94f9",
+        "sourceRevision": "06b733cc7838c9a6dc57aa18d64ecc95a3e98e66",
+        "subjectId": "iterm2",
+        "runId": "6bde71e7ae9df87579ee1717e96dac64",
+        "measuredAt": "2026-11-25T13:50:11.396Z",
+        "baselineRunId": "e7b598f31bb6b0d7648ff4fb8c6bdab1",
+        "baselineRawSha256": "1c5b2ccc4c9705d732ceaf920424083ee176f40eca44bb2b1d5ab6b2260b8f23",
+        "rawSha256": "cd2992d479b1919d8c12a71f5c25e35673bb69b08c623cae0c1e5acb01eacdac",
+        "launchDriverSha256": "e96430658ffcdfbca9a45c2aaee2af60aff05b7480d6053c59d8c3b685d57b98",
+        "caseIds": [
+          "scrollback.alt-screen",
+          "scrollback.decstbm",
+          "scrollback.decstbm-reset",
+          "scrollback.reverse-index",
+          "scrollback.scroll-down",
+          "scrollback.scroll-up",
+          "scrollback.set-region"
+        ],
+        "counts": {
+          "supported": 7,
+          "unsupported": 0,
+          "untestable": 0,
+          "probe-todo": 0,
+          "probe-invalid": 0,
+          "not-scheduled": 0
+        },
+        "currentCounts": {
+          "supported": 56,
+          "unsupported": 0,
+          "untestable": 1,
+          "probe-todo": 22,
+          "probe-invalid": 0,
+          "not-scheduled": 1
+        }
+      }
     },
     {
       "id": "ghostty",
@@ -98,7 +135,42 @@
         "probe-invalid": 0,
         "not-scheduled": 1
       },
-      "supportedShare": 80
+      "supportedShare": 80,
+      "focusedRetest": {
+        "kind": "probe-timeout",
+        "probeHash": "ef9c0a6b2d4a",
+        "sourceRevision": "0f01f9013053086354c941390bfd7d678c6a7e2b",
+        "subjectId": "ghostty",
+        "runId": "e5f875a59d201103db1b0b10ea41da51",
+        "measuredAt": "2026-11-25T13:47:44.818Z",
+        "baselineRunId": "3cd3c30494767f72682a764f347db873",
+        "baselineRawSha256": "61aa7fa453d7fa6c6a6cec39c7dc0db5af69d0ca25910761fb150c2d288ed25d",
+        "rawSha256": "c4a5318ef34c9d4a15eddfcdab2682eb452ceb73bfd77fd0a38f0934d481c67f",
+        "launchDriverSha256": "e96430658ffcdfbca9a45c2aaee2af60aff05b7480d6053c59d8c3b685d57b98",
+        "caseIds": [
+          "modes.alt-screen.exit",
+          "sgr.bold",
+          "sgr.faint",
+          "sgr.italic",
+          "sgr.underline.single"
+        ],
+        "counts": {
+          "supported": 0,
+          "unsupported": 0,
+          "untestable": 0,
+          "probe-todo": 5,
+          "probe-invalid": 0,
+          "not-scheduled": 0
+        },
+        "currentCounts": {
+          "supported": 64,
+          "unsupported": 0,
+          "untestable": 1,
+          "probe-todo": 14,
+          "probe-invalid": 0,
+          "not-scheduled": 1
+        }
+      }
     }
   ],
   "rows": [
@@ -175,6 +247,31 @@
               "reason": "Probe exceeded 30000ms"
             }
           ],
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 7,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.bold",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ghostty/focused-retest/cases.json"
+          },
           "evidencePath": "ghostty/cases.json"
         }
       }
@@ -252,6 +349,31 @@
               "reason": "Probe exceeded 30000ms"
             }
           ],
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 33,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.faint",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ghostty/focused-retest/cases.json"
+          },
           "evidencePath": "ghostty/cases.json"
         }
       }
@@ -329,6 +451,31 @@
               "reason": "Probe exceeded 30000ms"
             }
           ],
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 59,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.italic",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ghostty/focused-retest/cases.json"
+          },
           "evidencePath": "ghostty/cases.json"
         }
       }
@@ -406,6 +553,31 @@
               "reason": "Probe exceeded 30000ms"
             }
           ],
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 85,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "sgr.underline.single",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ghostty/focused-retest/cases.json"
+          },
           "evidencePath": "ghostty/cases.json"
         }
       }
@@ -3698,6 +3870,31 @@
               "reason": "Probe exceeded 30000ms"
             }
           ],
+          "retest": {
+            "rawStatus": "probe-todo",
+            "evidenceLine": 111,
+            "status": "probe-todo",
+            "scheduled": true,
+            "probeId": null,
+            "method": null,
+            "reason": "Probe exceeded 30000ms",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "probe-todo",
+                "attempt": {
+                  "scope": "none"
+                },
+                "assertionRefs": [],
+                "rawReplyRef": "modes.alt-screen.exit",
+                "reason": "Probe exceeded 30000ms"
+              }
+            ],
+            "runId": "e5f875a59d201103db1b0b10ea41da51",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ghostty/focused-retest/cases.json"
+          },
           "evidencePath": "ghostty/cases.json"
         }
       }
@@ -4073,6 +4270,33 @@
               "reason": "scrollback.scroll-up: two captures of one static frame were not byte-stable (sha256:f672c031eaea1ea5377d02224d09b74791ae862171656d3fe597869ee5b5bed4/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:b75a797d9a7e759290491621b61f7157178ec9d06820db9f0980b72567e05749/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)"
             }
           ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 7,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T13:49:37.037Z"
+                },
+                "assertionRefs": [
+                  5
+                ],
+                "rawReplyRef": "scrollback.scroll-up"
+              }
+            ],
+            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "iterm2/focused-retest/cases.json"
+          },
           "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
@@ -4155,6 +4379,33 @@
               "reason": "scrollback.scroll-down: two captures of one static frame were not byte-stable (sha256:5c87cb6c46cd681e59543a2b6c1b51f664ec96dcb2fe67b08a96bcf3235978b3/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:d72a9da9a4272afa1045e57aec4cd7a4d214b4dc31eaedb484cb80a1df40ee52/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)"
             }
           ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 51,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T13:49:20.372Z"
+                },
+                "assertionRefs": [
+                  4
+                ],
+                "rawReplyRef": "scrollback.scroll-down"
+              }
+            ],
+            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "iterm2/focused-retest/cases.json"
+          },
           "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
@@ -4237,6 +4488,33 @@
               "reason": "scrollback.reverse-index: two captures of one static frame were not byte-stable (sha256:61f19189fde6c01a1b52c494b1fa4a8f0f1409637a9e8cbcafd3e49f0efc1b18/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:5fbc84d8066b4b4f099d1d6dcc0831ca3aac0b67b472d784434b09c6a13d01c7/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)"
             }
           ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 95,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T13:49:03.670Z"
+                },
+                "assertionRefs": [
+                  3
+                ],
+                "rawReplyRef": "scrollback.reverse-index"
+              }
+            ],
+            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "iterm2/focused-retest/cases.json"
+          },
           "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
@@ -4319,6 +4597,33 @@
               "reason": "scrollback.set-region: two captures of one static frame were not byte-stable (sha256:d02d38a4772d72cbb06c64d125730e8af54ee08402a12c03baeb57431515d6ff/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:cad18c393bb9de77f508e8661afbc3202cd8645927bce9e4eaf7f9c734287ed9/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)"
             }
           ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 140,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T13:49:53.807Z"
+                },
+                "assertionRefs": [
+                  6
+                ],
+                "rawReplyRef": "scrollback.set-region"
+              }
+            ],
+            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "iterm2/focused-retest/cases.json"
+          },
           "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
@@ -4401,6 +4706,33 @@
               "reason": "scrollback.alt-screen: two captures of one static frame were not byte-stable (sha256:bb0f9696546e6bab2c2999028f0598c3bfb82541fbaf34ad57429091966a460a/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:bdd243c88e16aa86ffe39b815e9381521236a580ed1b2b8f28511f98a81b0385/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)"
             }
           ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 185,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T13:48:03.842Z"
+                },
+                "assertionRefs": [
+                  0
+                ],
+                "rawReplyRef": "scrollback.alt-screen"
+              }
+            ],
+            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "iterm2/focused-retest/cases.json"
+          },
           "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
@@ -4483,6 +4815,33 @@
               "reason": "scrollback.decstbm: two captures of one static frame were not byte-stable (sha256:f672c031eaea1ea5377d02224d09b74791ae862171656d3fe597869ee5b5bed4/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:b75a797d9a7e759290491621b61f7157178ec9d06820db9f0980b72567e05749/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)"
             }
           ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 231,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T13:48:25.283Z"
+                },
+                "assertionRefs": [
+                  1
+                ],
+                "rawReplyRef": "scrollback.decstbm"
+              }
+            ],
+            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "iterm2/focused-retest/cases.json"
+          },
           "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
@@ -4565,6 +4924,33 @@
               "reason": "scrollback.decstbm-reset: two captures of one static frame were not byte-stable (sha256:ee851bdcd2f3ae12e21838a86a05038cfd61ace7a3329870909b7749f8037cb4/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:cd40b0cf2c8c13774e1caeb96d96d3346e349de85859a4eeabd307a37194218b/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)"
             }
           ],
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 276,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T13:48:42.250Z"
+                },
+                "assertionRefs": [
+                  2
+                ],
+                "rawReplyRef": "scrollback.decstbm-reset"
+              }
+            ],
+            "runId": "6bde71e7ae9df87579ee1717e96dac64",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "iterm2/focused-retest/cases.json"
+          },
           "evidencePath": "iterm2/cases.json"
         },
         "ghostty": {
@@ -6702,5 +7088,5 @@
       }
     }
   ],
-  "manifestSha256": "3b38634903522e250513916b9283ebc19462f7844801430bd7ba55fd3e00b050"
+  "manifestSha256": "0119c8b15d3ca85c948bd62aaf9dd8e11e755ed50a816cf8647864af4fd05b40"
 }
