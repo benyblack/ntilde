@@ -1,0 +1,78 @@
+{
+  "recordedAt": "2026-11-25T13:09:20.562100+00:00",
+  "tools": [
+    {
+      "command": [
+        "/opt/homebrew/bin/bun",
+        "--version"
+      ],
+      "executable": "/opt/homebrew/Cellar/bun/1.4.4_1/bin/bun",
+      "executableSha256": "e355743bfb04bdc3dbcf254ed5e9f81eb9870b87a9bb9496abca5a56a874400e",
+      "stdout": "1.4.4",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/magick",
+        "-version"
+      ],
+      "executable": "/opt/homebrew/Cellar/imagemagick/7.1.2-35/bin/magick",
+      "executableSha256": "dcde6b9fc1ad978af361df0528de3f0e6e51da985ef92f557db30aaa7fe0b4bc",
+      "stdout": "Version: ImageMagick 7.1.2-35 Q16-HDRI aarch64 acaf7e418:20261031 https://imagemagick.org\nCopyright: (C) 1999 ImageMagick Studio LLC\nLicense: https://imagemagick.org/license/\nFeatures: Cipher DPC HDRI Modules \nDelegates (built-in): bzlib freetype heic jng jpeg lcms ltdl lzma png tiff webp xml zlib zstd\nCompiler: clang (21.0.0)",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/node@24/bin/node",
+        "--version"
+      ],
+      "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node",
+      "executableSha256": "ab0fc8db86abad289091b6bad2d60b2d64f0e6900bfbbf9f7dc195d1ecbfb28e",
+      "stdout": "v24.22.2",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/usr/bin/python3",
+        "--version"
+      ],
+      "executable": "/usr/bin/python3",
+      "executableSha256": "34129c71a01a74f7f3b2443521519b2e5447553fa187f5fcafaaf8c42cc192e2",
+      "stdout": "Python 3.9.6",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/usr/bin/sw_vers"
+      ],
+      "executable": "/usr/bin/sw_vers",
+      "executableSha256": "b822969762f22f30bfdd9139e5188949ddbc75b5f0c8e58788d7bb88b3c11e25",
+      "stdout": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/usr/bin/uname",
+        "-m"
+      ],
+      "executable": "/usr/bin/uname",
+      "executableSha256": "1e2f0483336d6c89259878f8d4880affd9743727ed8afacddfd68d8857e62f93",
+      "stdout": "arm64",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/usr/local/share/dotnet/dotnet",
+        "--version"
+      ],
+      "executable": "/usr/local/share/dotnet/dotnet",
+      "executableSha256": "09448be14f72ee40d5ddaaf6039e9103c1dfdab1b975982aa68b537c4fad4a9b",
+      "stdout": "10.0.403",
+      "stderr": ""
+    }
+  ],
+  "ntildeProductionSourceBase": "d1eaf646e4a75cb20af2c75337a0c632aa2da94d",
+  "buildVersionBasis": "Directory.Build.props Version and the explicit Ntilde launch version. The per-file built sidecar digests and checkout revision are in build-payload.json.",
+  "buildCommand": "scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o <private-sidecar>",
+  "note": "iTerm2 updated from 3.7.7 to 3.7.9 between the first and second diagnostic run. All three final runs use one identical source and suite."
+}

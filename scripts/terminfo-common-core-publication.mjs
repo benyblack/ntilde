@@ -9,13 +9,16 @@ import { buildWindowMovementRetest } from './terminfo/common-core-retest-report.
 import { buildCommonCoreComparison, comparisonStatusLabels } from './terminfo/common-core-comparison.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const publication = join(root, 'docs/qa/terminfo/2026-11-11-common-core-comparison');
+const [mode, option, ...extra] = process.argv.slice(2);
+const historical = option === '--historical';
+if (!['--check', '--write'].includes(mode) || (option !== undefined && !historical) || extra.length) {
+    throw new Error('Usage: node scripts/terminfo-common-core-publication.mjs <--check|--write> [--historical]');
+}
+const historicalPath = 'docs/qa/terminfo/2026-11-11-common-core-comparison';
+const publicationPath = historical ? historicalPath : 'docs/qa/terminfo/2026-11-25-common-core-comparison';
+const publication = join(root, publicationPath);
 /** Hash publication bytes without normalizing raw evidence. */
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
-const mode = process.argv[2];
-if (!['--check', '--write'].includes(mode) || process.argv.length !== 3) {
-    throw new Error('Usage: node scripts/terminfo-common-core-publication.mjs <--check|--write>');
-}
 const manifestBytes = readFileSync(join(publication, 'manifest.json'));
 const manifest = JSON.parse(manifestBytes);
 if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.subjects))
@@ -33,6 +36,9 @@ for (const file of manifest.artifacts ?? []) verifiedFile(file);
 const attempts = JSON.parse(verifiedFile((manifest.artifacts ?? []).find((entry) => entry.path === 'attempts.json')));
 for (const attempt of attempts.attempts ?? []) verifiedFile(attempt.archive);
 const requirementsBytes = verifiedFile(manifest.requirements);
+if (!historical && !requirementsBytes.equals(readFileSync(join(root, historicalPath, 'requirements.json')))) {
+    throw new Error('The refreshed comparison differs from the November 11 Core target.');
+}
 /** Bind subject metadata and measured script snapshots to the owned-run archive. */
 const loadSubject = (subject) => {
     const files = Object.fromEntries(
@@ -64,7 +70,8 @@ const loadSubject = (subject) => {
             throw new Error('Retained harness helper differs: ' + name);
         }
     }
-    if (source.retestSelectorSha256 && members['retest-selector.mjs'] !== source.retestSelectorSha256)
+    const selector = members['harness-sources/common-core-retest.mjs'] ?? members['retest-selector.mjs'];
+    if (source.retestSelectorSha256 && selector !== source.retestSelectorSha256)
         throw new Error('Retest selector snapshot differs.');
     return { id: subject.id, label: subject.label, ...files };
 };
@@ -73,6 +80,10 @@ const retests = (manifest.retests ?? []).map(loadSubject);
 if (new Set(retests.map((retest) => retest.id)).size !== retests.length)
     throw new Error('Only one explicitly recorded movement retest per application is supported.');
 const report = buildCommonCoreComparison({ requirementsBytes, subjects });
+if (!historical && report.subjects.some((subject) => subject.measurementLimits.captureOutcome !== 'installed')) {
+    throw new Error('The refreshed comparison requires installed native capture for all three terminals.');
+}
+
 const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.json'), 'utf8'));
 if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true)
     throw new Error('Retained upstream source differs from the measured comparison.');
@@ -180,12 +191,20 @@ const retestMarkdown = retestReports.length
           .join('\n') +
       '\n'
     : '';
+const calibrationNote = historical
+    ? ''
+    : "iTerm2's window and cell queries reported macOS points. The adapter checked the window bounds and backing scale, " +
+      'then corroborated the painted pixel grid with the rounded cell pitch. Calibration verified pixel-for-pixel restoration ' +
+      'outside a title-bar strip proved clear of the grid. The raw replies and original native images are retained. ' +
+      '[iTerm2 size-report implementation](https://github.com/gnachman/iTerm2/blob/v3.7.9/sources/VT100/VT100Terminal.m#L3006-L3028). ' +
+      '[Previous comparison](../2026-11-11-common-core-comparison/report.md).\n\n';
 const markdown =
     `# Common-harness Core comparison\n\nThese are fresh application runs through the same upstream terminal probes. Ntilde's [separate 80/80 detailed qualification](../2026-11-11-core-reverse-wide-results/report.md) is not substituted into this comparison.\n\n` +
     `Upstream/adapter source: \`${report.method.sourceRevision}\`; suite \`${report.method.probeHash}\`. Measured macOS version: ${report.method.os}; PTY geometry: ${report.method.geometry.rows} × ${report.method.geometry.cols}.\n\n` +
     `| Application | Supported | Unsupported | Not concluded | Invalid measurement | Untestable / not tested |\n|---|---:|---:|---:|---:|---:|\n${table}\n\n` +
     `All counts use the same 80 feature IDs. The exact upstream application probe decides each result. A missing observer, invalid measurement or untestable framework API is not a terminal failure. Defaults and capture conditions are retained with the evidence. Observer availability differs across applications, so these counts are not a capability ranking.\n\n` +
     `The local adapter adds native launch/ownership and preserves measured Retina screenshots without resampling. Probe definitions and grading rules are unchanged; the upstream revision, adapter patch and sources are retained. Historical website scores are not mixed with these runs.\n\n${limits}\n\n` +
+    calibrationNote +
     `Reproduce the published projection: \`node scripts/terminfo-common-core-publication.mjs --check\`. A new native collection additionally needs the recorded applications, upstream dependencies and desktop access.\n\n` +
     `| Feature | ${report.subjects.map((s) => cell(s.label)).join(' | ')} |\n|---|${report.subjects.map(() => '---').join('|')}|\n` +
     report.rows
@@ -202,7 +221,7 @@ const site = {
     method: report.method,
     manifestSha256: report.manifestSha256,
     subjects: report.subjects,
-    evidencePath: 'docs/qa/terminfo/2026-11-11-common-core-comparison',
+    evidencePath: publicationPath,
     rows: report.rows.map((row) => ({
         ...row,
         results: Object.fromEntries(
@@ -225,8 +244,10 @@ const outputs = [
     ...caseOutputs,
     [join(publication, 'report.json'), json],
     [join(publication, 'report.md'), markdown],
-    [join(root, 'site/src/data/common-core-comparison.json'), JSON.stringify(site, null, 2) + '\n'],
 ];
+if (!historical) {
+    outputs.push([join(root, 'site/src/data/common-core-comparison.json'), JSON.stringify(site, null, 2) + '\n']);
+}
 for (const [path, expected] of outputs) {
     if (mode === '--write') {
         mkdirSync(dirname(path), { recursive: true });
