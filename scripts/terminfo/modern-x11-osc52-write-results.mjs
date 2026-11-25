@@ -65,7 +65,7 @@ export function buildOsc52WritePublication(base = modernRoot) {
 }
 
 const bytes = value => value.match(/../g).join(' ');
-const tableText = value => JSON.stringify(value).replaceAll('|', '\\u007c').replaceAll('`', '\\u0060');
+const tableText = value => JSON.stringify(value).replaceAll('|', String.raw`\u007c`).replaceAll('`', String.raw`\u0060`);
 
 export function readableOsc52Write(report) {
     const { totals, predecessor, osc52WriteMeasurement: m } = report;
