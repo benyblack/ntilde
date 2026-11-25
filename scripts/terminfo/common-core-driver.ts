@@ -8,7 +8,7 @@ import {
 import { publishCommonCoreJson } from './common-core-handshake.mjs';
 import { terminateCommonCoreOwner } from './common-core-cleanup.mjs';
 import { commonCoreGit, assertCleanCommonCoreSource } from './common-core-tools.mjs';
-import { invalidatedWindowCases } from './common-core-retest.mjs';
+import { focusedRetestCases, retestReasons } from './common-core-retest.mjs';
 import {
     existsSync,
     mkdirSync,
@@ -194,6 +194,7 @@ try {
     let retest: any;
     if (process.env.COMMON_CORE_RETEST_FROM) {
         if (preflight) throw new Error('A focused retest cannot also be a preflight.');
+        const kind = process.env.COMMON_CORE_RETEST_KIND ?? 'window-movement';
         const baselineDirectory = realpathSync(process.env.COMMON_CORE_RETEST_FROM);
         const baselineBytes = readFileSync(join(baselineDirectory, 'raw.json'));
         const baseline = JSON.parse(baselineBytes.toString());
@@ -201,22 +202,21 @@ try {
         if (
             baseline.subject?.id !== appId ||
             baseline.subject?.version !== version ||
-            baseline.probeHash !== suite.probeHash ||
-            baseline.sourceRevision !==
-                String(execFileSync(commonCoreGit(), ['rev-parse', 'HEAD'], { cwd: upstream })).trim() ||
+            !matchesRetestCollector(kind, baseline, upstreamRevision, suite.probeHash) ||
             baselineSource.workerSha256 !== sha(join(root, 'scripts/terminfo/common-core-worker.ts')) ||
             baselineSource.workerBundleSha256 !== workerBundleSha256 ||
             baselineSource.executableSha256 !== sha(executable) ||
             baselineSource.buildPayloadSha256 !== buildPayloadSha256
         )
             throw new Error('Retest application, payload or upstream identity differs from the baseline.');
-        scheduledIds = invalidatedWindowCases(baseline, coreIds);
+        scheduledIds = focusedRetestCases(baseline, coreIds, kind);
         if (scheduledIds.some((id: string) => !applicableIds.includes(id)))
             throw new Error('Retest case has no current upstream application callback.');
         retest = {
             baselineRunId: baseline.runId,
             baselineRawSha256: createHash('sha256').update(baselineBytes).digest('hex'),
-            reason: 'all Core cases invalidated by native-window movement',
+            ...(kind !== 'window-movement' && { kind }),
+            reason: retestReasons[kind as keyof typeof retestReasons],
         };
     }
     let purpose = 'comparison';
@@ -503,6 +503,21 @@ end tell`,
         process.exitCode = 1;
         console.error('Cleanup could not finalize its evidence: ' + String(error));
     });
+}
+
+/** Only the iTerm2 timing retest may extend the pinned capture adapter. */
+function matchesRetestCollector(kind: string, baseline: any, revision: string, probeHash: string) {
+    if (kind !== 'capture-stability') {
+        return baseline.sourceRevision === revision && baseline.probeHash === probeHash;
+    }
+    const parents = String(execFileSync(commonCoreGit(), ['rev-list', '--parents', '-n', '1', revision], {
+        cwd: upstream,
+    })).trim();
+    if (parents !== revision + ' ' + baseline.sourceRevision) return false;
+    const changed = String(execFileSync(commonCoreGit(), ['diff', '--name-only', 'HEAD^', revision], {
+        cwd: upstream,
+    })).trim();
+    return changed === 'packages/terminfo.dev/src/serve.ts';
 }
 
 /** Close only the newly recorded iTerm window behind a current single-session TTY witness. */

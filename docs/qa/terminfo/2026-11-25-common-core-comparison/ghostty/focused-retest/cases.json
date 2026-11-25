@@ -1,0 +1,137 @@
+{
+  "runId": "e5f875a59d201103db1b0b10ea41da51",
+  "rawSha256": "c4a5318ef34c9d4a15eddfcdab2682eb452ceb73bfd77fd0a38f0934d481c67f",
+  "fullRunArchive": "owned-run.zip",
+  "records": [
+    {
+      "featureId": "sgr.bold",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T13:45:43.745Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.bold",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.bold",
+      "rawReplySha256": "a57c644da4579c20a07b88fe4b4f8847d32e7c69807dafd851e96bfa7ca2dbb8",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.faint",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T13:46:13.763Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.faint",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.faint",
+      "rawReplySha256": "8a1e4afe6d059ed15f1633bb85d6c0cd78bf261e167a616c6588aa08452a2013",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.italic",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T13:46:43.781Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.italic",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.italic",
+      "rawReplySha256": "65696080bf03bdce539b1de5fe3c22f7466406f82b8f7cdfff9b40c7a43aa399",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "sgr.underline.single",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T13:47:13.800Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "sgr.underline.single",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "sgr.underline.single",
+      "rawReplySha256": "088b593f5148c2c8af647664660a7286259523f2baa6fdeb85d1e09599d81a35",
+      "screenshotRefs": []
+    },
+    {
+      "featureId": "modes.alt-screen.exit",
+      "status": "probe-todo",
+      "attempt": {
+        "scope": "probe",
+        "startedAt": "2026-11-25T13:45:13.727Z"
+      },
+      "assertionType": null,
+      "reason": "Probe exceeded 30000ms",
+      "tests": [
+        {
+          "id": "criterion",
+          "status": "probe-todo",
+          "attempt": {
+            "scope": "none"
+          },
+          "assertionRefs": [],
+          "rawReplyRef": "modes.alt-screen.exit",
+          "reason": "Probe exceeded 30000ms"
+        }
+      ],
+      "assertions": [],
+      "rawReplyRef": "modes.alt-screen.exit",
+      "rawReplySha256": "4ff76fd766d157336c22e6417c6eb52077b08fcc9d3fbbd6687184c70adba561",
+      "screenshotRefs": []
+    }
+  ]
+}

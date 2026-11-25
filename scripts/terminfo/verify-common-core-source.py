@@ -12,7 +12,7 @@ import tempfile
 import zipfile
 import zlib
 
-source_path, proof_path, bundle_path, patch_path, base, head, metadata_path, git = sys.argv[1:]
+source_path, proof_path, bundle_path, patch_path, base, head, metadata_path, git, *capture_parent = sys.argv[1:]
 if not os.path.isabs(git):
     raise ValueError("Git must have an explicit absolute installation path")
 
@@ -100,6 +100,13 @@ with read_zip(proof_path) as proof, read_zip(source_path) as source:
             if len(parents) != 1: raise ValueError('adapter history is not the retained linear source stack')
             cursor = parents[0]
         if cursor != base: raise ValueError('adapter bundle does not reproduce its source ancestry')
+        if capture_parent:
+            parent_tokens = command('rev-list', '--parents', '-n', '1', head).decode().split()
+            if parent_tokens != [head, *capture_parent] or len(capture_parent) != 1:
+                raise ValueError('capture adapter must directly extend the measured full-run adapter')
+            paths = command('diff', '--name-only', '--no-ext-diff', '--no-textconv', capture_parent[0], head)
+            if paths.splitlines() != [b'packages/terminfo.dev/src/serve.ts']:
+                raise ValueError('capture retest changed source outside the collector adapter')
         advertised = command('bundle','list-heads',str(Path(bundle_path).resolve())).decode().splitlines()
         if advertised != [head+' HEAD']: raise ValueError('bundle advertises a different source head')
         difference = command('-c','core.quotePath=true','diff','--binary','--full-index','--no-ext-diff','--no-textconv','--no-renames','--diff-algorithm=myers',base,head)

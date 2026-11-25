@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { invalidatedWindowCases } from './common-core-retest.mjs';
+import { focusedRetestCases, retestReasons } from './common-core-retest.mjs';
 import { readCommonCoreSubject, comparisonStatusLabels } from './common-core-comparison.mjs';
 /** Bind a retest to the exact original raw bytes. */
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -7,13 +7,16 @@ const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const parse = (bytes) => JSON.parse(bytes.toString());
 
 /** Record all focused outcomes and compute a traceable latest-evidence count, preserving the full run. */
-export function buildWindowMovementRetest({ comparison, baseline, retest }) {
+export function buildCommonCoreRetest({ comparison, baseline, retest, captureAdapter }) {
     const original = parse(baseline.rawBytes),
         config = parse(retest.configBytes);
     const baseSource = parse(baseline.sourceBytes),
         newSource = parse(retest.sourceBytes);
-    const ids = comparison.rows.map((row) => row.id),
-        selected = invalidatedWindowCases(original, ids);
+    const ids = comparison.rows.map((row) => row.id);
+    const kind = config.retest?.kind ?? 'window-movement';
+    const selected = focusedRetestCases(original, ids, kind);
+    if (kind !== 'window-movement' && config.retest.reason !== retestReasons[kind])
+        throw new Error('Retest reason differs from its selected coverage.');
     if (
         retest.id !== baseline.id ||
         config.retest?.baselineRunId !== original.runId ||
@@ -27,10 +30,17 @@ export function buildWindowMovementRetest({ comparison, baseline, retest }) {
         purpose: 'focused-retest',
         scheduledIds: selected,
     });
-    for (const key of ['probeHash', 'sourceRevision', 'workerSha256', 'workerBundleSha256', 'os']) {
+    const collector = kind === 'capture-stability' ? captureAdapter : comparison.method;
+    if (!collector || measured.method.probeHash !== collector.probeHash ||
+        measured.method.sourceRevision !== collector.sourceRevision) {
+        throw new Error('Retest collector identity differs from its verified source.');
+    }
+    for (const key of ['workerSha256', 'workerBundleSha256', 'os']) {
         if (measured.method[key] !== comparison.method[key])
             throw new Error(`Retest changed its shared collector: ${key}`);
     }
+    if (kind !== 'window-movement' && measured.measurementLimits.captureOutcome !== 'installed')
+        throw new Error('Focused screenshot retest requires installed native capture.');
     if (JSON.stringify(measured.geometry) !== JSON.stringify(comparison.method.geometry))
         throw new Error('Retest changed PTY geometry.');
     if (Date.parse(measured.measuredAt) < Date.parse(original.measuredAt))
@@ -51,6 +61,11 @@ export function buildWindowMovementRetest({ comparison, baseline, retest }) {
         }),
     );
     return {
+        ...(kind !== 'window-movement' && {
+            kind,
+            probeHash: measured.method.probeHash,
+            sourceRevision: measured.method.sourceRevision,
+        }),
         subjectId: baseline.id,
         runId: measured.runId,
         measuredAt: measured.measuredAt,

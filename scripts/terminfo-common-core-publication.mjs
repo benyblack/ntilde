@@ -5,7 +5,7 @@ import { dirname, join, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifiedEvidenceFile, verifyCommonCoreArchive, readCommonCoreRaw } from './terminfo/common-core-evidence.mjs';
 import { verifyCommonCoreSource } from './terminfo/common-core-source.mjs';
-import { buildWindowMovementRetest } from './terminfo/common-core-retest-report.mjs';
+import { buildCommonCoreRetest } from './terminfo/common-core-retest-report.mjs';
 import { buildCommonCoreComparison, comparisonStatusLabels } from './terminfo/common-core-comparison.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -78,7 +78,7 @@ const loadSubject = (subject) => {
 const subjects = manifest.subjects.map(loadSubject);
 const retests = (manifest.retests ?? []).map(loadSubject);
 if (new Set(retests.map((retest) => retest.id)).size !== retests.length)
-    throw new Error('Only one explicitly recorded movement retest per application is supported.');
+    throw new Error('Only one focused retest per application is supported.');
 const report = buildCommonCoreComparison({ requirementsBytes, subjects });
 if (!historical && report.subjects.some((subject) => subject.measurementLimits.captureOutcome !== 'installed')) {
     throw new Error('The refreshed comparison requires installed native capture for all three terminals.');
@@ -87,22 +87,28 @@ if (!historical && report.subjects.some((subject) => subject.measurementLimits.c
 const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.json'), 'utf8'));
 if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true)
     throw new Error('Retained upstream source differs from the measured comparison.');
+const captureRetests = retests.filter((subject) =>
+    JSON.parse(subject.configBytes).retest?.kind === 'capture-stability',
+);
+const sameSourceRetests = retests.filter((subject) => !captureRetests.includes(subject));
 verifyCommonCoreSource(
     publication,
     sourceProof,
     verifiedEvidenceFile(publication, manifest.subjects[0].files.source).path,
-    [...subjects, ...retests],
+    [...subjects, ...sameSourceRetests],
 );
 report.method.upstreamBaseRevision = sourceProof.baseRevision;
 const sourcePath = 'upstream-source.json';
 if (!(manifest.artifacts ?? []).some((entry) => entry.path === sourcePath))
     throw new Error('Source proof is not digest-bound to the manifest.');
 report.manifestSha256 = digest(manifestBytes);
+const captureAdapter = verifyCaptureRetestAdapter(captureRetests, sourceProof);
 const retestReports = retests.map((retest) =>
-    buildWindowMovementRetest({
+    buildCommonCoreRetest({
         comparison: report,
         baseline: subjects.find((subject) => subject.id === retest.id),
         retest,
+        captureAdapter,
     }),
 );
 for (const retest of retestReports) {
@@ -112,7 +118,9 @@ for (const retest of retestReports) {
 }
 const caseOutputs = [...subjects, ...retests].map((subject, index) => {
     const isRetest = index >= subjects.length;
-    const evidenceDirectory = isRetest ? `${subject.id}/movement-retest` : subject.id;
+    const kind = JSON.parse(subject.configBytes).retest?.kind;
+    const retestDirectory = kind ? 'focused-retest' : 'movement-retest';
+    const evidenceDirectory = isRetest ? `${subject.id}/${retestDirectory}` : subject.id;
     const raw = JSON.parse(subject.rawBytes);
     const cases = {
         runId: raw.runId,
@@ -175,8 +183,11 @@ const limits = report.subjects
             `- **${s.label}:** capture ${s.measurementLimits.captureOutcome ?? 'not recorded'}${s.measurementLimits.captureRefusal ? ' — ' + s.measurementLimits.captureRefusal : ''}. Disposable ownership receipt: ${s.measurementLimits.disposableOwnership ?? 'not recorded'} (a separate run-scoped process proof may authorize writes). Withheld probes: ${s.measurementLimits.withheldProbeCount}; invalidated by native bounds changes: ${s.measurementLimits.invalidWindowBoundsCount}.`,
     )
     .join('\n');
+const retestIntroduction = historical
+    ? '\n## Focused movement retest\n\nThe original full-run results remain retained above. One unattempted manual position is labeled not tested while its original raw status is preserved. Every movement-invalidated case was retested with the same upstream collector, shared worker, executable/payload identity and grid. Latest combined counts include every retest outcome, including any unsupported or inconclusive result.\n\n'
+    : '\n## Focused screenshot retests\n\nThe table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. The iTerm2 adapter waits 250 ms before each feature capture so the renderer can complete the cursor hide. The original two-frame stability check still decides validity. Ghostty reruns the five cases that lost a supported verdict to a timeout, using the original adapter and time budget. Combined evidence includes every retest outcome.\n\n';
 const retestMarkdown = retestReports.length
-    ? '\n## Focused movement retest\n\nThe original full-run results remain retained above. One unattempted manual position is labeled not tested while its original raw status is preserved. Every movement-invalidated case was retested with the same upstream collector, shared worker, executable/payload identity and grid. Latest combined counts include every retest outcome, including any unsupported or inconclusive result.\n\n' +
+    ? retestIntroduction +
       retestReports
           .map(
               (retest) =>
@@ -186,7 +197,7 @@ const retestMarkdown = retestReports.length
       '\n| Retested case | New outcome |\n|---|---|\n' +
       retestReports
           .flatMap((retest) =>
-              retest.caseIds.map((id) => `| ${id} | ${comparisonStatusLabels[retest.results[id].status]} |`),
+              retest.caseIds.map((id) => `| ${historical ? id : retest.subjectId + ' · ' + id} | ${comparisonStatusLabels[retest.results[id].status]} |`),
           )
           .join('\n') +
       '\n'
@@ -258,3 +269,29 @@ for (const [path, expected] of outputs) {
 console.log(
     `Common-harness comparison ${mode === '--check' ? 'verified' : 'written'}: ${report.rows.length} requirements, ${report.subjects.length} applications.`,
 );
+
+/** Verify the alternate suite against a Git proof of a collector-only extension to the full-run adapter. */
+function verifyCaptureRetestAdapter(retests, fullRunSource) {
+    if (!retests.length) return undefined;
+    if (historical || retests.length !== 1 || retests[0].id !== 'iterm2')
+        throw new Error('Unexpected capture-adapter retest.');
+    const prefix = 'iterm2/focused-retest/adapter/';
+    for (const filename of ['upstream-source.json', 'upstream-source.zip', 'source-proof.zip', 'native-adapter.bundle', 'native-adapter.patch.gz']) {
+        if (!manifest.artifacts.some((entry) => entry.path === prefix + filename))
+            throw new Error('Capture retest adapter input is missing from the evidence manifest: ' + filename);
+    }
+    const retest = retests[0];
+    const measured = JSON.parse(retest.sourceBytes);
+    const adapter = JSON.parse(readFileSync(join(publication, prefix, 'upstream-source.json'), 'utf8'));
+    if (adapter.baseRevision !== fullRunSource.baseRevision || adapter.adapterRevision !== measured.upstreamRevision)
+        throw new Error('Capture retest adapter provenance differs from the measured source.');
+    const retestEntry = manifest.retests.find((entry) => entry.id === retest.id);
+    verifyCommonCoreSource(
+        join(publication, prefix),
+        adapter,
+        verifiedEvidenceFile(publication, retestEntry.files.source).path,
+        retests,
+        fullRunSource.adapterRevision,
+    );
+    return { sourceRevision: measured.upstreamRevision, probeHash: measured.suite.probeHash };
+}

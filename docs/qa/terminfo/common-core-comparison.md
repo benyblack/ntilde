@@ -111,6 +111,23 @@ absolute Git dispatch) is not retroactively attributed to those measurements. It
 changes future orchestration, not the retained upstream fixtures, controls or
 grades. A changed shared worker requires a new compatible measurement baseline.
 
+## November 25 screenshot retests
+
+The focused iTerm2 run selects all seven scrollback rows invalidated by the
+static-frame check. Both native captures stay part of that check. The retained
+adapter waits 250 ms before it samples a feature so the native renderer can
+finish painting the cursor hide. The retest retains the original feature bytes
+and verifies its source as a one-file extension to the full-run adapter.
+
+The Ghostty retest selects the five November 25 timeouts that had supported
+verdicts on November 11. It uses the full-run source and the same deadline.
+Other timeouts remain in the full-run record.
+
+Use the extracted full run as COMMON_CORE_RETEST_FROM. The driver verifies the
+original executable, worker and upstream source before launch. Set
+COMMON_CORE_RETEST_KIND to capture-stability for iTerm2 or probe-timeout for
+Ghostty. With the variable unset, the driver uses the original movement retest.
+
 ## Offline source proof and checkout formatting
 
 `source-proof.zip` retains content-addressed Git commit/tree objects and the base

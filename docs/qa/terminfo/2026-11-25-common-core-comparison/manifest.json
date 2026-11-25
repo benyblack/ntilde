@@ -32,6 +32,26 @@
     {
       "path": "source-proof.zip",
       "sha256": "651e6de983338ed98590565dd97eb0c1abf28347fb733854397b7aab920a58bc"
+    },
+    {
+      "path": "iterm2/focused-retest/adapter/native-adapter.bundle",
+      "sha256": "ecc2436c1a8b5585464579a4c0d2661f52f5fb7b187d72c5059c3914a927b79b"
+    },
+    {
+      "path": "iterm2/focused-retest/adapter/native-adapter.patch.gz",
+      "sha256": "bd7505cdcf2bc302519111ab6ca7dfc5772646730083d44e57e08643c4db7ebc"
+    },
+    {
+      "path": "iterm2/focused-retest/adapter/source-proof.zip",
+      "sha256": "8dc708995b72bac86ad4268ca87fae6f4f3f61e94e0a670a67624b7da7454375"
+    },
+    {
+      "path": "iterm2/focused-retest/adapter/upstream-source.json",
+      "sha256": "4bbed8a60081c1ba3a7405041f78ea96b5e198ad4fc63ba8333a6bffe808e7ad"
+    },
+    {
+      "path": "iterm2/focused-retest/adapter/upstream-source.zip",
+      "sha256": "29954c47e68034aa2c1f2ea89bc342e838cb5955c4e55f2c18b866a94856e1b9"
     }
   ],
   "subjects": [
@@ -165,6 +185,96 @@
       "archive": {
         "path": "ghostty/owned-run.zip",
         "sha256": "662b6ca694e9159afed47adfc26f76abfcd8282dc4b78d8d1b2cc05157123c34"
+      }
+    }
+  ],
+  "retests": [
+    {
+      "id": "iterm2",
+      "label": "iTerm2",
+      "files": {
+        "identity": {
+          "path": "iterm2/focused-retest/identity-check.json",
+          "sha256": "d0ddc27296044d2068c94571bd76a20caf1dc5e164527846478d89c75c227ca5"
+        },
+        "source": {
+          "path": "iterm2/focused-retest/source.json",
+          "sha256": "66c8cca86246a26f64367b9ab310d178e12be13b9830c8cd8b0a0eb8f97a1e4c"
+        },
+        "config": {
+          "path": "iterm2/focused-retest/config.json",
+          "sha256": "c41480922404af6b14fb9a578cd4776e117611d7c79e43ee2a841214c7e00dfa"
+        },
+        "ready": {
+          "path": "iterm2/focused-retest/worker-ready.json",
+          "sha256": "c9b18eb6faa4aaed1b9ad63c2d909a01d569d90b55544dac9ff9943a860caf5c"
+        },
+        "completion": {
+          "path": "iterm2/focused-retest/worker-complete.json",
+          "sha256": "427ae80bc02d169ec3182e67738086986e76554821b506cf457ab5e95b6021ff"
+        },
+        "cleanup": {
+          "path": "iterm2/focused-retest/cleanup.json",
+          "sha256": "51b9c2e73000a99bdcbd4fc8da223601a4529ed467b09edc7781720a4fd7605e"
+        },
+        "geometry": {
+          "path": "iterm2/focused-retest/measurement-geometry.json",
+          "sha256": "2ea0ec77b208a07990e3c0a9d1c0b25b89de5f9a6f54d0df657f6145ae3f7f74"
+        },
+        "raw": {
+          "path": "iterm2/focused-retest/owned-run.zip",
+          "sha256": "090959e4f15111f59af5006f3cb682bbad42422a8d33ccc80f6706377ff61664",
+          "member": "raw.json",
+          "contentSha256": "cd2992d479b1919d8c12a71f5c25e35673bb69b08c623cae0c1e5acb01eacdac"
+        }
+      },
+      "archive": {
+        "path": "iterm2/focused-retest/owned-run.zip",
+        "sha256": "090959e4f15111f59af5006f3cb682bbad42422a8d33ccc80f6706377ff61664"
+      }
+    },
+    {
+      "id": "ghostty",
+      "label": "Ghostty",
+      "files": {
+        "identity": {
+          "path": "ghostty/focused-retest/identity-check.json",
+          "sha256": "8062b05d47ca735dc69899085ac3f85365b14ddf6478d97d53b9be84569a8238"
+        },
+        "source": {
+          "path": "ghostty/focused-retest/source.json",
+          "sha256": "42392e2ccda2a95f61411f672c75bc49b3b3894cd84f03cf3e17b29c0027d1a9"
+        },
+        "config": {
+          "path": "ghostty/focused-retest/config.json",
+          "sha256": "dcfb950e424208e31bfecbabb6b282cff014e1bd15c7d3eef80f746860c760e6"
+        },
+        "ready": {
+          "path": "ghostty/focused-retest/worker-ready.json",
+          "sha256": "f4682b64da5c4c2ce278d5d5927e15a9c05dd53e249493bd7104f96373dcb0a0"
+        },
+        "completion": {
+          "path": "ghostty/focused-retest/worker-complete.json",
+          "sha256": "be926d400061e2642acf22b2fc125f3064454cc1ca429526489270cb98f50649"
+        },
+        "cleanup": {
+          "path": "ghostty/focused-retest/cleanup.json",
+          "sha256": "66c505da4d8400ef9ab9748c966562f36a6879788e8fd2ec92c8b13079c53a50"
+        },
+        "geometry": {
+          "path": "ghostty/focused-retest/measurement-geometry.json",
+          "sha256": "a71257e82b9846889c42f9fb01b81315e76ea64f14f655d27d8848aadaf1c549"
+        },
+        "raw": {
+          "path": "ghostty/focused-retest/owned-run.zip",
+          "sha256": "bc837d73f413d85c5377271e2fdf5fa776379a7dd069234094d2c86c179fec90",
+          "member": "raw.json",
+          "contentSha256": "c4a5318ef34c9d4a15eddfcdab2682eb452ceb73bfd77fd0a38f0934d481c67f"
+        }
+      },
+      "archive": {
+        "path": "ghostty/focused-retest/owned-run.zip",
+        "sha256": "bc837d73f413d85c5377271e2fdf5fa776379a7dd069234094d2c86c179fec90"
       }
     }
   ]

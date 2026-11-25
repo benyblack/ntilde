@@ -104,3 +104,25 @@ Reproduce the published projection: `node scripts/terminfo-common-core-publicati
 | [charsets.dec-line-drawing](https://terminfo.dev/charsets/dec-line-drawing-chars) | Supported | Supported | Supported |
 | [device.env-term](https://terminfo.dev/device/env-term) | Not tested | Not tested | Not tested |
 | [extensions.osc1-icon](https://terminfo.dev/extensions/osc-1-icon-name) | Not concluded | Not concluded | Not concluded |
+
+## Focused screenshot retests
+
+The table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. The iTerm2 adapter waits 250 ms before each feature capture so the renderer can complete the cursor hide. The original two-frame stability check still decides validity. Ghostty reruns the five cases that lost a supported verdict to a timeout, using the original adapter and time budget. Combined evidence includes every retest outcome.
+
+- iterm2: 7/7 supported in retest `6bde71e7ae9df87579ee1717e96dac64`; latest combined evidence 56 supported / 0 unsupported / 0 invalid / 22 not concluded / 1 untestable / 1 not tested. Original run `e7b598f31bb6b0d7648ff4fb8c6bdab1` remains retained.
+- ghostty: 0/5 supported in retest `e5f875a59d201103db1b0b10ea41da51`; latest combined evidence 64 supported / 0 unsupported / 0 invalid / 14 not concluded / 1 untestable / 1 not tested. Original run `3cd3c30494767f72682a764f347db873` remains retained.
+
+| Retested case | New outcome |
+|---|---|
+| iterm2 · scrollback.alt-screen | Supported |
+| iterm2 · scrollback.decstbm | Supported |
+| iterm2 · scrollback.decstbm-reset | Supported |
+| iterm2 · scrollback.reverse-index | Supported |
+| iterm2 · scrollback.scroll-down | Supported |
+| iterm2 · scrollback.scroll-up | Supported |
+| iterm2 · scrollback.set-region | Supported |
+| ghostty · modes.alt-screen.exit | Not concluded |
+| ghostty · sgr.bold | Not concluded |
+| ghostty · sgr.faint | Not concluded |
+| ghostty · sgr.italic | Not concluded |
+| ghostty · sgr.underline.single | Not concluded |
