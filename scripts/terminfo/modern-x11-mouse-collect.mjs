@@ -115,7 +115,7 @@ function profileSettings(run) {
         DefaultProfileId: profileId, SessionPersistence: 'Off', ShellExitPolicy: 'Never', PaneClosePolicy: 'Always',
         AlternateScroll: false, AutomaticUpdateChecks: false, QuakeModeEnabled: false,
         CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false, CommandAssistPowerShellIntegrationEnabled: false,
-        AgentAccessObserveEnabled: true, AgentAccessActEnabled: false, AllowOsc52ClipboardWrite: false,
+        AgentAccessObserveEnabled: true, AgentAccessActEnabled: false, AllowOsc52ClipboardWrite: run.keyboard === '--osc52-write',
     };
 }
 
@@ -166,7 +166,8 @@ async function verifyMarker(run, pane) {
 }
 
 async function launchPane(run) {
-    const appArgv = [run.executable, '--ntilde-terminfo-owner=' + run.config.runId, '--ntilde-terminfo-private-clipboard=' + run.config.runId];
+    const appArgv = [run.executable, '--ntilde-terminfo-owner=' + run.config.runId];
+    if (run.keyboard !== '--osc52-write') appArgv.push('--ntilde-terminfo-private-clipboard=' + run.config.runId);
     run.appArgv = appArgv;
     const settings = profileSettings(run);
     run.record.settings = settings;
@@ -245,44 +246,132 @@ async function observeFocus(run) {
     return focus.replayFocus;
 }
 
-async function observe(run) {
-    await launchDisplay(run);
-    await launchPane(run);
+async function clipboardPeer(run, step, request, ownerPids, restoring) {
+    checkLineage(run, restoring);
+    const directory = join(run.scratch, 'gtk-' + run.clipboardPeers.length);
+    mkdirSync(directory, { mode });
+    const argv = ['-E', '-s', '-B', join(run.sources, 'peer-linux.py'), 'text', directory];
+    const peer = ownChild(run.python, argv, { env: { ...run.env, CI: 'true', GDK_BACKEND: 'x11', GTK_A11Y: 'none' },
+        stdio: ['pipe', 'pipe', 'pipe'] }, run.logs, 'GTK peer ' + run.clipboardPeers.length);
+    run.clipboardPeers.push(peer);
+    peer.child.stdin.on('error', error => { run.logs['GTK input ' + peer.child.pid] = error.message; });
+    const aborted = restoring ? undefined : run.aborted;
+    const ready = await waitFor(() => {
+        need(!peer.status, 'GTK peer exited before admission');
+        const path = join(directory, 'ready.json');
+        return existsSync(path) && readJson(path);
+    }, 'GTK peer did not make an X11 window', aborted, 2500);
+    const facts = readLinuxProcessFacts(peer.child.pid);
+    need(ready.pid === peer.child.pid && facts.ppid === process.pid && facts.executable === run.python
+        && equal(facts.argv, [run.python, ...argv]) && facts.uids.every(uid => uid === run.record.uid), 'wrong GTK peer process');
+    step.process = facts;
+    checkLineage(run, restoring);
+    const pane = await listPane(run);
+    need(equal(pane, run.record.identity.pane), 'wrong current clipboard pane');
+    await verifyMarker(run, pane);
+    const state = () => x11(run, { kind: 'clipboard-state', window: run.record.identity.window,
+        peerPid: ready.pid, peerWindow: ready.window });
+    step.before = await state();
+    need(ownerPids.includes(step.before.ownerPid), 'clipboard owner is outside this phase');
+    step.dispatched = stamp();
+    peer.child.stdin.end(JSON.stringify(request) + '\n');
+    step.result = await waitFor(() => {
+        const path = join(directory, 'result.json');
+        if (existsSync(path)) return readJson(path);
+        need(!peer.status, 'GTK peer exited before its result');
+    }, 'GTK peer did not finish the clipboard operation', aborted, 2500);
+    need(!step.result.error, 'GTK text operation failed: ' + step.result.error);
+    need(typeof step.result.text === 'string', 'GTK text operation returned no text');
+    checkLineage(run, restoring);
+    step.after = await state();
+}
+
+async function observeClipboard(run) {
+    const clipboard = await import('./modern-x11-osc52-write.mjs');
+    await clipboard.observeClipboard(run.record, {
+        peer: (...args) => clipboardPeer(run, ...args),
+        key: step => recordAction(run, step, { kind: 'keyboard', chord: 'a' }, clipboard.id, 'zh'),
+        write: plan => modes(run, 'osc52', { osc52: plan }),
+    });
+    return clipboard.replayClipboard;
+}
+
+async function verifyRestoredPane(run) {
     const { record } = run;
-    let replay = replayMouse;
-    if (run.keyboard === '--focus-tracking') {
-        replay = await observeFocus(run);
-    } else if (run.keyboard) {
+    const pane = await listPane(run);
+    need(equal(pane, record.identity.pane), 'pane changed during collection');
+    Object.assign(record.restore, { paneId: pane.paneId, marker: await verifyMarker(run, pane) });
+}
+
+async function restoreClipboardPane(run) {
+    let replay, failure;
+    try {
+        replay = await observeClipboard(run);
+        await verifyRestoredPane(run);
+    } catch (error) { failure = error; }
+    try {
+        checkLineage(run, true);
+        run.record.terminal = await worker(run, { kind: 'restore' });
+        await waitFor(() => !existsSync('/proc/' + run.child.pid), 'direct worker did not exit and disappear', undefined, 2500);
+        run.record.workerGoneAt = stamp();
+    } catch (error) {
+        throw failure ? new AggregateError([failure, error], 'clipboard run and PTY restoration failed') : error;
+    }
+    if (failure) throw failure;
+    return replay;
+}
+
+async function observeRoutedInput(run) {
+    const { record } = run;
+    if (run.keyboard === '--focus-tracking') return observeFocus(run);
+    if (run.keyboard) {
         const keypad = run.keyboard === '--application-keypad';
         const keyboard = keypad ? await import('./modern-x11-keypad.mjs') : await import('./modern-x11-keyboard.mjs');
         const readModes = key => modes(run, key, keyboard.modePlan, keypad && key === 'restore');
         await keyboard.observeKeyboard(record, readModes, (step, request, key, fence) => recordAction(run, step, request, key, fence));
-        replay = keyboard.replayKeyboard;
-    } else {
-        record.incoming = await modes(run, 'incoming');
-        for (const id of ids) await recordCase(run, id); // NOSONAR: one pane, with distinct sequenced mode changes and byte windows.
-        record.restore = { modes: await modes(run, 'restore') };
+        return keyboard.replayKeyboard;
     }
-    const pane = await listPane(run);
-    need(equal(pane, record.identity.pane), 'pane changed during collection');
-    Object.assign(record.restore, { paneId: pane.paneId, marker: await verifyMarker(run, pane) });
-    record.terminal = await worker(run, { kind: 'restore' });
-    record.results = replay(record);
-    await waitFor(() => !existsSync('/proc/' + run.child.pid), 'direct worker did not exit and disappear', run.aborted, 2500);
+    record.incoming = await modes(run, 'incoming');
+    for (const id of ids) await recordCase(run, id); // NOSONAR: one pane, with distinct sequenced mode changes and byte windows.
+    record.restore = { modes: await modes(run, 'restore') };
+    return replayMouse;
+}
+
+async function observe(run) {
+    await launchDisplay(run);
+    await launchPane(run);
+    const { record } = run;
+    let replay;
+    if (run.keyboard === '--osc52-write') {
+        replay = await restoreClipboardPane(run);
+    } else {
+        replay = await observeRoutedInput(run);
+        await verifyRestoredPane(run);
+        record.terminal = await worker(run, { kind: 'restore' });
+        await waitFor(() => !existsSync('/proc/' + run.child.pid), 'direct worker did not exit and disappear', run.aborted, 2500);
+        record.workerGoneAt = stamp();
+    }
     need(equal(readLinuxProcessFacts(run.app.child.pid), record.lineage.parent), 'original App exited before worker cleanup was observed');
-    record.workerGoneAt = stamp();
+    record.results = replay(record);
     need(equal(record.appFiles, appFiles(run.executable)), 'App publish tree changed');
 }
 
 function configure(run) {
     const home = join(run.scratch, 'home'), appData = join(run.scratch, 'appdata'), runtime = join(run.scratch, 'runtime');
     for (const path of [home, appData, runtime]) mkdirSync(path, { mode });
-    const runId = run.lease.leaseId, marker = (run.keyboard ? 'x11-key-' : 'x11-mouse-') + runId;
+    const runId = run.lease.leaseId;
+    let markerPrefix = run.keyboard ? 'x11-key-' : 'x11-mouse-';
+    let profilePrefix = run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ';
+    if (run.keyboard === '--osc52-write') {
+        markerPrefix = 'x11-osc52-';
+        profilePrefix = 'X11 OSC 52 ';
+    }
+    const marker = markerPrefix + runId;
     const config = { runId, marker, ownerPid: process.pid, socket: join(run.scratch, 'child.sock'), ready: join(run.scratch, 'child.json') };
     const configPath = join(run.scratch, 'worker.json');
     writeJson(configPath, config);
     const python = realpathSync('/usr/bin/python3');
-    Object.assign(run, { appData, config, python, profile: (run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ') + runId,
+    Object.assign(run, { appData, config, python, profile: profilePrefix + runId, clipboardPeers: [],
         workerArgs: ['-I', '-S', '-B', join(run.sources, 'modern-x11-mouse-worker.py'), configPath, '--ntilde-terminfo-worker=' + runId],
         env: { HOME: home, XDG_CONFIG_HOME: join(home, '.config'), XDG_DATA_HOME: join(home, '.local/share'), XDG_CACHE_HOME: join(home, '.cache'),
             XDG_RUNTIME_DIR: runtime, XDG_SESSION_TYPE: 'x11', NTILDE_APPDATA_ROOT: appData, TERMINFO_RUN_ID: runId, LANG: 'C.UTF-8', PATH: '/usr/bin:/bin' },
@@ -296,14 +385,18 @@ export async function collect(run) {
     try { await observe(run); }
     catch (error) { failure = error; }
     try {
+        const peerExits = await Promise.allSettled(run.clipboardPeers.map(stop));
         const exits = await Promise.allSettled([stop(run.app), stop(run.display)]);
-        const errors = exits.filter(exit => exit.status === 'rejected').map(exit => exit.reason);
+        const errors = [...peerExits, ...exits].filter(exit => exit.status === 'rejected').map(exit => exit.reason);
         if (errors.length) throw new AggregateError(errors, 'owned App or display exit remains unverified');
         const [app, display] = exits.map(exit => exit.value);
         const socketGone = !run.xSocket || !existsSync(run.xSocket);
         need(socketGone, 'allocated X11 display socket still exists');
         await run.lease.verifyCleanup();
         run.record.cleanup = { app, display, socketGone, at: stamp() };
+        if (run.keyboard === '--osc52-write') run.record.cleanup.peers = peerExits.map((exit, index) => ({
+            pid: run.clipboardPeers[index].child.pid, ...exit.value,
+        }));
     } catch (error) {
         run.record.cleanupError = error.message;
         failure = failure ? new AggregateError([failure, error], 'collection and cleanup failed') : error;

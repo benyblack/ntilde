@@ -34,7 +34,7 @@ function verifySources(directory, policy, names) {
     return { policy: manifest.policy, sha256: digest(raw) };
 }
 
-function verifyProfile(run, profilePrefix) {
+function verifyProfile(run, profilePrefix, clipboardWrite) {
     const { settings, runId, identity, lineage: { child }, python } = run;
     const profile = settings.Profiles?.[0];
     requireModern(settings.Profiles?.length === 1 && settings.DefaultProfileId === profile.Id
@@ -43,7 +43,7 @@ function verifyProfile(run, profilePrefix) {
         && /^ntilde-x11-[A-Za-z0-9]+$/.test(posix.basename(profile.StartingDirectory))
         && settings.SessionPersistence === 'Off' && settings.AlternateScroll === false
         && settings.CommandAssistShellIntegrationEnabled === false && settings.AgentAccessObserveEnabled === true
-        && settings.AgentAccessActEnabled === false && settings.AllowOsc52ClipboardWrite === false, 'wrong X11 disposable profile');
+        && settings.AgentAccessActEnabled === false && settings.AllowOsc52ClipboardWrite === clipboardWrite, 'wrong X11 disposable profile');
     const scratch = profile.StartingDirectory;
     const argv = [python, '-I', '-S', '-B', posix.join(scratch, 'sources', 'modern-x11-mouse-worker.py'),
         posix.join(scratch, 'worker.json'), '--ntilde-terminfo-worker=' + runId];
@@ -51,14 +51,16 @@ function verifyProfile(run, profilePrefix) {
     return { argv, scratch };
 }
 
-function verifyIdentities(run, profilePrefix, markerPrefix) {
+function verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite) {
     const { appFiles, pythonSha256, runId, lineage: { parent: app, child }, identity, display, coordinatorPid, uid } = run;
     const { server } = display;
-    const { argv, scratch } = verifyProfile(run, profilePrefix);
+    const { argv, scratch } = verifyProfile(run, profilePrefix, clipboardWrite);
     assertLinuxOwnedChild(app, child, { parentPid: app.pid, childPid: child.pid, runId, uid, executable: run.python, argv });
+    const appArgs = [app.executable, '--ntilde-terminfo-owner=' + runId];
+    if (!clipboardWrite) appArgs.push('--ntilde-terminfo-private-clipboard=' + runId);
     requireModern([app, child, server].every(item => item.platform === 'linux' && item.uids.length === 4 && item.uids.every(value => value === uid))
         && new Set([coordinatorPid, server.pid, app.pid, child.pid]).size === 4 && app.ppid === coordinatorPid
-        && identity.appPid === app.pid && same(app.argv, [app.executable, '--ntilde-terminfo-owner=' + runId, '--ntilde-terminfo-private-clipboard=' + runId])
+        && identity.appPid === app.pid && same(app.argv, appArgs)
         && posix.basename(app.executable) === 'Ntilde' && isDigest(pythonSha256)
         && ['Ntilde', 'Ntilde.dll', 'librusty_pty.so', 'libcoreclr.so'].every(name => isDigest(appFiles[name]))
         && Object.values(appFiles).every(isDigest), 'missing isolated App identity or publish bytes');
@@ -76,7 +78,9 @@ function verifyIdentities(run, profilePrefix, markerPrefix) {
         && Number.isSafeInteger(identity.window.id) && identity.window.id > 0, 'missing independently owned XTEST display or window');
 }
 
-function verifyCleanup(directory, run) {
+const reaped = exit => exit && (Number.isSafeInteger(exit.code) || ['SIGTERM', 'SIGKILL'].includes(exit.signal));
+
+function verifyCleanup(directory, run, clipboardWrite) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     const instants = events.map(event => Date.parse(event.at));
     const fixture = parseJson(join(directory, 'fixture-cleanup.json'));
@@ -89,8 +93,14 @@ function verifyCleanup(directory, run) {
         && instants[2] <= removedAt && removedAt <= instants[3],
     'unproved X11 desktop lease cleanup or release');
     requireModern(run.cleanup?.socketGone === true && before(run.terminal.at, run.workerGoneAt) && before(run.workerGoneAt, run.cleanup.at)
-        && [run.cleanup.app, run.cleanup.display].every(exit => exit && (Number.isSafeInteger(exit.code) || ['SIGTERM', 'SIGKILL'].includes(exit.signal))),
+        && [run.cleanup.app, run.cleanup.display].every(reaped),
     'unverified X11 App, worker or display cleanup');
+    if (clipboardWrite) {
+        const { seed, baselineRead, reads, restoreSeed, restoreRead } = run.cases[0];
+        const pids = [seed, baselineRead, ...reads, restoreSeed, restoreRead].map(step => step.process.pid);
+        requireModern(Array.isArray(run.cleanup.peers) && same(run.cleanup.peers.map(peer => peer.pid), pids)
+            && run.cleanup.peers.every(reaped), 'unproved GTK peer cleanup');
+    }
     return { startedAt: events[1].at, fixtureRemovedAt: fixture.removedAt, leaseReleasedAt: events[3].at };
 }
 
@@ -99,17 +109,17 @@ export function verifyX11MouseRun(directory) {
         markerPrefix: 'x11-mouse-', replay: replayMouse });
 }
 
-export function verifyX11Run(directory, { policy, profilePrefix, markerPrefix, replay, extraSources = [] }) {
+export function verifyX11Run(directory, { policy, profilePrefix, markerPrefix, replay, extraSources = [], clipboardWrite = false }) {
     requireModern(!existsSync(join(directory, 'failure.json')), 'X11 collection failed');
     const frame = readFileSync(join(directory, 'observation.json'));
     const run = JSON.parse(frame);
     requireModern(run.schemaVersion === 1 && /^[a-f\d]{32}$/.test(run.runId) && !run.failure && !run.cleanupError,
         'invalid completed X11 observation');
     const source = verifySources(directory, policy, [...sourceFiles, ...extraSources]);
-    verifyIdentities(run, profilePrefix, markerPrefix);
+    verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite);
     const results = replay(run);
     requireModern(same(results, run.results), 'X11 recorded grading does not rederive');
-    const cleanup = verifyCleanup(directory, run);
+    const cleanup = verifyCleanup(directory, run, clipboardWrite);
     return { run, results, measurement: { ...cleanup, sha256: digest(frame), source } };
 }
 

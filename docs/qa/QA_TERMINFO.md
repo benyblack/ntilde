@@ -1,5 +1,12 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern OSC 52 write assessment](terminfo/2026-11-25-modern-osc52-write-results/report.md)
+reaches 66 pass, 0 fail and 3 inconclusive across 69 frozen criteria. On the
+owned Linux X11 display, a raw PTY read verified XTEST delivery. An independent
+GTK peer then read the exact OSC 52 nonce from CLIPBOARD. A separate seed and
+readback restored the baseline. Run
+`node scripts/terminfo-modern-results.mjs --check --osc52-write` to rederive the report.
+
 The [Modern focus-tracking assessment](terminfo/2026-11-25-modern-focus-tracking-results/report.md)
 reaches 65 pass, 0 fail and 4 inconclusive across 69 frozen criteria. After the
 App focus fix, the owned Linux X11 round trip produced `CSI O`, `CSI I` and
