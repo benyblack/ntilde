@@ -128,8 +128,8 @@ function peer(run, socket, pid, request) { return native(run, { kind: 'rpc', soc
 function worker(run, request) { return peer(run, run.config.socket, run.child.pid, request); }
 function x11(run, request) { return native(run, { serverPid: run.display.child.pid, appPid: run.app.child.pid, ...request }); }
 
-function checkLineage(run) {
-    need(!run.aborted() && !run.app.status && !run.display.status, 'owned fixture interrupted or an original process exited');
+function checkLineage(run, restoring = false) {
+    need((restoring || !run.aborted()) && !run.app.status && !run.display.status, 'owned fixture interrupted or an original process exited');
     run.lease.assertHeld();
     const snapshot = readLinuxOwnedChildFacts({ parentPid: run.app.child.pid, childPid: run.child.pid, uid: process.getuid(),
         executable: run.python, argv: [run.python, ...run.workerArgs], runId: run.config.runId });
@@ -186,8 +186,8 @@ async function launchPane(run) {
     run.record.identity = { pane, marker, window, xtestVersion, serverPid, appPid, admitted: stamp() };
 }
 
-async function modes(run, key, plan = modePlan) {
-    checkLineage(run);
+async function modes(run, key, plan = modePlan, restoring = false) {
+    checkLineage(run, restoring);
     const { writeHex, replyHex } = plan[key];
     const result = await worker(run, { kind: 'modes', writeHex, size: replyHex.length / 2 });
     if (result.replyHex !== replyHex) {
@@ -231,9 +231,9 @@ async function observe(run) {
     const { record } = run;
     let replay = replayMouse;
     if (run.keyboard) {
-        const keyboard = run.keyboard === '--application-keypad'
-            ? await import('./modern-x11-keypad.mjs') : await import('./modern-x11-keyboard.mjs');
-        const readModes = key => modes(run, key, keyboard.modePlan);
+        const keypad = run.keyboard === '--application-keypad';
+        const keyboard = keypad ? await import('./modern-x11-keypad.mjs') : await import('./modern-x11-keyboard.mjs');
+        const readModes = key => modes(run, key, keyboard.modePlan, keypad && key === 'restore');
         await keyboard.observeKeyboard(record, readModes, (step, request, key, fence) => recordAction(run, step, request, key, fence));
         replay = keyboard.replayKeyboard;
     } else {

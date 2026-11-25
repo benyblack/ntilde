@@ -202,10 +202,11 @@ class XDisplay:
                         held.append(code)
                     demand(self.key(self.display, code, down, 0), "XTEST key dispatch failed")
                     self.sync(self.display, 0)
-                    if not down:
-                        held.remove(code)
                     pressed, mask = self.pressed(), self.pointer()["mask"]
-                    demand(pressed == sorted(held), "XTEST held keys differ")
+                    expected = held if down else held[:-1]
+                    demand(pressed == sorted(expected), "XTEST held keys differ")
+                    if not down:
+                        held.pop()
                     events.append({"name": name, "code": code, "down": down, "at": at,
                                    "pressed": pressed, "mask": mask})
         finally:
