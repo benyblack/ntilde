@@ -4371,38 +4371,38 @@
         "reads": [
           {
             "phase": "off-before",
-            "rawHex": "6e74696c64652d70617374652d736565642d6132356161623633646238633764333164396638383239633062616535623432",
+            "rawHex": "7465726d696e666f2d70617374652d30626335653532632d386166382d343132312d393131612d343563376564386439653836",
             "mode": {
               "writeHex": "1b5b3f323030346c1b5b3f323030342470",
               "replyHex": "1b5b3f323030343b322479",
-              "started": "1318844073053133",
-              "finished": "1318844073756342"
+              "started": "1319092002321078",
+              "finished": "1319092003030120"
             }
           },
           {
             "phase": "on",
-            "rawHex": "1b5b3230307e6e74696c64652d70617374652d736565642d61323561616236336462386337643331643966383832396330626165356234321b5b3230317e",
+            "rawHex": "1b5b3230307e7465726d696e666f2d70617374652d30626335653532632d386166382d343132312d393131612d3435633765643864396538361b5b3230317e",
             "mode": {
               "writeHex": "1b5b3f32303034681b5b3f323030342470",
               "replyHex": "1b5b3f323030343b312479",
-              "started": "1318845649346134",
-              "finished": "1318845649612384"
+              "started": "1319093538997245",
+              "finished": "1319093539236204"
             }
           },
           {
             "phase": "off-after",
-            "rawHex": "6e74696c64652d70617374652d736565642d6132356161623633646238633764333164396638383239633062616535623432",
+            "rawHex": "7465726d696e666f2d70617374652d30626335653532632d386166382d343132312d393131612d343563376564386439653836",
             "mode": {
               "writeHex": "1b5b3f323030346c1b5b3f323030342470",
               "replyHex": "1b5b3f323030343b322479",
-              "started": "1318847156882218",
-              "finished": "1318847157156343"
+              "started": "1319095066978496",
+              "finished": "1319095067253163"
             }
           }
         ],
-        "baseline": "ntilde-paste-baseline-da483f6eebaa6f088d734118e461c898",
-        "nonce": "ntilde-paste-seed-a25aab63db8c7d31d9f8829c0bae5b42",
-        "restoredSelection": "ntilde-paste-baseline-da483f6eebaa6f088d734118e461c898",
+        "baseline": "ntilde-paste-baseline-dfcd1ee071714da5fc0925510a824935",
+        "nonce": "terminfo-paste-0bc5e52c-8af8-4121-911a-45c7ed8d9e86",
+        "restoredSelection": "ntilde-paste-baseline-dfcd1ee071714da5fc0925510a824935",
         "restoredMode": false,
         "conclusion": "pass",
         "status": "supported",
@@ -4412,8 +4412,8 @@
       "criterionPath": "frozen App default paste with real X11 CLIPBOARD, XTEST, and separate raw direct PTY windows",
       "evidence": {
         "file": "observation.json",
-        "runId": "199f7fc1e08a9f3046e50e57e603a9c1",
-        "sha256": "d4baaea448456db21e14ccc8addcbeccde7fe6241d4422065a725cb46ae8a377"
+        "runId": "3619280b54ef322f99fd7c906a2f55ae",
+        "sha256": "4c4203ee5143fc533c68a3df05ce6034ac8a7e8ad82faecce577ab917e143f30"
       },
       "stockVerdict": "not-graded",
       "stockEvidence": null,
@@ -5745,15 +5745,24 @@
   },
   "clipboardPasteMeasurement": {
     "publication": "docs/qa/terminfo/2026-11-25-modern-clipboard-paste-results",
-    "manifestSha256": "950180418800e96e79084f166d09788f2d1cf31bebbbc60692740f110baf900d",
+    "manifestSha256": "0a9e9eb2697c5766a3aaaf49ccdf8a5b2a5cbed3b963ec88f33e414aafd871be",
     "schemaVersion": 1,
     "archives": {
-      "owned-run.zip": "953031241e2f00a7634a9251ef6532728c051cee9f1beedc503aca04f0c02991"
+      "owned-run.zip": "c7507389d076e5275e760e8bc5f8441816791e6c7b7456fd05691d238f24d88a",
+      "attempt-1.zip": "953031241e2f00a7634a9251ef6532728c051cee9f1beedc503aca04f0c02991"
     },
-    "attempts": [],
-    "runId": "199f7fc1e08a9f3046e50e57e603a9c1",
+    "attempts": [
+      {
+        "archive": "attempt-1.zip",
+        "runId": "199f7fc1e08a9f3046e50e57e603a9c1",
+        "appRevision": "1b126168583bb8b2c144d0adde33a19f80ea1e30",
+        "scriptsRevision": "f0c8c66baf38db84e1f10bf36ec7cc64b483260e",
+        "reason": "This run passed the off/on/off byte comparison and verified restoration. The final run uses the frozen upstream callback’s UUID nonce format so the retained bytes can also be replayed through that callback."
+      }
+    ],
+    "runId": "3619280b54ef322f99fd7c906a2f55ae",
     "appRevision": "1b126168583bb8b2c144d0adde33a19f80ea1e30",
-    "scriptsRevision": "f0c8c66baf38db84e1f10bf36ec7cc64b483260e",
+    "scriptsRevision": "7733a21fc5166be8ad68b0ccabdaf38c154d7c59",
     "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
     "runtime": "linux-arm64",
     "dotnetSdk": "10.0.403",
@@ -5765,13 +5774,13 @@
       "python3-gi": "3.48.2-1",
       "xvfb": "2:21.1.12-1ubuntu1.9"
     },
-    "startedAt": "2026-11-25T10:43:40.874Z",
-    "fixtureRemovedAt": "2026-11-25T10:43:49.047Z",
-    "leaseReleasedAt": "2026-11-25T10:43:49.048Z",
-    "sha256": "d4baaea448456db21e14ccc8addcbeccde7fe6241d4422065a725cb46ae8a377",
+    "startedAt": "2026-11-25T10:47:49.522Z",
+    "fixtureRemovedAt": "2026-11-25T10:47:57.035Z",
+    "leaseReleasedAt": "2026-11-25T10:47:57.036Z",
+    "sha256": "4c4203ee5143fc533c68a3df05ce6034ac8a7e8ad82faecce577ab917e143f30",
     "source": {
       "policy": "owned-modern-x11-clipboard-paste-v1",
-      "sha256": "b2cd3f1f8d339b15cc77060c24bfb0c9a278b4b5367cfbba1ba08a38ac65a844"
+      "sha256": "da762116b05c70ef70547cf524a2597161755e387b36f6d832ae3662657126a6"
     },
     "appBuildSource": "operator-recorded source archive and publish command",
     "appVersion": "0.14.0",
@@ -5779,8 +5788,8 @@
     "assemblySha256": "044695ebe7f29f31583b02d8ad4ef26d89749132d76b28557f1344dce5a7d27a",
     "nodeVersion": "v24.22.3",
     "pane": {
-      "paneId": "4d82c805-dffe-47e8-832f-1b33e0a9c6c1",
-      "profileName": "X11 Clipboard Paste 199f7fc1e08a9f3046e50e57e603a9c1",
+      "paneId": "0219178e-9bc8-4881-b2e9-e4228dd2f98e",
+      "profileName": "X11 Clipboard Paste 3619280b54ef322f99fd7c906a2f55ae",
       "rows": 40,
       "cols": 149,
       "kind": "local",
@@ -5795,19 +5804,19 @@
     ],
     "serverPid": 20,
     "appPid": 23,
-    "workerPid": 79,
+    "workerPid": 78,
     "tty": "/dev/pts/0",
-    "baselineOwnerPid": 92,
+    "baselineOwnerPid": 91,
     "nonceOwnerPid": 187,
     "restorationOwnerPid": 431,
     "peerPids": [
-      92,
+      91,
       137,
       187,
       232,
-      284,
+      283,
       334,
-      385,
+      384,
       431,
       474
     ]

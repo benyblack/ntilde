@@ -10,7 +10,7 @@ import { buildOsc52ClipboardPublication, publication as predecessorPublication }
 
 export const publication = 'docs/qa/terminfo/2026-11-25-modern-clipboard-paste-results';
 const criterionSha256 = '91c8673a0e859273df505c9e592fe1f7ef750ee6c82a5038eaab2fbf410fd37e';
-const manifestSha256 = '950180418800e96e79084f166d09788f2d1cf31bebbbc60692740f110baf900d';
+const manifestSha256 = '0a9e9eb2697c5766a3aaaf49ccdf8a5b2a5cbed3b963ec88f33e414aafd871be';
 export const pastePaths = base => ({ json: join(base, publication, 'report.json'), markdown: join(base, publication, 'report.md') });
 
 export const verifyPasteRun = directory => verifyX11Run(directory, {
