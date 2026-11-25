@@ -26,6 +26,8 @@ import { buildOsc52WritePublication, osc52WritePaths, readableOsc52Write } from 
 
 import { buildOsc52ClipboardPublication, osc52ClipboardPaths, readableOsc52Clipboard } from './terminfo/modern-x11-osc52-clipboard-results.mjs';
 
+import { buildPastePublication, pastePaths, readablePaste } from './terminfo/modern-x11-clipboard-paste-results.mjs';
+
 const args = process.argv.slice(2);
 const publications = {
     baseline: [buildModernReport, modernOutputPaths, readableModern],
@@ -35,6 +37,7 @@ const publications = {
     '--viewport': [buildModernViewportPublication, modernViewportOutputPaths, readableModernViewport],
     '--application-keypad': [buildKeypadPublication, keypadPaths, readableKeypad],
     '--focus-tracking': [buildFocusPublication, focusPaths, readableFocus],
+    '--clipboard-paste': [buildPastePublication, pastePaths, readablePaste],
     '--osc52-clipboard': [buildOsc52ClipboardPublication, osc52ClipboardPaths, readableOsc52Clipboard],
     '--osc52-write': [buildOsc52WritePublication, osc52WritePaths, readableOsc52Write],
     '--modify-other-keys': [buildKeyboardPublication, keyboardPaths, readableKeyboard],

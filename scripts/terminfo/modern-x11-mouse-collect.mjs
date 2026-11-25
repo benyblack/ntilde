@@ -115,7 +115,7 @@ function profileSettings(run) {
         DefaultProfileId: profileId, SessionPersistence: 'Off', ShellExitPolicy: 'Never', PaneClosePolicy: 'Always',
         AlternateScroll: false, AutomaticUpdateChecks: false, QuakeModeEnabled: false,
         CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false, CommandAssistPowerShellIntegrationEnabled: false,
-        AgentAccessObserveEnabled: true, AgentAccessActEnabled: false, AllowOsc52ClipboardWrite: run.clipboard,
+        AgentAccessObserveEnabled: true, AgentAccessActEnabled: false, AllowOsc52ClipboardWrite: run.clipboard && !run.paste,
     };
 }
 
@@ -188,10 +188,13 @@ async function launchPane(run) {
 }
 
 async function modes(run, key, plan = modePlan, restoring = false) {
+    return exchangeModes(run, key, plan[key], restoring);
+}
+
+async function exchangeModes(run, key, { writeHex, replyHex, alternateReplyHex }, restoring) {
     checkLineage(run, restoring);
-    const { writeHex, replyHex } = plan[key];
     const result = await worker(run, { kind: 'modes', writeHex, size: replyHex.length / 2 });
-    if (result.replyHex !== replyHex) {
+    if (result.replyHex !== replyHex && result.replyHex !== alternateReplyHex) {
         run.record.unexpectedModeExchange = { key, result };
         throw new Error('mode readback differs for ' + key);
     }
@@ -250,8 +253,22 @@ function clipboardState(run, peerPid, peerWindow) {
     return x11(run, { kind: 'clipboard-state', window: run.record.identity.window, peerPid, peerWindow });
 }
 
-async function clipboardPeer(run, step, request, ownerPids, restoring) {
+async function checkClipboardPane(run, restoring) {
+    if (run.paste && restoring) {
+        // Permit selection restoration even if the raw PTY worker has failed.
+        // clipboardState still verifies this X server, App window and GTK peer.
+        run.lease.assertHeld();
+        need(!run.app.status && !run.display.status, 'owned X11 clipboard fixture exited');
+        return;
+    }
     checkLineage(run, restoring);
+    const pane = await listPane(run);
+    need(equal(pane, run.record.identity.pane), 'wrong current clipboard pane');
+    await verifyMarker(run, pane);
+}
+
+async function clipboardPeer(run, step, request, ownerPids, restoring) {
+    if (!(run.paste && restoring)) checkLineage(run, restoring);
     const directory = join(run.scratch, 'gtk-' + run.clipboardPeers.length);
     mkdirSync(directory, { mode });
     const argv = ['-E', '-s', '-B', join(run.sources, 'peer-linux.py'), 'text', directory];
@@ -269,10 +286,7 @@ async function clipboardPeer(run, step, request, ownerPids, restoring) {
     need(ready.pid === peer.child.pid && facts.ppid === process.pid && facts.executable === run.python
         && equal(facts.argv, [run.python, ...argv]) && facts.uids.every(uid => uid === run.record.uid), 'wrong GTK peer process');
     step.process = facts;
-    checkLineage(run, restoring);
-    const pane = await listPane(run);
-    need(equal(pane, run.record.identity.pane), 'wrong current clipboard pane');
-    await verifyMarker(run, pane);
+    await checkClipboardPane(run, restoring);
     const state = () => clipboardState(run, ready.pid, ready.window);
     step.before = await state();
     need(ownerPids.includes(step.before.ownerPid), 'clipboard owner is outside this phase');
@@ -285,8 +299,18 @@ async function clipboardPeer(run, step, request, ownerPids, restoring) {
     }, 'GTK peer did not finish the clipboard operation', aborted, 2500);
     need(!step.result.error, 'GTK text operation failed: ' + step.result.error);
     need(typeof step.result.text === 'string', 'GTK text operation returned no text');
-    checkLineage(run, restoring);
+    if (!(run.paste && restoring)) checkLineage(run, restoring);
     step.after = await state();
+}
+
+async function observePaste(run) {
+    const paste = await import('./modern-x11-clipboard-paste.mjs');
+    await paste.observePaste(run.record, {
+        peer: (...args) => clipboardPeer(run, ...args),
+        mode: (key, plan, restoring) => exchangeModes(run, key, plan, restoring),
+        action: (step, chord, key, tag) => recordAction(run, step, { kind: 'keyboard', chord }, key, tag),
+    });
+    return paste.replayPaste;
 }
 
 async function observeClipboard(run) {
@@ -324,7 +348,7 @@ async function verifyRestoredPane(run) {
 async function restoreClipboardPane(run) {
     let replay, failure;
     try {
-        replay = await observeClipboard(run);
+        replay = await (run.paste ? observePaste(run) : observeClipboard(run));
         await verifyRestoredPane(run);
     } catch (error) { failure = error; }
     try {
@@ -378,10 +402,14 @@ function configure(run) {
     const home = join(run.scratch, 'home'), appData = join(run.scratch, 'appdata'), runtime = join(run.scratch, 'runtime');
     for (const path of [home, appData, runtime]) mkdirSync(path, { mode });
     const runId = run.lease.leaseId;
-    run.clipboard = run.keyboard === '--osc52-write' || run.keyboard === '--osc52-clipboard';
+    run.paste = run.keyboard === '--clipboard-paste';
+    run.clipboard = run.paste || run.keyboard === '--osc52-write' || run.keyboard === '--osc52-clipboard';
     let markerPrefix = run.keyboard ? 'x11-key-' : 'x11-mouse-';
     let profilePrefix = run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ';
-    if (run.clipboard) {
+    if (run.paste) {
+        markerPrefix = 'x11-paste-';
+        profilePrefix = 'X11 Clipboard Paste ';
+    } else if (run.clipboard) {
         markerPrefix = 'x11-osc52-';
         profilePrefix = 'X11 OSC 52 ';
     }

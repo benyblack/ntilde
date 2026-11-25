@@ -242,13 +242,18 @@ class XDisplay:
     def keyboard_action(self, command, window_id):
         request, tag = command["request"], command["fence"]
         permitted = {"a": (["a"], ("zb", "zf", "zg", "zh")), "ctrl+i": (["Control_L", "i"], ("zc",)),
-                     "KP_Add": (["KP_Add"], ("zd", "ze"))}
+                     "KP_Add": (["KP_Add"], ("zd", "ze")),
+                     "ctrl+v": (["Control_L", "v"], ("zi", "zj", "zk"))}
         names, tags = permitted[request["chord"]]
         demand(tag in tags and self.pressed() == [] and self.pointer()["mask"] == 0,
                "unexpected keyboard fence or initial state")
         started = str(time.monotonic_ns())
         mapping = self.keypad_mapping() if names == ["KP_Add"] else None
         events = self.chord(names, window_id, {mapping["name"]: mapping["code"]} if mapping else None)
+        if request["chord"] == "ctrl+v":
+            # The App reads the X11 selection asynchronously. Leave its whole
+            # delivery window before injecting the in-band PTY delimiter.
+            time.sleep(1)
         fence_start = str(time.monotonic_ns())
         fence_events = [event for letter in tag for event in self.chord([letter], window_id)]
         focus, pressed, mask = self.focus(), self.pressed(), self.pointer()["mask"]
