@@ -280,9 +280,10 @@ async function clipboardPeer(run, step, request, ownerPids, restoring) {
         if (existsSync(path)) return readJson(path);
         need(!peer.status, 'GTK peer exited before its result');
     }, 'GTK peer did not finish the clipboard operation', aborted, 2500);
+    need(!step.result.error, 'GTK text operation failed: ' + step.result.error);
+    need(typeof step.result.text === 'string', 'GTK text operation returned no text');
     checkLineage(run, restoring);
     step.after = await state();
-    need(!step.result.error && typeof step.result.text === 'string', 'GTK text operation failed');
 }
 
 async function observeClipboard(run) {
@@ -295,46 +296,63 @@ async function observeClipboard(run) {
     return clipboard.replayClipboard;
 }
 
-async function restoreClipboardWorker(run) {
-    checkLineage(run, true);
-    run.record.terminal = await worker(run, { kind: 'restore' });
-    await waitFor(() => !existsSync('/proc/' + run.child.pid), 'direct worker did not exit and disappear', undefined, 2500);
-    run.record.workerGoneAt = stamp();
+async function verifyRestoredPane(run) {
+    const { record } = run;
+    const pane = await listPane(run);
+    need(equal(pane, record.identity.pane), 'pane changed during collection');
+    Object.assign(record.restore, { paneId: pane.paneId, marker: await verifyMarker(run, pane) });
+}
+
+async function restoreClipboardPane(run) {
+    let replay, failure;
+    try {
+        replay = await observeClipboard(run);
+        await verifyRestoredPane(run);
+    } catch (error) { failure = error; }
+    try {
+        checkLineage(run, true);
+        run.record.terminal = await worker(run, { kind: 'restore' });
+        await waitFor(() => !existsSync('/proc/' + run.child.pid), 'direct worker did not exit and disappear', undefined, 2500);
+        run.record.workerGoneAt = stamp();
+    } catch (error) {
+        throw failure ? new AggregateError([failure, error], 'clipboard run and PTY restoration failed') : error;
+    }
+    if (failure) throw failure;
+    return replay;
+}
+
+async function observeRoutedInput(run) {
+    const { record } = run;
+    if (run.keyboard === '--focus-tracking') return observeFocus(run);
+    if (run.keyboard) {
+        const keypad = run.keyboard === '--application-keypad';
+        const keyboard = keypad ? await import('./modern-x11-keypad.mjs') : await import('./modern-x11-keyboard.mjs');
+        const readModes = key => modes(run, key, keyboard.modePlan, keypad && key === 'restore');
+        await keyboard.observeKeyboard(record, readModes, (step, request, key, fence) => recordAction(run, step, request, key, fence));
+        return keyboard.replayKeyboard;
+    }
+    record.incoming = await modes(run, 'incoming');
+    for (const id of ids) await recordCase(run, id); // NOSONAR: one pane, with distinct sequenced mode changes and byte windows.
+    record.restore = { modes: await modes(run, 'restore') };
+    return replayMouse;
 }
 
 async function observe(run) {
     await launchDisplay(run);
     await launchPane(run);
     const { record } = run;
-    let replay = replayMouse;
+    let replay;
     if (run.keyboard === '--osc52-write') {
-        try { replay = await observeClipboard(run); }
-        catch (error) {
-            try { await restoreClipboardWorker(run); }
-            catch (error_) { throw new AggregateError([error, error_], 'clipboard run and PTY restoration failed'); }
-            throw error;
-        }
-    } else if (run.keyboard === '--focus-tracking') {
-        replay = await observeFocus(run);
-    } else if (run.keyboard) {
-        const keypad = run.keyboard === '--application-keypad';
-        const keyboard = keypad ? await import('./modern-x11-keypad.mjs') : await import('./modern-x11-keyboard.mjs');
-        const readModes = key => modes(run, key, keyboard.modePlan, keypad && key === 'restore');
-        await keyboard.observeKeyboard(record, readModes, (step, request, key, fence) => recordAction(run, step, request, key, fence));
-        replay = keyboard.replayKeyboard;
+        replay = await restoreClipboardPane(run);
     } else {
-        record.incoming = await modes(run, 'incoming');
-        for (const id of ids) await recordCase(run, id); // NOSONAR: one pane, with distinct sequenced mode changes and byte windows.
-        record.restore = { modes: await modes(run, 'restore') };
+        replay = await observeRoutedInput(run);
+        await verifyRestoredPane(run);
+        record.terminal = await worker(run, { kind: 'restore' });
+        await waitFor(() => !existsSync('/proc/' + run.child.pid), 'direct worker did not exit and disappear', run.aborted, 2500);
+        record.workerGoneAt = stamp();
     }
-    const pane = await listPane(run);
-    need(equal(pane, record.identity.pane), 'pane changed during collection');
-    Object.assign(record.restore, { paneId: pane.paneId, marker: await verifyMarker(run, pane) });
-    record.terminal = await worker(run, { kind: 'restore' });
-    record.results = replay(record);
-    await waitFor(() => !existsSync('/proc/' + run.child.pid), 'direct worker did not exit and disappear', run.aborted, 2500);
     need(equal(readLinuxProcessFacts(run.app.child.pid), record.lineage.parent), 'original App exited before worker cleanup was observed');
-    record.workerGoneAt = stamp();
+    record.results = replay(record);
     need(equal(record.appFiles, appFiles(run.executable)), 'App publish tree changed');
 }
 

@@ -78,14 +78,7 @@ export async function observeClipboard(record, ops) {
         await ops.key(trial.key);
         delivery(record, trial.key, admitted);
         trial.write = await ops.write(writePlan(nonce, record.identity.marker));
-        trial.pollStarted = now();
-        for (;;) {
-            const sample = {};
-            trial.reads.push(sample);
-            await ops.peer(sample, read, [seedPid, record.identity.appPid]); // NOSONAR: serialized reads of one X11 selection.
-            if (sample.result.text !== baseline || BigInt(sample.result.started) - BigInt(trial.pollStarted) >= budget) break;
-            await delay(pollMs); // NOSONAR: wait between serial clipboard reads.
-        }
+        await pollTarget(record, trial, ops.peer, seedPid);
     } catch (error) { failure = error; }
     if (!trial.seed.dispatched) throw failure;
     try {
@@ -101,19 +94,53 @@ export async function observeClipboard(record, ops) {
     record.restore = {};
 }
 
-function verifyTarget(trial, record, plan, previous, owners) {
+function sameOwner(left, right) {
+    return left.ownerPid === right.ownerPid && left.ownerWindow === right.ownerWindow;
+}
+
+function targetReading(step, record, trial, previous, appOwner) {
+    const at = verifyPeer(step, record, previous);
+    const fromSeed = sameOwner(step.before, trial.seed.after);
+    const fromApp = step.before.ownerPid === record.identity.appPid;
+    const transitioning = fromSeed && step.after.ownerPid === record.identity.appPid;
+    need((fromSeed || fromApp) && (!appOwner || sameOwner(step.before, appOwner))
+        && (sameOwner(step.before, step.after) || transitioning), 'unattributed CLIPBOARD read');
+    return { at, transitioning, unchanged: fromSeed && !transitioning && step.result.text === trial.baseline };
+}
+
+function pollingRequired(sample, classification, pollStarted) {
+    return classification.transitioning || (classification.unchanged
+        && BigInt(sample.result.started) - BigInt(pollStarted) < budget);
+}
+
+async function pollTarget(record, trial, peer, seedPid) {
+    trial.pollStarted = now();
+    let at = trial.pollStarted, appOwner;
+    for (let index = 0; index < 64; index++) {
+        const sample = {};
+        trial.reads.push(sample);
+        const owners = appOwner ? [record.identity.appPid] : [seedPid, record.identity.appPid];
+        await peer(sample, { kind: 'read' }, owners); // NOSONAR: serialized reads of one X11 selection.
+        const classification = targetReading(sample, record, trial, at, appOwner);
+        if (!pollingRequired(sample, classification, trial.pollStarted)) return;
+        at = classification.at;
+        if (classification.transitioning) appOwner = sample.after;
+        await delay(pollMs); // NOSONAR: wait between serial clipboard reads.
+    }
+    throw new Error('clipboard polling exhausted its observation limit');
+}
+
+function verifyTarget(trial, record, plan, previous) {
     const processed = exchange(trial.write, plan, previous);
     need(before(processed, trial.pollStarted) && trial.reads.length > 0 && trial.reads.length <= 64,
         'missing post-CPR clipboard observations');
-    const seedPid = trial.seed.process.pid;
-    let at = trial.pollStarted;
+    let at = trial.pollStarted, appOwner;
     for (const [index, sample] of trial.reads.entries()) {
-        at = reading(sample, record, at, owners);
-        const unchanged = sample.result.text === trial.baseline;
-        if (unchanged) need(sample.after.ownerPid === seedPid && sample.after.ownerWindow === trial.seed.after.ownerWindow,
-            'clipboard baseline came from a different owner');
-        if (index < trial.reads.length - 1) need(unchanged
-            && BigInt(sample.result.started) - BigInt(trial.pollStarted) < budget, 'clipboard polling continued after a decisive sample');
+        const classification = targetReading(sample, record, trial, at, appOwner);
+        at = classification.at;
+        if (classification.transitioning) appOwner = sample.after;
+        const moreSamples = index < trial.reads.length - 1;
+        need(moreSamples === pollingRequired(sample, classification, trial.pollStarted), 'incomplete or extra settled CLIPBOARD reads');
     }
     return at;
 }
@@ -123,7 +150,8 @@ function grade(trial, identity) {
     if (sample.result.text === trial.nonce && sample.after.ownerPid === identity.appPid) {
         return { status: 'supported', conclusion: 'pass', reason: 'The independent GTK peer read the exact nonce from the App-owned X11 CLIPBOARD.' };
     }
-    if (sample.result.text === trial.baseline && BigInt(sample.result.started) - BigInt(trial.pollStarted) >= budget) {
+    if (sameOwner(sample.after, trial.seed.after) && sample.result.text === trial.baseline
+        && BigInt(sample.result.started) - BigInt(trial.pollStarted) >= budget) {
         return { status: 'unsupported', conclusion: 'fail', reason: 'The original baseline owner and text held through the post-CPR deadline.' };
     }
     return { status: 'probe-invalid', conclusion: 'inconclusive', reason: 'The clipboard readback did not establish either frozen App outcome.' };
@@ -151,7 +179,7 @@ export function replayClipboard(record) {
     const key = delivery(record, trial.key, checked);
     const plan = writePlan(trial.nonce, identity.marker);
     const owners = [seedPid, identity.appPid];
-    const observed = verifyTarget(trial, record, plan, key.sealed, owners);
+    const observed = verifyTarget(trial, record, plan, key.sealed);
     const verified = verifyRestoration(trial, record, observed, owners);
     need(restore?.paneId === identity.pane.paneId && restore.marker === identity.marker
         && terminal?.original?.length === 7 && same(terminal.original, terminal.restored)
