@@ -2,8 +2,10 @@
 import base64
 import json
 import os
+import re
 from pathlib import Path
 import sys
+import time
 from frames import binary_payload
 
 if os.environ.get("CI") != "true" or len(sys.argv) != 3:
@@ -16,15 +18,68 @@ from gi.repository import Gdk, GLib, Gtk
 
 SELECTION_KEY = "NTILDE_CLIPBOARD_SELECTION"
 root = Path(sys.argv[2])
-filename = "peer-fixture.json" if sys.argv[1] == "write" else "fixture.json"
-values = {k: base64.b64decode(v) for k, v in json.loads((root / filename).read_text()).items()}
 Gtk.init()
 display = Gdk.Display.get_default()
 if display is None:
     raise RuntimeError("No isolated display")
-clipboard = display.get_primary_clipboard() if os.environ.get(SELECTION_KEY) == "primary" else display.get_clipboard()
 loop = GLib.MainLoop()
 reader = None
+
+
+def receipt(name, data):
+    provisional = root / (name + ".tmp")
+    with provisional.open("x", encoding="utf-8") as output:
+        json.dump(data, output)
+    provisional.rename(root / (name + ".json"))
+
+
+def text_transaction():
+    """Expose an XID for XRes admission before accessing CLIPBOARD."""
+    if os.environ.get(SELECTION_KEY) or os.environ.get("GDK_BACKEND") != "x11":
+        raise RuntimeError("Requires the private X11 CLIPBOARD")
+    gi.require_version("GdkX11", "4.0")
+    from gi.repository import GdkX11
+
+    if not isinstance(display, GdkX11.X11Display):
+        raise RuntimeError("GTK did not connect to X11")
+    window = Gtk.Window()
+    window.realize()
+    display.sync()
+    receipt("ready", {"pid": os.getpid(), "window": window.get_surface().get_xid()})
+    request = json.loads(sys.stdin.readline(1024))
+    clipboard = display.get_clipboard()
+    started = str(time.monotonic_ns())
+
+    def complete(text):
+        receipt("result", {"text": text, "started": started, "finished": str(time.monotonic_ns())})
+
+    def read_done(source, result, *_):
+        try:
+            complete(source.read_text_finish(result))
+        except Exception as error:
+            receipt("result", {"error": str(error)})
+            loop.quit()
+
+    if request == {"kind": "read"}:
+        clipboard.read_text_async(None, read_done)
+    elif request.get("kind") == "seed" and re.fullmatch(r"ntilde-osc52-baseline-[a-f0-9]{32}", request.get("text", "")):
+        text = request["text"]
+        if not clipboard.set_content(Gdk.ContentProvider.new_for_value(text)):
+            raise RuntimeError("Native CLIPBOARD seed refused")
+        display.sync()
+        complete(text)
+    else:
+        raise ValueError("Invalid isolated CLIPBOARD text request")
+    loop.run()
+
+
+if sys.argv[1] == "text":
+    text_transaction()
+    sys.exit(0)
+
+clipboard = display.get_primary_clipboard() if os.environ.get(SELECTION_KEY) == "primary" else display.get_clipboard()
+filename = "peer-fixture.json" if sys.argv[1] == "write" else "fixture.json"
+values = {k: base64.b64decode(v) for k, v in json.loads((root / filename).read_text()).items()}
 
 
 class ClipboardReader:

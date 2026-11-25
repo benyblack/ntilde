@@ -241,7 +241,7 @@ class XDisplay:
 
     def keyboard_action(self, command, window_id):
         request, tag = command["request"], command["fence"]
-        permitted = {"a": (["a"], ("zb", "zf", "zg")), "ctrl+i": (["Control_L", "i"], ("zc",)),
+        permitted = {"a": (["a"], ("zb", "zf", "zg", "zh")), "ctrl+i": (["Control_L", "i"], ("zc",)),
                      "KP_Add": (["KP_Add"], ("zd", "ze"))}
         names, tags = permitted[request["chord"]]
         demand(tag in tags and self.pressed() == [] and self.pointer()["mask"] == 0,
@@ -260,6 +260,18 @@ class XDisplay:
                 "finished": str(time.monotonic_ns()), "serverPid": self.server_pid, "appPid": command["appPid"],
                 "windowId": window_id, "focus": focus, "finalKeys": pressed, "finalMask": mask, "xtest": True}
 
+    def clipboard_state(self, command):
+        peer_id = command["peerWindow"]
+        demand(self.client_pid(peer_id) == command["peerPid"], "wrong X11 GTK peer client")
+        x11 = ct.CDLL("libX11.so.6")
+        atom = bind(x11, "XInternAtom", XID, PTR, ct.c_char_p, INT)(self.display, b"CLIPBOARD", 0)
+        owner = bind(x11, "XGetSelectionOwner", XID, PTR, XID)(self.display, atom)
+        return {"selection": "CLIPBOARD", "ownerWindow": owner,
+                "ownerPid": self.client_pid(owner) if owner else None,
+                "peerWindow": peer_id, "peerPid": command["peerPid"],
+                "serverPid": self.server_pid, "appPid": command["appPid"],
+                "windowId": command["window"]["id"], "focus": self.focus(), "at": str(time.monotonic_ns())}
+
     def run(self, command):
         app_pid = command["appPid"]
         window = self.window(app_pid)
@@ -273,6 +285,8 @@ class XDisplay:
         demand(window == command["window"] and self.focus() == window_id, "X window geometry or focus changed")
         if command["kind"] == "focus-round-trip":
             return self.focus_round_trip(window_id)
+        if command["kind"] == "clipboard-state":
+            return self.clipboard_state(command)
         request = command["request"]
         if request["kind"] == "keyboard":
             return self.keyboard_action(command, window_id)
