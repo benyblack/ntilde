@@ -175,6 +175,8 @@ and probe frames. Of the 44 retests, 33 were supported and 11 inconclusive,
 including nine timeouts. In particular, `reset.sgr` reached its 120-second
 deadline after 102 captures. The original supported result and the new timeout
 remain visible. Both application identity and owned-window cleanup verified.
+The measured selector is retained in the run archive. Its later refactor
+produces the same ordered case list when replayed over the original full run.
 
 ## Offline source proof and checkout formatting
 

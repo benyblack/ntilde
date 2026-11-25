@@ -64,13 +64,19 @@ export function focusedRetestCases(raw, coreIds, kind = 'window-movement') {
         ).map((row) => row.featureId).sort();
         if (cases.length !== ghosttyLostCases.size) throw new Error('Expected all five Ghostty timeout rows.');
     } else if (kind === 'capture-custody' && raw.subject?.id === 'iterm2') {
-        cases = raw.results.filter((row) => coreIds.includes(row.featureId) && retainedNativeCase(raw, row))
-            .map((row) => row.featureId).sort();
-        if (cases.length === 0) throw new Error('Expected retained iTerm2 native captures.');
+        cases = itermNativeCases(raw, coreIds);
     } else {
         throw new Error('Retest kind does not match its baseline terminal.');
     }
     if (new Set(cases).size !== cases.length) throw new Error('Retest selection contains duplicate cases.');
+    return cases;
+}
+
+/** Select all affected cases irrespective of their first verdict. */
+function itermNativeCases(raw, coreIds) {
+    const cases = raw.results.filter((row) => coreIds.includes(row.featureId) && retainedNativeCase(raw, row))
+        .map((row) => row.featureId).sort();
+    if (cases.length === 0) throw new Error('Expected retained iTerm2 native captures.');
     return cases;
 }
 
