@@ -109,8 +109,11 @@ Reproduce the published projection: `node scripts/terminfo-common-core-publicati
 
 The table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. iTerm2 reruns the Core cases that retained native frames, including the [seven earlier scrollback retests](iterm2/focused-retest/cases.json). The adapter checks the tab, session and worker TTY before and after screenshots and keeps the 250 ms paint wait and static-frame checks. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.
 
-- iterm2: 33/44 supported in retest `e66265a92483b4e9e9b34c9d6c684012`; latest combined evidence 60 supported / 0 unsupported / 0 invalid / 18 not concluded / 1 untestable / 1 not tested. Original run `e7b598f31bb6b0d7648ff4fb8c6bdab1` remains retained.
+The [iTerm2 SGR timeout follow-up](iterm2/sgr-timeout-retest/cases.json) reruns only the nine probes that exceeded their original deadlines in the [custody retest](iterm2/custody-retest/cases.json). The adapter keeps the static-frame settle wait and uses the probes’ existing paint witnesses for the other SGR frames. The retained custody checks, 30- and 120-second deadlines, and graders still apply. Counts carry forward the other 35 custody retest outcomes.
+
+- iterm2: 33/44 supported in retest `e66265a92483b4e9e9b34c9d6c684012`; combined evidence at that stage 60 supported / 0 unsupported / 0 invalid / 18 not concluded / 1 untestable / 1 not tested. Original run `e7b598f31bb6b0d7648ff4fb8c6bdab1` remains retained.
 - ghostty: 5/5 supported in retest `54669577db59a6415860e338b58fcc5a`; latest combined evidence 69 supported / 0 unsupported / 0 invalid / 9 not concluded / 1 untestable / 1 not tested. Original run `3cd3c30494767f72682a764f347db873` remains retained.
+- iterm2: 9/9 supported in retest `0ec264b9c06429af344d9b44e6e78b2e`; latest combined evidence 69 supported / 0 unsupported / 0 invalid / 9 not concluded / 1 untestable / 1 not tested. Prior custody retest `e66265a92483b4e9e9b34c9d6c684012` remains retained.
 
 | Retested case | New outcome |
 |---|---|
@@ -163,3 +166,17 @@ The table above records the original full runs. The focused retests keep the sam
 | ghostty · sgr.faint | Supported |
 | ghostty · sgr.italic | Supported |
 | ghostty · sgr.underline.single | Supported |
+
+### iTerm2 SGR timeout follow-up
+
+| Retested case | New outcome |
+|---|---|
+| iterm2 · reset.sgr | Supported |
+| iterm2 · sgr.bold | Supported |
+| iterm2 · sgr.faint | Supported |
+| iterm2 · sgr.hidden | Supported |
+| iterm2 · sgr.italic | Supported |
+| iterm2 · sgr.reset | Supported |
+| iterm2 · sgr.selective-reset.bold | Supported |
+| iterm2 · sgr.strikethrough | Supported |
+| iterm2 · sgr.underline.single | Supported |

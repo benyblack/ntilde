@@ -156,6 +156,26 @@
     {
       "path": "iterm2/custody-retest/adapter/upstream-source.zip",
       "sha256": "7c0f9c52ef5d8f45a79e30cc31a33052ec0091732ec15cd1ab4b3f76a406fcec"
+    },
+    {
+      "path": "iterm2/sgr-timeout-retest/adapter/native-adapter.bundle",
+      "sha256": "83c66361228c83ae23c5be078ec34faa8dbedcaea6fc4c3d0ade41556091c2b2"
+    },
+    {
+      "path": "iterm2/sgr-timeout-retest/adapter/native-adapter.patch.gz",
+      "sha256": "41870c7ea61564fd69178500b6f2995090a18fe6d9deb4d920b471486236a0be"
+    },
+    {
+      "path": "iterm2/sgr-timeout-retest/adapter/source-proof.zip",
+      "sha256": "4803891289b8a831f49675b5eb96bbe7fd9fd6d1cee5c050da3e3d39d08f2550"
+    },
+    {
+      "path": "iterm2/sgr-timeout-retest/adapter/upstream-source.json",
+      "sha256": "40605986106c930599664bbdfa63e6ac2a8d4c44c0326ece520fab3507ca5974"
+    },
+    {
+      "path": "iterm2/sgr-timeout-retest/adapter/upstream-source.zip",
+      "sha256": "c779038053677798deab136efdf04144f9bdfaeded2ecb5c3585cfffeeb3a0b2"
     }
   ],
   "subjects": [
@@ -385,5 +405,53 @@
         "sha256": "ca42fbc9d9c0522de89c9677638744ebd58513b6a85e5d467fa137d6efaaca18"
       }
     }
-  ]
+  ],
+  "itermTimeoutRetest": {
+    "id": "iterm2",
+    "label": "iTerm2",
+    "files": {
+      "identity": {
+        "path": "iterm2/sgr-timeout-retest/identity-check.json",
+        "sha256": "9af691c4e6ddc539cf5a7fe06aa9be9e01b1ee9e8fb7e14c1c2fd163165d97d5"
+      },
+      "source": {
+        "path": "iterm2/sgr-timeout-retest/source.json",
+        "sha256": "b426e5f885806474c67a1e6b09dbd4e32196331054c1df6f630574e36f4abce0"
+      },
+      "config": {
+        "path": "iterm2/sgr-timeout-retest/config.json",
+        "sha256": "3c3af28b9717d8dd60702d937939f648e9614691339807c1172344484da71663"
+      },
+      "ready": {
+        "path": "iterm2/sgr-timeout-retest/worker-ready.json",
+        "sha256": "6dd64fdefc8bfa8c76d07656aca2f3d91b6954d352c8eeee4166d4ad78e5ea70"
+      },
+      "completion": {
+        "path": "iterm2/sgr-timeout-retest/worker-complete.json",
+        "sha256": "f953449da257c4bdec52dd4f0cf0123b04fa6ae726a1adcf9e0af46024ccd63b"
+      },
+      "cleanup": {
+        "path": "iterm2/sgr-timeout-retest/cleanup.json",
+        "sha256": "45b76f5af436aa7a3d9e9b03cff37d255b616cf0e8d71731d79da57c19ea482c"
+      },
+      "geometry": {
+        "path": "iterm2/sgr-timeout-retest/measurement-geometry.json",
+        "sha256": "05197a56f8c43a9f0e2c23dd81a82fc47596c0fa0a558d483975cd1b83433eef"
+      },
+      "window": {
+        "path": "iterm2/sgr-timeout-retest/native-window.json",
+        "sha256": "7257ff5fef3f580a92f429a103b8ed4a8ce2b216986231eda8b8fe0aa700fcb5"
+      },
+      "raw": {
+        "path": "iterm2/sgr-timeout-retest/owned-run.zip",
+        "sha256": "27f9dbb39ea181eda2abdef753181a02e48ee38bce935b5a07218e5513137079",
+        "member": "raw.json",
+        "contentSha256": "2b6492be13fe47564914bc18d5b60ac2a4a7dabbe8ee06503bef190c6a77c803"
+      }
+    },
+    "archive": {
+      "path": "iterm2/sgr-timeout-retest/owned-run.zip",
+      "sha256": "27f9dbb39ea181eda2abdef753181a02e48ee38bce935b5a07218e5513137079"
+    }
+  }
 }

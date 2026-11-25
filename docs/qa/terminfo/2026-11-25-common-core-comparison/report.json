@@ -72,75 +72,40 @@
       },
       "supportedShare": 61.25000000000001,
       "focusedRetest": {
-        "kind": "capture-custody",
-        "probeHash": "fd79b3cd33a4",
-        "sourceRevision": "c9ef2e4dc7f2bb520621cfe5fbb01c1125b9de68",
+        "kind": "iterm-sgr-timeout",
+        "probeHash": "15de0a6c9c79",
+        "sourceRevision": "96789dbd81b0924cbe5de285488edf9d62c32c73",
         "subjectId": "iterm2",
-        "runId": "e66265a92483b4e9e9b34c9d6c684012",
-        "measuredAt": "2026-11-25T15:37:31.529Z",
-        "baselineRunId": "e7b598f31bb6b0d7648ff4fb8c6bdab1",
-        "baselineRawSha256": "1c5b2ccc4c9705d732ceaf920424083ee176f40eca44bb2b1d5ab6b2260b8f23",
-        "rawSha256": "bc07e2a6a72432eb4a493d36132b50881bd01a62ba669813697f97e14d9a02c4",
+        "runId": "0ec264b9c06429af344d9b44e6e78b2e",
+        "measuredAt": "2026-11-25T19:34:05.172Z",
+        "baselineRunId": "e66265a92483b4e9e9b34c9d6c684012",
+        "baselineRawSha256": "bc07e2a6a72432eb4a493d36132b50881bd01a62ba669813697f97e14d9a02c4",
+        "rawSha256": "2b6492be13fe47564914bc18d5b60ac2a4a7dabbe8ee06503bef190c6a77c803",
         "launchDriverSha256": "3b398559c5aa639584ffe148244bf671ce7272269935f472e865cdef57f81aeb",
         "caseIds": [
-          "charsets.dec-line-drawing",
-          "charsets.dec-special",
-          "charsets.g0-g1-switching",
-          "charsets.utf8",
-          "cursor.cup-scroll-region",
-          "cursor.hide",
-          "erase.character",
-          "erase.ed-scroll-region",
-          "erase.el-with-attrs",
-          "erase.line.all",
-          "erase.line.left",
-          "erase.line.right",
-          "erase.screen.above",
-          "erase.screen.all",
-          "erase.screen.below",
-          "modes.alt-screen.exit",
           "reset.sgr",
-          "scrollback.accumulate",
-          "scrollback.alt-screen",
-          "scrollback.decstbm",
-          "scrollback.decstbm-reset",
-          "scrollback.reverse-index",
-          "scrollback.scroll-down",
-          "scrollback.scroll-up",
-          "scrollback.set-region",
-          "scrollback.total-lines",
-          "sgr.bg.default",
-          "sgr.bg.standard",
           "sgr.bold",
           "sgr.faint",
-          "sgr.fg.default",
-          "sgr.fg.standard",
           "sgr.hidden",
-          "sgr.inverse",
           "sgr.italic",
           "sgr.reset",
           "sgr.selective-reset.bold",
-          "sgr.selective-reset.inverse",
-          "sgr.selective-reset.italic",
-          "sgr.selective-reset.underline",
           "sgr.strikethrough",
-          "sgr.underline.single",
-          "text.overwrite",
-          "text.reverse-index-scroll"
+          "sgr.underline.single"
         ],
         "counts": {
-          "supported": 33,
+          "supported": 9,
           "unsupported": 0,
           "untestable": 0,
-          "probe-todo": 11,
+          "probe-todo": 0,
           "probe-invalid": 0,
           "not-scheduled": 0
         },
         "currentCounts": {
-          "supported": 60,
+          "supported": 69,
           "unsupported": 0,
           "untestable": 1,
-          "probe-todo": 18,
+          "probe-todo": 9,
           "probe-invalid": 0,
           "not-scheduled": 1
         }
@@ -262,29 +227,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
+            "rawStatus": "supported",
             "evidenceLine": 7,
-            "status": "probe-todo",
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:28:24.174Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.bold",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  1
+                ],
+                "rawReplyRef": "sgr.bold"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
             "previousStatus": "probe-todo",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 7,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 30000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "sgr.bold",
+                  "reason": "Probe exceeded 30000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "probe-todo",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -391,29 +383,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 33,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 57,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:28:45.990Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.faint",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  2
+                ],
+                "rawReplyRef": "sgr.faint"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
             "previousStatus": "probe-todo",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 33,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 30000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "sgr.faint",
+                  "reason": "Probe exceeded 30000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "probe-todo",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -520,29 +539,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 59,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 107,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:29:33.174Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.italic",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  4
+                ],
+                "rawReplyRef": "sgr.italic"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
             "previousStatus": "probe-todo",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 59,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 30000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "sgr.italic",
+                  "reason": "Probe exceeded 30000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "probe-todo",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -649,29 +695,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 85,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 157,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:33:42.628Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.underline.single",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  8
+                ],
+                "rawReplyRef": "sgr.underline.single"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
             "previousStatus": "probe-todo",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 85,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 30000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "sgr.underline.single",
+                  "reason": "Probe exceeded 30000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "probe-todo",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -886,29 +959,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 160,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 207,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.hidden: target equals the same-cell blank reference; sgr.hidden: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;8\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:29:07.743Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.hidden",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  3
+                ],
+                "rawReplyRef": "sgr.hidden"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
             "previousStatus": "probe-todo",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 160,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 30000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "sgr.hidden",
+                  "reason": "Probe exceeded 30000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "probe-todo",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -988,29 +1088,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 186,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 257,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 30000ms",
+            "method": "screenshot",
+            "reason": "sgr.strikethrough: target differs from plain, made-up does not; sgr.strikethrough: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;9\"}",
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "attribute",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:33:17.443Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.strikethrough",
-                "reason": "Probe exceeded 30000ms"
+                "assertionRefs": [
+                  7
+                ],
+                "rawReplyRef": "sgr.strikethrough"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
             "previousStatus": "probe-todo",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 186,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 30000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "sgr.strikethrough",
+                  "reason": "Probe exceeded 30000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "probe-todo",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -1558,29 +1685,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 399,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 310,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 120000ms",
+            "method": "screenshot",
+            "reason": null,
             "note": null,
             "tests": [
               {
                 "id": "criterion",
-                "status": "probe-todo",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:31:35.976Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.selective-reset.bold",
-                "reason": "Probe exceeded 120000ms"
+                "assertionRefs": [
+                  6
+                ],
+                "rawReplyRef": "sgr.selective-reset.bold"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
             "previousStatus": "probe-todo",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 399,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 120000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "sgr.selective-reset.bold",
+                  "reason": "Probe exceeded 120000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "probe-todo",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -2008,29 +2162,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 569,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 376,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 120000ms",
+            "method": "screenshot",
+            "reason": null,
             "note": null,
             "tests": [
               {
                 "id": "criterion",
-                "status": "probe-todo",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:29:54.908Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "sgr.reset",
-                "reason": "Probe exceeded 120000ms"
+                "assertionRefs": [
+                  5
+                ],
+                "rawReplyRef": "sgr.reset"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
             "previousStatus": "probe-todo",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 569,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 120000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "sgr.reset",
+                  "reason": "Probe exceeded 120000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "probe-todo",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -7307,29 +7488,56 @@
             }
           ],
           "retest": {
-            "rawStatus": "probe-todo",
-            "evidenceLine": 1623,
-            "status": "probe-todo",
+            "rawStatus": "supported",
+            "evidenceLine": 441,
+            "status": "supported",
             "scheduled": true,
             "probeId": null,
-            "method": null,
-            "reason": "Probe exceeded 120000ms",
+            "method": "screenshot",
+            "reason": null,
             "note": null,
             "tests": [
               {
-                "id": "criterion",
-                "status": "probe-todo",
+                "id": "reset",
+                "status": "supported",
                 "attempt": {
-                  "scope": "none"
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T19:26:41.356Z"
                 },
-                "assertionRefs": [],
-                "rawReplyRef": "reset.sgr",
-                "reason": "Probe exceeded 120000ms"
+                "assertionRefs": [
+                  0
+                ],
+                "rawReplyRef": "reset.sgr"
               }
             ],
-            "runId": "e66265a92483b4e9e9b34c9d6c684012",
-            "previousStatus": "supported",
-            "evidencePath": "iterm2/custody-retest/cases.json"
+            "runId": "0ec264b9c06429af344d9b44e6e78b2e",
+            "previousStatus": "probe-todo",
+            "priorRetest": {
+              "rawStatus": "probe-todo",
+              "evidenceLine": 1623,
+              "status": "probe-todo",
+              "scheduled": true,
+              "probeId": null,
+              "method": null,
+              "reason": "Probe exceeded 120000ms",
+              "note": null,
+              "tests": [
+                {
+                  "id": "criterion",
+                  "status": "probe-todo",
+                  "attempt": {
+                    "scope": "none"
+                  },
+                  "assertionRefs": [],
+                  "rawReplyRef": "reset.sgr",
+                  "reason": "Probe exceeded 120000ms"
+                }
+              ],
+              "runId": "e66265a92483b4e9e9b34c9d6c684012",
+              "previousStatus": "supported",
+              "evidencePath": "iterm2/custody-retest/cases.json"
+            },
+            "evidencePath": "iterm2/sgr-timeout-retest/cases.json"
           },
           "evidencePath": "iterm2/cases.json"
         },
@@ -8168,5 +8376,5 @@
       }
     }
   ],
-  "manifestSha256": "65524393d82930aa0d4f11e298b12d704c7fc905a1e6638d809bc59ff07b697d"
+  "manifestSha256": "815812a279bb13c87432742fe73e5a83aea0734a072698c6b7662a12c68c0320"
 }

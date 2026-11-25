@@ -89,6 +89,8 @@ const sourceProof = JSON.parse(readFileSync(join(publication, 'upstream-source.j
 if (sourceProof.adapterRevision !== report.method.sourceRevision || sourceProof.probeDefinitionsUnchanged !== true)
     throw new Error('Retained upstream source differs from the measured comparison.');
 const retestKind = (subject) => JSON.parse(subject.configBytes).retest?.kind;
+const timeoutEntry = manifest.itermTimeoutRetest;
+const timeoutRetest = timeoutEntry ? loadSubject(timeoutEntry) : undefined;
 const sameSourceRetests = retests.filter((subject) => !retestAdapterPaths(retestKind(subject)));
 verifyCommonCoreSource(
     publication,
@@ -109,16 +111,31 @@ const retestReports = retests.map((retest) =>
         captureAdapter: verifyCaptureRetestAdapter(retest, sourceProof),
     }),
 );
+if (timeoutRetest) {
+    const baseline = retests.find((subject) => subject.id === 'iterm2');
+    const previous = retestReports.find((retest) => retest.subjectId === 'iterm2');
+    if (retestKind(timeoutRetest) !== 'iterm-sgr-timeout' || !baseline || previous?.kind !== 'capture-custody')
+        throw new Error('Unexpected iTerm2 timeout follow-up.');
+    retestReports.push(buildCommonCoreRetest({
+        comparison: report,
+        baseline,
+        previous,
+        retest: timeoutRetest,
+        captureAdapter: verifyCaptureRetestAdapter(timeoutRetest, sourceProof, previous.sourceRevision),
+    }));
+}
 for (const retest of retestReports) {
     const subject = report.subjects.find((subject) => subject.id === retest.subjectId);
     subject.focusedRetest = { ...retest, results: undefined };
     for (const row of report.rows) if (retest.results[row.id]) row.results[subject.id].retest = retest.results[row.id];
 }
-const caseOutputs = [...subjects, ...retests].map((subject, index) => {
+const caseOutputs = [...subjects, ...retests, ...(timeoutRetest ? [timeoutRetest] : [])].map((subject, index) => {
     const isRetest = index >= subjects.length;
     const retestDirectory = retestEvidenceDirectory(retestKind(subject));
     const evidenceDirectory = isRetest ? `${subject.id}/${retestDirectory}` : subject.id;
     const raw = JSON.parse(subject.rawBytes);
+    const retest = isRetest ? retestReports.find(({ runId, subjectId }) =>
+        runId === raw.runId && subjectId === subject.id) : undefined;
     const cases = {
         runId: raw.runId,
         rawSha256: digest(subject.rawBytes),
@@ -153,7 +170,7 @@ const caseOutputs = [...subjects, ...retests].map((subject, index) => {
     const content = JSON.stringify(cases, null, 2) + '\n',
         lines = content.split('\n');
     for (const row of report.rows) {
-        const record = isRetest ? row.results[subject.id].retest : row.results[subject.id];
+        const record = isRetest ? retest.results[row.id] : row.results[subject.id];
         if (record) {
             record.evidenceLine =
                 lines.findIndex((line) => line.trim() === `"featureId": ${JSON.stringify(row.id)},`) + 1;
@@ -183,21 +200,20 @@ const limits = report.subjects
 const retestIntroduction = historical
     ? '\n## Focused movement retest\n\nThe original full-run results remain retained above. One unattempted manual position is labeled not tested while its original raw status is preserved. Every movement-invalidated case was retested with the same upstream collector, shared worker, executable/payload identity and grid. Latest combined counts include every retest outcome, including any unsupported or inconclusive result.\n\n'
     : '\n## Focused screenshot retests\n\nThe table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. iTerm2 reruns the Core cases that retained native frames, including the [seven earlier scrollback retests](iterm2/focused-retest/cases.json). The adapter checks the tab, session and worker TTY before and after screenshots and keeps the 250 ms paint wait and static-frame checks. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.\n\n';
+const timeoutNote = timeoutRetest ?
+    'The [iTerm2 SGR timeout follow-up](iterm2/sgr-timeout-retest/cases.json) reruns only the nine probes that exceeded their original deadlines in the [custody retest](iterm2/custody-retest/cases.json). The adapter keeps the static-frame settle wait and uses the probes’ existing paint witnesses for the other SGR frames. The retained custody checks, 30- and 120-second deadlines, and graders still apply. Counts carry forward the other 35 custody retest outcomes.\n\n' : '';
+const timeoutTable = timeoutRetest ? '\n### iTerm2 SGR timeout follow-up\n' +
+    retestTable(retestReports.filter(({ kind }) => kind === 'iterm-sgr-timeout')) : '';
 const retestMarkdown = retestReports.length
-    ? retestIntroduction +
+    ? retestIntroduction + timeoutNote +
       retestReports
           .map(
               (retest) =>
-                  `- ${retest.subjectId}: ${retest.counts.supported}/${retest.caseIds.length} supported in retest \`${retest.runId}\`; latest combined evidence ${retest.currentCounts.supported} supported / ${retest.currentCounts.unsupported} unsupported / ${retest.currentCounts['probe-invalid']} invalid / ${retest.currentCounts['probe-todo']} not concluded / ${retest.currentCounts.untestable} untestable / ${retest.currentCounts['not-scheduled']} not tested. Original run \`${retest.baselineRunId}\` remains retained.\n`,
+                  `- ${retest.subjectId}: ${retest.counts.supported}/${retest.caseIds.length} supported in retest \`${retest.runId}\`; ${timeoutRetest && retest.kind === 'capture-custody' ? 'combined evidence at that stage' : 'latest combined evidence'} ${retest.currentCounts.supported} supported / ${retest.currentCounts.unsupported} unsupported / ${retest.currentCounts['probe-invalid']} invalid / ${retest.currentCounts['probe-todo']} not concluded / ${retest.currentCounts.untestable} untestable / ${retest.currentCounts['not-scheduled']} not tested. ${retest.kind === 'iterm-sgr-timeout' ? 'Prior custody retest' : 'Original run'} \`${retest.baselineRunId}\` remains retained.\n`,
           )
           .join('') +
-      '\n| Retested case | New outcome |\n|---|---|\n' +
-      retestReports
-          .flatMap((retest) =>
-              retest.caseIds.map((id) => `| ${historical ? id : retest.subjectId + ' · ' + id} | ${comparisonStatusLabels[retest.results[id].status]} |`),
-          )
-          .join('\n') +
-      '\n'
+      retestTable(retestReports.filter(({ kind }) => kind !== 'iterm-sgr-timeout')) +
+      timeoutTable
     : '';
 const calibrationNote = historical
     ? ''
@@ -267,8 +283,15 @@ console.log(
     `Common-harness comparison ${mode === '--check' ? 'verified' : 'written'}: ${report.rows.length} requirements, ${report.subjects.length} applications.`,
 );
 
+function retestTable(stages) {
+    const rows = stages.flatMap((retest) => retest.caseIds.map((id) =>
+        `| ${historical ? id : retest.subjectId + ' · ' + id} | ${comparisonStatusLabels[retest.results[id].status]} |`,
+    ));
+    return '\n| Retested case | New outcome |\n|---|---|\n' + rows.join('\n') + '\n';
+}
+
 /** Verify the alternate suite against a Git proof of a collector-only extension to the full-run adapter. */
-function verifyCaptureRetestAdapter(retest, fullRunSource) {
+function verifyCaptureRetestAdapter(retest, fullRunSource, parent = fullRunSource.adapterRevision) {
     const kind = retestKind(retest);
     const paths = retestAdapterPaths(kind);
     if (!paths) return undefined;
@@ -284,13 +307,14 @@ function verifyCaptureRetestAdapter(retest, fullRunSource) {
     const adapter = JSON.parse(readFileSync(join(publication, prefix, 'upstream-source.json'), 'utf8'));
     if (adapter.baseRevision !== fullRunSource.baseRevision || adapter.adapterRevision !== measured.upstreamRevision)
         throw new Error('Capture retest adapter provenance differs from the measured source.');
-    const retestEntry = manifest.retests.find((entry) => entry.id === retest.id);
+    const retestEntry = kind === 'iterm-sgr-timeout' ? timeoutEntry :
+        manifest.retests.find((entry) => entry.id === retest.id);
     verifyCommonCoreSource(
         join(publication, prefix),
         adapter,
         verifiedEvidenceFile(publication, retestEntry.files.source).path,
         [retest],
-        { parent: fullRunSource.adapterRevision, paths },
+        { parent, paths },
     );
     return { sourceRevision: measured.upstreamRevision, probeHash: measured.suite.probeHash };
 }
