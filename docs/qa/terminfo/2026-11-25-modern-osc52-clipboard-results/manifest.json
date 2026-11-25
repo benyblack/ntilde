@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "a68471243eea9f41646fd2bb811c18489003a6393eb2e0f366059232f67ca856",
+    "attempt-1.zip": "5fa24d224c1222395081a4a96bef2d840871c36cb23dc96b53ca9f35fedaaab6",
+    "attempt-2.zip": "180ff95e527232b188d840d1ef8ba943305026b4bbed80b68af97d753b2ca7c2",
+    "attempt-3.zip": "9c802cbae43be4f695c0c7cfed7d677af706e630b74e8bccd0408f58cbc3b0dd"
+  },
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "71e32f52ec276e6a05cbd08946d2a28d",
+      "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
+      "scriptsRevision": "199abe070b061c02a2386efceaa4413834d3a23f",
+      "reason": "The GTK peer refused the second seed outside its baseline-only allowlist. The App write, independent baseline restoration, PTY restoration and cleanup are retained."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "378d02a451f6381ffd934458f9095530",
+      "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
+      "scriptsRevision": "8f3de545178a7f8f5d53892045fbff772859c0f7",
+      "reason": "This run reproduced the empty denial and verified restoration before the SonarCloud fixes changed the measured reply classifier."
+    },
+    {
+      "archive": "attempt-3.zip",
+      "runId": "abebad8878bc12365c1d96ac47f905b9",
+      "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
+      "scriptsRevision": "fb233a55f5d662e0ec254b04d4dfb565bdb443e0",
+      "reason": "This run verified the write and empty denial before the Codex review fix bounded each stale-nonce retry to the original deadline."
+    }
+  ],
+  "runId": "7eb5acb92f5023227f9d082f23230e0b",
+  "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
+  "scriptsRevision": "f91d2b858ad54608f21b0cf6febe392745a9f9a2",
+  "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
+  "runtime": "linux-arm64",
+  "dotnetSdk": "10.0.403",
+  "x11Packages": {
+    "libgtk-4-1": "4.14.5+ds-0ubuntu0.10",
+    "libx11-6": "2:1.8.7-1ubuntu0.1",
+    "libxres1": "2:1.2.1-1build1",
+    "libxtst6": "2:1.2.3-1.1ubuntu0.1",
+    "python3-gi": "3.48.2-1",
+    "xvfb": "2:21.1.12-1ubuntu1.9"
+  }
+}

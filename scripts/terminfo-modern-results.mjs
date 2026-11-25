@@ -24,6 +24,8 @@ import { buildFocusPublication, focusPaths, readableFocus } from './terminfo/mod
 
 import { buildOsc52WritePublication, osc52WritePaths, readableOsc52Write } from './terminfo/modern-x11-osc52-write-results.mjs';
 
+import { buildOsc52ClipboardPublication, osc52ClipboardPaths, readableOsc52Clipboard } from './terminfo/modern-x11-osc52-clipboard-results.mjs';
+
 const args = process.argv.slice(2);
 const publications = {
     baseline: [buildModernReport, modernOutputPaths, readableModern],
@@ -33,6 +35,7 @@ const publications = {
     '--viewport': [buildModernViewportPublication, modernViewportOutputPaths, readableModernViewport],
     '--application-keypad': [buildKeypadPublication, keypadPaths, readableKeypad],
     '--focus-tracking': [buildFocusPublication, focusPaths, readableFocus],
+    '--osc52-clipboard': [buildOsc52ClipboardPublication, osc52ClipboardPaths, readableOsc52Clipboard],
     '--osc52-write': [buildOsc52WritePublication, osc52WritePaths, readableOsc52Write],
     '--modify-other-keys': [buildKeyboardPublication, keyboardPaths, readableKeyboard],
     '--x11-mouse': [buildModernX11MousePublication, modernX11MouseOutputPaths, readableModernX11Mouse],
