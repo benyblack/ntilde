@@ -120,6 +120,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'osc633-publication.test.mjs': 'frozen historical unsupported OSC 633 result; the current implementing-App remeasurement is the active suite claim',
     'ascii-reflow-publication.test.mjs': 'frozen historical unsupported reflow result; current fixed-App retest is the active suite claim',
     'modern-x11-keyboard-publication.test.mjs': 'one XTEST keyboard criterion within the frozen Modern assessment; adds no benchmark-suite claim',
+    'modern-x11-clipboard-paste-publication.test.mjs': 'one X11 clipboard paste criterion within the frozen Modern assessment; adds no benchmark-suite claim',
     'modern-x11-keypad-publication.test.mjs': 'one XTEST keypad criterion within the frozen Modern assessment; adds no benchmark-suite claim',
     'modern-x11-osc52-clipboard-publication.test.mjs': 'one OSC 52 round-trip criterion within the frozen Modern assessment; adds no benchmark-suite claim',
     'modern-x11-osc52-write-publication.test.mjs': 'one OSC 52 write criterion within the frozen Modern assessment; adds no benchmark-suite claim',

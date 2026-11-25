@@ -51,13 +51,13 @@ function verifyProfile(run, profilePrefix, clipboardWrite) {
     return { argv, scratch };
 }
 
-function verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite) {
+function verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite, nativeClipboard) {
     const { appFiles, pythonSha256, runId, lineage: { parent: app, child }, identity, display, coordinatorPid, uid } = run;
     const { server } = display;
     const { argv, scratch } = verifyProfile(run, profilePrefix, clipboardWrite);
     assertLinuxOwnedChild(app, child, { parentPid: app.pid, childPid: child.pid, runId, uid, executable: run.python, argv });
     const appArgs = [app.executable, '--ntilde-terminfo-owner=' + runId];
-    if (!clipboardWrite) appArgs.push('--ntilde-terminfo-private-clipboard=' + runId);
+    if (!nativeClipboard) appArgs.push('--ntilde-terminfo-private-clipboard=' + runId);
     requireModern([app, child, server].every(item => item.platform === 'linux' && item.uids.length === 4 && item.uids.every(value => value === uid))
         && new Set([coordinatorPid, server.pid, app.pid, child.pid]).size === 4 && app.ppid === coordinatorPid
         && identity.appPid === app.pid && same(app.argv, appArgs)
@@ -80,7 +80,7 @@ function verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite) {
 
 const reaped = exit => exit && (Number.isSafeInteger(exit.code) || ['SIGTERM', 'SIGKILL'].includes(exit.signal));
 
-function verifyCleanup(directory, run, clipboardWrite, peerSteps) {
+function verifyCleanup(directory, run, nativeClipboard, peerSteps) {
     const events = readFileSync(join(directory, 'desktop-lease.jsonl'), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     const instants = events.map(event => Date.parse(event.at));
     const fixture = parseJson(join(directory, 'fixture-cleanup.json'));
@@ -95,7 +95,7 @@ function verifyCleanup(directory, run, clipboardWrite, peerSteps) {
     requireModern(run.cleanup?.socketGone === true && before(run.terminal.at, run.workerGoneAt) && before(run.workerGoneAt, run.cleanup.at)
         && [run.cleanup.app, run.cleanup.display].every(reaped),
     'unverified X11 App, worker or display cleanup');
-    if (clipboardWrite) {
+    if (nativeClipboard) {
         const pids = peerSteps(run.cases[0]).map(step => step.process.pid);
         requireModern(Array.isArray(run.cleanup.peers) && same(run.cleanup.peers.map(peer => peer.pid), pids)
             && run.cleanup.peers.every(reaped), 'unproved GTK peer cleanup');
@@ -113,7 +113,7 @@ function writePeerSteps({ seed, baselineRead, reads, restoreSeed, restoreRead })
 }
 
 export function verifyX11Run(directory, {
-    policy, profilePrefix, markerPrefix, replay, extraSources = [], clipboardWrite = false, peerSteps = writePeerSteps,
+    policy, profilePrefix, markerPrefix, replay, extraSources = [], clipboardWrite = false, nativeClipboard = clipboardWrite, peerSteps = writePeerSteps,
 }) {
     requireModern(!existsSync(join(directory, 'failure.json')), 'X11 collection failed');
     const frame = readFileSync(join(directory, 'observation.json'));
@@ -121,10 +121,10 @@ export function verifyX11Run(directory, {
     requireModern(run.schemaVersion === 1 && /^[a-f\d]{32}$/.test(run.runId) && !run.failure && !run.cleanupError,
         'invalid completed X11 observation');
     const source = verifySources(directory, policy, [...sourceFiles, ...extraSources]);
-    verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite);
+    verifyIdentities(run, profilePrefix, markerPrefix, clipboardWrite, nativeClipboard);
     const results = replay(run);
     requireModern(same(results, run.results), 'X11 recorded grading does not rederive');
-    const cleanup = verifyCleanup(directory, run, clipboardWrite, peerSteps);
+    const cleanup = verifyCleanup(directory, run, nativeClipboard, peerSteps);
     return { run, results, measurement: { ...cleanup, sha256: digest(frame), source } };
 }
 

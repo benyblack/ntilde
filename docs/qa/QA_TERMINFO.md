@@ -1,5 +1,14 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern clipboard paste assessment](terminfo/2026-11-25-modern-clipboard-paste-results/report.md)
+verified the App's default Linux X11 `Ctrl+V` route with an independently
+seeded `CLIPBOARD`. The raw child received the nonce unwrapped, bracketed,
+and unwrapped again with mode 2004 off, on, and off. Independent reads
+verified restoration of the incoming mode and baseline clipboard text.
+Modern now has 67 pass, 0 fail and 2 inconclusive across 69 frozen criteria.
+Run `node scripts/terminfo-modern-results.mjs --check --clipboard-paste`
+to rederive the report.
+
 The [Modern OSC 52 clipboard assessment](terminfo/2026-11-25-modern-osc52-clipboard-results/report.md)
 verified the App's OSC 52 write through an independent GTK peer on isolated
 Linux X11. With a second nonce independently seeded and verified, the App
