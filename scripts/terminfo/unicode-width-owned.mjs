@@ -28,7 +28,8 @@ function verifyFrame(frame, step, baseline) {
         return;
     }
     const hasCpr = stage === 'sample';
-    const expectedBytes = bytes === null ? null : bytes + (hasCpr ? cursorReportQuery : '') + da;
+    const queryBytes = hasCpr ? cursorReportQuery : '';
+    const expectedBytes = bytes === null ? null : bytes + queryBytes + da;
     requireWidth(frame.requestBytes === expectedBytes && (bytes === null ? frame.barrier === null : isBarrier(frame.barrier))
         && frame.paneId === baseline.paneId && frame.sha256 === snapshotHash(frame.screen), 'wrong pane, fixture bytes, ordering fence or snapshot digest');
     const screen = screenSnapshot(frame.screen, false, true, false, false, true, false, false, false, true);

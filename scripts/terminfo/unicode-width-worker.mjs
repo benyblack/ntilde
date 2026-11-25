@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { assertPrivateFile, requestOwner, verifyNtildeOutput } from './ownership.mjs';
-import { ownedTerminalRestorer, prepareOwnedOutput, restoreOwnedTerminalState } from './terminal-output.mjs';
+import { withOwnedOutput } from './terminal-output.mjs';
 import { terminalFence } from './terminal-fence.mjs';
 import { cursorReportQuery } from './cursor-report.mjs';
 import { da, leave, prefix, restoreWidth, steps, widthWrites } from './unicode-width-contracts.mjs';
@@ -53,22 +53,10 @@ async function collect(config, tty, fence) {
 
 async function run(config, binding) {
     const tty = binding.tabTty, fence = terminalFence(process.stdin, process.stdout);
-    let restoreOutput, failure;
-    const restore = ownedTerminalRestorer([() => restoreOutput?.(), () => fence.dispose(),
-        () => restoreOwnedTerminalState(tty, binding.originalTerminalState)]);
-    try {
-        restoreOutput = prepareOwnedOutput(tty);
+    await withOwnedOutput({ tty, original: binding.originalTerminalState, restoreInput: fence.dispose }, async () => {
         await requestOwner(config, 'raw-output', { tty });
         await collect(config, tty, fence);
-    } catch (error) {
-        failure = error;
-    }
-    try { restore(); }
-    catch (error) {
-        if (failure) throw new AggregateError([failure, error], 'Unicode collection and terminal restoration failed.');
-        throw error;
-    }
-    if (failure) throw failure;
+    });
     await requestOwner(config, 'done', { tty });
 }
 

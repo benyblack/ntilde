@@ -88,6 +88,11 @@ function controlled(frame, text, col, flags = []) {
         && same(frame.cursor, [0, col]) && matchesCells(frame.flags, flags);
 }
 
+function verdict(ready, matches) {
+    if (!ready) return 'inconclusive';
+    return matches ? 'supported' : 'unsupported';
+}
+
 /** The stored row, the physical flags and the following cell are independent
  * observations. Width alone can't show that the full grapheme was retained. */
 export function gradeCase(item, seed, blank, target, measurements) {
@@ -96,14 +101,11 @@ export function gradeCase(item, seed, blank, target, measurements) {
     const first = (item.width === 2 ? wide : 0) | extended;
     const expectedFlags = item.width === 2 ? [first, continuation] : [first];
     const controls = controlled(seed, item.seed, 2) && controlled(blank, '', 0);
-    const effect = controls
-        ? (controlled(target, item.sample + item.suffix, item.width + item.suffix.length, expectedFlags) ? 'supported' : 'unsupported')
-        : 'inconclusive';
+    const effect = verdict(controls, controlled(target, item.sample + item.suffix, item.width + item.suffix.length, expectedFlags));
     const calibration = item.width === 1 ? 'A' : 'AA';
     const asciiWidth = deriveWidth(calibration, measurements.ascii);
     const sampleWidth = deriveWidth(item.sample, measurements.sample);
-    const terminal = asciiWidth !== calibration.length || sampleWidth === null
-        ? 'inconclusive' : (sampleWidth === item.width ? 'supported' : 'unsupported');
+    const terminal = verdict(asciiWidth === calibration.length && sampleWidth !== null, sampleWidth === item.width);
     return { id: item.id, sample: item.sample, utf8Hex: Buffer.from(item.sample).toString('hex'),
         effect, terminal, asciiWidth, sampleWidth, controls, observed: { row: target.lines[0], cursor: target.cursor,
             flags: target.flags.slice(0, 6).map(cell => cell.flags) } };
