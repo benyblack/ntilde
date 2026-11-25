@@ -26,10 +26,10 @@ function copySources(scratch, output, keyboard) {
         selected.push(`modern-x11-${extra}.mjs`);
         policy = `owned-modern-x11-${extra}-v1`;
     }
-    const nativeClipboardSources = ['peer-linux.py', 'frames.py'];
+    const nativeClipboardSources = new Set(['peer-linux.py', 'frames.py']);
     if (keyboard === '--osc52-write') selected.push(...nativeClipboardSources);
     const manifest = Object.fromEntries(selected.map(name => {
-        const path = join(here, nativeClipboardSources.includes(name) ? 'clipboard-native' : 'terminfo', name);
+        const path = join(here, nativeClipboardSources.has(name) ? 'clipboard-native' : 'terminfo', name);
         if (!lstatSync(path).isFile()) throw new Error('Expected regular scoped collector source.');
         const bytes = readFileSync(path);
         for (const root of [dir, retained]) writeFileSync(join(root, name), bytes, { flag: 'wx', mode: 0o400 });

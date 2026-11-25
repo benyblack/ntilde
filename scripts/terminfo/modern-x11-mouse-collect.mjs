@@ -311,7 +311,7 @@ async function observe(run) {
         try { replay = await observeClipboard(run); }
         catch (error) {
             try { await restoreClipboardWorker(run); }
-            catch (cleanup) { throw new AggregateError([error, cleanup], 'clipboard run and PTY restoration failed'); }
+            catch (error_) { throw new AggregateError([error, error_], 'clipboard run and PTY restoration failed'); }
             throw error;
         }
     } else if (run.keyboard === '--focus-tracking') {
@@ -341,13 +341,19 @@ async function observe(run) {
 function configure(run) {
     const home = join(run.scratch, 'home'), appData = join(run.scratch, 'appdata'), runtime = join(run.scratch, 'runtime');
     for (const path of [home, appData, runtime]) mkdirSync(path, { mode });
-    const osc52 = run.keyboard === '--osc52-write';
-    const runId = run.lease.leaseId, marker = (osc52 ? 'x11-osc52-' : run.keyboard ? 'x11-key-' : 'x11-mouse-') + runId;
+    const runId = run.lease.leaseId;
+    let markerPrefix = run.keyboard ? 'x11-key-' : 'x11-mouse-';
+    let profilePrefix = run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ';
+    if (run.keyboard === '--osc52-write') {
+        markerPrefix = 'x11-osc52-';
+        profilePrefix = 'X11 OSC 52 ';
+    }
+    const marker = markerPrefix + runId;
     const config = { runId, marker, ownerPid: process.pid, socket: join(run.scratch, 'child.sock'), ready: join(run.scratch, 'child.json') };
     const configPath = join(run.scratch, 'worker.json');
     writeJson(configPath, config);
     const python = realpathSync('/usr/bin/python3');
-    Object.assign(run, { appData, config, python, profile: (osc52 ? 'X11 OSC 52 ' : run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ') + runId, clipboardPeers: [],
+    Object.assign(run, { appData, config, python, profile: profilePrefix + runId, clipboardPeers: [],
         workerArgs: ['-I', '-S', '-B', join(run.sources, 'modern-x11-mouse-worker.py'), configPath, '--ntilde-terminfo-worker=' + runId],
         env: { HOME: home, XDG_CONFIG_HOME: join(home, '.config'), XDG_DATA_HOME: join(home, '.local/share'), XDG_CACHE_HOME: join(home, '.cache'),
             XDG_RUNTIME_DIR: runtime, XDG_SESSION_TYPE: 'x11', NTILDE_APPDATA_ROOT: appData, TERMINFO_RUN_ID: runId, LANG: 'C.UTF-8', PATH: '/usr/bin:/bin' },
