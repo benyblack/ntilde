@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "f4db5df35266783205d822af4828fef6f71d6d16c25511eb52e63f4b7267f086",
+    "owned-run.zip": "405593121f5519a8ec58aebc886385a2c2af6ca550b60a65679053eec9df0039",
     "attempt-1.zip": "d840b3682084a05cdc5b7b010ccf593ae29bf43f9d5a804edb4e6f7fed6c6e0c",
     "attempt-2.zip": "1abc4d32c20fc85f5220a68bb15f1ea3355e598438b6975be0077fedc739ae40",
-    "attempt-3.zip": "0389a22727975f4b85732f3cf7b289735f4570910dc70029b126aeccbeaad49b"
+    "attempt-3.zip": "0389a22727975f4b85732f3cf7b289735f4570910dc70029b126aeccbeaad49b",
+    "attempt-4.zip": "f4db5df35266783205d822af4828fef6f71d6d16c25511eb52e63f4b7267f086"
   },
   "attempts": [
     {
@@ -24,11 +25,17 @@
       "runId": "eccedbcf7afcfd727611c8f825a13909",
       "scriptsRevision": "396c41062a38a054bbd3c9c19a61327d92e072cc",
       "reason": "Passing run before the SonarCloud launcher and shared restoration fixes."
+    },
+    {
+      "archive": "attempt-4.zip",
+      "runId": "3ec1562eb2ccd49d834718598ddc8f0a",
+      "scriptsRevision": "79833f0c8908f2c9d448c961b9247b3b77aa16c9",
+      "reason": "Passing run before the SonarCloud native cleanup complexity fix."
     }
   ],
-  "runId": "3ec1562eb2ccd49d834718598ddc8f0a",
+  "runId": "318af47c517228792e336e095d8275b4",
   "appRevision": "0506c07cb1b259a55871fdf71fa35f1d27bf3bdf",
-  "scriptsRevision": "79833f0c8908f2c9d448c961b9247b3b77aa16c9",
+  "scriptsRevision": "df9e548e38a6c2216362b4e44470386aa7dac354",
   "platform": "Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64",
   "dotnetSdk": "10.0.403",
   "x11Packages": {

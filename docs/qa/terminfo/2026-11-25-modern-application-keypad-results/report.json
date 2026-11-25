@@ -2262,8 +2262,8 @@
       "criterionPath": "frozen App path with plain-a delivery and the same XTEST KP_Add under DECKPAM and DECKPNM",
       "evidence": {
         "file": "observation.json",
-        "runId": "3ec1562eb2ccd49d834718598ddc8f0a",
-        "sha256": "6371d0e92ece73027a6921860b0fe0ae4819a4b5f001169bcf9d14774e7b7d75"
+        "runId": "318af47c517228792e336e095d8275b4",
+        "sha256": "71843787062d891cf66428f7fc6fb188eb6a28be196efda9451e3a0ef9137d06"
       },
       "stockVerdict": "inconclusive",
       "stockEvidence": "none",
@@ -5264,13 +5264,14 @@
   },
   "keypadMeasurement": {
     "publication": "docs/qa/terminfo/2026-11-25-modern-application-keypad-results",
-    "manifestSha256": "4580368043ac75714f81a7e02148e58a10a80670cbccf216861179188e32b41a",
+    "manifestSha256": "1582fcd513baefcf15bbffd30db16b9816af7916bef2c217121e5a9002731cef",
     "schemaVersion": 1,
     "archives": {
-      "owned-run.zip": "f4db5df35266783205d822af4828fef6f71d6d16c25511eb52e63f4b7267f086",
+      "owned-run.zip": "405593121f5519a8ec58aebc886385a2c2af6ca550b60a65679053eec9df0039",
       "attempt-1.zip": "d840b3682084a05cdc5b7b010ccf593ae29bf43f9d5a804edb4e6f7fed6c6e0c",
       "attempt-2.zip": "1abc4d32c20fc85f5220a68bb15f1ea3355e598438b6975be0077fedc739ae40",
-      "attempt-3.zip": "0389a22727975f4b85732f3cf7b289735f4570910dc70029b126aeccbeaad49b"
+      "attempt-3.zip": "0389a22727975f4b85732f3cf7b289735f4570910dc70029b126aeccbeaad49b",
+      "attempt-4.zip": "f4db5df35266783205d822af4828fef6f71d6d16c25511eb52e63f4b7267f086"
     },
     "attempts": [
       {
@@ -5290,11 +5291,17 @@
         "runId": "eccedbcf7afcfd727611c8f825a13909",
         "scriptsRevision": "396c41062a38a054bbd3c9c19a61327d92e072cc",
         "reason": "Passing run before the SonarCloud launcher and shared restoration fixes."
+      },
+      {
+        "archive": "attempt-4.zip",
+        "runId": "3ec1562eb2ccd49d834718598ddc8f0a",
+        "scriptsRevision": "79833f0c8908f2c9d448c961b9247b3b77aa16c9",
+        "reason": "Passing run before the SonarCloud native cleanup complexity fix."
       }
     ],
-    "runId": "3ec1562eb2ccd49d834718598ddc8f0a",
+    "runId": "318af47c517228792e336e095d8275b4",
     "appRevision": "0506c07cb1b259a55871fdf71fa35f1d27bf3bdf",
-    "scriptsRevision": "79833f0c8908f2c9d448c961b9247b3b77aa16c9",
+    "scriptsRevision": "df9e548e38a6c2216362b4e44470386aa7dac354",
     "platform": "Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64",
     "dotnetSdk": "10.0.403",
     "x11Packages": {
@@ -5303,27 +5310,27 @@
       "libxtst6": "2:1.2.5-1ubuntu0.1",
       "libxres1": "2:1.2.1-1build2"
     },
-    "startedAt": "2026-11-25T06:38:25.717Z",
-    "fixtureRemovedAt": "2026-11-25T06:38:30.227Z",
-    "leaseReleasedAt": "2026-11-25T06:38:30.227Z",
-    "sha256": "6371d0e92ece73027a6921860b0fe0ae4819a4b5f001169bcf9d14774e7b7d75",
+    "startedAt": "2026-11-25T06:46:17.648Z",
+    "fixtureRemovedAt": "2026-11-25T06:46:21.562Z",
+    "leaseReleasedAt": "2026-11-25T06:46:21.563Z",
+    "sha256": "71843787062d891cf66428f7fc6fb188eb6a28be196efda9451e3a0ef9137d06",
     "source": {
       "policy": "owned-modern-x11-keypad-v1",
-      "sha256": "20ca8ce815c16c4989a9f6448438b6be7e750a44e4fb2a36f7ffe7ef85a12fdf"
+      "sha256": "cda4857b6e13ccf77cbf1453b233d0dd358cd23170dc7671122dcda3d0ee1ec0"
     },
     "appVersion": "0.14.0",
     "appExecutableSha256": "a4d59cacc96fe74054d8c88ae8d269b17121c22f4cf9dc3ac38cd67cd66ac014",
     "assemblySha256": "55f8c5a9d527767883b1278dbe4b6b2b28864f62d3ffc7e6b20f80b2c178d497",
     "nodeVersion": "v24.22.2",
-    "paneId": "8cad3c69-4d06-45f4-8811-f028fe58e366",
+    "paneId": "05e2c6d8-5a66-4b6b-890a-15c388100267",
     "display": ":0",
     "xtest": [
       2,
       2
     ],
     "windowId": 2097171,
-    "appPid": 3596175,
-    "childPid": 3596415,
+    "appPid": 3623848,
+    "childPid": 3623993,
     "tty": "/dev/pts/0"
   }
 }
