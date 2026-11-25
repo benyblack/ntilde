@@ -28,7 +28,7 @@ function modified(change, { repin = true, updateMarkdown = true } = {}) {
       const mdFile = path.join(base, pin.publication, 'report.md');
       const lines = readFileSync(mdFile, 'utf8').replaceAll('\r\n', '\n').split('\n');
       const { pass, fail, inconclusive } = report.totals;
-      lines[2] = `**${pass} pass / ${fail} fail / ${inconclusive} inconclusive across ${report.rows.length} frozen requirements.**`;
+      lines[2] = `**PASS · ${pass} pass, ${fail} fail, ${inconclusive} inconclusive across ${report.rows.length} frozen requirements.**`;
       const markdown = lines.join('\n');
       writeFileSync(mdFile, markdown);
       next.sha256['report.md'] = createHash('sha256').update(markdown).digest('hex');
@@ -42,9 +42,10 @@ function modified(change, { repin = true, updateMarkdown = true } = {}) {
 
 test('Modern summary exposes the pinned report totals and permanent evidence links', () => {
   const data = buildModernSummary();
-  assert.deepEqual(data.totals, { pass: 45, fail: 0, inconclusive: 24, total: 69 });
-  assert.equal(data.runId, '59b3fbe52f6062679e5233e0b62fb9d2');
-  assert.equal(data.asOf, '2026-11-15');
+  assert.deepEqual(data.totals, { pass: 67, fail: 0, inconclusive: 2, total: 69 });
+  assert.equal(data.runId, '88d2b28d7569682a49ddbf49ec955d5f');
+  assert.equal(data.measuredAt, '2026-11-25T10:54:36.430Z');
+  assert.equal(data.reproduction, 'node scripts/terminfo-modern-results.mjs --check --clipboard-paste');
   assert.ok(data.reportUrl.includes(`/blob/${pin.evidenceRef}/${pin.publication}/report.md`));
   assert.equal(data.jsonUrl, data.reportUrl.replace(/\.md$/, '.json'));
 });
@@ -68,7 +69,7 @@ test('when deliberately repinned, changed valid conclusions change the summary r
     report.totals.pass--;
     report.totals.inconclusive++;
   });
-  assert.deepEqual(data.totals, { pass: 44, fail: 0, inconclusive: 25, total: 69 });
+  assert.deepEqual(data.totals, { pass: 66, fail: 0, inconclusive: 3, total: 69 });
 });
 
 test('repinning only JSON cannot publish new totals beside a stale readable report', () => {

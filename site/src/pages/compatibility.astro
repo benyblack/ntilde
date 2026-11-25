@@ -9,12 +9,12 @@ const evidence = `${repo}/tree/main/${comparison.evidencePath}`;
 const base = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
 const qualification = `${base}qualification/`;
 const baselines = [
-  { id: 'core', label: 'Core', totals: core.totals, captured: core.measurement.asOf,
+  { id: 'core', label: 'Core', totals: core.totals, dateLabel: 'Report dated', captured: core.measurement.asOf,
     reportUrl: core.source.links.report, detailUrl: qualification, detailLabel: 'Explore every Core requirement',
     detail: 'Stored cells, terminal replies, child output and controlled rendering establish the named requirements in the recorded macOS configuration.' },
-  { id: 'modern', label: 'Modern', totals: modern.totals, captured: modern.asOf,
+  { id: 'modern', label: 'Modern', totals: modern.totals, dateLabel: 'Evidence through', captured: modern.measuredAt.slice(0, 10),
     reportUrl: modern.reportUrl, detailUrl: modern.jsonUrl, detailLabel: 'Inspect the Modern results JSON',
-    detail: 'Existing retained evidence is mapped to selected semantic criteria. Some rows use private stored-cell readback; OS input, timed captures and real clipboard gaps remain inconclusive.' },
+    detail: 'The OSC 52 clipboard round trip remains inconclusive. The write was verified and the read returned an empty denial reply. The VTE_VERSION check applies to VTE-based terminals. Ntilde uses its own PTY integration.' },
 ];
 const statusNames: Record<string, string> = {
   supported: 'Supported', unsupported: 'Unsupported', untestable: 'Untestable',
@@ -37,7 +37,7 @@ const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!)
         {baselines.map(baseline => (
           <article data-baseline={baseline.id} class="rounded-xl border border-ntilde-700/50 bg-ntilde-950/30 p-6">
             <h3 class="text-xl font-semibold text-white">{baseline.label}</h3>
-            <p class="mt-2 text-sm text-ink-400">Report dated {baseline.captured} · {baseline.totals.total} requirements</p>
+            <p class="mt-2 text-sm text-ink-400">{baseline.dateLabel} {baseline.captured} · {baseline.totals.total} requirements</p>
             <dl class="mt-5 grid grid-cols-3 gap-3" aria-label={`${baseline.label} qualification totals`}>
               <div><dt class="text-sm text-ink-300">Pass</dt><dd data-outcome="pass" class="mt-1 text-3xl font-semibold text-emerald-300">{baseline.totals.pass}</dd></div>
               <div><dt class="text-sm text-ink-300">Fail</dt><dd data-outcome="fail" class="mt-1 text-3xl font-semibold text-white">{baseline.totals.fail}</dd></div>
@@ -49,7 +49,7 @@ const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!)
           </article>
         ))}
       </div>
-      <p class="mt-4 max-w-4xl text-sm leading-relaxed text-ink-400">Modern was assessed on {modern.asOf} from retained run <code>{modern.runId.slice(0, 8)}</code>, measured {modern.measuredAt.slice(0, 10)}. It reuses existing observations; it is not a new desktop run, an upstream application/library run or a stock collector score.</p>
+      <p class="mt-4 max-w-4xl text-sm leading-relaxed text-ink-400">Modern combines retained macOS and Linux App measurements. The latest run <code>{modern.runId.slice(0, 8)}</code> verified native clipboard paste on Linux with bracketed paste enabled and disabled.</p>
       <details class="mt-4 text-sm leading-relaxed text-ink-300">
         <summary class="cursor-pointer text-ntilde-300">Reproduce these reports</summary>
         <p class="mt-3">From a repository checkout with Node 24+ and Python 3, these commands rederive the reports from retained evidence; they do not repeat desktop measurements.</p>

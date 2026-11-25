@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "publication": "docs/qa/terminfo/2026-11-15-modern-results",
-  "evidenceRef": "b3d39a27347007ace335986be43d41ac9cd8fc67",
+  "publication": "docs/qa/terminfo/2026-11-25-modern-clipboard-paste-results",
+  "evidenceRef": "084c8ef9ecdccfa2c82683ee35e0fa4506b7b534",
   "sha256": {
-    "report.json": "f15e903a6c672cca2c8a638ab2499280aeb8e11cefa3348d21012689b8d8b147",
-    "report.md": "4246e1cb25e62aed13bdccc62574a867b316cc616874f7db9fd96111723345e2"
+    "report.json": "c4d49cb393a9104f9e695650a1b0bd0d91a0d40aab3b4e0c6ddbdd276402e73c",
+    "report.md": "edb4f40c93d7bd86df5cdf49c6dc00b3ab33e891636c21c1935b2c3d2cc436cd"
   }
 }
