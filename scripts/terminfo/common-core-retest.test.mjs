@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { focusedRetestCases, invalidatedWindowCases } from './common-core-retest.mjs';
+import { focusedRetestCases, invalidatedWindowCases, retestAdapterPath, retestEvidenceDirectory } from './common-core-retest.mjs';
 const moved = (id) => ({
     featureId: id,
     status: 'probe-invalid',
@@ -31,8 +31,18 @@ test('focused Ghostty selection keeps both unrelated timeouts and non-timeout ou
     const timeout = (featureId) => ({ featureId, status: 'probe-todo', reason: 'Probe exceeded 30000ms' });
     const input = { ...raw([...ids.map(timeout), timeout('sgr.hidden')]), subject: { id: 'ghostty' } };
     assert.deepEqual(focusedRetestCases(input, [...ids, 'sgr.hidden'], 'probe-timeout'), ids);
+    assert.deepEqual(focusedRetestCases(input, [...ids, 'sgr.hidden'], 'capture-throughput'), ids);
     input.results[0].reason = 'no screenshot adapter';
     assert.throws(() => focusedRetestCases(input, ids, 'probe-timeout'), /five Ghostty timeout rows/);
+    assert.throws(() => focusedRetestCases(input, ids, 'capture-throughput'), /five Ghostty timeout rows/);
+});
+
+test('each capture retest has a distinct allowed adapter path and timeout evidence URL', () => {
+    assert.equal(retestAdapterPath('capture-stability'), 'packages/terminfo.dev/src/serve.ts');
+    assert.equal(retestAdapterPath('capture-throughput'), 'packages/terminfo.dev/src/darwin-capture.ts');
+    assert.equal(retestAdapterPath('probe-timeout'), undefined);
+    assert.equal(retestEvidenceDirectory('probe-timeout'), 'focused-retest');
+    assert.equal(retestEvidenceDirectory('capture-throughput'), 'timeout-retest');
 });
 
 test('focused iTerm2 selection requires the complete seven-case stability failure set', () => {

@@ -107,10 +107,10 @@ Reproduce the published projection: `node scripts/terminfo-common-core-publicati
 
 ## Focused screenshot retests
 
-The table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. The iTerm2 adapter waits 250 ms before each feature capture so the renderer can complete the cursor hide. The original two-frame stability check still decides validity. Ghostty reruns the five cases that lost a supported verdict to a timeout, using the original adapter and time budget. Combined evidence includes every retest outcome.
+The table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. The iTerm2 adapter waits 250 ms before each feature capture so the renderer can complete the cursor hide. The original two-frame stability check still decides validity. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.
 
 - iterm2: 7/7 supported in retest `6bde71e7ae9df87579ee1717e96dac64`; latest combined evidence 56 supported / 0 unsupported / 0 invalid / 22 not concluded / 1 untestable / 1 not tested. Original run `e7b598f31bb6b0d7648ff4fb8c6bdab1` remains retained.
-- ghostty: 0/5 supported in retest `e5f875a59d201103db1b0b10ea41da51`; latest combined evidence 64 supported / 0 unsupported / 0 invalid / 14 not concluded / 1 untestable / 1 not tested. Original run `3cd3c30494767f72682a764f347db873` remains retained.
+- ghostty: 5/5 supported in retest `54669577db59a6415860e338b58fcc5a`; latest combined evidence 69 supported / 0 unsupported / 0 invalid / 9 not concluded / 1 untestable / 1 not tested. Original run `3cd3c30494767f72682a764f347db873` remains retained.
 
 | Retested case | New outcome |
 |---|---|
@@ -121,8 +121,8 @@ The table above records the original full runs. The focused retests keep the sam
 | iterm2 · scrollback.scroll-down | Supported |
 | iterm2 · scrollback.scroll-up | Supported |
 | iterm2 · scrollback.set-region | Supported |
-| ghostty · modes.alt-screen.exit | Not concluded |
-| ghostty · sgr.bold | Not concluded |
-| ghostty · sgr.faint | Not concluded |
-| ghostty · sgr.italic | Not concluded |
-| ghostty · sgr.underline.single | Not concluded |
+| ghostty · modes.alt-screen.exit | Supported |
+| ghostty · sgr.bold | Supported |
+| ghostty · sgr.faint | Supported |
+| ghostty · sgr.italic | Supported |
+| ghostty · sgr.underline.single | Supported |

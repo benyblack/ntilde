@@ -26,6 +26,10 @@ const statusNames: Record<string, string> = {
   'probe-todo': 'Not concluded', 'probe-invalid': 'Invalid measurement', 'not-scheduled': 'Not tested',
 };
 const statusClass = (status: string) => status === 'supported' ? 'text-emerald-300' : status === 'unsupported' ? 'text-rose-300' : 'text-ink-300';
+const retestDirectory = (kind?: string) => {
+  if (kind === 'capture-throughput') return 'timeout-retest';
+  return kind ? 'focused-retest' : 'movement-retest';
+};
 const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 ---
 
@@ -89,7 +93,8 @@ const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!)
             <p class="font-medium">Focused retest</p>
             <p class="mt-2">{subject.focusedRetest.counts.supported} of {subject.focusedRetest.caseIds.length} retested cases supported. The original full run remains unchanged.</p>
             <p class="mt-2 text-xs text-ink-300">Latest combined evidence: {subject.focusedRetest.currentCounts.supported} supported, {subject.focusedRetest.currentCounts.unsupported} unsupported, {subject.focusedRetest.currentCounts['probe-invalid']} invalid, {subject.focusedRetest.currentCounts['probe-todo']} not concluded, {subject.focusedRetest.currentCounts.untestable} untestable, {subject.focusedRetest.currentCounts['not-scheduled']} not tested.</p>
-            <a class="mt-2 inline-block text-xs text-ntilde-300 underline" href={`${evidence}/${subject.id}/${subject.focusedRetest.kind ? 'focused-retest' : 'movement-retest'}`}>Inspect the focused retest →</a>
+            {subject.focusedRetest.kind === 'capture-throughput' && <p class="mt-2 text-xs text-ink-300">The capture adapter now reads the macOS window census faster. The probes still have the original 30-second deadline. <a class="text-ntilde-300 underline" href={`${evidence}/ghostty/focused-retest`}>Earlier timeout run →</a></p>}
+            <a class="mt-2 inline-block text-xs text-ntilde-300 underline" href={`${evidence}/${subject.id}/${retestDirectory(subject.focusedRetest.kind)}`}>Inspect the focused retest →</a>
           </div>}
           {subject.measurementLimits.captureRefusal && <div class="mt-5 rounded border border-amber-800/60 bg-amber-950/30 p-3 text-xs leading-relaxed text-amber-200">Screenshot calibration was refused. Visual cases remain unconcluded: this count cannot rank terminal support. <details class="mt-2"><summary class="cursor-pointer">Recorded reason</summary><p class="mt-2 break-words">{subject.measurementLimits.captureRefusal}</p></details></div>}
           {subject.counts['probe-invalid'] > 0 && <p class="mt-3 text-xs leading-relaxed text-amber-200">Some measurements were invalid because their controls or capture conditions were not established. {subject.measurementLimits.invalidWindowBoundsCount > 0 && <span> {subject.measurementLimits.invalidWindowBoundsCount} were invalidated after the native window bounds changed.</span>} Expand the affected rows for the recorded reasons.</p>}

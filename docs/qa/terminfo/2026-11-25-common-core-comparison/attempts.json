@@ -89,6 +89,24 @@
         "path": "attempts/iterm2-titlebar-preflight.zip",
         "sha256": "844ac83d6a609522a24a6f4e463c97bfd79f5445499440b2b0d0fa9ce9e23c3c"
       }
+    },
+    {
+      "name": "ghostty-original-focused-timeouts",
+      "disposition": "All five focused cases reached the original 30-second limit. The complete retry and its case records are retained at their original URLs.",
+      "runId": "e5f875a59d201103db1b0b10ea41da51",
+      "archive": {
+        "path": "ghostty/focused-retest/owned-run.zip",
+        "sha256": "bc837d73f413d85c5377271e2fdf5fa776379a7dd069234094d2c86c179fec90"
+      }
+    },
+    {
+      "name": "run",
+      "disposition": "The faster census let all five callbacks finish. The parent refused this attempt because the retest selector source changed during collection. Cleanup succeeded and the complete attempt is retained.",
+      "runId": "eee9de8ee2aa851e194de8ccaa7642b8",
+      "archive": {
+        "path": "attempts/ghostty-census-source-change.zip",
+        "sha256": "1921c6b3eec96fc864f538a06817d9f69f97a01e0aa56ebd4576483886a97a9f"
+      }
     }
   ]
 }

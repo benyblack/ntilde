@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { focusedRetestCases, retestReasons } from './common-core-retest.mjs';
+import { focusedRetestCases, retestAdapterPath, retestReasons } from './common-core-retest.mjs';
 import { readCommonCoreSubject, comparisonStatusLabels } from './common-core-comparison.mjs';
 /** Bind a retest to the exact original raw bytes. */
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -30,7 +30,7 @@ export function buildCommonCoreRetest({ comparison, baseline, retest, captureAda
         purpose: 'focused-retest',
         scheduledIds: selected,
     });
-    const collector = kind === 'capture-stability' ? captureAdapter : comparison.method;
+    const collector = retestAdapterPath(kind) ? captureAdapter : comparison.method;
     assertRetestCollector(measured, comparison.method, collector, kind);
     if (JSON.stringify(measured.geometry) !== JSON.stringify(comparison.method.geometry))
         throw new Error('Retest changed PTY geometry.');

@@ -8,7 +8,7 @@ import {
 import { publishCommonCoreJson } from './common-core-handshake.mjs';
 import { terminateCommonCoreOwner } from './common-core-cleanup.mjs';
 import { commonCoreGit, assertCleanCommonCoreSource } from './common-core-tools.mjs';
-import { focusedRetestCases, retestReasons } from './common-core-retest.mjs';
+import { focusedRetestCases, retestAdapterPath, retestReasons } from './common-core-retest.mjs';
 import {
     existsSync,
     mkdirSync,
@@ -505,9 +505,10 @@ end tell`,
     });
 }
 
-/** Only the iTerm2 timing retest may extend the pinned capture adapter. */
+/** Require the baseline source or its approved one-file capture derivative. */
 function matchesRetestCollector(kind: string, baseline: any, revision: string, probeHash: string) {
-    if (kind !== 'capture-stability') {
+    const adapterPath = retestAdapterPath(kind);
+    if (!adapterPath) {
         return baseline.sourceRevision === revision && baseline.probeHash === probeHash;
     }
     const parents = String(execFileSync(commonCoreGit(), ['rev-list', '--parents', '-n', '1', revision], {
@@ -517,7 +518,7 @@ function matchesRetestCollector(kind: string, baseline: any, revision: string, p
     const changed = String(execFileSync(commonCoreGit(), ['diff', '--name-only', 'HEAD^', revision], {
         cwd: upstream,
     })).trim();
-    return changed === 'packages/terminfo.dev/src/serve.ts';
+    return changed === adapterPath;
 }
 
 /** Close only the newly recorded iTerm window behind a current single-session TTY witness. */

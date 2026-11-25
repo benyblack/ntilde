@@ -120,13 +120,33 @@ finish painting the cursor hide. The retest retains the original feature bytes
 and verifies its source as a one-file extension to the full-run adapter.
 
 The Ghostty retest selects the five November 25 timeouts that had supported
-verdicts on November 11. It uses the full-run source and the same deadline.
-Other timeouts remain in the full-run record.
+verdicts on November 11. The first retry used the full-run source and timed
+out on the same five cases. Its archive and case records remain under
+`ghostty/focused-retest/`.
+
+The second retry uses a one-file derivative under `ghostty/timeout-retest/adapter/`.
+The native capture adapter converts each CoreGraphics window snapshot to
+JavaScript in bulk, then projects the same census fields. Both the pre-capture
+and post-capture ownership and bounds checks still run for every screenshot.
+It uses the same window selection, native PNGs, probe definitions, controls,
+and 30-second deadline. Other timeouts remain in the full-run record.
+
+The earlier Ghostty retry retained 21 to 23 screenshots per case before the
+deadline fired. The four SGR cases had already received their DECRQSS replies.
+On the same Mac, both census implementations produced identical output from
+one 1,492-window snapshot. In seven alternating runs of each census command,
+the median fell from 592 ms to 116 ms, including process startup. Each screenshot
+still takes two fresh censuses. The five-case collection dropped from 165.6 to
+68.8 seconds, including calibration. The alternate-screen case completed with
+22 frames and verified the restored primary buffer and cursor. Each SGR case
+completed with 27 frames and the upstream visual controls.
 
 Use the extracted full run as COMMON_CORE_RETEST_FROM. The driver verifies the
 original executable, worker and upstream source before launch. Set
 COMMON_CORE_RETEST_KIND to capture-stability for iTerm2 or probe-timeout for
-Ghostty. With the variable unset, the driver uses the original movement retest.
+Ghostty's original retry. Use capture-throughput with the retained Ghostty
+adapter snapshot to reproduce the faster census run. With the variable unset,
+the driver uses the original movement retest.
 
 ## Offline source proof and checkout formatting
 
