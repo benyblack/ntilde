@@ -200,12 +200,15 @@ const limits = report.subjects
 const retestIntroduction = historical
     ? '\n## Focused movement retest\n\nThe original full-run results remain retained above. One unattempted manual position is labeled not tested while its original raw status is preserved. Every movement-invalidated case was retested with the same upstream collector, shared worker, executable/payload identity and grid. Latest combined counts include every retest outcome, including any unsupported or inconclusive result.\n\n'
     : '\n## Focused screenshot retests\n\nThe table above records the original full runs. The focused retests keep the same application binaries, grid, probe definitions and graders. iTerm2 reruns the Core cases that retained native frames, including the [seven earlier scrollback retests](iterm2/focused-retest/cases.json). The adapter checks the tab, session and worker TTY before and after screenshots and keeps the 250 ms paint wait and static-frame checks. Ghostty reruns the five cases that timed out, with the same 30-second deadline and a faster native window census. The [earlier retry](ghostty/focused-retest/cases.json) used the original adapter and timed out on all five cases. Combined evidence includes every outcome from the latest retest.\n\n';
+const ntildeRetest = retestReports.find(({ kind }) => kind === 'ntilde-capture');
+const ntildeNote = ntildeRetest ?
+    'The [Ntilde capture retest](ntilde/capture-retest/cases.json) reruns nine SGR probe deadlines and the invalid cursor observation. The native adapter converts each window census in bulk and verifies foreground at both sides of the cursor screenshots. The original application payload, controls and deadlines apply. The five rows that lack readback and the row with no terminal callback stay in the full run.\n\n' : '';
 const timeoutNote = timeoutRetest ?
     'The [iTerm2 SGR timeout follow-up](iterm2/sgr-timeout-retest/cases.json) reruns only the nine probes that exceeded their original deadlines in the [custody retest](iterm2/custody-retest/cases.json). The adapter keeps the static-frame settle wait and uses the probes’ existing paint witnesses for the other SGR frames. The retained custody checks, 30- and 120-second deadlines, and graders still apply. Counts carry forward the other 35 custody retest outcomes.\n\n' : '';
 const timeoutTable = timeoutRetest ? '\n### iTerm2 SGR timeout follow-up\n' +
     retestTable(retestReports.filter(({ kind }) => kind === 'iterm-sgr-timeout')) : '';
 const retestMarkdown = retestReports.length
-    ? retestIntroduction + timeoutNote +
+    ? retestIntroduction + timeoutNote + ntildeNote +
       retestReports
           .map(
               (retest) =>
@@ -295,7 +298,7 @@ function verifyCaptureRetestAdapter(retest, fullRunSource, parent = fullRunSourc
     const kind = retestKind(retest);
     const paths = retestAdapterPaths(kind);
     if (!paths) return undefined;
-    const expectedId = kind === 'capture-throughput' ? 'ghostty' : 'iterm2';
+    const expectedId = { 'capture-throughput': 'ghostty', 'ntilde-capture': 'ntilde' }[kind] ?? 'iterm2';
     if (historical || retest.id !== expectedId)
         throw new Error('Unexpected capture-adapter retest.');
     const prefix = `${retest.id}/${retestEvidenceDirectory(kind)}/adapter/`;

@@ -78,6 +78,22 @@ test('iTerm2 timeout selection requires exactly nine executed deadline failures'
     assert.throws(() => focusedRetestCases(input, core, 'iterm-sgr-timeout'), /nine distinct/);
 });
 
+test('Ntilde retests only probe deadlines and its named cursor-control invalidation', () => {
+    const ids = Array.from({ length: 9 }, (_, index) => `sgr.case-${index}`);
+    const missed = ids.map((featureId) => ({
+        featureId, attempt: { scope: 'probe' }, status: 'probe-todo', harnessOutcome: 'probe-exceeded',
+    }));
+    const cursor = { featureId: 'cursor.hide', attempt: { scope: 'probe' }, status: 'probe-invalid',
+        reason: 'no visible-cursor control was established' };
+    const input = { ...raw([...missed, cursor, {
+        featureId: 'scrollback.total-lines', attempt: { scope: 'probe' }, status: 'probe-todo',
+    }]), subject: { id: 'ntilde' } };
+    const core = ['cursor.hide', ...ids, 'scrollback.total-lines'];
+    assert.deepEqual(focusedRetestCases(input, core, 'ntilde-capture'), ['cursor.hide', ...ids]);
+    cursor.reason = 'capture was refused';
+    assert.throws(() => focusedRetestCases(input, core, 'ntilde-capture'), /missing cursor control/);
+});
+
 test('focused iTerm2 selection requires the complete seven-case stability failure set', () => {
     const ids = ['alt-screen', 'decstbm', 'decstbm-reset', 'reverse-index', 'scroll-down', 'scroll-up', 'set-region']
         .map((name) => 'scrollback.' + name);

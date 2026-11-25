@@ -111,8 +111,11 @@ The table above records the original full runs. The focused retests keep the sam
 
 The [iTerm2 SGR timeout follow-up](iterm2/sgr-timeout-retest/cases.json) reruns only the nine probes that exceeded their original deadlines in the [custody retest](iterm2/custody-retest/cases.json). The adapter keeps the static-frame settle wait and uses the probes’ existing paint witnesses for the other SGR frames. The retained custody checks, 30- and 120-second deadlines, and graders still apply. Counts carry forward the other 35 custody retest outcomes.
 
+The [Ntilde capture retest](ntilde/capture-retest/cases.json) reruns nine SGR probe deadlines and the invalid cursor observation. The native adapter converts each window census in bulk and verifies foreground at both sides of the cursor screenshots. The original application payload, controls and deadlines apply. The five rows that lack readback and the row with no terminal callback stay in the full run.
+
 - iterm2: 33/44 supported in retest `e66265a92483b4e9e9b34c9d6c684012`; combined evidence at that stage 60 supported / 0 unsupported / 0 invalid / 18 not concluded / 1 untestable / 1 not tested. Original run `e7b598f31bb6b0d7648ff4fb8c6bdab1` remains retained.
 - ghostty: 5/5 supported in retest `54669577db59a6415860e338b58fcc5a`; latest combined evidence 69 supported / 0 unsupported / 0 invalid / 9 not concluded / 1 untestable / 1 not tested. Original run `3cd3c30494767f72682a764f347db873` remains retained.
+- ntilde: 10/10 supported in retest `b0e20a1117652fa6ee959e9765b97923`; latest combined evidence 74 supported / 0 unsupported / 0 invalid / 4 not concluded / 1 untestable / 1 not tested. Original run `e352c820049acefcb0121031820b1bf7` remains retained.
 - iterm2: 9/9 supported in retest `0ec264b9c06429af344d9b44e6e78b2e`; latest combined evidence 69 supported / 0 unsupported / 0 invalid / 9 not concluded / 1 untestable / 1 not tested. Prior custody retest `e66265a92483b4e9e9b34c9d6c684012` remains retained.
 
 | Retested case | New outcome |
@@ -166,6 +169,16 @@ The [iTerm2 SGR timeout follow-up](iterm2/sgr-timeout-retest/cases.json) reruns 
 | ghostty · sgr.faint | Supported |
 | ghostty · sgr.italic | Supported |
 | ghostty · sgr.underline.single | Supported |
+| ntilde · cursor.hide | Supported |
+| ntilde · reset.sgr | Supported |
+| ntilde · sgr.bold | Supported |
+| ntilde · sgr.faint | Supported |
+| ntilde · sgr.hidden | Supported |
+| ntilde · sgr.italic | Supported |
+| ntilde · sgr.reset | Supported |
+| ntilde · sgr.selective-reset.bold | Supported |
+| ntilde · sgr.strikethrough | Supported |
+| ntilde · sgr.underline.single | Supported |
 
 ### iTerm2 SGR timeout follow-up
 

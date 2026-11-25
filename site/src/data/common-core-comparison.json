@@ -13,7 +13,7 @@
     },
     "upstreamBaseRevision": "b0c8c62500199b381478a02b1f144a4de60693e5"
   },
-  "manifestSha256": "815812a279bb13c87432742fe73e5a83aea0734a072698c6b7662a12c68c0320",
+  "manifestSha256": "83b129642a02d82f3c0d84a0caed1627790b5ce887fda902b7d9b4955d76b9cd",
   "subjects": [
     {
       "id": "ntilde",
@@ -41,7 +41,47 @@
         "probe-invalid": 1,
         "not-scheduled": 1
       },
-      "supportedShare": 80
+      "supportedShare": 80,
+      "focusedRetest": {
+        "kind": "ntilde-capture",
+        "probeHash": "76734832fc63",
+        "sourceRevision": "f043d0a437ca3f7e93480be6893f8dd9082db6f8",
+        "subjectId": "ntilde",
+        "runId": "b0e20a1117652fa6ee959e9765b97923",
+        "measuredAt": "2026-11-25T21:06:35.902Z",
+        "baselineRunId": "e352c820049acefcb0121031820b1bf7",
+        "baselineRawSha256": "24afb2a8bfc402c917c9945da1d7375b9eead5ea76ecc76ba300b511329aa07e",
+        "rawSha256": "64205e3d805c41e16ab68bebdcc334f6b96018ae118279dcb27633a90611f217",
+        "launchDriverSha256": "3b398559c5aa639584ffe148244bf671ce7272269935f472e865cdef57f81aeb",
+        "caseIds": [
+          "cursor.hide",
+          "reset.sgr",
+          "sgr.bold",
+          "sgr.faint",
+          "sgr.hidden",
+          "sgr.italic",
+          "sgr.reset",
+          "sgr.selective-reset.bold",
+          "sgr.strikethrough",
+          "sgr.underline.single"
+        ],
+        "counts": {
+          "supported": 10,
+          "unsupported": 0,
+          "untestable": 0,
+          "probe-todo": 0,
+          "probe-invalid": 0,
+          "not-scheduled": 0
+        },
+        "currentCounts": {
+          "supported": 74,
+          "unsupported": 0,
+          "untestable": 1,
+          "probe-todo": 4,
+          "probe-invalid": 0,
+          "not-scheduled": 1
+        }
+      }
     },
     {
       "id": "iterm2",
@@ -184,7 +224,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 7,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:03:33.930Z"
+                },
+                "assertionRefs": [
+                  2
+                ],
+                "rawReplyRef": "sgr.bold"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 7,
           "status": "probe-todo",
           "method": null,
@@ -296,7 +362,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 57,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:03:45.884Z"
+                },
+                "assertionRefs": [
+                  3
+                ],
+                "rawReplyRef": "sgr.faint"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 33,
           "status": "probe-todo",
           "method": null,
@@ -408,7 +500,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 107,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:04:10.846Z"
+                },
+                "assertionRefs": [
+                  5
+                ],
+                "rawReplyRef": "sgr.italic"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 59,
           "status": "probe-todo",
           "method": null,
@@ -520,7 +638,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 157,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:06:23.810Z"
+                },
+                "assertionRefs": [
+                  9
+                ],
+                "rawReplyRef": "sgr.underline.single"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 85,
           "status": "probe-todo",
           "method": null,
@@ -693,7 +837,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 207,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.hidden: target equals the same-cell blank reference; sgr.hidden: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;8\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:03:57.431Z"
+                },
+                "assertionRefs": [
+                  4
+                ],
+                "rawReplyRef": "sgr.hidden"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 160,
           "status": "probe-todo",
           "method": null,
@@ -779,7 +949,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 257,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "sgr.strikethrough: target differs from plain, made-up does not; sgr.strikethrough: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;9\"}",
+            "note": null,
+            "tests": [
+              {
+                "id": "attribute",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:06:10.413Z"
+                },
+                "assertionRefs": [
+                  8
+                ],
+                "rawReplyRef": "sgr.strikethrough"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 186,
           "status": "probe-todo",
           "method": null,
@@ -1113,7 +1309,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 310,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:05:15.764Z"
+                },
+                "assertionRefs": [
+                  7
+                ],
+                "rawReplyRef": "sgr.selective-reset.bold"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 400,
           "status": "probe-todo",
           "method": null,
@@ -1385,7 +1607,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 376,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:04:21.873Z"
+                },
+                "assertionRefs": [
+                  6
+                ],
+                "rawReplyRef": "sgr.reset"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 570,
           "status": "probe-todo",
           "method": null,
@@ -1471,7 +1719,34 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 441,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore",
+            "note": null,
+            "tests": [
+              {
+                "id": "criterion",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:02:36.456Z"
+                },
+                "assertionRefs": [
+                  0
+                ],
+                "rawReplyRef": "cursor.hide",
+                "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-invalid",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 596,
           "status": "probe-invalid",
           "method": "screenshot",
@@ -4030,7 +4305,33 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": null,
+          "retest": {
+            "rawStatus": "supported",
+            "evidenceLine": 482,
+            "status": "supported",
+            "scheduled": true,
+            "probeId": null,
+            "method": "screenshot",
+            "reason": null,
+            "note": null,
+            "tests": [
+              {
+                "id": "reset",
+                "status": "supported",
+                "attempt": {
+                  "scope": "probe",
+                  "startedAt": "2026-11-25T21:02:38.807Z"
+                },
+                "assertionRefs": [
+                  1
+                ],
+                "rawReplyRef": "reset.sgr"
+              }
+            ],
+            "runId": "b0e20a1117652fa6ee959e9765b97923",
+            "previousStatus": "probe-todo",
+            "evidencePath": "ntilde/capture-retest/cases.json"
+          },
           "evidenceLine": 2764,
           "status": "probe-todo",
           "method": null,

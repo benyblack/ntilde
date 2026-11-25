@@ -26,6 +26,7 @@ export const retestReasons = {
     'capture-throughput': 'the five Ghostty Core timeouts after reducing native window census overhead',
     'capture-custody': 'iTerm2 Core cases that retained native frames before per-frame session custody was verified',
     'iterm-sgr-timeout': 'the nine iTerm2 SGR cases that exceeded their probe deadlines in the custody retest',
+    'ntilde-capture': 'the nine Ntilde screenshot probe timeouts and missing visible-cursor control',
 };
 
 /** The complete allowed upstream diff for each focused capture adapter. */
@@ -34,6 +35,7 @@ export function retestAdapterPaths(kind) {
     if (kind === 'capture-stability') return [prefix + 'serve.ts'];
     if (kind === 'capture-throughput') return [prefix + 'darwin-capture.ts'];
     if (kind === 'iterm-sgr-timeout') return [prefix + 'serve.test.ts', prefix + 'serve.ts'];
+    if (kind === 'ntilde-capture') return [prefix + 'darwin-capture.test.ts', prefix + 'darwin-capture.ts', prefix + 'serve.ts'];
     if (kind === 'capture-custody')
         return ['darwin-capture.test.ts', 'darwin-capture.ts', 'iterm-window-owner.ts', 'serve.ts']
             .map((path) => prefix + path);
@@ -45,6 +47,7 @@ export function retestEvidenceDirectory(kind) {
     if (kind === 'capture-throughput') return 'timeout-retest';
     if (kind === 'capture-custody') return 'custody-retest';
     if (kind === 'iterm-sgr-timeout') return 'sgr-timeout-retest';
+    if (kind === 'ntilde-capture') return 'capture-retest';
     return kind ? 'focused-retest' : 'movement-retest';
 }
 
@@ -53,7 +56,8 @@ export function focusedRetestCases(raw, coreIds, kind = 'window-movement') {
     if (kind === 'window-movement') return invalidatedWindowCases(raw, coreIds);
     if (raw?.schemaVersion !== 4 || raw.source?.kind !== 'live' || !Array.isArray(raw.results))
         throw new Error('Retest requires a retained schema-4 live run.');
-    if (kind === 'iterm-sgr-timeout') return itermTimeoutCases(raw, coreIds);
+    const targeted = targetedRetestSelectors.get(kind);
+    if (targeted) return targeted(raw, coreIds);
     let cases;
     if (kind === 'capture-stability' && raw.subject?.id === 'iterm2') {
         cases = raw.results.filter(
@@ -73,6 +77,24 @@ export function focusedRetestCases(raw, coreIds, kind = 'window-movement') {
         throw new Error('Retest kind does not match its baseline terminal.');
     }
     if (new Set(cases).size !== cases.length) throw new Error('Retest selection contains duplicate cases.');
+    return cases;
+}
+
+const targetedRetestSelectors = new Map([
+    ['iterm-sgr-timeout', itermTimeoutCases],
+    ['ntilde-capture', ntildeCaptureCases],
+]);
+
+/** Bind the Ntilde retry to the nine deadlines and the one named cursor-control refusal. */
+function ntildeCaptureCases(raw, coreIds) {
+    if (raw.subject?.id !== 'ntilde') throw new Error('Ntilde capture retest requires its own baseline.');
+    const deadlines = raw.results.filter((row) => coreIds.includes(row.featureId) &&
+        row.attempt?.scope === 'probe' && row.harnessOutcome === 'probe-exceeded' && row.status === 'probe-todo');
+    const cursors = raw.results.filter((row) => row.featureId === 'cursor.hide' && coreIds.includes(row.featureId) &&
+        row.attempt?.scope === 'probe' && row.status === 'probe-invalid' && row.reason?.includes('no visible-cursor control was established'));
+    const cases = [...deadlines, ...cursors].map((row) => row.featureId).sort();
+    if (deadlines.length !== 9 || cursors.length !== 1 || new Set(cases).size !== 10)
+        throw new Error('Expected nine distinct Ntilde deadlines and one missing cursor control.');
     return cases;
 }
 

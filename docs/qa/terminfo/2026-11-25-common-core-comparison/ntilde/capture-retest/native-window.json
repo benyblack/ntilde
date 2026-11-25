@@ -1,0 +1,10 @@
+{
+  "provider": "cli-process",
+  "ownerPid": 64387,
+  "executablePath": "/Users/behnam/.ntilde-qa-sidecars/common-core-refresh-d1eaf646/Ntilde",
+  "marker": {
+    "flag": "--ntilde-terminfo-owner",
+    "value": "b0e20a1117652fa6ee959e9765b97923"
+  },
+  "tty": "/dev/ttys005"
+}
