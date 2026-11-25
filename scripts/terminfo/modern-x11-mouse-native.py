@@ -82,6 +82,9 @@ class XDisplay:
         self.keymap = bind(x11, "XQueryKeymap", INT, PTR, ct.POINTER(ct.c_ubyte))
         self.keysym = bind(x11, "XStringToKeysym", XID, ct.c_char_p)
         self.keycode = bind(x11, "XKeysymToKeycode", ct.c_ubyte, PTR, XID)
+        self.keyboard_mapping = bind(x11, "XGetKeyboardMapping", XIDP, PTR, ct.c_ubyte, INT, INTP)
+        self.keysym_modifiers = bind(x11, "XkbKeysymToModifiers", UINT, PTR, XID)
+        self.lookup_keysym = bind(x11, "XkbLookupKeySym", INT, PTR, ct.c_ubyte, UINT, UINTP, XIDP)
         self.query_ids = bind(xres, "XResQueryClientIds", INT, PTR, ct.c_long,
                               ct.POINTER(ClientSpec), ct.POINTER(ct.c_long), ct.POINTER(ct.POINTER(ClientId)))
         self.get_pid = bind(xres, "XResGetClientPid", INT, ct.POINTER(ClientId))
@@ -157,21 +160,29 @@ class XDisplay:
         self.keymap(self.display, keys)
         return [code for code in range(8, 256) if keys[code // 8] & (1 << (code % 8))]
 
+    def effective_keysym(self, code, state):
+        adjusted_modifiers, result = UINT(), XID()
+        demand(self.lookup_keysym(self.display, code, state, ct.byref(adjusted_modifiers), ct.byref(result)),
+               "cannot translate the KP_Add keycode")
+        return result.value
+
     def keypad_mapping(self):
-        get_mapping = bind(ct.CDLL("libX11.so.6"), "XGetKeyboardMapping",
-                           XIDP, PTR, ct.c_ubyte, INT, INTP)
         name = "KP_Add"
         keysym = self.keysym(name.encode("ascii"))
         code = self.keycode(self.display, keysym)
         demand(code >= 8, "KP_Add keycode unavailable")
         count = INT()
-        entries = get_mapping(self.display, code, 1, ct.byref(count))
+        entries = self.keyboard_mapping(self.display, code, 1, ct.byref(count))
         try:
             demand(entries and 1 <= count.value <= 32, "KP_Add symbol levels unavailable")
             levels = entries[:count.value]
-            demand(levels[0] == keysym and all(level in (keysym, 0) for level in levels),
-                   "KP_Add depends on a different keyboard level")
-            return {"name": name, "keysym": keysym, "code": code, "levels": levels}
+            num_lock_mask = self.keysym_modifiers(self.display, self.keysym(b"Num_Lock"))
+            unmodified = self.effective_keysym(code, 0)
+            num_locked = self.effective_keysym(code, num_lock_mask)
+            demand(0 < num_lock_mask <= 255 and unmodified == keysym == num_locked and keysym in levels,
+                   f"KP_Add translation differs under NumLock: {levels}, {num_lock_mask}, {unmodified}, {num_locked}")
+            return {"name": name, "keysym": keysym, "code": code, "levels": levels,
+                    "numLockMask": num_lock_mask, "unmodifiedKeysym": unmodified, "numLockKeysym": num_locked}
         finally:
             if entries:
                 self.free(entries)

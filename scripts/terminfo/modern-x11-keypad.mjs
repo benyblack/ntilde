@@ -36,8 +36,10 @@ function verifyStep(step, phase, previous, identity) {
 function verifyMapping(native) {
     const mapping = native.mapping;
     need(mapping?.name === 'KP_Add' && mapping.keysym === 0xffab && mapping.code === native.events[0].code
-        && Array.isArray(mapping.levels) && mapping.levels.length <= 32 && mapping.levels[0] === mapping.keysym
-        && mapping.levels.every(level => level === 0 || level === mapping.keysym), 'missing or incorrect KP_Add mapping');
+        && Array.isArray(mapping.levels) && mapping.levels.length <= 32 && mapping.levels.includes(mapping.keysym)
+        && mapping.levels.every(level => Number.isInteger(level) && level >= 0 && level <= 0xffffffff)
+        && Number.isInteger(mapping.numLockMask) && mapping.numLockMask > 0 && mapping.numLockMask <= 255
+        && mapping.unmodifiedKeysym === mapping.keysym && mapping.numLockKeysym === mapping.keysym, 'missing or incorrect KP_Add mapping');
     return mapping;
 }
 
