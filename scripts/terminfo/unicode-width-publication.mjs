@@ -10,7 +10,7 @@ import { verifyRun } from './unicode-width-owned.mjs';
 
 export const publication = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-25-unicode-width/', import.meta.url));
 export const pinnedBundle = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
-const manifestSha256 = '3f047134da440aa6671f9dcd3dc4857542c1c639f2758f8f1a22b0f14b57189d';
+const manifestSha256 = '765817e9a1054a12b6c2a68a64c8e087963e011e7204aa44218eb094d9186e81';
 const json = (directory, file) => JSON.parse(readFileSync(join(directory, file), 'utf8'));
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const serialize = value => JSON.stringify(value, null, 2) + '\n';

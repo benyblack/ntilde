@@ -20,7 +20,7 @@ The historical stock collector already supported these five IDs. This standalone
 
 Run `node scripts/terminfo/unicode-width-publication.mjs --check` to rederive the report from [the immutable run archive](owned-run.zip). Run `NTILDE_TERMINFO_REAL_BUNDLE_REQUIRED=1 node --test scripts/terminfo/unicode-width-grading-collector.test.mjs` to compare both probe paths with the original 4.0.0 bundle.
 
-Run `32e85f6f6f2cb420e63f551b2a056efb` started 2026-11-25T21:33:21.332Z. Grid 41 × 140. Sidecar 0.14.0+c3aea76129a49b5193e788c97c0858342a2aaef8 on macOS 27.0.1 (26A434), arm64. Measured collector revision `3107ee254e6435c2062f46d4b95dd1db821e09db`. Fixture cleanup and desktop lease release were verified.
+Run `eb455801ddf173ab06638ecfbba1ec37` started 2026-11-25T21:45:56.292Z. Grid 41 × 140. Sidecar 0.14.0+c3aea76129a49b5193e788c97c0858342a2aaef8 on macOS 27.0.1 (26A434), arm64. Measured collector revision `7df112c65696c62fad68dcba72abc74944d314d6`. Fixture cleanup and desktop lease release were verified.
 
 Build the sidecar from the recorded App revision with `scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar`.
 
