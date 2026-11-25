@@ -31,16 +31,7 @@ export function buildCommonCoreRetest({ comparison, baseline, retest, captureAda
         scheduledIds: selected,
     });
     const collector = kind === 'capture-stability' ? captureAdapter : comparison.method;
-    if (!collector || measured.method.probeHash !== collector.probeHash ||
-        measured.method.sourceRevision !== collector.sourceRevision) {
-        throw new Error('Retest collector identity differs from its verified source.');
-    }
-    for (const key of ['workerSha256', 'workerBundleSha256', 'os']) {
-        if (measured.method[key] !== comparison.method[key])
-            throw new Error(`Retest changed its shared collector: ${key}`);
-    }
-    if (kind !== 'window-movement' && measured.measurementLimits.captureOutcome !== 'installed')
-        throw new Error('Focused screenshot retest requires installed native capture.');
+    assertRetestCollector(measured, comparison.method, collector, kind);
     if (JSON.stringify(measured.geometry) !== JSON.stringify(comparison.method.geometry))
         throw new Error('Retest changed PTY geometry.');
     if (Date.parse(measured.measuredAt) < Date.parse(original.measuredAt))
@@ -78,4 +69,18 @@ export function buildCommonCoreRetest({ comparison, baseline, retest, captureAda
         currentCounts,
         results,
     };
+}
+
+/** Keep the collection and its screenshot observer bound to their verified identities. */
+function assertRetestCollector(measured, baselineMethod, collector, kind) {
+    if (!collector || measured.method.probeHash !== collector.probeHash ||
+        measured.method.sourceRevision !== collector.sourceRevision) {
+        throw new Error('Retest collector identity differs from its verified source.');
+    }
+    for (const key of ['workerSha256', 'workerBundleSha256', 'os']) {
+        if (measured.method[key] !== baselineMethod[key])
+            throw new Error(`Retest changed its shared collector: ${key}`);
+    }
+    if (kind !== 'window-movement' && measured.measurementLimits.captureOutcome !== 'installed')
+        throw new Error('Focused screenshot retest requires installed native capture.');
 }

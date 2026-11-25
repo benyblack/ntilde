@@ -15,9 +15,9 @@ export function invalidatedWindowCases(raw, coreIds) {
     return ids;
 }
 
-const ghosttyLostCases = [
+const ghosttyLostCases = new Set([
     'modes.alt-screen.exit', 'sgr.bold', 'sgr.faint', 'sgr.italic', 'sgr.underline.single',
-];
+]);
 
 export const retestReasons = {
     'window-movement': 'all Core cases invalidated by native-window movement',
@@ -39,10 +39,10 @@ export function focusedRetestCases(raw, coreIds, kind = 'window-movement') {
         if (cases.length !== 7) throw new Error('Expected all seven iTerm2 static-frame invalidations.');
     } else if (kind === 'probe-timeout' && raw.subject?.id === 'ghostty') {
         cases = raw.results.filter(
-            (row) => coreIds.includes(row.featureId) && ghosttyLostCases.includes(row.featureId) &&
+            (row) => coreIds.includes(row.featureId) && ghosttyLostCases.has(row.featureId) &&
                 row.status === 'probe-todo' && row.reason === 'Probe exceeded 30000ms',
         ).map((row) => row.featureId).sort();
-        if (cases.length !== ghosttyLostCases.length) throw new Error('Expected all five Ghostty timeout rows.');
+        if (cases.length !== ghosttyLostCases.size) throw new Error('Expected all five Ghostty timeout rows.');
     } else {
         throw new Error('Retest kind does not match its baseline terminal.');
     }
