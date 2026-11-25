@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "1dce8b57672bd46a75f2400da5e5ef4069e5e99d0ed8055f9b89365f5a8d83a7"
+  },
+  "attempts": [],
+  "runId": "aa59d5428eb0f2a5799b31b769596275",
+  "appRevision": "61252b56a3e769d714b0d2635727f94d1b775bc9",
+  "scriptsRevision": "5a4350fd0d0da6faa80817c2660d2a2019cb12b8",
+  "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
+  "runtime": "linux-arm64",
+  "dotnetSdk": "10.0.403",
+  "x11Packages": {
+    "xvfb": "2:21.1.12-1ubuntu1.9",
+    "libx11-6": "2:1.8.7-1ubuntu0.1",
+    "libxtst6": "2:1.2.3-1.1ubuntu0.1",
+    "libxres1": "2:1.2.1-1build1",
+    "libgtk-4-1": "4.14.5+ds-0ubuntu0.10",
+    "python3-gi": "3.48.2-1"
+  }
+}
