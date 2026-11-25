@@ -20,7 +20,7 @@ export const defaultQaRoot = fileURLToPath(new URL('../../docs/qa/terminfo/', im
 
 export const verdicts = Object.freeze(['supported', 'unsupported', 'inconclusive']);
 /** Every layer an owned suite can measure; a claim naming anything else is refused. */
-export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels', 'generated-input-child-bytes', 'pane-metadata-and-session-status', 'desktop-backend-reset-api', 'app-and-kernel-pty-geometry']);
+export const measuredLayerNames = Object.freeze(['stored-state', 'actual-scrollback', 'app-resolved-color', 'parent-derived-resolution', 'cursor-position-report', 'controlled-pixels', 'generated-input-child-bytes', 'pane-metadata-and-session-status', 'desktop-backend-reset-api', 'app-and-kernel-pty-geometry', 'parent-monotonic-timing']);
 /** Suites whose ids are terminfo.dev benchmark ids; the two findings are Ntilde-specific and never counted as benchmark ids. */
 const sgrAttrsFile = '2026-11-08-sgr-attributes-qualification.json';
 
@@ -108,6 +108,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('pcl', '2026-11-20-pointer-color', '2026-11-20-pointer-color-qualification.md'), module: 'pcl-inventory.mjs', exports: ['pclSuiteId', 'pclContractsVersion', 'pclCaseIds'], test: 'pcl-publication.test.mjs' },
     // DECCOLM (#1000): the pinned termless probe is inconclusive by construction and the terminal probe is inconclusive while mode 3 is not recognized; the effect contract grades mode 3 and mode 40 ignored on both the App and the kernel PTY grid, a recorded divergence.
     { ...directory('dcl', '2026-11-23-deccolm', '2026-11-23-deccolm-qualification.md'), module: 'dcl-inventory.mjs', exports: ['dclSuiteId', 'dclContractsVersion', 'dclCaseIds'], test: 'dcl-publication.test.mjs' },
+    // DECSCLM (#1001): the pinned termless probe is inconclusive by construction and the terminal probe is inconclusive while mode 4 is not recognized; the effect contract grades mode 4 ignored (a forty-line scroll burst identical and inside a timing bound that smooth scrolling could not meet), a recorded divergence.
+    { ...directory('dsl', '2026-11-25-decsclm', '2026-11-25-decsclm-qualification.md'), module: 'dsl-inventory.mjs', exports: ['dslSuiteId', 'dslContractsVersion', 'dslCaseIds'], test: 'dsl-publication.test.mjs' },
 ]);
 
 /**
@@ -258,6 +260,8 @@ export function measuredLayersOf(evidence, scope) {
     if (/backend-reset-api/.test(text)) layers.push('desktop-backend-reset-api');
     // Complete stored terminal state beside both grid readers: the App's paired screen grid and the kernel PTY grid the parent read with the system stty.
     if (/pty-geometry/.test(text)) layers.push('stored-state', 'app-and-kernel-pty-geometry');
+    // Complete stored terminal state beside the parent's own monotonic timing of each fenced exchange (an upper bound of what the terminal needed).
+    if (/and-timing/.test(text)) layers.push('stored-state', 'parent-monotonic-timing');
     if (layers.length === 0) throw new Error(`Cannot classify the measured layer of evidence "${text}".`);
     return layers;
 }

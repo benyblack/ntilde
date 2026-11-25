@@ -1483,6 +1483,17 @@ and leave **both the App grid and the independently read kernel PTY grid (`/bin/
 readers; width 140 to 133 and back in both), re-derived by the production resize check, projected into the publication and refused if the action stream, its identities or its targets are tampered with. The run uses receipt schema 79 and source policy v72 (483 files) on the `osc633` scope. The inventory adds one measured effect-unsupported id and no pinned, stock,
 Core, Modern or common-harness score.
 
+### DECSCLM smooth scrolling (mode 4, #1001)
+
+The [DECSCLM batch](terminfo/2026-11-25-decsclm-qualification.md) qualifies `modes.decsclm` without changing terminal behavior (the #1001 policy: private mode 4 is untracked). The pinned termless function is always inconclusive by construction
+(`parserStateResult(null, …)`: "DECRPM state does not measure scroll timing") and the pinned terminal path is `decrpmResult` over `queryMode(4)`, inconclusive while mode 4 is not recognized. The owned suite replays both unchanged
+over the journaled DECRPM exchanges of their own fenced requests, beside a separately identified effect contract (`ntilde-decsclm-unsupported-effect-v1`) graded by independent literals: `CSI ? 4 h/l` alone changes nothing and a
+forty-line scroll burst of the margin band with the mode set, held, reset and never touched ends in the identical state, every exchange finishing inside a 2 s bound on the parent's monotonic clock (5–8 ms measured, against the 6.7 s
+that DEC's six lines per second need), beside a recognised-mode control, a clear/home control and an instrument control that reads a deliberate 2.5 s hold. All twelve groups held, so the effect is **unsupported**, a recorded divergence from
+the **inconclusive** pinned and stock verdicts; stock stays 97 supported / 157 inconclusive / 1 unsupported. The timing measures output processing and stored state, not rendering or the wheel animation. The run uses receipt schema 82
+and source policy v80 (494 files) on the `osc633` scope; the earlier focused Modern scopes (v75–v79) stay frozen on the v74 graph and cannot be re-collected from a tree that contains this suite. The inventory adds one measured
+effect-unsupported id and no pinned, stock, Core, Modern or common-harness score.
+
 ### OSC 3008 hierarchical contexts
 
 The [OSC 3008 batch](terminfo/2026-11-17-osc3008-qualification.md) implements [UAPI.15](https://uapi-group.org/specifications/specs/osc_context/) context signalling: `OSC 3008;start=<id>[;field=value]...` opens, updates or returns to a context and `OSC 3008;end=<id>` closes it. The App keeps a stack of at most 16 contexts and the 8 most recently ended as **untrusted data**, exposed only through read-only `readPaneMetadata` (`buffer.contexts`); nothing is presented, executed or fed to command assist or an agent, OSC 133/633 neither create nor update a context, a terminal reset leaves the stack alone and the child's exit drops it ([contract](terminfo/osc3008.md)). The pinned probe (`type=test`, a cursor query, `unmeasuredCellResult`) is inconclusive by construction and its payload is not a UAPI.15 sequence, so it stays **inconclusive** with unchanged stock counts (94/1/160); the separately identified effect contract `ntilde-osc3008-context-effect-v1` is **supported** (28 of 28 decided reads, 10 policy reads recorded). Receipt schema 73 and source policy v66 bind 444 inputs; the inventory adds one effect-supported ID and no pinned, Core, Modern, stock or common-harness score increase.

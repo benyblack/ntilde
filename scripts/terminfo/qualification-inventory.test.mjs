@@ -163,10 +163,10 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         const measurementPosition = suite.suite === 'ascii-reflow' ? stored.suites.length : stored.suites.indexOf(suite);
         const moved = (gated >= 0 && measurementPosition >= gated ? 1 : 0) + (notice >= 0 && measurementPosition >= notice ? 1 : 0) + (device >= 0 && measurementPosition >= device ? 3 : 0)
             + (mouse >= 0 && measurementPosition >= mouse ? 1 : 0) + (kitty >= 0 && measurementPosition >= kitty ? 1 : 0)
-            + (osc5Live >= 0 && (measurementPosition === osc5Live || measurementPosition === osc3008Live || ['osc720', 'osc22', 'font-size', 'caps', 'pcl', 'dcl'].includes(suite.suite)) ? 1 : 0)
+            + (osc5Live >= 0 && (measurementPosition === osc5Live || measurementPosition === osc3008Live || ['osc720', 'osc22', 'font-size', 'caps', 'pcl', 'dcl', 'dsl'].includes(suite.suite)) ? 1 : 0)
             // The read-only font queries move exactly their two pinned stock cases; every suite measured after them carries that movement.
-            + (suite.suite === 'font-size' || suite.suite === 'caps' || suite.suite === 'pcl' || suite.suite === 'dcl' ? 2 : 0)
-            + (suite.suite === 'caps' || suite.suite === 'pcl' || suite.suite === 'dcl' ? 1 : 0);
+            + (suite.suite === 'font-size' || suite.suite === 'caps' || suite.suite === 'pcl' || suite.suite === 'dcl' || suite.suite === 'dsl' ? 2 : 0)
+            + (suite.suite === 'caps' || suite.suite === 'pcl' || suite.suite === 'dcl' || suite.suite === 'dsl' ? 1 : 0);
         const expected = { ...base.counts, inconclusive: base.counts.inconclusive - moved, supported: base.counts.supported + moved };
         if (suite.stock.basis !== 'carried-forward' && suite.suite !== 'ascii-reflow') assert.deepEqual(suite.stock.counts, expected, suite.suite);
         assert.equal(suite.stock.suiteComplete ?? false, false);
@@ -345,9 +345,10 @@ test('current effect totals preserve the separate unsupported and measured-other
     // The OSC 633 implementation remeasurement turned its four ids from effect-unsupported to effect-supported (pinned stays inconclusive). The static-image qualification (#987)
     // then measured extensions.sixel effect-unsupported (native-size defect #851), the only measured-unsupported id, and extensions.iterm2-images effect-supported.
     // The OSC 720 qualification (#999) adds the second measured-unsupported id: the pinned terminal path is inconclusive by design and the effect contract observed no effect.
+    // The DECSCLM qualification (#1001) adds the sixth: both pinned paths are inconclusive and the effect contract observed no pacing of scrolling output.
     // The pointer-color qualification (#991) adds the third and fourth: both pinned paths are inconclusive and the effect contract observed every OSC 13/14/113/114 spelling ignored.
-    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc113-reset-pointer-fg', 'extensions.osc114-reset-pointer-bg', 'extensions.osc720-scroll-up', 'extensions.sixel', 'modes.deccolm']);
-    assert.equal(totals.effectUnsupportedIds, 5);
+    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc113-reset-pointer-fg', 'extensions.osc114-reset-pointer-bg', 'extensions.osc720-scroll-up', 'extensions.sixel', 'modes.deccolm', 'modes.decsclm']);
+    assert.equal(totals.effectUnsupportedIds, 6);
     // The aggregate batch adds the first measured-other id: extensions.osc-633-vscode is measured, stock-inconclusive and inconclusive
     // while its required E/P publications (#983) are pending; extensions.semantic-prompts joins the supported measures.
     assert.deepEqual(totals.effectOtherIds, 1);
@@ -370,7 +371,7 @@ test('current effect totals preserve the separate unsupported and measured-other
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 21, effectMeasuredUnsupported: 5, effectMeasuredOther: 1, effectNotMeasured: 15, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 21, effectMeasuredUnsupported: 6, effectMeasuredOther: 1, effectNotMeasured: 14, notPinnedSupported: 72 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -463,11 +464,11 @@ test('every publication test is a registered suite or finding, or is explicitly 
 
 test('the generated summary defines unsupported and not-measured separately and lists the unsupported id without counting it as supported', () => {
     const text = renderSummary(committed());
-    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 5 \|/);
-    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc113-reset-pointer-fg`, `extensions\.osc114-reset-pointer-bg`, `extensions\.osc720-scroll-up`, `extensions\.sixel`, `modes\.deccolm`\./);
-    assert.match(text, /\| of which measured, effect unsupported \| 5 \|/);
+    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 6 \|/);
+    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc113-reset-pointer-fg`, `extensions\.osc114-reset-pointer-bg`, `extensions\.osc720-scroll-up`, `extensions\.sixel`, `modes\.deccolm`, `modes\.decsclm`\./);
+    assert.match(text, /\| of which measured, effect unsupported \| 6 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 15 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 14 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
@@ -486,7 +487,8 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     // 352 KiB: the cell-size and OSC 5 cases add their separate source-bound runs and receipts.
     // 368 KiB: the OSC 3008 and OSC 720 cases add their source-bound runs and receipts.
     // 384 KiB: the Unicode placeholder suite entry (no stock run, its own receipt binding) joins the merged inventory.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 384 * 1024, 'the generated files stay reviewable');
+    // 400 KiB: the DECSCLM suite entry (receipt schema 82, its run and receipt bindings) joins the merged inventory.
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 400 * 1024, 'the generated files stay reviewable');
 });
 
 test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and reset.method, with the reset() API layer named and no stock or Core movement', () => {
@@ -676,7 +678,7 @@ test('the static-image qualification keeps the SIXEL native-size negative and th
     const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'static-images' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
     assert.equal(row(failing, 'extensions.sixel').claims[0].status, 'declared-not-rederived');
     assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 2);
-    assert.equal(failing.totals.effectUnsupportedIds, 4, 'the OSC 720, the two pointer-color and the DECCOLM measured negatives remain');
+    assert.equal(failing.totals.effectUnsupportedIds, 5, 'the OSC 720, the two pointer-color, the DECCOLM and the DECSCLM measured negatives remain');
 });
 
 test('the Kitty animation qualification keeps the supported effect, the inconclusive pinned callbacks and the stock grade as separate rederived claims', async () => {

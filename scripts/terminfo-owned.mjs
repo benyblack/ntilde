@@ -75,7 +75,7 @@ function pathFor(root, file) {
     const relative = file === 'terminfo-owned-runner.mjs' ? file : 'terminfo/' + file;
     return join(root, 'scripts', relative);
 }
-const policy = 'readonly-owned-source-graph-v74';
+const policy = 'readonly-owned-source-graph-v80';
 const blinkPolicy = 'readonly-owned-source-graph-v75';
 const blinkSources = {
     modernBlinkSourceSha256: 'modern-blink.mjs',

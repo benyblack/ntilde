@@ -64,6 +64,7 @@ import { collectOsc5Grading } from './osc5-collector.mjs';
 import { collectCapsGrading } from './caps-collector.mjs';
 import { collectPclGrading } from './pcl-collector.mjs';
 import { collectDclGrading } from './dcl-collector.mjs';
+import { collectDslGrading } from './dsl-collector.mjs';
 import { collectOsc3008 } from './osc3008-collector.mjs';
 import { collectOsc720 } from './osc720-collector.mjs';
 import { collectOsc22 } from './osc22-collector.mjs';
@@ -559,6 +560,12 @@ try {
             const dclModule = await import(pathToFileURL(config.dclBundle).href);
             const dclRun = await collectDclGrading({ config, fence, owner, gradingModule: dclModule });
             writeFileSync(join(config.output, 'dcl-run.json'), JSON.stringify(dclRun) + '\n', { flag: 'wx', mode: 0o600 });
+            // The layered xterm DECSCLM qualification follows the DECCOLM suite on the same exclusively owned fence; it measures scroll timing against the parent's own clock.
+            const dslSource = readFileSync(config.dslBundle);
+            if (createHash('sha256').update(dslSource).digest('hex') !== config.dslBundleSha256) throw new Error('Local DECSCLM adapter bundle changed.');
+            const dslModule = await import(pathToFileURL(config.dslBundle).href);
+            const dslRun = await collectDslGrading({ config, fence, owner, gradingModule: dslModule });
+            writeFileSync(join(config.output, 'dsl-run.json'), JSON.stringify(dslRun) + '\n', { flag: 'wx', mode: 0o600 });
             const inputResult = await collectInput({ config, fence, owner, plan: currentInputPlan });
             // The layered routed-input qualification replays the pinned probes over the child's own DECRQM replies from that collection.
             // A grid the input plan cannot run on keeps the earlier unavailable fallback: a typed marker, and the rest of the run continues.
