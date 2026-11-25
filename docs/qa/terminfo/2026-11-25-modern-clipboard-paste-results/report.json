@@ -4371,38 +4371,38 @@
         "reads": [
           {
             "phase": "off-before",
-            "rawHex": "7465726d696e666f2d70617374652d30626335653532632d386166382d343132312d393131612d343563376564386439653836",
+            "rawHex": "7465726d696e666f2d70617374652d35343833383565312d646566352d343331392d616133662d633862376564383563393930",
             "mode": {
               "writeHex": "1b5b3f323030346c1b5b3f323030342470",
               "replyHex": "1b5b3f323030343b322479",
-              "started": "1319092002321078",
-              "finished": "1319092003030120"
+              "started": "1319498421149847",
+              "finished": "1319498421903847"
             }
           },
           {
             "phase": "on",
-            "rawHex": "1b5b3230307e7465726d696e666f2d70617374652d30626335653532632d386166382d343132312d393131612d3435633765643864396538361b5b3230317e",
+            "rawHex": "1b5b3230307e7465726d696e666f2d70617374652d35343833383565312d646566352d343331392d616133662d6338623765643835633939301b5b3230317e",
             "mode": {
               "writeHex": "1b5b3f32303034681b5b3f323030342470",
               "replyHex": "1b5b3f323030343b312479",
-              "started": "1319093538997245",
-              "finished": "1319093539236204"
+              "started": "1319499961883014",
+              "finished": "1319499962123098"
             }
           },
           {
             "phase": "off-after",
-            "rawHex": "7465726d696e666f2d70617374652d30626335653532632d386166382d343132312d393131612d343563376564386439653836",
+            "rawHex": "7465726d696e666f2d70617374652d35343833383565312d646566352d343331392d616133662d633862376564383563393930",
             "mode": {
               "writeHex": "1b5b3f323030346c1b5b3f323030342470",
               "replyHex": "1b5b3f323030343b322479",
-              "started": "1319095066978496",
-              "finished": "1319095067253163"
+              "started": "1319501501054265",
+              "finished": "1319501501274473"
             }
           }
         ],
-        "baseline": "ntilde-paste-baseline-dfcd1ee071714da5fc0925510a824935",
-        "nonce": "terminfo-paste-0bc5e52c-8af8-4121-911a-45c7ed8d9e86",
-        "restoredSelection": "ntilde-paste-baseline-dfcd1ee071714da5fc0925510a824935",
+        "baseline": "ntilde-paste-baseline-2661f58a702e3250dd01ee22e06df6a1",
+        "nonce": "terminfo-paste-548385e1-def5-4319-aa3f-c8b7ed85c990",
+        "restoredSelection": "ntilde-paste-baseline-2661f58a702e3250dd01ee22e06df6a1",
         "restoredMode": false,
         "conclusion": "pass",
         "status": "supported",
@@ -4412,8 +4412,8 @@
       "criterionPath": "frozen App default paste with real X11 CLIPBOARD, XTEST, and separate raw direct PTY windows",
       "evidence": {
         "file": "observation.json",
-        "runId": "3619280b54ef322f99fd7c906a2f55ae",
-        "sha256": "4c4203ee5143fc533c68a3df05ce6034ac8a7e8ad82faecce577ab917e143f30"
+        "runId": "88d2b28d7569682a49ddbf49ec955d5f",
+        "sha256": "87bc5d6f0b5f4345100b1a540386317e13cf4963999895a086d411c1861d4159"
       },
       "stockVerdict": "not-graded",
       "stockEvidence": null,
@@ -5745,11 +5745,12 @@
   },
   "clipboardPasteMeasurement": {
     "publication": "docs/qa/terminfo/2026-11-25-modern-clipboard-paste-results",
-    "manifestSha256": "0a9e9eb2697c5766a3aaaf49ccdf8a5b2a5cbed3b963ec88f33e414aafd871be",
+    "manifestSha256": "82aa792f94eb3bcb114f0123c3e99fc1ffa13f0ea3172764e5bcb50a71cc1024",
     "schemaVersion": 1,
     "archives": {
-      "owned-run.zip": "c7507389d076e5275e760e8bc5f8441816791e6c7b7456fd05691d238f24d88a",
-      "attempt-1.zip": "953031241e2f00a7634a9251ef6532728c051cee9f1beedc503aca04f0c02991"
+      "owned-run.zip": "ec1ea05a39c1f3ca8a7debc3174cc2cf2519e83853182957efe58210738cf19b",
+      "attempt-1.zip": "953031241e2f00a7634a9251ef6532728c051cee9f1beedc503aca04f0c02991",
+      "attempt-2.zip": "c7507389d076e5275e760e8bc5f8441816791e6c7b7456fd05691d238f24d88a"
     },
     "attempts": [
       {
@@ -5758,11 +5759,18 @@
         "appRevision": "1b126168583bb8b2c144d0adde33a19f80ea1e30",
         "scriptsRevision": "f0c8c66baf38db84e1f10bf36ec7cc64b483260e",
         "reason": "This run passed the off/on/off byte comparison and verified restoration. The final run uses the frozen upstream callback’s UUID nonce format so the retained bytes can also be replayed through that callback."
+      },
+      {
+        "archive": "attempt-2.zip",
+        "runId": "3619280b54ef322f99fd7c906a2f55ae",
+        "appRevision": "1b126168583bb8b2c144d0adde33a19f80ea1e30",
+        "scriptsRevision": "7733a21fc5166be8ad68b0ccabdaf38c154d7c59",
+        "reason": "This exact-nonce run passed and independently verified restoration before the SonarCloud simplification changed the measured collector source."
       }
     ],
-    "runId": "3619280b54ef322f99fd7c906a2f55ae",
+    "runId": "88d2b28d7569682a49ddbf49ec955d5f",
     "appRevision": "1b126168583bb8b2c144d0adde33a19f80ea1e30",
-    "scriptsRevision": "7733a21fc5166be8ad68b0ccabdaf38c154d7c59",
+    "scriptsRevision": "f2c8fb52091728ec3f2265517f7bb35407802f3f",
     "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
     "runtime": "linux-arm64",
     "dotnetSdk": "10.0.403",
@@ -5774,13 +5782,13 @@
       "python3-gi": "3.48.2-1",
       "xvfb": "2:21.1.12-1ubuntu1.9"
     },
-    "startedAt": "2026-11-25T10:47:49.522Z",
-    "fixtureRemovedAt": "2026-11-25T10:47:57.035Z",
-    "leaseReleasedAt": "2026-11-25T10:47:57.036Z",
-    "sha256": "4c4203ee5143fc533c68a3df05ce6034ac8a7e8ad82faecce577ab917e143f30",
+    "startedAt": "2026-11-25T10:54:36.430Z",
+    "fixtureRemovedAt": "2026-11-25T10:54:43.309Z",
+    "leaseReleasedAt": "2026-11-25T10:54:43.310Z",
+    "sha256": "87bc5d6f0b5f4345100b1a540386317e13cf4963999895a086d411c1861d4159",
     "source": {
       "policy": "owned-modern-x11-clipboard-paste-v1",
-      "sha256": "da762116b05c70ef70547cf524a2597161755e387b36f6d832ae3662657126a6"
+      "sha256": "0198329567511f34db3245d4d47feb547e4e4c5e15467b8c90107592fde91a67"
     },
     "appBuildSource": "operator-recorded source archive and publish command",
     "appVersion": "0.14.0",
@@ -5788,8 +5796,8 @@
     "assemblySha256": "044695ebe7f29f31583b02d8ad4ef26d89749132d76b28557f1344dce5a7d27a",
     "nodeVersion": "v24.22.3",
     "pane": {
-      "paneId": "0219178e-9bc8-4881-b2e9-e4228dd2f98e",
-      "profileName": "X11 Clipboard Paste 3619280b54ef322f99fd7c906a2f55ae",
+      "paneId": "cccf95fc-9f3d-4e79-87f4-68064330b155",
+      "profileName": "X11 Clipboard Paste 88d2b28d7569682a49ddbf49ec955d5f",
       "rows": 40,
       "cols": 149,
       "kind": "local",
@@ -5804,20 +5812,20 @@
     ],
     "serverPid": 20,
     "appPid": 23,
-    "workerPid": 78,
+    "workerPid": 79,
     "tty": "/dev/pts/0",
-    "baselineOwnerPid": 91,
-    "nonceOwnerPid": 187,
-    "restorationOwnerPid": 431,
+    "baselineOwnerPid": 92,
+    "nonceOwnerPid": 186,
+    "restorationOwnerPid": 430,
     "peerPids": [
-      91,
+      92,
       137,
-      187,
+      186,
       232,
       283,
       334,
       384,
-      431,
+      430,
       474
     ]
   }

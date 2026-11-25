@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "c7507389d076e5275e760e8bc5f8441816791e6c7b7456fd05691d238f24d88a",
-    "attempt-1.zip": "953031241e2f00a7634a9251ef6532728c051cee9f1beedc503aca04f0c02991"
+    "owned-run.zip": "ec1ea05a39c1f3ca8a7debc3174cc2cf2519e83853182957efe58210738cf19b",
+    "attempt-1.zip": "953031241e2f00a7634a9251ef6532728c051cee9f1beedc503aca04f0c02991",
+    "attempt-2.zip": "c7507389d076e5275e760e8bc5f8441816791e6c7b7456fd05691d238f24d88a"
   },
   "attempts": [
     {
@@ -11,11 +12,18 @@
       "appRevision": "1b126168583bb8b2c144d0adde33a19f80ea1e30",
       "scriptsRevision": "f0c8c66baf38db84e1f10bf36ec7cc64b483260e",
       "reason": "This run passed the off/on/off byte comparison and verified restoration. The final run uses the frozen upstream callback\u2019s UUID nonce format so the retained bytes can also be replayed through that callback."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "3619280b54ef322f99fd7c906a2f55ae",
+      "appRevision": "1b126168583bb8b2c144d0adde33a19f80ea1e30",
+      "scriptsRevision": "7733a21fc5166be8ad68b0ccabdaf38c154d7c59",
+      "reason": "This exact-nonce run passed and independently verified restoration before the SonarCloud simplification changed the measured collector source."
     }
   ],
-  "runId": "3619280b54ef322f99fd7c906a2f55ae",
+  "runId": "88d2b28d7569682a49ddbf49ec955d5f",
   "appRevision": "1b126168583bb8b2c144d0adde33a19f80ea1e30",
-  "scriptsRevision": "7733a21fc5166be8ad68b0ccabdaf38c154d7c59",
+  "scriptsRevision": "f2c8fb52091728ec3f2265517f7bb35407802f3f",
   "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
   "runtime": "linux-arm64",
   "dotnetSdk": "10.0.403",
