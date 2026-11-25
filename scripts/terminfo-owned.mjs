@@ -107,8 +107,14 @@ const childEnvironmentSources = {
     modernChildEnvironmentOwnedSourceSha256: 'modern-child-environment-owned.mjs',
     modernChildEnvironmentWorkerSourceSha256: 'modern-child-environment-worker.mjs',
 };
+const unicodeWidthSources = {
+    unicodeWidthContractsSourceSha256: 'unicode-width-contracts.mjs',
+    unicodeWidthOwnedSourceSha256: 'unicode-width-owned.mjs',
+    unicodeWidthWorkerSourceSha256: 'unicode-width-worker.mjs',
+};
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
+    'unicode-width': { policy: 'readonly-owned-source-graph-v81', sources: unicodeWidthSources, entry: unicodeWidthSources.unicodeWidthOwnedSourceSha256 },
     'modern-blink': { policy: blinkPolicy, sources: blinkSources, entry: blinkSources.modernBlinkOwnedSourceSha256 },
     'modern-viewport': { policy: viewportPolicy, sources: viewportSources, entry: viewportSources.modernViewportOwnedSourceSha256 },
     'modern-osc-titles': { policy: 'readonly-owned-source-graph-v77', sources: oscTitlesSources, entry: oscTitlesSources.modernOscTitlesOwnedSourceSha256 },

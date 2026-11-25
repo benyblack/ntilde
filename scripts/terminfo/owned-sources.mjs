@@ -11,9 +11,11 @@ export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
 export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
 export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph-v79';
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
+export const capturedUnicodeWidthSourcePolicy = 'readonly-owned-source-graph-v81';
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 const focusedSourcePolicies = [
+    ['unicodeWidthContractsSourceSha256', capturedUnicodeWidthSourcePolicy],
     ['modernBlinkSourceSha256', capturedBlinkSourcePolicy],
     ['modernViewportSourceSha256', capturedViewportSourcePolicy],
     ['modernOscTitlesSourceSha256', capturedOscTitlesSourcePolicy],
@@ -1012,6 +1014,13 @@ export const capturedV82SourceFiles = Object.freeze({
     dslReceiptSourceSha256: 'dsl-receipt.mjs',
 });
 
+export const capturedUnicodeWidthSourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    unicodeWidthContractsSourceSha256: 'unicode-width-contracts.mjs',
+    unicodeWidthOwnedSourceSha256: 'unicode-width-owned.mjs',
+    unicodeWidthWorkerSourceSha256: 'unicode-width-worker.mjs',
+});
+
 // Only the blink scope captures this extension. Full collections keep their integrated graph and receipt.
 export const capturedBlinkSourceFiles = Object.freeze({
     ...capturedV81SourceFiles,
@@ -1058,6 +1067,7 @@ export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
     const expected = {
+        [capturedUnicodeWidthSourcePolicy]: capturedUnicodeWidthSourceFiles,
         [capturedBlinkSourcePolicy]: capturedBlinkSourceFiles,
         [capturedViewportSourcePolicy]: capturedViewportSourceFiles,
         [capturedOscTitlesSourcePolicy]: capturedOscTitlesSourceFiles,
