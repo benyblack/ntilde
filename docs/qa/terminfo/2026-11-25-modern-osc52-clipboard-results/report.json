@@ -3191,18 +3191,18 @@
       "conclusion": "inconclusive",
       "observed": {
         "id": "extensions.osc52-clipboard",
-        "osc52Hex": "1b5d35323b633b626e52706247526c4c57397a597a55794c58427962324a6c4c544d354f4749794e324d355a6a41344e6a4d774e6d45794d3255795a474a694d7a52695a444d34596a5a6a07",
+        "osc52Hex": "1b5d35323b633b626e52706247526c4c57397a597a55794c58427962324a6c4c5467775a444d7a593259334e5749325a4759314f5452685a6a59324e474a6d4d7a466a5a444e6d4d546b3407",
         "keyHex": "61",
         "cprHex": "1b5b313b343352",
-        "baseline": "ntilde-osc52-baseline-d2052718be3ee8a047b7b792cd674254",
-        "nonce": "ntilde-osc52-probe-398b27c9f086306a23e2dbb34bd38b6c",
+        "baseline": "ntilde-osc52-baseline-aed88b07bc93538c797b26c01677ce0b",
+        "nonce": "ntilde-osc52-probe-80d33cf75b6df594af664bf31cd3f198",
         "reads": [
           {
-            "text": "ntilde-osc52-probe-398b27c9f086306a23e2dbb34bd38b6c",
-            "ownerPid": 4812
+            "text": "ntilde-osc52-probe-80d33cf75b6df594af664bf31cd3f198",
+            "ownerPid": 5237
           }
         ],
-        "restored": "ntilde-osc52-baseline-d2052718be3ee8a047b7b792cd674254",
+        "restored": "ntilde-osc52-baseline-aed88b07bc93538c797b26c01677ce0b",
         "status": "inconclusive",
         "conclusion": "inconclusive",
         "reason": "OSC 52 c returned a complete empty-payload denial frame. The independently seeded nonce was absent from the reply.",
@@ -3213,8 +3213,8 @@
         },
         "read": {
           "outcome": "empty-denial",
-          "nonce": "ntilde-osc52-seed-61404aa67507e0b606a5a78f69fd1bc2",
-          "ownerPid": 5021,
+          "nonce": "ntilde-osc52-seed-7754300655d81c31366739a122770583",
+          "ownerPid": 5445,
           "queryHex": "1b5d35323b633b3f07",
           "cprHex": "1b5b313b343352",
           "attempts": [
@@ -3230,8 +3230,8 @@
       "criterionPath": "frozen App round trip with XTEST, independently verified X11 CLIPBOARD ownership and raw direct PTY replies",
       "evidence": {
         "file": "observation.json",
-        "runId": "abebad8878bc12365c1d96ac47f905b9",
-        "sha256": "bf86147d722113c5b6cee1ceffe6dbe8ce6962c9df26927c1e69cae4063227f3"
+        "runId": "7eb5acb92f5023227f9d082f23230e0b",
+        "sha256": "4999b8c37d3192ae2e87a957c920556718fc8cc1c562dffdfd46d962bdb89285"
       },
       "stockVerdict": "inconclusive",
       "stockEvidence": "query",
@@ -5612,12 +5612,13 @@
   },
   "osc52ClipboardMeasurement": {
     "publication": "docs/qa/terminfo/2026-11-25-modern-osc52-clipboard-results",
-    "manifestSha256": "90740856ca4f85341039a180a31d1e8dba0fe8e01b4cfd07f021f71f059ae364",
+    "manifestSha256": "08c4baf84f02bea80cad41427db5269a43391a1ef76f502784625fb4da3d01ab",
     "schemaVersion": 1,
     "archives": {
-      "owned-run.zip": "9c802cbae43be4f695c0c7cfed7d677af706e630b74e8bccd0408f58cbc3b0dd",
+      "owned-run.zip": "a68471243eea9f41646fd2bb811c18489003a6393eb2e0f366059232f67ca856",
       "attempt-1.zip": "5fa24d224c1222395081a4a96bef2d840871c36cb23dc96b53ca9f35fedaaab6",
-      "attempt-2.zip": "180ff95e527232b188d840d1ef8ba943305026b4bbed80b68af97d753b2ca7c2"
+      "attempt-2.zip": "180ff95e527232b188d840d1ef8ba943305026b4bbed80b68af97d753b2ca7c2",
+      "attempt-3.zip": "9c802cbae43be4f695c0c7cfed7d677af706e630b74e8bccd0408f58cbc3b0dd"
     },
     "attempts": [
       {
@@ -5633,11 +5634,18 @@
         "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
         "scriptsRevision": "8f3de545178a7f8f5d53892045fbff772859c0f7",
         "reason": "This run reproduced the empty denial and verified restoration before the SonarCloud fixes changed the measured reply classifier."
+      },
+      {
+        "archive": "attempt-3.zip",
+        "runId": "abebad8878bc12365c1d96ac47f905b9",
+        "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
+        "scriptsRevision": "fb233a55f5d662e0ec254b04d4dfb565bdb443e0",
+        "reason": "This run verified the write and empty denial before the Codex review fix bounded each stale-nonce retry to the original deadline."
       }
     ],
-    "runId": "abebad8878bc12365c1d96ac47f905b9",
+    "runId": "7eb5acb92f5023227f9d082f23230e0b",
     "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
-    "scriptsRevision": "fb233a55f5d662e0ec254b04d4dfb565bdb443e0",
+    "scriptsRevision": "f91d2b858ad54608f21b0cf6febe392745a9f9a2",
     "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
     "runtime": "linux-arm64",
     "dotnetSdk": "10.0.403",
@@ -5649,19 +5657,19 @@
       "python3-gi": "3.48.2-1",
       "xvfb": "2:21.1.12-1ubuntu1.9"
     },
-    "startedAt": "2026-11-25T09:46:37.363Z",
-    "fixtureRemovedAt": "2026-11-25T09:46:40.937Z",
-    "leaseReleasedAt": "2026-11-25T09:46:40.938Z",
-    "sha256": "bf86147d722113c5b6cee1ceffe6dbe8ce6962c9df26927c1e69cae4063227f3",
+    "startedAt": "2026-11-25T09:58:59.600Z",
+    "fixtureRemovedAt": "2026-11-25T09:59:02.365Z",
+    "leaseReleasedAt": "2026-11-25T09:59:02.366Z",
+    "sha256": "4999b8c37d3192ae2e87a957c920556718fc8cc1c562dffdfd46d962bdb89285",
     "source": {
       "policy": "owned-modern-x11-osc52-clipboard-v1",
-      "sha256": "7479306beb32f849268e71761c0ceb1a70ceb5861352632ab7d0357a70489dc7"
+      "sha256": "5002b7cecf5da2801b06e6b1ac2d56cd1ffc1025cfec4aad3d2d80132800464a"
     },
     "appVersion": "0.14.0",
     "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
     "assemblySha256": "a9b01b41d41a3d13e2d073209a7c97c6f71f4b3e1e595716b3952dd5cb3f1f78",
     "nodeVersion": "v24.22.2",
-    "paneId": "e2ef8ceb-acd4-4668-beb8-9082b4b4e619",
+    "paneId": "aae9c660-bf4a-41c4-ae7a-b45604d1feb7",
     "display": ":0",
     "root": 543,
     "windowId": 2097171,
@@ -5669,20 +5677,20 @@
       2,
       2
     ],
-    "serverPid": 4809,
-    "appPid": 4812,
-    "workerPid": 4867,
+    "serverPid": 5234,
+    "appPid": 5237,
+    "workerPid": 5292,
     "tty": "/dev/pts/0",
-    "baselineOwnerPid": 4879,
-    "restorationOwnerPid": 5118,
+    "baselineOwnerPid": 5303,
+    "restorationOwnerPid": 5541,
     "peerPids": [
-      4879,
-      4925,
-      4976,
-      5021,
-      5066,
-      5118,
-      5163
+      5303,
+      5349,
+      5400,
+      5445,
+      5490,
+      5541,
+      5586
     ],
     "allowOsc52ClipboardWrite": true
   }

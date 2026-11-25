@@ -10,7 +10,7 @@ import { clipboardPeerSteps } from './modern-x11-osc52-write.mjs';
 import { buildOsc52WritePublication, publication as writePublication } from './modern-x11-osc52-write-results.mjs';
 
 export const publication = 'docs/qa/terminfo/2026-11-25-modern-osc52-clipboard-results';
-const manifestSha256 = '90740856ca4f85341039a180a31d1e8dba0fe8e01b4cfd07f021f71f059ae364';
+const manifestSha256 = '08c4baf84f02bea80cad41427db5269a43391a1ef76f502784625fb4da3d01ab';
 const criterionSha256 = 'f670914558fac01e4ef7a815bc2b499e0357e448f8cd9adbb06a208b305cce4c';
 export const osc52ClipboardPaths = base => ({ json: join(base, publication, 'report.json'), markdown: join(base, publication, 'report.md') });
 
@@ -93,7 +93,7 @@ export function readableOsc52Clipboard(report) {
         `[Owned run](owned-run.zip) \`${m.runId}\` on ${m.platform}. XTEST ${m.xtest.join('.')} delivered input to App window ${m.windowId} on display \`${m.display}\` with root ${m.root}. App PID ${m.appPid} owned pane \`${m.paneId}\` and child PID ${m.workerPid} on \`${m.tty}\`. XRes verified the App and all GTK peers on the owned Xvfb server. The child restored termios and exited. The GTK peers, App and Xvfb exited, and the display socket and scratch tree disappeared before the lease released at ${m.leaseReleasedAt}.`, '',
         ...m.attempts.flatMap(attempt => [`[Earlier run](${attempt.archive}) \`${attempt.runId}\`. ${attempt.reason}`, '']),
         `App ${m.appVersion} was built from source \`${m.appRevision}\` with .NET SDK ${m.dotnetSdk}. The archive hashes the App publish tree. Collector \`${m.scriptsRevision}\` ran under Node ${m.nodeVersion} and retained its source bytes, PTY requests and complete replies, X11 ownership checks, settings and cleanup. [Manifest](manifest.json).`, '',
-        'The frozen App path retries a canonical reply carrying the earlier OSC 52 write nonce at 25 ms intervals within the default one-second write deadline. The collector uses XTEST `a` with verified child input as the activation event. The query captures a cursor-position control in the same PTY window, and a fresh GTK reader confirms the second nonce before the first query. [Frozen upstream probe](https://github.com/beorn/terminfo.dev/blob/3eea0f130d87d64eab33ab342c96e668daab0292/packages/probe-defs/src/extensions.ts#L4597).', '',
+        'The frozen App path retries a canonical reply carrying the earlier OSC 52 write nonce at 25 ms intervals within the default one-second write deadline. Each retry uses the time left in the original window. The collector uses XTEST `a` with verified child input as the activation event. The query captures a cursor-position control in the same PTY window, and a fresh GTK reader confirms the second nonce before the first query. [Frozen upstream probe](https://github.com/beorn/terminfo.dev/blob/3eea0f130d87d64eab33ab342c96e668daab0292/packages/probe-defs/src/extensions.ts#L4597).', '',
         'Rederive the publication offline with Node 24 and Python 3.', '',
         '```sh', 'node scripts/terminfo-modern-results.mjs --check --osc52-clipboard', '```', '',
         'A fresh Linux run requires Node 24, Python 3 with PyGObject and GTK4, Xvfb, libX11, libXtst and libXRes. See the [App build prerequisites](../../../../CONTRIBUTING.md#1-prerequisites) for .NET and Rust.', '',
