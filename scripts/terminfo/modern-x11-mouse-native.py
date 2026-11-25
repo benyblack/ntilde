@@ -210,12 +210,15 @@ class XDisplay:
                     events.append({"name": name, "code": code, "down": down, "at": at,
                                    "pressed": pressed, "mask": mask})
         finally:
-            for code in reversed(held):
-                self.key(self.display, code, 0, 0)
-            self.sync(self.display, 0)
-            if held:
-                demand(not self.pressed(), "XTEST key cleanup failed")
+            self.release_held_keys(held)
         return events
+
+    def release_held_keys(self, held):
+        for code in reversed(held):
+            self.key(self.display, code, 0, 0)
+        self.sync(self.display, 0)
+        if held:
+            demand(not self.pressed(), "XTEST key cleanup failed")
 
     def keyboard_action(self, command, window_id):
         request, tag = command["request"], command["fence"]
