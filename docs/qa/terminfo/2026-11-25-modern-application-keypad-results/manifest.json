@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "1abc4d32c20fc85f5220a68bb15f1ea3355e598438b6975be0077fedc739ae40",
+    "attempt-1.zip": "d840b3682084a05cdc5b7b010ccf593ae29bf43f9d5a804edb4e6f7fed6c6e0c"
+  },
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "2682b9dc32af2e075d279a6e56a1bc21",
+      "scriptsRevision": "bda8e204e3214cc855c4ed60e4536d2f9750e11c",
+      "reason": "Initial fixture rejected the Ctrl+Alt symbol slot before injecting KP_Add."
+    }
+  ],
+  "runId": "6143dc6ee34cd277e36a5f9560d41f27",
+  "appRevision": "0506c07cb1b259a55871fdf71fa35f1d27bf3bdf",
+  "scriptsRevision": "4e460502ab2fe590c34fa9c7d72f93b1aa995a2b",
+  "platform": "Ubuntu 26.04 LTS, Linux 7.0.0-38-generic x86_64",
+  "dotnetSdk": "10.0.403",
+  "x11Packages": {
+    "xvfb": "2:21.1.22-1ubuntu1",
+    "libx11-6": "2:1.8.13-1ubuntu0.1",
+    "libxtst6": "2:1.2.5-1ubuntu0.1",
+    "libxres1": "2:1.2.1-1build2"
+  }
+}
