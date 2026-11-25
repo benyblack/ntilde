@@ -1,0 +1,713 @@
+diff --git a/packages/admin/versions.ts b/packages/admin/versions.ts
+index 3905916381bebf25be41bd5df0a483a41c52118a..a5d41d184cd509a67ddb449d166eb5b8a71a9bc8 100644
+--- a/packages/admin/versions.ts
++++ b/packages/admin/versions.ts
+@@ -44,6 +44,7 @@ const ADAPTER_SOURCE_PATHS = [
+   "packages/terminfo.dev/src/linux-screen-text.ts",
+   "packages/terminfo.dev/src/linux-kitty-text.ts",
+   "packages/terminfo.dev/src/owned-terminal.ts",
++  "packages/terminfo.dev/src/iterm-window-owner.ts",
+   "packages/terminfo.dev/src/terminal-child-environment.ts",
+   "packages/terminfo.dev/src/app-semantic-state.ts",
+   "packages/terminfo.dev/src/owned-process.ts",
+diff --git a/packages/terminfo.dev/src/darwin-capture.test.ts b/packages/terminfo.dev/src/darwin-capture.test.ts
+index 0258ce70f4aa316e3385c921621b02323541b5a4..dc353b3bd1761d755366bc21986ea28ef8c083f2 100644
+--- a/packages/terminfo.dev/src/darwin-capture.test.ts
++++ b/packages/terminfo.dev/src/darwin-capture.test.ts
+@@ -21,6 +21,61 @@ const PNG_STUB = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0])
+ /** The capture target alone, as the selection tests read it. */
+ const selectDarwinWindow = (rows: unknown, appPid: number) => censusDarwinWindows(rows, appPid).selected.window
+ 
++test.each(["valid", "tab changed", "session changed", "TTY changed"])(
++  "iTerm screenshot session custody: %s",
++  async (outcome) => {
++    const directory = mkdtempSync(join(tmpdir(), "iterm-capture-custody-"))
++    const own = { id: 7, ownerPid: 41, layer: 0, bounds: { x: 0, y: 0, width: 8, height: 6 } }
++    const events: string[] = []
++    const retained = vi.fn()
++    const decoder = vi.spyOn(captureCore, "decodeCapture").mockResolvedValue({
++      width: 8, height: 6, rgba: Buffer.alloc(8 * 6 * 4),
++    })
++    const runner = vi.spyOn(captureCore, "command").mockImplementation(async (file, args, _input, deadline) => {
++      if (file === "/usr/bin/osascript" && args[0] === "-e") {
++        expect(args[1]).toContain("every window whose id is 7")
++        expect(args[1]).toContain("count of tabs of w")
++        expect(args[1]).toContain("count of sessions of tab 1")
++        expect(args[1]).toContain('"/dev/ttys001"')
++        expect(deadline).toBe(123)
++        events.push("session")
++        if (outcome !== "valid" && events.includes("screenshot")) throw new Error(outcome)
++        return Buffer.from("true\n")
++      }
++      if (file === "/usr/bin/osascript") {
++        events.push("window")
++        return Buffer.from(JSON.stringify([own]))
++      }
++      if (file === "magick") return Buffer.from("8x6")
++      if (file !== "/usr/sbin/screencapture") throw new Error(`Unexpected command ${file}`)
++      events.push("screenshot")
++      writeFileSync(args.at(-1)!, PNG_STUB)
++      return Buffer.alloc(0)
++    })
++    try {
++      const adapter = await createDarwinCapture(directory, {
++        appPid: 41, expectedWindowId: 7, itermSessionTty: "/dev/ttys001", onRetained: retained,
++      })
++      const result = adapter.captureRaw({ featureId: "text.basic", role: "control", label: "custody" }, 123)
++      if (outcome === "valid") {
++        const { result: frame } = await result
++        expect(events).toEqual(["window", "window", "session", "screenshot", "session", "window"])
++        expect(retained).toHaveBeenCalled()
++        expect(frame.trace?.itermSessionCustody).toEqual({
++          windowId: 7, tty: "/dev/ttys001", beforeCapture: true, afterCapture: true,
++        })
++      } else {
++        await expect(result).rejects.toThrow(outcome)
++        expect(retained).not.toHaveBeenCalled()
++      }
++    } finally {
++      runner.mockRestore()
++      decoder.mockRestore()
++      rmSync(directory, { recursive: true, force: true })
++    }
++  },
++)
++
+ test("Darwin capture admits exactly one measured app window and scale one", () => {
+   const own = { id: 7, ownerPid: 41, layer: 0, bounds: { x: 0, y: 0, width: 80, height: 63 } }
+   expect(selectDarwinWindow([own, { ...own, id: 8, ownerPid: 99 }], 41)).toEqual(own)
+diff --git a/packages/terminfo.dev/src/darwin-capture.ts b/packages/terminfo.dev/src/darwin-capture.ts
+index b16bb912f2c73b77c020be6d4a4de60b0dcb6725..2eb422eefbd4d19b67d7d93e38f2f78ab7c550e6 100644
+--- a/packages/terminfo.dev/src/darwin-capture.ts
++++ b/packages/terminfo.dev/src/darwin-capture.ts
+@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs"
+ import { dirname, join } from "node:path"
+ import { capturePixels, command, decodeCapture, finishCapture, type NamedTextOrigin } from "./capture-core.ts"
+ import type { ProbeCapture } from "./probes/unified.ts"
++import { itermSessionScript } from "./iterm-window-owner.ts"
+ 
+ export interface DarwinWindow {
+   id: number
+@@ -182,27 +183,37 @@ export function requireDarwinScale(window: DarwinWindow, pixels: { width: number
+   }
+ }
+ 
++/** Local comparison adapter: retain native Retina pixels, without resizing or changing point bounds. */
++export function measuredDarwinBackingScale(window: DarwinWindow, pixels: { width: number; height: number }): 1 | 2 {
++  for (const scale of [1, 2] as const) {
++    if (window.bounds.width > 0 && window.bounds.height > 0 &&
++        Number.isSafeInteger(pixels.width) && Number.isSafeInteger(pixels.height) &&
++        pixels.width === window.bounds.width * scale && pixels.height === window.bounds.height * scale) return scale
++  }
++  throw new Error(`Native screenshot dimensions do not match complete 1x or 2x owned window bounds: ${pixels.width}x${pixels.height}`)
++}
++
+ /**
+  * Every window the server knows (not only the onscreen ones), so a refusal names the windows that
+  * were excluded and why: layer, alpha and the onscreen flag beside the identity and point bounds.
+  */
+ export const CENSUS = `ObjC.import('CoreGraphics'); ObjC.import('Foundation');
+-function value(dict, key) { var ref = dict.objectForKey(key); return ref ? ref.js : null; }
+-function bounds(dict) {
+-  var b = dict.objectForKey('kCGWindowBounds');
+-  if (!b) return null;
+-  function n(k) { var v = b.objectForKey(k); return v ? Number(v.js) : null; }
+-  return { x: n('X'), y: n('Y'), width: n('Width'), height: n('Height') };
+-}
+-function onscreen(dict) { var v = value(dict, 'kCGWindowIsOnscreen'); return v === true || v === 1; }
+ var raw = $.CGWindowListCopyWindowInfo($.kCGWindowListOptionAll | $.kCGWindowListExcludeDesktopElements, $.kCGNullWindowID);
+ if (!raw) throw new Error('CGWindowListCopyWindowInfo returned null');
+-var rows = [], count = $.CFArrayGetCount(raw);
+-for (var i = 0; i < count; i++) {
+-  var w = ObjC.castRefToObject($.CFArrayGetValueAtIndex(raw, i));
+-  rows.push({ id: value(w, 'kCGWindowNumber'), ownerPid: value(w, 'kCGWindowOwnerPID'), layer: value(w, 'kCGWindowLayer'), bounds: bounds(w), alpha: value(w, 'kCGWindowAlpha'), onscreen: onscreen(w), sharingState: value(w, 'kCGWindowSharingState'), memoryUsage: value(w, 'kCGWindowMemoryUsage') });
+-}
+-JSON.stringify(rows);`
++// Convert the snapshot in one bridge call, then project only the census fields.
++JSON.stringify(ObjC.deepUnwrap(ObjC.castRefToObject(raw)).map(function(w) {
++  var b = w.kCGWindowBounds;
++  return {
++    id: w.kCGWindowNumber ?? null,
++    ownerPid: w.kCGWindowOwnerPID ?? null,
++    layer: w.kCGWindowLayer ?? null,
++    bounds: b ? { x: b.X ?? null, y: b.Y ?? null, width: b.Width ?? null, height: b.Height ?? null } : null,
++    alpha: w.kCGWindowAlpha ?? null,
++    onscreen: w.kCGWindowIsOnscreen === true || w.kCGWindowIsOnscreen === 1,
++    sharingState: w.kCGWindowSharingState ?? null,
++    memoryUsage: w.kCGWindowMemoryUsage ?? null,
++  };
++}));`
+ 
+ interface ScreencaptureAttempt {
+   file: string
+@@ -221,6 +232,8 @@ export async function createDarwinCapture(
+     appPid,
+     hostedAppId,
+     expectedWindowId,
++    itermSessionTty,
++    allowNativeBackingScale = false,
+     onRetained,
+   }: {
+     appPid: number
+@@ -228,9 +241,20 @@ export async function createDarwinCapture(
+     hostedAppId?: string
+     /** The launch receipt window id this run owns, when the caller already resolved it. */
+     expectedWindowId?: number
++    /** The owned iTerm2 worker's session, checked around each screenshot. */
++    itermSessionTty?: string
++    allowNativeBackingScale?: boolean
+     onRetained: Parameters<typeof finishCapture>[0]["onRetained"]
+   },
+ ) {
++  if (itermSessionTty !== undefined && expectedWindowId === undefined)
++    throw new Error("iTerm capture requires its named window")
++  const sessionScript = itermSessionTty === undefined ? undefined : itermSessionScript(expectedWindowId!, itermSessionTty)
++  const assertSession = async (deadline?: number) => {
++    if (sessionScript === undefined) return
++    const reply = await command("/usr/bin/osascript", ["-e", sessionScript], undefined, deadline)
++    if (reply.toString().trim() !== "true") throw new Error("iTerm capture session custody did not return true")
++  }
+   const targetWindowId =
+     expectedWindowId ?? (hostedAppId === "terminal-app" ? readTerminalLaunchWindowId(dirname(directory)) : undefined)
+   const census = async (deadline?: number) => {
+@@ -255,7 +279,7 @@ export async function createDarwinCapture(
+   const assertOwned = async (deadline?: number) => {
+     const current = await census(deadline)
+     if (JSON.stringify(current.window) !== JSON.stringify(window)) {
+-      throw new Error(`Darwin owned window ${window.id} identity or bounds changed during capture`)
++      throw new Error(`Darwin owned window ${window.id} identity or bounds changed during capture: expected ${JSON.stringify(window)}, observed ${JSON.stringify(current.window)}`)
+     }
+     return current
+   }
+@@ -278,6 +302,7 @@ export async function createDarwinCapture(
+   const acquire = async (deadline?: number) => {
+     const preCapture = await assertOwned(deadline)
+     const run = async (args: string[]): Promise<ScreencaptureAttempt> => {
++      await assertSession(deadline)
+       const outputPath = join(directory, `capture-${randomBytes(16).toString("hex")}.png`)
+       const attempt: ScreencaptureAttempt = {
+         file: SCREENCAPTURE,
+@@ -300,6 +325,7 @@ export async function createDarwinCapture(
+           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+         }
+       }
++      if (attempt.bytes !== undefined) await assertSession(deadline)
+       return attempt
+     }
+     const fail = (summary: string, attempt: ScreencaptureAttempt, refused?: ScreencaptureAttempt): never => {
+@@ -342,14 +368,18 @@ export async function createDarwinCapture(
+     const pixels = capturePixels(
+       (await command("magick", ["png:-", "-format", "%wx%h", "info:"], bytes, deadline)).toString(),
+     )
+-    requireDarwinScale(window, pixels)
++    const backingScale = allowNativeBackingScale ? measuredDarwinBackingScale(window, pixels) : (requireDarwinScale(window, pixels), 1)
+     const trace = {
+       platform: "darwin",
+       window,
+       // The census the frame was taken under: the other owned windows and why each was passed over (30685).
+       ownedWindows: preCapture.ownedWindows,
+       measuredAppPid: appPid,
+-      scale: 1,
++      ...(itermSessionTty !== undefined && {
++        itermSessionCustody: { windowId: window.id, tty: itermSessionTty, beforeCapture: true, afterCapture: true },
++      }),
++      scale: backingScale,
++      ...(allowNativeBackingScale && { nativePixelsPreserved: true, pointBounds: window.bounds }),
+       captureCommand: [producing.file, ...producing.args.slice(0, -1)],
+       ...(refused
+         ? {
+diff --git a/packages/terminfo.dev/src/identity-guard.ts b/packages/terminfo.dev/src/identity-guard.ts
+index 9c3d456c30f1ed371c9ca4179f137c9fc18c0733..cc6f5da727250ee82c707019a05cfa18e0f85091 100644
+--- a/packages/terminfo.dev/src/identity-guard.ts
++++ b/packages/terminfo.dev/src/identity-guard.ts
+@@ -19,6 +19,11 @@ export interface TerminalIdentityRule {
+ }
+ 
+ export const TERMINAL_IDENTITY_RULES: Record<string, TerminalIdentityRule> = {
++  ntilde: {
++    terminal: "ntilde",
++    xtversionPattern: /^Ntilde\s+(?<version>\d+(?:\.\d+){1,3}(?:[-+][a-zA-Z0-9.-]+)?)$/,
++    requireXtversion: true,
++  },
+   // Detached Linux specimens: tmux 3.6 and Screen 4.09.01. Raw source hashes live in
+   // fixtures/mux-identity.json. Identity alone does not establish an owned outer context.
+   tmux: {
+diff --git a/packages/terminfo.dev/src/iterm-capture-geometry.test.ts b/packages/terminfo.dev/src/iterm-capture-geometry.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5d351f1eb9b236cfef4e706b3bc0fdec919e5737
+--- /dev/null
++++ b/packages/terminfo.dev/src/iterm-capture-geometry.test.ts
+@@ -0,0 +1,25 @@
++import { describe, expect, it } from "vitest"
++import { assertITermCellPitch, itermBackingScale } from "./iterm-capture-geometry.ts"
++
++const reported = { cellWidth: 7, cellHeight: 15, textWidth: 990, textHeight: 652 }
++
++describe("owned iTerm2 calibration", () => {
++  it.each([1, 2] as const)("corroborates a %sx painted text grid in its native window", (scale) => {
++    const backing = itermBackingScale(reported, { scale, pointBounds: { width: 990, height: 652 } })
++    expect(backing).toBe(scale)
++    expect(() => assertITermCellPitch(reported, {
++      cellWidth: 7 * scale, cellHeight: 15 * scale, textWidth: 980 * scale, textHeight: 615 * scale,
++    }, backing)).not.toThrow()
++  })
++
++  it("accepts fractional points only where rounding corroborates the witnessed pixel pitch", () => {
++    const measured = { cellWidth: 13, cellHeight: 29, textWidth: 1820, textHeight: 1189 }
++    expect(() => assertITermCellPitch(reported, measured, 2)).not.toThrow()
++    expect(() => assertITermCellPitch(reported, { ...measured, cellWidth: 12 }, 2)).toThrow(/disagrees/)
++  })
++
++  it.each([{}, {scale: 3, pointBounds: { width: 990, height: 652 }},
++    {scale: 2, pointBounds: { width: 989, height: 652 }}])("refuses mismatched or missing native geometry %j", (trace) => {
++    expect(() => itermBackingScale(reported, trace)).toThrow(/disagree/)
++  })
++})
+diff --git a/packages/terminfo.dev/src/iterm-capture-geometry.ts b/packages/terminfo.dev/src/iterm-capture-geometry.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ba94551bc750d4aae99482a861148a2f7b85fa0
+--- /dev/null
++++ b/packages/terminfo.dev/src/iterm-capture-geometry.ts
+@@ -0,0 +1,33 @@
++import type { PixelGeometry } from "@terminfo/probe-defs"
++
++function refuse(message: string): never {
++  const error = new Error(message)
++  error.name = "CaptureCalibrationRefused"
++  throw error
++}
++
++/** iTerm2's CSI 14 t gives the window's point dimensions, including chrome and padding. */
++export function itermBackingScale(reported: PixelGeometry, trace: Record<string, unknown>): 1 | 2 {
++  const { pointBounds, scale } = trace
++  if (
++    (scale !== 1 && scale !== 2) ||
++    typeof pointBounds !== "object" ||
++    pointBounds === null ||
++    !("width" in pointBounds && "height" in pointBounds) ||
++    pointBounds.width !== reported.textWidth ||
++    pointBounds.height !== reported.textHeight
++  ) {
++    refuse("iTerm2's CSI 14 t window dimensions disagree with the owned native screenshot")
++  }
++  return scale
++}
++
++/** CSI 16 t rounds the point pitch. The raster witness supplies the exact whole backing pixels. */
++export function assertITermCellPitch(reported: PixelGeometry, measured: PixelGeometry, scale: 1 | 2): void {
++  if (
++    Math.round(measured.cellWidth / scale) !== reported.cellWidth ||
++    Math.round(measured.cellHeight / scale) !== reported.cellHeight
++  ) {
++    refuse("iTerm2's CSI 16 t cell pitch disagrees with the witnessed backing-pixel grid")
++  }
++}
+diff --git a/packages/terminfo.dev/src/iterm-window-owner.test.ts b/packages/terminfo.dev/src/iterm-window-owner.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..776df2c93bd542fde06793496694660fbda36387
+--- /dev/null
++++ b/packages/terminfo.dev/src/iterm-window-owner.test.ts
+@@ -0,0 +1,29 @@
++import { describe, expect, it } from "vitest"
++import { parseTerminalAppOwner } from "./owned-terminal.ts"
++import { measuredDarwinBackingScale } from "./darwin-capture.ts"
++
++const claim = { asserter: "terminfo-admin", application: "iterm2", launchRunId: "a".repeat(32), workerPid: 123, windowId: 456, tabTty: "/dev/ttys100", intendedVersion: "3.7.7" }
++describe("local native-window comparison adapter", () => {
++  it("retains only complete, isotropic native 1x/2x window frames", () => {
++    const window = { bounds: { x: 0, y: 0, width: 80, height: 63 } } as any
++    expect(measuredDarwinBackingScale(window, { width: 80, height: 63 })).toBe(1)
++    expect(measuredDarwinBackingScale(window, { width: 160, height: 126 })).toBe(2)
++    for (const pixels of [{ width: 160, height: 125 }, { width: 80, height: 126 }, { width: 240, height: 189 }, { width: 0, height: 0 }]) {
++      expect(() => measuredDarwinBackingScale(window, pixels)).toThrow()
++    }
++  })
++  it("retains the explicit iTerm identity instead of reinterpreting it as Terminal.app", () => {
++    expect(parseTerminalAppOwner(claim).application).toBe("iterm2")
++    const { application: _, ...terminal } = claim
++    expect(parseTerminalAppOwner(terminal).application).toBeUndefined()
++  })
++  it("refuses other application declarations and extra owner fields", () => {
++    expect(() => parseTerminalAppOwner({ ...claim, application: "ghostty" })).toThrow()
++    expect(() => parseTerminalAppOwner({ ...claim, trusted: true })).toThrow()
++  })
++  it("does not relax the window, worker, TTY or launch identity requirements", () => {
++    for (const change of [{ windowId: 0 }, { workerPid: -1 }, { tabTty: "not a tty" }, { launchRunId: "other" }]) {
++      expect(() => parseTerminalAppOwner({ ...claim, ...change })).toThrow()
++    }
++  })
++})
+diff --git a/packages/terminfo.dev/src/iterm-window-owner.ts b/packages/terminfo.dev/src/iterm-window-owner.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..aab4ad66374dd644e25d790637a297b9c5f00058
+--- /dev/null
++++ b/packages/terminfo.dev/src/iterm-window-owner.ts
+@@ -0,0 +1,34 @@
++/** Native iTerm window custody for the local comparison adapter; never selects a personal window. */
++import { execFileSync } from "node:child_process"
++import { realpathSync } from "node:fs"
++import { descendToOwner, parentOf, processExecutable, tty } from "./owned-process.ts"
++
++/** A named window must still hold exactly the worker's tab and session. */
++export function itermSessionScript(windowId: number, tabTty: string): string {
++  if (!Number.isSafeInteger(windowId) || windowId < 1) throw new Error("Invalid iTerm window id")
++  const expectedTty = tty(tabTty)
++  return `tell application "iTerm"
++    set matches to every window whose id is ${windowId}
++    if (count of matches) is not 1 then error "owned iTerm window disappeared or is ambiguous"
++    set w to item 1 of matches
++    if (count of tabs of w) is not 1 then error "owned iTerm window acquired another tab"
++    if (count of sessions of tab 1 of w) is not 1 then error "owned iTerm tab acquired another session"
++    if (tty of session 1 of tab 1 of w) is not ${JSON.stringify(expectedTty)} then error "owned iTerm TTY changed"
++    return true
++  end tell`
++}
++
++export function assertITermWindow(windowId: number, tabTty: string, workerPid: number): number {
++  const expectedTty = tty(tabTty)
++  execFileSync("/usr/bin/osascript", ["-e", itermSessionScript(windowId, expectedTty)], { timeout: 15000 })
++  const census = String(execFileSync("/usr/bin/osascript", ["-l", "JavaScript", "-e", `ObjC.import("AppKit"); var a=$.NSRunningApplication.runningApplicationsWithBundleIdentifier("com.googlecode.iterm2"); var rows=[]; for(var i=0;i<a.count;i++){var x=a.objectAtIndex(i);rows.push({pid:Number(x.processIdentifier),path:ObjC.unwrap(x.executableURL.path)});} JSON.stringify(rows)`], { timeout: 15000 }))
++  const apps = JSON.parse(census)
++  if (!Array.isArray(apps) || apps.length !== 1) throw new Error("iTerm process census is ambiguous")
++  const app = apps[0]
++  const expected = realpathSync("/Applications/iTerm.app/Contents/MacOS/iTerm2")
++  if (!Number.isSafeInteger(app.pid) || app.pid < 1 || realpathSync(app.path) !== expected || processExecutable(app.pid, "iTerm") !== expected) throw new Error("iTerm executable does not match the measured bundle")
++  const workerTty = tty(String(execFileSync("/bin/ps", ["-p", String(workerPid), "-o", "tty="], { timeout: 5000 })))
++  if (workerTty !== expectedTty) throw new Error("iTerm child TTY differs from the owned session")
++  descendToOwner(workerPid, app.pid, parentOf, "iTerm")
++  return app.pid
++}
+diff --git a/packages/terminfo.dev/src/owned-terminal.ts b/packages/terminfo.dev/src/owned-terminal.ts
+index 8a948ea1327bbba661fa4192c0bdd50f46263b32..b58d5c387ef8b11bdee50601fdf7c536fdfc2ac7 100644
+--- a/packages/terminfo.dev/src/owned-terminal.ts
++++ b/packages/terminfo.dev/src/owned-terminal.ts
+@@ -62,6 +62,7 @@ import {
+ } from "./darwin-terminal-text.ts"
+ import { readConsoleGeometry } from "./windows-console-geometry.ts"
+ import { readITermCells } from "./iterm2-protocol.ts"
++import { assertITermWindow } from "./iterm-window-owner.ts"
+ import {
+   HOSTED_WINDOWS_EXECUTABLE,
+   hostedWindowsAppFromExecutablePath,
+@@ -113,6 +114,8 @@ export type GeometryMeasurement =
+   | { status: "unavailable"; at: string; source: GeometrySource; diagnostic: string; stdout: string; stderr: string }
+ 
+ export interface TerminalAppOwnerAssertion {
++  /** The local comparison's native iTerm window arm; absent retains Terminal.app semantics. */
++  application?: "iterm2"
+   asserter: "terminfo-admin"
+   launchRunId: string
+   workerPid: number
+@@ -227,6 +230,10 @@ export function parseTerminalAppOwner(value: unknown): TerminalAppOwnerAssertion
+   if (!value || typeof value !== "object" || Array.isArray(value)) throw invalid()
+   const object = value as Record<string, unknown>
+   const keys = ["asserter", "launchRunId", "workerPid", "windowId", "tabTty", "intendedVersion"]
++  if (Object.hasOwn(object, "application")) {
++    if (object.application !== "iterm2") throw invalid()
++    keys.push("application")
++  }
+   if (Object.keys(object).length !== keys.length || keys.some((key) => !Object.hasOwn(object, key))) throw invalid()
+   if (
+     object.asserter !== "terminfo-admin" ||
+@@ -246,6 +253,7 @@ export function parseTerminalAppOwner(value: unknown): TerminalAppOwnerAssertion
+     throw invalid()
+   }
+   return {
++    ...(object.application === "iterm2" && { application: "iterm2" as const }),
+     asserter: object.asserter,
+     launchRunId: object.launchRunId,
+     workerPid: object.workerPid,
+@@ -284,6 +292,7 @@ export interface OwnedTerminal {
+    * A hosted arm measures the receipt-named app in this collector's process ancestry; the owned-process
+    * arm takes the owner that assertOwnedProcess proved. Absent on every other arm. */
+   readonly appPid?: number
++  readonly captureWindowId?: number
+   /** Canonical identity from the hosted receipt's executable mapping, shared by both platforms. */
+   readonly hostedAppId?: HostedDarwinAppId | HostedWindowsAppId
+   /** The hosted app's declared self-repainting chrome strip, for capture calibration (33056). Absent: whole window. */
+@@ -1119,6 +1128,9 @@ export async function createOwnedTerminal(options: {
+     if (process.platform !== "darwin") throw new Error("Terminal.app owner requires Darwin")
+     const assertion = parseTerminalAppOwner(terminalApp)
+     requireOwnWorker(assertion, expectedLaunchRunId, "Terminal.app")
++    if (assertion.application === "iterm2") {
++      processOwnerPid = assertITermWindow(assertion.windowId, assertion.tabTty, process.pid)
++    }
+     binding = darwinOutput(out, assertion.tabTty)
+   } else if (processOwner) {
+     if (process.platform !== "darwin") throw new Error("Owned process owner requires Darwin")
+@@ -1241,7 +1253,7 @@ export async function createOwnedTerminal(options: {
+       ? kittyOwner
+         ? "kitty"
+         : terminalApp
+-          ? "terminal-app"
++          ? terminalApp.application === "iterm2" ? "iterm2" : "terminal-app"
+           : hostedApp?.id === "terminal-app" || hostedApp?.id === "iterm2"
+             ? hostedApp.id
+             : undefined
+@@ -1383,7 +1395,7 @@ export async function createOwnedTerminal(options: {
+         },
+       }),
+     })
+-    const hostedAppId = hostedApp?.id ?? hostedWindowsApp?.id
++    const hostedAppId = hostedApp?.id ?? hostedWindowsApp?.id ?? (terminalApp?.application === "iterm2" ? "iterm2" : undefined)
+     const appPid = hostedAncestor?.pid ?? processOwnerPid
+     // WT uses UIA; WezTerm's candidate uses the owned pane CLI. Both must pass the shared writer's
+     // mapping and host-ownership witnesses. Alacritty retains its explicitly unqualified host read.
+@@ -1425,6 +1437,7 @@ export async function createOwnedTerminal(options: {
+       summary,
+       ...(appPid !== undefined && { appPid }),
+       ...(hostedAppId && { hostedAppId }),
++      ...(terminalApp?.application === "iterm2" && { captureWindowId: terminalApp.windowId }),
+       ...(hostedApp?.captureChromeBand && { captureChromeBand: hostedApp.captureChromeBand }),
+       ...(clipboard && { clipboard }),
+       ...(readTitle && {
+@@ -1509,6 +1522,9 @@ export async function createOwnedTerminal(options: {
+       }),
+       async readGeometry() {
+         if (!verifiedTerminalOwners.has(owner)) throw new Error("Owned geometry read has no live bound capture")
++        if (terminalApp?.application === "iterm2") {
++          assertITermWindow(terminalApp.windowId, terminalApp.tabTty, process.pid)
++        }
+         // A Windows console has no device to re-open, so the re-read is the console's own identity:
+         // a changed window handle means these probes no longer write where the geometry came from.
+         if (binding.platform === "windows") {
+diff --git a/packages/terminfo.dev/src/serve.test.ts b/packages/terminfo.dev/src/serve.test.ts
+index 4a7c1abf4c4289c102f3932ced352a72bef25ba1..48b3254f8fcb826bfb775cb21f66ee818704d804 100644
+--- a/packages/terminfo.dev/src/serve.test.ts
++++ b/packages/terminfo.dev/src/serve.test.ts
+@@ -11,6 +11,16 @@ import { tmpdir } from "node:os"
+ import { join } from "node:path"
+ import { createHash } from "node:crypto"
+ import { afterEach, describe, expect, it, vi } from "vitest"
++import { itermCapturePaintWait } from "./serve.ts"
++
++it("preserves the iTerm cursor settle on static pairs and outside the witnessed SGR retest", () => {
++  const wait = (featureId: string, label: string) => itermCapturePaintWait({featureId, role: "control", label})
++  expect(wait("sgr.bold", "sgr.bold: capture stability 1")).toBe(250)
++  expect(wait("sgr.bold", "sgr.bold: capture stability 2")).toBe(250)
++  expect(wait("sgr.bold", "sgr.bold: inverse — paint witness")).toBe(0)
++  expect(wait("reset.sgr", "reset.sgr: N before SGR 1;3;7")).toBe(0)
++  expect(wait("scrollback.decstbm", "scrollback.decstbm: paint witness")).toBe(250)
++})
+ 
+ let child: ChildProcess | undefined
+ let home: string | undefined
+diff --git a/packages/terminfo.dev/src/serve.ts b/packages/terminfo.dev/src/serve.ts
+index c814047ab1e9051ecbe835db7dcc5ce7127276eb..fe530cdcd3c34a0f9307dc2015059d868919b19a 100644
+--- a/packages/terminfo.dev/src/serve.ts
++++ b/packages/terminfo.dev/src/serve.ts
+@@ -20,6 +20,7 @@ import { dirname, isAbsolute, join, relative, win32 } from "node:path"
+ import { homedir } from "node:os"
+ import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
+ import { execFileSync } from "node:child_process"
++import { setTimeout as delay } from "node:timers/promises"
+ import { fileURLToPath } from "node:url"
+ import { isDeepStrictEqual } from "node:util"
+ import {
+@@ -60,6 +61,7 @@ import { ALL_PROBES, runProbeBatch, type GeometryCorroboration, type ProbeCaptur
+ import { createLinuxCapture, type LiveExecutable } from "./linux-capture.ts"
+ import { createDarwinCapture, type DarwinInstallCensus } from "./darwin-capture.ts"
+ import { calibrateCaptureOrigin, type CaptureChromeBand } from "./capture-calibration.ts"
++import { assertITermCellPitch, itermBackingScale } from "./iterm-capture-geometry.ts"
+ import { collectTextQualification, recordTextQualificationTests } from "./text-qualification.ts"
+ import { retain } from "./capture-core.ts"
+ import { muxAttachmentConfigMatches, muxAttachmentVersionMatches } from "./disposable-receipt.ts"
+@@ -212,6 +214,16 @@ const s = createStyle()
+ 
+ const DAEMON_DIR = join(homedir(), ".terminfo-dev", "daemons")
+ const SOURCE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
++const ITERM_WITNESSED_SGR = new Set([
++  "reset.sgr", "sgr.bold", "sgr.faint", "sgr.hidden", "sgr.italic", "sgr.reset",
++  "sgr.selective-reset.bold", "sgr.strikethrough", "sgr.underline.single",
++])
++
++/** Keep cursor settling for static controls and probes without this paint-witness path. */
++export function itermCapturePaintWait({featureId, label}: Parameters<ProbeCapture>[0]): number {
++  return !ITERM_WITNESSED_SGR.has(featureId) ||
++    label === `${featureId}: capture stability 1` || label === `${featureId}: capture stability 2` ? 250 : 0
++}
+ 
+ /** Bun's CLI build replaces this identifier with a validated immutable receipt. */
+ declare const __TERMINFO_BUNDLED_SUITE__: { manifest: ProbeSuiteManifest; collectorRevision: string }
+@@ -386,6 +398,8 @@ interface CaptureCalibrationFact {
+   rasterBasis?: string
+   /** Every reply the pre-flight read, in the order it asked, so the refusal is re-derivable. */
+   queries: CaptureCalibrationQuery[]
++  /** Native backing scale used when corroborating the iTerm2 replies in points. */
++  itermScale?: 1 | 2
+   /** The named cause, present exactly when the geometry was refused. */
+   refusal?: string
+   causes?: Array<{ name: string; message: string; captureCommand?: unknown }>
+@@ -703,6 +717,7 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+       adapter: Pick<Awaited<ReturnType<typeof createDarwinCapture>>, "capture" | "captureRaw">,
+       installCensus?: DarwinInstallCensus,
+       chromeBand?: CaptureChromeBand,
++      normalizeITermPoints = false,
+     ) => {
+       // Preflight installs pixels later; preserve the hosted observer's retained text preparation.
+       const prepareTextCapture = prepareCapture
+@@ -713,25 +728,58 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+       // already measured: the adapter never queries the terminal itself, so the geometry it tests a
+       // frame request against and the geometry the origin was calibrated on can never diverge.
+       const installCapture = (reportedGeometry: PixelGeometry | undefined, queries: CaptureCalibrationQuery[]) => {
++        const itermReport = normalizeITermPoints ? reportedGeometry : undefined
++        let itermScale: 1 | 2 | undefined
++        const verifyITermFrame = (trace: Record<string, unknown>) => {
++          if (!itermReport) return
++          const scale = itermBackingScale(itermReport, trace)
++          if (itermScale !== undefined && scale !== itermScale) {
++            const error = new Error("iTerm2 backing scale changed during native capture")
++            error.name = "CaptureCalibrationRefused"
++            throw error
++          }
++          itermScale = scale
++        }
+         textCapture = false
+         capture = async (checkpoint) => {
+           if (calibrationError) throw calibrationError
+           const origin = assertCalibratedCaptureGeometry(textOrigin, checkpoint, platform)
+-          if (!origin) {
+-            const result = await adapter.captureRaw(checkpoint)
+-            return result.result
+-          }
+-          return adapter.capture(checkpoint, origin)
++          // iTerm2 can paint the hidden cursor after its PTY has accepted DECTCEM.
++          // Give the native renderer a fixed interval before sampling. The probe still owns its stability pair.
++          // These SGR probes already wait for a repeatable painted witness before
++          // deciding. Keep the extra delay for their static-frame control.
++          const paintSettleMs = normalizeITermPoints ? itermCapturePaintWait(checkpoint) : 0
++          if (paintSettleMs) await delay(paintSettleMs)
++          const result = origin ? await adapter.capture(checkpoint, origin) : (await adapter.captureRaw(checkpoint)).result
++          verifyITermFrame(result.trace ?? {})
++          return normalizeITermPoints ? { ...result, trace: { ...result.trace, paintSettleMs } } : result
+         }
+         prepareCapture = async ({ source: probeSource, featureId, recordCapture }) => {
+           // Text restoration remains fatal, outside the pixel calibration refusal handling.
+           await prepareTextCapture?.({ source: probeSource, featureId, recordCapture })
+           try {
++            let calibrationBand = chromeBand
++            if (itermReport) {
++              const frame = await adapter.captureRaw({
++                featureId,
++                role: "control",
++                label: "iTerm2 native backing-scale preflight",
++              })
++              recordCapture(frame.result)
++              const scale = itermBackingScale(itermReport, frame.result.trace ?? {})
++              itermScale = scale
++              // The existing calibrator independently refuses this band if it reaches the grid or its blend line.
++              calibrationBand = {
++                y: 0,
++                height: 33 * scale,
++                reason: "iTerm2 window title bar repaints on focus changes",
++              }
++            }
+             textOrigin = await calibrateCaptureOrigin({
+               ctx: probeSource,
+-              pixelGeometry: reportedGeometry,
++              pixelGeometry: itermReport ? undefined : reportedGeometry,
+               timeoutMs: DEFAULT_TIMEOUT_MS,
+-              ...(chromeBand ? { chromeBand } : {}),
++              ...(calibrationBand ? { chromeBand: calibrationBand } : {}),
+               collectorLaunched:
+                 kind === "darwinHosted" ||
+                 (kind === "process" && process.platform === "darwin") ||
+@@ -739,9 +787,12 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+               captureRaw: async (label, deadline) => {
+                 const result = await adapter.captureRaw({ featureId, role: "control", label }, deadline)
+                 recordCapture(result.result)
++                verifyITermFrame(result.result.trace ?? {})
+                 return result.decoded
+               },
+             })
++            if (itermReport && itermScale !== undefined)
++              assertITermCellPitch(itermReport, textOrigin.pixelGeometry, itermScale)
+             probeSource.captureGeometry = {
+               geometry: textOrigin.pixelGeometry,
+               source: "measured by complete raster calibration",
+@@ -752,6 +803,7 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+               basis: probeSource.captureGeometry.source,
+               geometry: textOrigin.pixelGeometry,
+               rasterBasis: textOrigin.basis,
++              ...(itermScale && { itermScale }),
+               queries,
+               installCensus,
+             }
+@@ -779,24 +831,30 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+             if (error.name !== "CaptureCalibrationRefused" && !darwinCommandFailure) throw error
+             calibrationError = error
+             probeSource.captureGeometryRefusal = error.message
+-            captureCalibration = { outcome: "refused", queries, refusal: error.message, causes, installCensus }
++            captureCalibration = {
++              outcome: "refused",
++              queries,
++              refusal: error.message,
++              causes,
++              installCensus,
++              ...(itermScale && { itermScale }),
++            }
+           }
+         }
+       }
+       preflightPixelCapture = async () => {
+         const queries: CaptureCalibrationQuery[] = []
+-        const report = await queryPixelGeometry({
+-          queryWithSentinelOutcome: async (sequence, pattern, timeoutMs) => {
+-            const outcome = await queryWithSentinelOutcome(sequence, pattern, timeoutMs)
+-            queries.push({
+-              sequence,
+-              reason: outcome.reason,
+-              raw: outcome.raw,
+-              rawBase64: outcome.rawBase64,
+-            })
+-            return outcome
+-          },
+-        })
++        const query: typeof queryWithSentinelOutcome = async (sequence, pattern, timeoutMs) => {
++          const outcome = await queryWithSentinelOutcome(sequence, pattern, timeoutMs)
++          queries.push({
++            sequence,
++            reason: outcome.reason,
++            raw: outcome.raw,
++            rawBase64: outcome.rawBase64,
++          })
++          return outcome
++        }
++        const report = await queryPixelGeometry({ queryWithSentinelOutcome: query })
+         if ("missing" in report) {
+           // Only the terminal's OWN answer may complete as a no-capture run (@cto, 28785 REVISE
+           // rounds 1-2). A TIMEOUT - nothing answered at all, DA1 included - is a property of THIS
+@@ -822,7 +880,7 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+         installCapture(report.geometry, queries)
+       }
+     }
+-    const installDarwinCapture = async (terminal: OwnedTerminal) => {
++    const installDarwinCapture = async (terminal: OwnedTerminal, itermSessionTty?: string) => {
+       // Hosted iTerm2 and Terminal.app use pixels; Kitty keeps its qualified text route.
+       // Without retention, still name the missing directory through the existing text adapter.
+       const textFirst =
+@@ -834,9 +892,12 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+       const darwinCapture = await createDarwinCapture(captureDirectory, {
+         appPid,
+         hostedAppId: terminal.hostedAppId,
++        expectedWindowId: terminal.captureWindowId,
++        itermSessionTty,
++        allowNativeBackingScale: true,
+         onRetained,
+       })
+-      installPixelCapture(darwinCapture, darwinCapture.installCensus, terminal.captureChromeBand)
++      installPixelCapture(darwinCapture, darwinCapture.installCensus, terminal.captureChromeBand, itermSessionTty !== undefined)
+     }
+     if (captureDirectory && process.platform === "linux") {
+       if (!executable) throw new Error("Configured Linux capture lacks measured executable")
+@@ -871,7 +932,9 @@ export async function collectProbeRun(options: ProbeCollectionOptions = {}): Pro
+         expectedLaunchRunId: options.expectedLaunchRunId ?? process.env.TERMINFO_RUN_ID ?? "",
+         terminalApp: options.terminalAppOwner,
+       })
+-      installTextCapture(ownedTerminal)
++      if (options.terminalAppOwner.application === "iterm2")
++        await installDarwinCapture(ownedTerminal, options.terminalAppOwner.tabTty)
++      else installTextCapture(ownedTerminal)
+     } else if (kind === "process") {
+       if (!options.processOwner) throw new Error("Owned process collection lacks owner assertion")
+       ownedTerminal = await createOwnedTerminal({

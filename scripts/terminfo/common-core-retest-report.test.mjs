@@ -33,6 +33,16 @@ test('iTerm2 calibration and result frames require both custody checks for the l
     }
     raw.results[0].frames = [{ ...frame, ref: 'sha256:unwitnessed' }];
     assert.throws(verify, /without session custody/);
+    raw.results[0].frames = [frame];
+    const witness = structuredClone(capture);
+    witness.frame.label = 'text.basic: capture stability 1';
+    witness.trace.paintSettleMs = 0;
+    raw.rawReplies['text.basic'] = journal(witness);
+    const verifySettlePolicy = () => assertITermCaptureCustody(raw, ['text.basic'], window, worker, true);
+    assert.throws(verifySettlePolicy, /wrong adapter settle policy/);
+    witness.trace.paintSettleMs = 250;
+    raw.rawReplies['text.basic'] = journal(witness);
+    verifySettlePolicy();
 });
 /** Mutate synthetic evidence while keeping unrelated bindings valid. */
 function update(subject, key, mutate) {
@@ -95,6 +105,19 @@ test('preserves the original full run while all six movement cases gain separate
     assert.equal(input.comparison.rows[0].results.ntilde.status, 'probe-invalid');
     assert.equal(result.results[ids[0]].previousStatus, 'probe-invalid');
     assert.deepEqual(result.caseIds, ids.slice(0, 6));
+});
+
+test('an iTerm2 timeout follow-up must bind to the verified preceding custody retest', () => {
+    const input = scenario();
+    update(input.retest, 'configBytes', (config) => { config.retest.kind = 'iterm-sgr-timeout'; });
+    assert.throws(() => buildCommonCoreRetest(input), /validated custody retest as baseline/);
+    const previous = {
+        kind: 'capture-custody',
+        subjectId: input.baseline.id,
+        runId: JSON.parse(input.baseline.rawBytes).runId,
+        rawSha256: 'e'.repeat(64),
+    };
+    assert.throws(() => buildCommonCoreRetest({ ...input, previous }), /validated custody retest as baseline/);
 });
 test('a valid unsupported retest is recorded instead of selecting only favorable outcomes', () => {
     const input = scenario();

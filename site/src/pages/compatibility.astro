@@ -29,6 +29,7 @@ const statusClass = (status: string) => status === 'supported' ? 'text-emerald-3
 const retestDirectory = (kind?: string) => {
   if (kind === 'capture-throughput') return 'timeout-retest';
   if (kind === 'capture-custody') return 'custody-retest';
+  if (kind === 'iterm-sgr-timeout') return 'sgr-timeout-retest';
   return kind ? 'focused-retest' : 'movement-retest';
 };
 const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -96,6 +97,7 @@ const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!)
             <p class="mt-2 text-xs text-ink-300">Latest combined evidence: {subject.focusedRetest.currentCounts.supported} supported, {subject.focusedRetest.currentCounts.unsupported} unsupported, {subject.focusedRetest.currentCounts['probe-invalid']} invalid, {subject.focusedRetest.currentCounts['probe-todo']} not concluded, {subject.focusedRetest.currentCounts.untestable} untestable, {subject.focusedRetest.currentCounts['not-scheduled']} not tested.</p>
             {subject.focusedRetest.kind === 'capture-throughput' && <p class="mt-2 text-xs text-ink-300">The capture adapter now reads the macOS window census faster. The probes still have the original 30-second deadline. <a class="text-ntilde-300 underline" href={`${evidence}/ghostty/focused-retest`}>Earlier timeout run →</a></p>}
             {subject.focusedRetest.kind === 'capture-custody' && <p class="mt-2 text-xs text-ink-300">The capture adapter checks the owned tab, session and worker TTY around each screenshot. These retests cover the cases that previously retained native frames. <a class="text-ntilde-300 underline" href={`${evidence}/iterm2/focused-retest`}>Earlier scrollback retest →</a></p>}
+            {subject.focusedRetest.kind === 'iterm-sgr-timeout' && <p class="mt-2 text-xs text-ink-300">The SGR probes use their paint witnesses after the static-frame check. The deadlines and session checks still apply. <a class="text-ntilde-300 underline" href={`${evidence}/iterm2/custody-retest`}>Earlier custody retest →</a> <a class="text-ntilde-300 underline" href={`${evidence}/iterm2/focused-retest`}>Earlier scrollback retest →</a></p>}
             <a class="mt-2 inline-block text-xs text-ntilde-300 underline" href={`${evidence}/${subject.id}/${retestDirectory(subject.focusedRetest.kind)}`}>Inspect the focused retest →</a>
           </div>}
           {subject.measurementLimits.captureRefusal && <div class="mt-5 rounded border border-amber-800/60 bg-amber-950/30 p-3 text-xs leading-relaxed text-amber-200">Screenshot calibration was refused. Visual cases remain unconcluded: this count cannot rank terminal support. <details class="mt-2"><summary class="cursor-pointer">Recorded reason</summary><p class="mt-2 break-words">{subject.measurementLimits.captureRefusal}</p></details></div>}
@@ -134,7 +136,16 @@ const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!)
               {comparison.subjects.map(subject => {
                 const original = row.results[subject.id as keyof typeof row.results];
                 const result = original.retest ?? original;
-                return <td class="max-w-xs px-5 py-4"><span class={`font-medium ${statusClass(result.status)}`}>{statusNames[result.status]}</span>{result.method && <p class="mt-2 text-xs text-ink-500">{result.method.replaceAll('_', ' ')}</p>}{original.retest && <p class="mt-2 text-xs text-ink-300">Focused retest · initial result: {statusNames[original.status]}</p>}{result.evidenceLine && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${result.evidencePath}#L${result.evidenceLine}`}>{original.retest ? 'Retest record ↗' : 'Run record ↗'}</a>}{original.retest && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${original.evidencePath}#L${original.evidenceLine}`}>Original run record ↗</a>}{result.reason && <details class="mt-2 text-xs leading-relaxed text-ink-400"><summary class="cursor-pointer">Measurement note</summary><p class="mt-2 break-words">{result.reason}</p></details>}</td>;
+                const prior = original.retest && 'priorRetest' in original.retest ? original.retest.priorRetest : undefined;
+                return <td class="max-w-xs px-5 py-4">
+                  <span class={`font-medium ${statusClass(result.status)}`}>{statusNames[result.status]}</span>
+                  {result.method && <p class="mt-2 text-xs text-ink-500">{result.method.replaceAll('_', ' ')}</p>}
+                  {original.retest && <p class="mt-2 text-xs text-ink-300">Focused retest · initial result: {statusNames[original.status]}</p>}
+                  {result.evidenceLine && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${result.evidencePath}#L${result.evidenceLine}`}>{original.retest ? 'Retest record ↗' : 'Run record ↗'}</a>}
+                  {prior && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${prior.evidencePath}#L${prior.evidenceLine}`}>Previous retest record ↗</a>}
+                  {original.retest && <a class="mt-2 block text-xs text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/${original.evidencePath}#L${original.evidenceLine}`}>Original run record ↗</a>}
+                  {result.reason && <details class="mt-2 text-xs leading-relaxed text-ink-400"><summary class="cursor-pointer">Measurement note</summary><p class="mt-2 break-words">{result.reason}</p></details>}
+                </td>;
               })}
             </tr>
           ))}

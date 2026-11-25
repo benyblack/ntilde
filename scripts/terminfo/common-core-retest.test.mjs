@@ -62,6 +62,22 @@ test('iTerm2 custody selection follows retained native frames across verdicts an
     assert.throws(() => focusedRetestCases(input, ['pure-query'], 'capture-custody'), /native captures/);
 });
 
+test('iTerm2 timeout selection requires exactly nine executed deadline failures', () => {
+    const ids = Array.from({ length: 9 }, (_, index) => `sgr.case-${index}`);
+    const missed = (featureId) => ({
+        featureId, attempt: { scope: 'probe' }, status: 'probe-todo', harnessOutcome: 'probe-exceeded',
+    });
+    const input = { ...raw([...ids.map(missed), {
+        ...missed('sgr.other'), harnessOutcome: undefined,
+    }, {
+        ...missed('sgr.unscheduled'), attempt: { scope: 'none' },
+    }]), subject: { id: 'iterm2' } };
+    const core = [...ids, 'sgr.other', 'sgr.unscheduled'];
+    assert.deepEqual(focusedRetestCases(input, core, 'iterm-sgr-timeout'), ids);
+    input.results[0].featureId = ids[1];
+    assert.throws(() => focusedRetestCases(input, core, 'iterm-sgr-timeout'), /nine distinct/);
+});
+
 test('focused iTerm2 selection requires the complete seven-case stability failure set', () => {
     const ids = ['alt-screen', 'decstbm', 'decstbm-reset', 'reverse-index', 'scroll-down', 'scroll-up', 'set-region']
         .map((name) => 'scrollback.' + name);

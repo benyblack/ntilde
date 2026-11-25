@@ -178,6 +178,34 @@ remain visible. Both application identity and owned-window cleanup verified.
 The measured selector is retained in the run archive. Its later refactor
 produces the same ordered case list when replayed over the original full run.
 
+## iTerm2 SGR deadline follow-up
+
+The custody run's nine deadline failures still had live screenshots. The six
+single-attribute probes had also received their DECRQSS replies. Each feature
+frame incurred the same 250 ms adapter sleep used for the cursor-hide stability
+pair, even when the probe already measured paint freshness. The three saved
+rendition probes stopped partway through their longer subset matrices.
+
+The derivative adapter keeps the 250 ms sleep on the static pair and for outside
+probes. The nine SGR probes use their existing paint-witness checks for every
+other feature frame. The per-frame tab, session, TTY, window and bounds checks,
+native pixels, probe definitions, controls, and deadlines still apply. Published
+frame traces record the sleep policy alongside session custody.
+
+Use the extracted iTerm2 custody-retest archive for `COMMON_CORE_RETEST_FROM`,
+select `COMMON_CORE_RETEST_KIND=iterm-sgr-timeout`, and use the adapter snapshot
+in `iterm2/sgr-timeout-retest/adapter/`. The offline publication rederives the
+exact nine IDs from recorded timeout outcomes, carries forward the other 35
+custody retest outcomes and links all three stages for each updated row.
+
+Run `0ec264b9c06429af344d9b44e6e78b2e` graded all nine supported. The median
+gap between successive captures within the same probe fell from 1,167 ms in
+the custody run to 754 ms. Each of the three reset matrices completed all 132
+frames. The run retained 568 probe frames and 11 calibration frames, with
+verified application identity and cleanup. The combined iTerm2 count is
+69 supported of 80. The earlier nine deadline failures remain in their
+original archive.
+
 ## Offline source proof and checkout formatting
 
 `source-proof.zip` retains content-addressed Git commit/tree objects and the base

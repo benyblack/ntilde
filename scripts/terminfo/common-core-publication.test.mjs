@@ -3,8 +3,33 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
+test('the iTerm2 follow-up updates only the nine prior deadline results', () => {
+    const publication = resolve(root, 'docs/qa/terminfo/2026-11-25-common-core-comparison');
+    const read = (file) => JSON.parse(readFileSync(resolve(publication, file), 'utf8'));
+    const earlier = read('iterm2/custody-retest/cases.json');
+    const latest = read('iterm2/sgr-timeout-retest/cases.json');
+    const report = read('report.json');
+    const timedOut = earlier.records.filter(({ reason }) => /^Probe exceeded \d+ms$/.test(reason));
+    assert.equal(timedOut.length, 9);
+    assert.deepEqual(latest.records.map(({ featureId }) => featureId), timedOut.map(({ featureId }) => featureId));
+    const followup = new Map(latest.records.map((record) => [record.featureId, record]));
+    for (const old of earlier.records) {
+        const retest = report.rows.find(({ id }) => id === old.featureId).results.iterm2.retest;
+        const replacement = followup.get(old.featureId);
+        assert.equal(retest.runId, replacement ? latest.runId : earlier.runId);
+        assert.equal(retest.status, replacement?.status ?? old.status);
+        if (replacement) {
+            assert.equal(retest.priorRetest.runId, earlier.runId);
+            assert.equal(retest.priorRetest.status, old.status);
+            assert.match(retest.priorRetest.evidencePath, /iterm2\/custody-retest\/cases\.json$/);
+            assert.ok(retest.priorRetest.evidenceLine > 0);
+        }
+    }
+});
+
 for (const [label, args] of [
     ['the refreshed comparison and site projection', ['--check']],
     ['the November 11 comparison and focused retest', ['--check', '--historical']],

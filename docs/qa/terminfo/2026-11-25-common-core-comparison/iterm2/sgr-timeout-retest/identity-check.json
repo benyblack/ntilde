@@ -1,0 +1,22 @@
+{
+  "runId": "0ec264b9c06429af344d9b44e6e78b2e",
+  "subject": {
+    "kind": "term",
+    "id": "iterm2",
+    "version": "3.7.9",
+    "os": "macos",
+    "osVersion": "27.0.1",
+    "outerTerminal": null,
+    "mux": null,
+    "config": null,
+    "permissions": null
+  },
+  "rawSha256": "2b6492be13fe47564914bc18d5b60ac2a4a7dabbe8ee06503bef190c6a77c803",
+  "upstreamRevision": "96789dbd81b0924cbe5de285488edf9d62c32c73",
+  "checkerSha256": "8232508beb40a0b2dfd16596d5bc050b8e6f043fe0470a0085590b28b41c7964",
+  "check": {
+    "ok": true,
+    "checked": true
+  },
+  "verifiedAt": "2026-11-25T19:34:23.556Z"
+}
