@@ -77,6 +77,7 @@ Verify an existing publication without desktop access:
 
 ```sh
 node scripts/terminfo-common-core-publication.mjs --check
+node scripts/terminfo-common-core-publication.mjs --check --historical
 node --test scripts/terminfo/common-core-*.test.mjs
 ```
 

@@ -8,6 +8,11 @@ const repo = 'https://github.com/benyblack/ntilde';
 const evidence = `${repo}/tree/main/${comparison.evidencePath}`;
 const base = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
 const qualification = `${base}qualification/`;
+type ComparisonSubject = (typeof comparison.subjects)[number];
+type OutcomeCounts = ComparisonSubject['counts'];
+const subjects: (ComparisonSubject & {
+  focusedRetest?: { counts: OutcomeCounts; currentCounts: OutcomeCounts; caseIds: string[] };
+})[] = comparison.subjects;
 const baselines = [
   { id: 'core', label: 'Core', totals: core.totals, dateLabel: 'Report dated', captured: core.measurement.asOf,
     reportUrl: core.source.links.report, detailUrl: qualification, detailLabel: 'Explore every Core requirement',
@@ -59,12 +64,16 @@ const date = new Date(comparison.subjects.map(s => s.measuredAt).sort().at(-1)!)
 
     <section class="mt-16" aria-labelledby="comparison-title" id="comparison">
     <h2 id="comparison-title" class="text-2xl font-semibold text-white">Historical comparison: the same tests across three terminals</h2>
-    <p class="mt-4 max-w-4xl leading-relaxed text-ink-300">The retained November 11 runs used one versioned terminal test suite. The separate Ntilde-owned qualifications above do not replace results or fill gaps in this comparison.</p>
+    <p class="mt-4 max-w-4xl leading-relaxed text-ink-300">These runs used one versioned Core test suite on the same Mac. Each result comes from the shared suite’s own observations.</p>
     <p class="mt-4 text-sm text-ink-400">Measured {date} · macOS {comparison.method.os} · {comparison.method.geometry.cols} columns × {comparison.method.geometry.rows} rows · {comparison.requirementCount} frozen Core feature IDs</p>
 
+    <p class="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+      <a class="text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/${comparison.evidencePath}/report.md`}>Read the comparison report →</a>
+      <a class="text-ntilde-300 underline underline-offset-4" href={`${repo}/blob/main/docs/qa/terminfo/2026-11-11-common-core-comparison/report.md`}>November 11 comparison →</a>
+    </p>
     <p class="mt-6 max-w-4xl rounded-lg border border-amber-900/60 bg-amber-950/20 p-4 text-sm leading-relaxed text-amber-100">Observer gaps prevented a complete comparison. These are recorded measurement outcomes, and they do not establish a terminal capability ranking.</p>
     <div class="mt-10 grid gap-4 md:grid-cols-3">
-      {comparison.subjects.map(subject => (
+      {subjects.map(subject => (
         <article class="rounded-xl border border-ink-800 bg-ink-900/40 p-6">
           <h2 class="text-xl font-semibold text-white">{subject.label}</h2>
           <p class="mt-1 font-mono text-sm text-ink-400">{subject.version}{subject.id === 'ntilde' && <span class="ml-2 font-sans text-xs">build label</span>}</p>

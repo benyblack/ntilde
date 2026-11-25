@@ -507,22 +507,24 @@ end tell`,
 
 /** Close only the newly recorded iTerm window behind a current single-session TTY witness. */
 function closeITermWindow() {
-    let witness = 'error "owned worker witness absent"';
-    if (worker) {
-        witness = [
-            'if (count of sessions of tab 1 of w) is not 1 then error "owned session witness absent"',
-            'if (tty of session 1 of tab 1 of w) is not ' +
-                JSON.stringify(worker.tty) +
-                ' then error "owned TTY changed"',
-        ].join('\n');
-    }
+    const witness = worker
+        ? 'if (tty of session 1 of tab 1 of w) is not ' + JSON.stringify(worker.tty) + ' then error "owned TTY changed"'
+        : 'error "owned worker witness absent"';
+    // iTerm may have removed an exited session while its window is still closing. In that state only observe absence.
     const script = `tell application "iTerm"
 set matches to every window whose id is ${windowId}
 if (count of matches) is 1 then
 set w to item 1 of matches
-if (count of tabs of w) is not 1 then error "owned window acquired another tab"
+set tabCount to count of tabs of w
+if tabCount > 1 then error "owned window acquired another tab"
+if tabCount is 1 then
+set sessionCount to count of sessions of tab 1 of w
+if sessionCount > 1 then error "owned tab acquired another session"
+if sessionCount is 1 then
 ${witness}
 close w
+end if
+end if
 end if
 set remaining to count of (every window whose id is ${windowId})
 set waited to 0

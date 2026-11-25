@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "requirements": {
+    "path": "requirements.json",
+    "sha256": "a0c95ead8a653c1555379f89d3ae420172926966ebfd86eb6e92de77d683479c"
+  },
+  "artifacts": [
+    {
+      "path": "upstream-source.zip",
+      "sha256": "35470ab43e880b33289ee45ce1b3477c1f5c2adf2d088d5b54c0c20b02b969fd"
+    },
+    {
+      "path": "upstream-source.json",
+      "sha256": "c8af6d711c8a7657f52500d2b67317824d2b6db20a212e99bc237fd5b1f61363"
+    },
+    {
+      "path": "native-adapter.bundle",
+      "sha256": "64074585a80d5d2355bb0b6f5e3629d33b8e2d80b494a53e1629eb515bfea411"
+    },
+    {
+      "path": "attempts.json",
+      "sha256": "a8d58447b5054d8366d9f2bb380d1eeb9974556f8e15ca04fba797ad4e4dac0a"
+    },
+    {
+      "path": "environment.json",
+      "sha256": "3010d2ce29849d027d5be0c0fac11c2b79cb8b434a6d9ecce45be00fe7a3aab0"
+    },
+    {
+      "path": "native-adapter.patch.gz",
+      "sha256": "56d2c56281c59cb876d8d4856e09f5ef38ffbd4b1ac8eeba2d1357b70adf37a6"
+    },
+    {
+      "path": "source-proof.zip",
+      "sha256": "651e6de983338ed98590565dd97eb0c1abf28347fb733854397b7aab920a58bc"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "ntilde",
+      "label": "Ntilde",
+      "files": {
+        "identity": {
+          "path": "ntilde/identity-check.json",
+          "sha256": "877a9a0da0e7d53965711e7dc5a82751207cfcc4755f1b54d2afb008ca00e89d"
+        },
+        "source": {
+          "path": "ntilde/source.json",
+          "sha256": "7f25b956de3f9cb004c0bfc6e9db9476b99e4a8b7554d3dc2fddb0b7527d0224"
+        },
+        "config": {
+          "path": "ntilde/config.json",
+          "sha256": "5203571fe1dd5c9e4935ea676fdd75185d6944b4a6778229cbeedecaeeba1e16"
+        },
+        "ready": {
+          "path": "ntilde/worker-ready.json",
+          "sha256": "158475572dd930066d2da2c031568dfcbfcff172c745200d19041b00c6e81310"
+        },
+        "completion": {
+          "path": "ntilde/worker-complete.json",
+          "sha256": "aa4732228653321c356574daeada21f3eb6b23c279fbdc86e17810f04dc9f5df"
+        },
+        "cleanup": {
+          "path": "ntilde/cleanup.json",
+          "sha256": "0b700499e71c3ddbe24a5cfdd96f0531a3c2a3db527b46b31fe72bfc9c9bf8d0"
+        },
+        "geometry": {
+          "path": "ntilde/measurement-geometry.json",
+          "sha256": "e4143e9cd83ff85e4a4eac63db01b9a1560ea58778cb769ff2766d5377dd4661"
+        },
+        "raw": {
+          "path": "ntilde/owned-run.zip",
+          "sha256": "659e9078b93ccf1d912063e77af7f455b2b041eda718ca6c8450344b8e625182",
+          "member": "raw.json",
+          "contentSha256": "24afb2a8bfc402c917c9945da1d7375b9eead5ea76ecc76ba300b511329aa07e"
+        }
+      },
+      "archive": {
+        "path": "ntilde/owned-run.zip",
+        "sha256": "659e9078b93ccf1d912063e77af7f455b2b041eda718ca6c8450344b8e625182"
+      }
+    },
+    {
+      "id": "iterm2",
+      "label": "iTerm2",
+      "files": {
+        "identity": {
+          "path": "iterm2/identity-check.json",
+          "sha256": "2e6bc1c485ea4a7f7312e6f1cf295efad5917420001fd68a99a76a682a4ff7a3"
+        },
+        "source": {
+          "path": "iterm2/source.json",
+          "sha256": "e72f403574fe5b2e94bc6a0a7ce6a06a5e1adaaff3a3f46adab1b468cc7575ab"
+        },
+        "config": {
+          "path": "iterm2/config.json",
+          "sha256": "c21b3f5f5e4c35fd589f75c863722dc8749706f49754d24b60f31d74b2b51f8b"
+        },
+        "ready": {
+          "path": "iterm2/worker-ready.json",
+          "sha256": "68f0147cc2781480ffbab6161c334231425ea691f3959f32b69b5625f8ba4d4f"
+        },
+        "completion": {
+          "path": "iterm2/worker-complete.json",
+          "sha256": "4118bbf73a04471cc9f86ea2749d6e4e37cbb4242a6512a91f56e07ca75451c3"
+        },
+        "cleanup": {
+          "path": "iterm2/cleanup.json",
+          "sha256": "cfd9952a93badec74b6b93bf30b4b9efc6728b53986e2d1c7c91b6ea32dca5fa"
+        },
+        "geometry": {
+          "path": "iterm2/measurement-geometry.json",
+          "sha256": "9cdc22548453051fad86a6474273d659e526effb6d32ab6dcacd6ded1168ff20"
+        },
+        "raw": {
+          "path": "iterm2/owned-run.zip",
+          "sha256": "765cc1d78a9bb3424e36aef7ffeb52551402453cc1f604c66899bc5a83dd9112",
+          "member": "raw.json",
+          "contentSha256": "1c5b2ccc4c9705d732ceaf920424083ee176f40eca44bb2b1d5ab6b2260b8f23"
+        }
+      },
+      "archive": {
+        "path": "iterm2/owned-run.zip",
+        "sha256": "765cc1d78a9bb3424e36aef7ffeb52551402453cc1f604c66899bc5a83dd9112"
+      }
+    },
+    {
+      "id": "ghostty",
+      "label": "Ghostty",
+      "files": {
+        "identity": {
+          "path": "ghostty/identity-check.json",
+          "sha256": "371e7ec7304b9e4c125b094d033fea4531ea1df41c5aa632d381256e751f47a2"
+        },
+        "source": {
+          "path": "ghostty/source.json",
+          "sha256": "5faa2073322379f0031a7ae2f420af68fb8f0a5967f7abce897e7fecb8dc8752"
+        },
+        "config": {
+          "path": "ghostty/config.json",
+          "sha256": "fa314ddd99af09d3b11e5f892441d591b61189e74a4d4a33d1897574038a0267"
+        },
+        "ready": {
+          "path": "ghostty/worker-ready.json",
+          "sha256": "0592d9a463d46f30a3937a3bb6ffe9d8962e614998b276d8ffeef40726b34cbe"
+        },
+        "completion": {
+          "path": "ghostty/worker-complete.json",
+          "sha256": "e99f6dc7139c259344ff695103b6a250b38f9c8f28d984d9e662ebb56e1220b2"
+        },
+        "cleanup": {
+          "path": "ghostty/cleanup.json",
+          "sha256": "71f538e19ea671aed00860794603283fe75267e6a6dc5cca30755bbceed06f3a"
+        },
+        "geometry": {
+          "path": "ghostty/measurement-geometry.json",
+          "sha256": "cd658e4acfd4a308f07cc9a389fc82f2cbbfea19b8f455b4c1a473fe3a6f0f58"
+        },
+        "raw": {
+          "path": "ghostty/owned-run.zip",
+          "sha256": "662b6ca694e9159afed47adfc26f76abfcd8282dc4b78d8d1b2cc05157123c34",
+          "member": "raw.json",
+          "contentSha256": "61aa7fa453d7fa6c6a6cec39c7dc0db5af69d0ca25910761fb150c2d288ed25d"
+        }
+      },
+      "archive": {
+        "path": "ghostty/owned-run.zip",
+        "sha256": "662b6ca694e9159afed47adfc26f76abfcd8282dc4b78d8d1b2cc05157123c34"
+      }
+    }
+  ]
+}

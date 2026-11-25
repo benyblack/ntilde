@@ -1,0 +1,1679 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-11-11",
+  "policy": "current-core-site-plus-catalogue-conservative-v1",
+  "sourceAttribution": "terminfo.dev by Bjørn Stabell, CC BY 4.0; extracted criteria, evidence matches and conservative conclusions are Ntilde additions.",
+  "upstreamRevision": "4ca7feef1b4f93887e0d02ecf170f87fdc4fe9ba",
+  "frozenCatalogueRevision": "2ee594d336a6ac8030e6bc0d938f22361d5e7447",
+  "archives": {
+    "owned-run.zip": "5b6e5bc880d0680f5ba87c6af6dd4593cdf6b40869c97f3dc2d4299b373eae8a",
+    "attempt-1-refused.zip": "2ea9281b9d6133e97afa1487e23beeea62f7a927989f7dcddb0e2107b8591eee",
+    "catalogue-sources.zip": "157a59cf685f8e7779ada3ebef3c074a8c511111aa0935a6d082f68a84996a56",
+    "attempt-2-superseded.zip": "cfb6301d19311525c0df236ba1e8ca21ddd7f7e5039ff82b26facdf9f1aaa669",
+    "attempt-3-superseded.zip": "20aae066fe7619b35990e39df3140c07c3208bf1a103341857524b4d9d6c0a87",
+    "attempt-4-invalid-input.zip": "dc7fa18234f3edcbd0207d3d28adef1a71f71a1d655341d3bab7b0a7bdf34f6d"
+  },
+  "appSourceManifestSha256": "cb44b698d459edef414869b1573e383f886ff9b5f68a35b0c64d4598564301a1",
+  "measurement": {
+    "runId": "a326903275d4439257113d05d8450b04",
+    "appRevision": "1c3400f492c41fce836575999b2166dcbdbe3a29",
+    "scriptsRevision": "3cca8daff5c0cc7474d8ad227a9e0d0be49f32d7",
+    "appSrcTree": "9612cbcb3c107ff153120999d1c7e2d819063c68",
+    "sourcePolicy": "readonly-owned-source-graph-v35",
+    "receiptSchema": 41
+  },
+  "attempts": [
+    {
+      "runId": "c21d35dd2be84b7959f4fc5d34852713",
+      "status": "refused",
+      "reason": "The first reset recipe did not clear insert mode from the dirty alternate setup. The pinned text/cursor check passed, but the stricter effect failed. Parent publication refused the disagreement before issuing a receipt; raw attempt retained unchanged."
+    },
+    {
+      "runId": "ad050e3bafba7f1935f3cc806d301089",
+      "status": "superseded",
+      "reason": "Valid original receipt and pinned results retained. Codex later found that alternate-only DECOM setup could restore a clean main bank and mask an incomplete API reset. Not used for current positive conclusions."
+    },
+    {
+      "runId": "5e6eb59e16241ce0240d88d14c459817",
+      "status": "superseded",
+      "reason": "Removed dynamic parent callback execution and independently replayed pinned results; complete receipt retained. Superseded by the same later Codex dirty-main DECOM finding."
+    },
+    {
+      "runId": "1d2b4faf9f9f3a09239c8e166e831a59",
+      "status": "invalid",
+      "reason": "Unexpected input at the initial ASCII fence. Stopped before the gap experiments; no semantic verdict or positive claim is taken from this attempt."
+    },
+    {
+      "runId": "a326903275d4439257113d05d8450b04",
+      "status": "complete",
+      "reason": "Final API explicitly normalizes the promised modes. Three measured API calls include a standalone dirty main screen and dirty main before alternate entry. Full chain remeasured after independent-replay and Codex control fixes; receipt and cleanup completed."
+    }
+  ],
+  "rows": [
+    {
+      "id": "sgr.bold",
+      "name": "Bold (SGR 1)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/1-bold",
+      "siteRequirement": "Send \\x1b[1m X, verify the cell at (0,0) has bold=true . Confirms the SGR 1 attribute is parsed and applied to the character cell.",
+      "catalogueRequirement": "Send <code>\\x1b[1m</code>X, verify the cell at (0,0) has <code>bold=true</code>. Confirms the SGR 1 attribute is parsed and applied to the character cell.",
+      "frozenRequirement": "Send <code>\\x1b[1m</code>X, verify the cell at (0,0) has <code>bold=true</code>. Confirms the SGR 1 attribute is parsed and applied to the character cell.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes attribute applied to the rendered X cell.",
+      "evidence": [
+        {
+          "file": "grading-observations.json",
+          "caseId": "sgr.bold",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.faint",
+      "name": "Faint/dim (SGR 2)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/2-faint-dim",
+      "siteRequirement": "Send \\x1b[2m X, verify the cell at (0,0) has dim=true . Confirms SGR 2 (faint) is parsed and stored as a distinct attribute.",
+      "catalogueRequirement": "Send <code>\\x1b[2m</code>X, verify the cell at (0,0) has <code>dim=true</code>. Confirms SGR 2 (faint) is parsed and stored as a distinct attribute.",
+      "frozenRequirement": "Send <code>\\x1b[2m</code>X, verify the cell at (0,0) has <code>dim=true</code>. Confirms SGR 2 (faint) is parsed and stored as a distinct attribute.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes attribute applied to the rendered X cell.",
+      "evidence": [
+        {
+          "file": "sgattr-observations.json",
+          "caseId": "sgr.faint",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.italic",
+      "name": "Italic (SGR 3)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/3-italic",
+      "siteRequirement": "Send \\x1b[3m X, verify the cell at (0,0) has italic=true .",
+      "catalogueRequirement": "Send <code>\\x1b[3m</code>X, verify the cell at (0,0) has <code>italic=true</code>.",
+      "frozenRequirement": "Send <code>\\x1b[3m</code>X, verify the cell at (0,0) has <code>italic=true</code>.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes attribute applied to the rendered X cell.",
+      "evidence": [
+        {
+          "file": "grading-observations.json",
+          "caseId": "sgr.italic",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.underline.single",
+      "name": "Underline (SGR 4)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/4-underline",
+      "siteRequirement": "Send \\x1b[4m X, verify the cell has a truthy underline attribute.",
+      "catalogueRequirement": "Send <code>\\x1b[4m</code>X, verify the cell has a truthy <code>underline</code> attribute.",
+      "frozenRequirement": "Send <code>\\x1b[4m</code>X, verify the cell has a truthy <code>underline</code> attribute.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes attribute applied to the rendered X cell.",
+      "evidence": [
+        {
+          "file": "sgattr-observations.json",
+          "caseId": "sgr.underline.single",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.inverse",
+      "name": "Inverse video (SGR 7)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/7-inverse-video",
+      "siteRequirement": "Send \\x1b[7m X, verify inverse=true on the cell.",
+      "catalogueRequirement": "Send <code>\\x1b[7m</code>X, verify <code>inverse=true</code> on the cell.",
+      "frozenRequirement": "Send <code>\\x1b[7m</code>X, verify <code>inverse=true</code> on the cell.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes attribute applied to the rendered X cell.",
+      "evidence": [
+        {
+          "file": "sgattr-observations.json",
+          "caseId": "sgr.inverse",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.hidden",
+      "name": "Hidden/invisible (SGR 8)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/8-hidden",
+      "siteRequirement": "Send \\x1b[8m X, verify hidden=true on the cell.",
+      "catalogueRequirement": "Send <code>\\x1b[8m</code>X, verify <code>hidden=true</code> on the cell.",
+      "frozenRequirement": "Send <code>\\x1b[8m</code>X, verify <code>hidden=true</code> on the cell.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes attribute applied to the rendered X cell.",
+      "evidence": [
+        {
+          "file": "sgattr-observations.json",
+          "caseId": "sgr.hidden",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.strikethrough",
+      "name": "Strikethrough (SGR 9)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/9-strikethrough",
+      "siteRequirement": "Send \\x1b[9m X, verify strikethrough=true on the cell.",
+      "catalogueRequirement": "Send <code>\\x1b[9m</code>X, verify <code>strikethrough=true</code> on the cell.",
+      "frozenRequirement": "Send <code>\\x1b[9m</code>X, verify <code>strikethrough=true</code> on the cell.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "attribute applied to the rendered X cell",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes attribute applied to the rendered X cell.",
+      "evidence": [
+        {
+          "file": "sgattr-observations.json",
+          "caseId": "sgr.strikethrough",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.fg.standard",
+      "name": "Standard fg colors (SGR 30-37)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/30-37-standard-fg",
+      "siteRequirement": "Send \\x1b[31m X (red), verify the cell's foreground color has a red channel > 100.",
+      "catalogueRequirement": "Headless: compare neutral C with SGR 31 X and SGR 34 Y; X must differ from the measured baseline and Y from X to show named foreground-color selection. Theme RGB values vary; equality or missing values cannot verify foreground selection. TTY cursor advance does not verify color.",
+      "frozenRequirement": "Headless: compare neutral C with SGR 31 X and SGR 34 Y; X must differ from the measured baseline and Y from X to show named foreground-color selection. Theme RGB values vary; equality or missing values cannot verify foreground selection. TTY cursor advance does not verify color.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "the two named colors select distinct exposed fg RGB values",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes the two named colors select distinct exposed fg RGB values.",
+      "evidence": [
+        {
+          "file": "sgrgb-observations.json",
+          "caseId": "sgr.fg.standard",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.bg.standard",
+      "name": "Standard bg colors (SGR 40-47)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/40-47-standard-bg",
+      "siteRequirement": "Send \\x1b[42m X (green bg), verify the cell's background color has a green channel > 100.",
+      "catalogueRequirement": "Headless: compare neutral C with SGR 41 X and SGR 44 Y; X must differ from the measured baseline and Y from X to show named background-color selection. Theme RGB values vary; equality or missing values cannot verify background selection. TTY cursor advance does not verify color.",
+      "frozenRequirement": "Headless: compare neutral C with SGR 41 X and SGR 44 Y; X must differ from the measured baseline and Y from X to show named background-color selection. Theme RGB values vary; equality or missing values cannot verify background selection. TTY cursor advance does not verify color.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "the two named colors select distinct exposed bg RGB values",
+      "criterionMatch": "matched",
+      "rationale": "The standard RGB suite measures red/blue only. The same-run erase.el-with-attrs experiment separately sends the required SGR 42 over XXXXX at home, observes palette background index 2 with resolved RGB (0,205,0), and checks restoration. The Core derivation explicitly requires the green channel to exceed 100; no red/blue pass is substituted for green.",
+      "evidence": [
+        {
+          "file": "sgrgb-observations.json",
+          "caseId": "sgr.bg.standard",
+          "kind": "case"
+        },
+        {
+          "file": "erar-observations.json",
+          "caseId": "erase.el-with-attrs",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.fg.default",
+      "name": "Default fg color (SGR 39)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/39-default-fg",
+      "siteRequirement": "Send \\x1b[31m X \\x1b[39m Y, verify the second cell's foreground is reset to default (null).",
+      "catalogueRequirement": "Headless: measure neutral C, SGR 31 colored X, then SGR 39 reset R; require X to differ from C and R to match the measured foreground default, which may be RGB or null. TTY cursor advance provides no foreground-color evidence.",
+      "frozenRequirement": "Headless: measure neutral C, SGR 31 colored X, then SGR 39 reset R; require X to differ from C and R to match the measured foreground default, which may be RGB or null. TTY cursor advance provides no foreground-color evidence.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "reset R restores the measured C fg after a distinct colored X",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes reset R restores the measured C fg after a distinct colored X.",
+      "evidence": [
+        {
+          "file": "sgpal-observations.json",
+          "caseId": "sgr.fg.default",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.bg.default",
+      "name": "Default bg color (SGR 49)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/49-default-bg",
+      "siteRequirement": "Send \\x1b[42m X \\x1b[49m Y, verify the second cell's background is reset to default (null).",
+      "catalogueRequirement": "Headless: measure neutral C, SGR 42 colored X, then SGR 49 reset R; require X to differ from C and R to match the measured background default, which may be RGB or null. TTY cursor advance provides no background-color evidence.",
+      "frozenRequirement": "Headless: measure neutral C, SGR 42 colored X, then SGR 49 reset R; require X to differ from C and R to match the measured background default, which may be RGB or null. TTY cursor advance provides no background-color evidence.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "reset R restores the measured C bg after a distinct colored X",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes reset R restores the measured C bg after a distinct colored X.",
+      "evidence": [
+        {
+          "file": "sgpal-observations.json",
+          "caseId": "sgr.bg.default",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.selective-reset.bold",
+      "name": "Reset bold/dim (SGR 22)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/22-reset-bold",
+      "siteRequirement": "Send \\x1b[1m X \\x1b[22m Y, verify the second cell has bold=false and dim=false .",
+      "catalogueRequirement": "In a headless backend, compare neutral C, bold/dim/italic X, and SGR 22 Y: bold and dim must clear while italic remains. Missing style readback makes the attempted reset check PROBE INVALID; a TTY cursor reply does not verify styling. App: before any attribute is set, draw YY and save with DECSC. For each of the seven nonempty subsets of bold, faint and italic, draw YY with the subset set, then restore with DECRC: every subset must change the crop and every restore must return it exactly. The italic-only crop must differ from the original and every other subset crop. Then set all three, draw YY, send the made-up SGR 99 and draw YY: the crop must not change. Send SGR 22 and draw YY. Supported: the crop equals the italic-only crop. Unsupported: the crop equals the original or a different subset crop. A change at the made-up SGR, or a crop matching neither, is PROBE INVALID. On a multiplexer a negative stays PROBE TODO naming the outer terminal. If a subset, restore or expected-crop separation does not qualify, DECRQSS decides, and a silent DECRQSS keeps the row named refusal.",
+      "frozenRequirement": "In a headless backend, compare neutral C, bold/dim/italic X, and SGR 22 Y: bold and dim must clear while italic remains. Missing style readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+      "criterionMatch": "partial",
+      "rationale": "The current upstream catalogue adds a seven-subset App raster test with DECSC/DECRC and an SGR 99 negative control. Fresh stored bold/dim/italic flags satisfy the pinned parser criterion and the live page, but that newer App raster contract was not measured.",
+      "evidence": [
+        {
+          "file": "sgcolors-observations.json",
+          "caseId": "sgr.selective-reset.bold",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.selective-reset.underline",
+      "name": "Reset underline (SGR 24)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/24-reset-underline",
+      "siteRequirement": "Send \\x1b[4m X \\x1b[24m Y, verify the second cell has no underline.",
+      "catalogueRequirement": "In a headless backend, compare neutral C, bold/underlined X, and SGR 24 Y: underline must clear while bold remains. Missing setup readback makes the attempted reset check PROBE INVALID; a TTY cursor reply does not verify styling.",
+      "frozenRequirement": "In a headless backend, compare neutral C, bold/underlined X, and SGR 24 Y: underline must clear while bold remains. Missing setup readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes measured setup attributes clear on Y and unrelated attributes remain set.",
+      "evidence": [
+        {
+          "file": "sgsr-observations.json",
+          "caseId": "sgr.selective-reset.underline",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.selective-reset.inverse",
+      "name": "Reset inverse (SGR 27)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/27-reset-inverse",
+      "siteRequirement": "Send \\x1b[7m X \\x1b[27m Y, verify the second cell has inverse=false .",
+      "catalogueRequirement": "In a headless backend, compare neutral C, bold/inverse X, and SGR 27 Y: inverse must clear while bold remains. Missing setup readback makes the attempted reset check PROBE INVALID; a TTY cursor reply does not verify styling.",
+      "frozenRequirement": "In a headless backend, compare neutral C, bold/inverse X, and SGR 27 Y: inverse must clear while bold remains. Missing setup readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes measured setup attributes clear on Y and unrelated attributes remain set.",
+      "evidence": [
+        {
+          "file": "sgsr-observations.json",
+          "caseId": "sgr.selective-reset.inverse",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.selective-reset.italic",
+      "name": "Reset italic (SGR 23)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/23-reset-italic",
+      "siteRequirement": "Send \\x1b[3m X \\x1b[23m Y, verify the second cell has italic=false .",
+      "catalogueRequirement": "In a headless backend, compare neutral C, bold/italic X, and SGR 23 Y: italic must clear while bold remains. Missing setup readback makes the attempted reset check PROBE INVALID; a TTY cursor reply does not verify styling.",
+      "frozenRequirement": "In a headless backend, compare neutral C, bold/italic X, and SGR 23 Y: italic must clear while bold remains. Missing setup readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes measured setup attributes clear on Y and unrelated attributes remain set.",
+      "evidence": [
+        {
+          "file": "sgcolors-observations.json",
+          "caseId": "sgr.selective-reset.italic",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "sgr.reset",
+      "name": "Reset all (SGR 0)",
+      "category": "sgr",
+      "url": "https://terminfo.dev/sgr/0-reset",
+      "siteRequirement": "Send \\x1b[1;3;4m X \\x1b[0m Y, verify the second cell has bold, italic, and underline all cleared.",
+      "catalogueRequirement": "In a headless backend, compare neutral C, bold/italic/underlined X, and SGR 0 Y: all three measured attributes must clear. Missing setup readback makes the attempted reset check PROBE INVALID; a TTY cursor reply does not verify styling. App: before any attribute is set, draw YY and save with DECSC. For each of the seven subsets of bold, italic and inverse, draw YY with the subset set, then restore with DECRC: every subset must change the crop and every restore must return it exactly. Then set all three, draw YY, send the made-up SGR 99 and draw YY: the crop must not change. Send SGR 0 and draw YY. Supported: the crop equals the original. Unsupported: the crop equals a subset's crop. A change at the made-up SGR, or a crop matching neither, is PROBE INVALID. On a multiplexer a crop equal to a subset stays PROBE TODO naming the outer terminal. If a subset or restore does not qualify, DECRQSS decides, and a silent DECRQSS keeps the row's named refusal.",
+      "frozenRequirement": "In a headless backend, compare neutral C, bold/italic/underlined X, and SGR 0 Y: all three measured attributes must clear. Missing setup readback makes the attempted reset check TEST FAILURE; a TTY cursor reply does not verify styling.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "measured setup attributes clear on Y and unrelated attributes remain set",
+      "criterionMatch": "partial",
+      "rationale": "Fresh stored bold/italic/underline reset passes. The newer upstream App criterion requires the seven-subset bold/italic/inverse raster matrix, DECSC/DECRC restoration and an SGR 99 negative control; these exact raster observations are missing.",
+      "evidence": [
+        {
+          "file": "sgcolors-observations.json",
+          "caseId": "sgr.reset",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "cursor.hide",
+      "name": "Hide cursor (DECTCEM)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/dectcem-hide-cursor",
+      "siteRequirement": "Send ESC [ ? 25 l (DECTCEM reset) and verify the cursor is no longer visible.",
+      "catalogueRequirement": "Headless: measure initial visibility, establish a shown control, check the hidden state and verify restoration. App: with a measured raster, compare the cursor cell raw-pixel digest across shown, hidden and restored frames. Support needs the hidden digest to differ and the restored digest to equal the control; if the attempted check cannot establish a visible control or restored frame, it is PROBE INVALID. DECRQM mode 25 reports the state when no raster is available. If neither a measured raster nor usable DECRQM replies are available, the result is PROBE TODO: shown, hidden and restored frames are captured as evidence, and capture alone does not establish support.",
+      "frozenRequirement": "Headless: measure initial visibility, establish a shown control, check the hidden state and verify restoration. App: with a measured raster, compare the cursor cell raw-pixel digest across shown, hidden and restored frames. Support needs the hidden digest to differ and the restored digest to equal the control; if the attempted check cannot establish a visible control or restored frame, it is TEST FAILURE. DECRQM mode 25 reports the state when no raster is available. If neither a measured raster nor usable DECRQM replies are available, the result is TEST TODO: shown, hidden and restored frames are captured as evidence, and capture alone does not establish support.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "stored cursor visibility changes shown to hidden and the initial state is restored",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes stored cursor visibility changes shown to hidden and the initial state is restored.",
+      "evidence": [
+        {
+          "file": "curq-observations.json",
+          "caseId": "cursor.hide",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "cursor.move.absolute",
+      "name": "Cursor position (CUP)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cup-cursor-position",
+      "siteRequirement": "Send \\x1b[5;10H (CUP), verify cursor is at row 4, col 9 (0-based). In app mode, query with DSR 6 and verify response \\x1b[5;10R .",
+      "catalogueRequirement": "Send <code>\\x1b[5;10H</code> (CUP), verify cursor is at row 4, col 9 (0-based). In app mode, query with DSR 6 and verify response <code>\\x1b[5;10R</code>.",
+      "frozenRequirement": "Send <code>\\x1b[5;10H</code> (CUP), verify cursor is at row 4, col 9 (0-based). In app mode, query with DSR 6 and verify response <code>\\x1b[5;10R</code>.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=5, col=10 after \"\\u001b[5;10H\"",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.move.absolute",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.move.up",
+      "name": "Cursor up (CUU)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cuu-cursor-up",
+      "siteRequirement": "Move cursor down 5 then up 2 via \\x1b[5B\\x1b[2A , verify cursor row is 3 (0-based).",
+      "catalogueRequirement": "Move cursor down 5 then up 2 via <code>\\x1b[5B\\x1b[2A</code>, verify cursor row is 3 (0-based).",
+      "frozenRequirement": "Move cursor down 5 then up 2 via <code>\\x1b[5B\\x1b[2A</code>, verify cursor row is 3 (0-based).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=4, col=1 after \"\\u001b[2A\"",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture seeds row 6 using CUP before CUU 2. The current joined fixture reaches that seed via CUD 5 then CUU 2; CUD 5 was not part of the retained experiment.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.move.up",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.move.down",
+      "name": "Cursor down (CUD)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cud-cursor-down",
+      "siteRequirement": "Send \\x1b[3B (CUD 3), verify cursor row is 3 (0-based).",
+      "catalogueRequirement": "Send <code>\\x1b[3B</code> (CUD 3), verify cursor row is 3 (0-based).",
+      "frozenRequirement": "Send <code>\\x1b[3B</code> (CUD 3), verify cursor row is 3 (0-based).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=4, col=1 after \"\\u001b[3B\"",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.move.down",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.move.forward",
+      "name": "Cursor forward (CUF)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cuf-cursor-forward",
+      "siteRequirement": "Send \\x1b[5C (CUF 5), verify cursor column is 5 (0-based).",
+      "catalogueRequirement": "Send <code>\\x1b[5C</code> (CUF 5), verify cursor column is 5 (0-based).",
+      "frozenRequirement": "Send <code>\\x1b[5C</code> (CUF 5), verify cursor column is 5 (0-based).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=1, col=6 after \"\\u001b[5C\"",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.move.forward",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.move.back",
+      "name": "Cursor back (CUB)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cub-cursor-back",
+      "siteRequirement": "Write \"ABC\" then send \\x1b[2D (CUB 2), verify cursor column is 1 (0-based).",
+      "catalogueRequirement": "Write \"ABC\" then send <code>\\x1b[2D</code> (CUB 2), verify cursor column is 1 (0-based).",
+      "frozenRequirement": "Write \"ABC\" then send <code>\\x1b[2D</code> (CUB 2), verify cursor column is 1 (0-based).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=1, col=2 after \"\\u001b[2D\"",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.move.back",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.move.home",
+      "name": "Cursor home",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/home",
+      "siteRequirement": "Write \"ABC\" then send \\x1b[H ( CUP no params), verify cursor is at (0, 0).",
+      "catalogueRequirement": "Write \"ABC\" then send <code>\\x1b[H</code> (CUP no params), verify cursor is at (0, 0).",
+      "frozenRequirement": "Write \"ABC\" then send <code>\\x1b[H</code> (CUP no params), verify cursor is at (0, 0).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=1, col=1 after \"\\u001b[H\"",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.move.home",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.save-restore",
+      "name": "Save/restore cursor (DECSC)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/decsc-save-restore-cursor",
+      "siteRequirement": "Write \"AB\", save with \\x1b7 (DECSC), move to (5,5), restore with \\x1b8 (DECRC), verify cursor returned to col 2, row 0.",
+      "catalogueRequirement": "Write \"AB\", save with <code>\\x1b7</code> (DECSC), move to (5,5), restore with <code>\\x1b8</code> (DECRC), verify cursor returned to col 2, row 0.",
+      "frozenRequirement": "Write \"AB\", save with <code>\\x1b7</code> (DECSC), move to (5,5), restore with <code>\\x1b8</code> (DECRC), verify cursor returned to col 2, row 0.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "saved cursor returns to 3;5 after measured displacement",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture saves at 3;5, displaces to 10;10 and restores 3;5. The current criterion saves after AB at row 0/column 2 and displaces to 5;5; that exact joined fixture was not observed.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.save-restore",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.cup-boundaries",
+      "name": "CUP at screen boundaries",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cup-screen-boundaries",
+      "siteRequirement": "Send \\x1b[999;999H , verify cursor is at (rows-1, cols-1) — not beyond the screen boundaries.",
+      "catalogueRequirement": "Send <code>\\x1b[999;999H</code>, verify cursor is at (rows-1, cols-1) — not beyond the screen boundaries.",
+      "frozenRequirement": "Send <code>\\x1b[999;999H</code>, verify cursor is at (rows-1, cols-1) — not beyond the screen boundaries.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "CUP 999;999 clamps to measured 40;140 after qualified edge",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.cup-boundaries",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.cuu-past-top",
+      "name": "CUU stops at top",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cuu-past-top",
+      "siteRequirement": "Position at row 3, send \\x1b[999A (CUU with count 999), verify cursor stopped at row 0.",
+      "catalogueRequirement": "Position at row 3, send <code>\\x1b[999A</code> (CUU with count 999), verify cursor stopped at row 0.",
+      "frozenRequirement": "Position at row 3, send <code>\\x1b[999A</code> (CUU with count 999), verify cursor stopped at row 0.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=1, col=1 after \"\\u001b[999A\"",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.cuu-past-top",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.cud-past-bottom",
+      "name": "CUD stops at bottom",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cud-past-bottom",
+      "siteRequirement": "Position at row 0, send \\x1b[999B (CUD with count 999), verify cursor stopped at the last row.",
+      "catalogueRequirement": "Position at row 0, send <code>\\x1b[999B</code> (CUD with count 999), verify cursor stopped at the last row.",
+      "frozenRequirement": "Position at row 0, send <code>\\x1b[999B</code> (CUD with count 999), verify cursor stopped at the last row.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "CUD past the newline-measured bottom clamps at the last row",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.cud-past-bottom",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.cup-scroll-region",
+      "name": "CUP with DECOM",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cup-decom-scroll-region",
+      "siteRequirement": "Set DECSTBM 5;15, enable DECOM , send \\x1b[1;1H , verify cursor is at row 4 (0-based scroll region top). Disable DECOM and reset scroll region.",
+      "catalogueRequirement": "Set DECSTBM 5;15, enable DECOM, send <code>\\x1b[1;1H</code>, verify cursor is at row 4 (0-based scroll region top). Disable DECOM and reset scroll region.",
+      "frozenRequirement": "Set DECSTBM 5;15, enable DECOM, send <code>\\x1b[1;1H</code>, verify cursor is at row 4 (0-based scroll region top). Disable DECOM and reset scroll region.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "DECSTBM 5;15 then DECOM then CUP 1;1 leaves the physical cursor at row 4, column 0 (0-based); the pinned app callback records only region-relative CPR replies",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes DECSTBM 5;15 then DECOM then CUP 1;1 leaves the physical cursor at row 4, column 0 (0-based); the pinned app callback records only region-relative CPR replies.",
+      "evidence": [
+        {
+          "file": "curq-observations.json",
+          "caseId": "cursor.cup-scroll-region",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "cursor.vpa",
+      "name": "VPA vertical position absolute (CSI d)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/vpa-vertical-position-absolute",
+      "siteRequirement": "Position cursor at row 3, col 5, then send \\x1b[10d (VPA row 10), verify cursor moved to row 9 (0-based) while column remained at 5.",
+      "catalogueRequirement": "Position cursor at row 3, col 5, then send <code>\\x1b[10d</code> (VPA row 10), verify cursor moved to row 9 (0-based) while column remained at 5.",
+      "frozenRequirement": "Position cursor at row 3, col 5, then send <code>\\x1b[10d</code> (VPA row 10), verify cursor moved to row 9 (0-based) while column remained at 5.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=10, col=5 after \"\\u001b[10d\"",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.vpa",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.cpl",
+      "name": "CPL cursor preceding line (CSI F)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/cpl-cursor-preceding-line",
+      "siteRequirement": "Position cursor at row 5, col 10, send \\x1b[2F (CPL 2), verify cursor is at row 3, column 0.",
+      "catalogueRequirement": "Position cursor at row 5, col 10, send <code>\\x1b[2F</code> (CPL 2), verify cursor is at row 3, column 0.",
+      "frozenRequirement": "Position cursor at row 5, col 10, send <code>\\x1b[2F</code> (CPL 2), verify cursor is at row 3, column 0.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=4, col=1 after \"\\u001b[2F\"",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.cpl",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "cursor.hpa",
+      "name": "HPA horizontal position absolute (CSI `)",
+      "category": "cursor",
+      "url": "https://terminfo.dev/cursor/hpa-horizontal-position-absolute",
+      "siteRequirement": "Write \"ABCDEFGH\" then send \\x1b[5` (HPA col 5), verify cursor column is 4 (0-based).",
+      "catalogueRequirement": "Write \"ABCDEFGH\" then send <code>\\x1b[5`</code> (HPA col 5), verify cursor column is 4 (0-based).",
+      "frozenRequirement": "Write \"ABCDEFGH\" then send <code>\\x1b[5`</code> (HPA col 5), verify cursor column is 4 (0-based).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor row=3, col=15 after \"\\u001b[15`\"",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture sends CSI 15` from row 3 and observes column 15. The current criterion requires CSI 5` after ABCDEFGH and column 4 (zero-based); that specimen is unmeasured.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "cursor.hpa",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "erase.line.right",
+      "name": "Erase to EOL (EL 0)",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/el-0-erase-to-eol",
+      "siteRequirement": "Write \"XXXXX\", move to col 1 via \\x1b[1G , send \\x1b[K ( EL 0), verify cell at (0,0) is blank.",
+      "catalogueRequirement": "Write \"XXXXX\", move to col 1 via <code>\\x1b[1G</code>, send <code>\\x1b[K</code> (EL 0), verify cell at (0,0) is blank.",
+      "frozenRequirement": "Write \"XXXXX\", move to col 1 via <code>\\x1b[1G</code>, send <code>\\x1b[K</code> (EL 0), verify cell at (0,0) is blank.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "row 0 EL 0 (omitted parameter) erases the contracted cells after a setup cursor of 2,0",
+      "criterionMatch": "partial",
+      "rationale": "The qualified EL 0 fixture uses CSI 3G over ABCDE and preserves AB. The current criterion requires CSI 1G and an erased home cell. The different boundary fixture remains supported independently but cannot pass this exact row.",
+      "evidence": [
+        {
+          "file": "erln-observations.json",
+          "caseId": "erase.line.right",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.line.left",
+      "name": "Erase to BOL (EL 1)",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/el-1-erase-to-bol",
+      "siteRequirement": "Write \"XXXXX\", move to col 3, send \\x1b[1K ( EL 1), verify cell at (0,0) is blank.",
+      "catalogueRequirement": "Write \"XXXXX\", move to col 3, send <code>\\x1b[1K</code> (EL 1), verify cell at (0,0) is blank.",
+      "frozenRequirement": "Write \"XXXXX\", move to col 3, send <code>\\x1b[1K</code> (EL 1), verify cell at (0,0) is blank.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "row 0 EL 1 erases the contracted cells after a setup cursor of 2,0",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes row 0 EL 1 erases the contracted cells after a setup cursor of 2,0.",
+      "evidence": [
+        {
+          "file": "erln-observations.json",
+          "caseId": "erase.line.left",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.line.all",
+      "name": "Erase line (EL 2)",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/el-2-erase-line",
+      "siteRequirement": "Write \"XXXXX\", send \\x1b[2K ( EL 2), verify cell at (0,0) is blank.",
+      "catalogueRequirement": "Write \"XXXXX\", send <code>\\x1b[2K</code> (EL 2), verify cell at (0,0) is blank.",
+      "frozenRequirement": "Write \"XXXXX\", send <code>\\x1b[2K</code> (EL 2), verify cell at (0,0) is blank.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "row 0 EL 2 erases the contracted cells while row 1 keeps KEEP!",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes row 0 EL 2 erases the contracted cells while row 1 keeps KEEP!.",
+      "evidence": [
+        {
+          "file": "erln-observations.json",
+          "caseId": "erase.line.all",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.screen.above",
+      "name": "Erase above (ED 1)",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/ed-1-erase-above",
+      "siteRequirement": "Write three lines, position cursor at row 3 col 2, send \\x1b[1J ( ED 1), verify cell at (0,0) is blank.",
+      "catalogueRequirement": "Write three lines, position the cursor at row 2 col 3, send <code>\\x1b[1J</code> (ED 1), verify the screen start through the cursor is blank and the row below is kept.",
+      "frozenRequirement": "Write three lines, position cursor at row 3 col 2, send <code>\\x1b[1J</code> (ED 1), verify cell at (0,0) is blank.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "rows 0, 20 and 39 read \"     \", \"   BB\", \"CCCCC\" after ED 1 (explicit parameter spelling) with the cursor unmoved from column 2 of row 20",
+      "criterionMatch": "partial",
+      "rationale": "Whole-screen ED 1 checks pass at the measured middle row, including preserved content after the cursor. The current catalogue specifies row 2 column 3, the live page row 3 column 2, and the pinned probe the measured middle row. Neither current exact address was replayed as that joined fixture.",
+      "evidence": [
+        {
+          "file": "erdi-observations.json",
+          "caseId": "erase.screen.above",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.screen.all",
+      "name": "Erase screen (ED 2)",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/ed-2-erase-screen",
+      "siteRequirement": "Write three lines, send \\x1b[2J ( ED 2), verify all visible content is cleared.",
+      "catalogueRequirement": "Write three lines, send <code>\\x1b[2J</code> (ED 2), verify all visible content is cleared.",
+      "frozenRequirement": "Write three lines, send <code>\\x1b[2J</code> (ED 2), verify all visible content is cleared.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "rows 0, 20 and 39 read \"     \", \"     \", \"     \" after ED 2 (explicit parameter spelling) with the cursor unmoved from column 2 of row 20",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes rows 0, 20 and 39 read \"     \", \"     \", \"     \" after ED 2 (explicit parameter spelling) with the cursor unmoved from column 2 of row 20.",
+      "evidence": [
+        {
+          "file": "erdi-observations.json",
+          "caseId": "erase.screen.all",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.screen.below",
+      "name": "Erase below (ED 0)",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/ed-0-erase-below",
+      "siteRequirement": "Write three lines, move home, send \\x1b[J ( ED 0), verify line 2 content is gone.",
+      "catalogueRequirement": "Write three lines, move home, send <code>\\x1b[J</code> (ED 0), verify line 2 content is gone.",
+      "frozenRequirement": "Write three lines, move home, send <code>\\x1b[J</code> (ED 0), verify line 2 content is gone.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "rows 0, 20 and 39 read \"AAAAA\", \"BB   \", \"     \" after ED 0 (explicit parameter spelling) with the cursor unmoved from column 2 of row 20",
+      "criterionMatch": "partial",
+      "rationale": "The qualified ED 0 cases operate at the measured middle row, including the omitted spelling. The current live-page fixture moves home and checks line 2 after omitted-parameter ED 0; that joined home-boundary specimen is not retained.",
+      "evidence": [
+        {
+          "file": "erdi-observations.json",
+          "caseId": "erase.screen.below",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.screen.scrollback",
+      "name": "Erase scrollback (ED 3)",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/ed-3-erase-scrollback",
+      "siteRequirement": "Write 30 lines to fill scrollback , send \\x1b[3J ( ED 3), verify total line count is at most screen height.",
+      "catalogueRequirement": "Write 30 lines to fill scrollback, send <code>\\x1b[3J</code> (ED 3), verify total line count is at most screen height.",
+      "frozenRequirement": "Write 30 lines to fill scrollback, send <code>\\x1b[3J</code> (ED 3), verify total line count is at most screen height.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "ED 3 `ESC[3J` removes the measured saved lines (the screen is scrolled by rows+2 line feeds first) and the measured total returns to the screen rows",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes ED 3 `ESC[3J` removes the measured saved lines (the screen is scrolled by rows+2 line feeds first) and the measured total returns to the screen rows.",
+      "evidence": [
+        {
+          "file": "echh-observations.json",
+          "caseId": "erase.screen.scrollback",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.character",
+      "name": "Erase character (ECH)",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/ech-erase-character",
+      "siteRequirement": "Write \"ABCDE\", move to col 1, send \\x1b[3X ( ECH 3), verify first 3 cells are blank and \"D\" remains at col 3.",
+      "catalogueRequirement": "Write \"ABCDE\", move to col 1, send <code>\\x1b[3X</code> (ECH 3), verify first 3 cells are blank and \"D\" remains at col 3.",
+      "frozenRequirement": "Write \"ABCDE\", move to col 1, send <code>\\x1b[3X</code> (ECH 3), verify first 3 cells are blank and \"D\" remains at col 3.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "ECH `ESC[3X` at column 0 of ABCDE erases exactly cells 0..2 in place: cells 0..2 read blank and cells 3 and 4 read D and E, after a setup cursor of 0,0",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes ECH `ESC[3X` at column 0 of ABCDE erases exactly cells 0..2 in place: cells 0..2 read blank and cells 3 and 4 read D and E, after a setup cursor of 0,0.",
+      "evidence": [
+        {
+          "file": "echh-observations.json",
+          "caseId": "erase.character",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.el-with-attrs",
+      "name": "EL erases with bg color",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/el-erase-with-bg-color",
+      "siteRequirement": "Set green background with \\x1b[42m , write text, move to start of line, send \\x1b[K ( EL 0 ), verify erased cells have the green background color.",
+      "catalogueRequirement": "Set green background with <code>\\x1b[42m</code>, write text, move to start of line, send <code>\\x1b[K</code> (EL 0), verify erased cells have the green background color.",
+      "frozenRequirement": "Set green background with <code>\\x1b[42m</code>, write text, move to start of line, send <code>\\x1b[K</code> (EL 0), verify erased cells have the green background color.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "after SGR 42 and XXXXX at the home cell with the cursor back at column 0, ESC[K leaves cell (0,0) blank with the same resolved background RGB the X had; the termless probe reads that one cell twice and compares resolved RGB only",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes after SGR 42 and XXXXX at the home cell with the cursor back at column 0, ESC[K leaves cell (0,0) blank with the same resolved background RGB the X had; the termless probe reads that one cell twice and compares resolved RGB only.",
+      "evidence": [
+        {
+          "file": "erar-observations.json",
+          "caseId": "erase.el-with-attrs",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "erase.ed-scroll-region",
+      "name": "ED at scroll region boundary",
+      "category": "erase",
+      "url": "https://terminfo.dev/erase/ed-scroll-region-boundary",
+      "siteRequirement": "Write \"KEEP_THIS\" on row 0, set scroll region 3;10, move cursor inside region, send \\x1b[J ( ED 0 ), verify row 0 still contains \"KEEP_THIS\".",
+      "catalogueRequirement": "Write \"KEEP_THIS\" on row 0, set scroll region 3;10, move cursor inside region, send <code>\\x1b[J</code> (ED 0), verify row 0 still contains \"KEEP_THIS\".",
+      "frozenRequirement": "Write \"KEEP_THIS\" on row 0, set scroll region 3;10, move cursor inside region, send <code>\\x1b[J</code> (ED 0), verify row 0 still contains \"KEEP_THIS\".",
+      "catalogueChanged": false,
+      "pinnedCriterion": "with KEEP! on row 0, ERASE on row 2, margins 3;10 and the cursor at row 2 column 0, ESC[J leaves row 0 reading KEEP! and the first five cells of row 2 blank; the termless probe reads rows 0 and 2 (first five cells) and the cursor before the erase only",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes with KEEP! on row 0, ERASE on row 2, margins 3;10 and the cursor at row 2 column 0, ESC[J leaves row 0 reading KEEP! and the first five cells of row 2 blank; the termless probe reads rows 0 and 2 (first five cells) and the cursor before the erase only.",
+      "evidence": [
+        {
+          "file": "erar-observations.json",
+          "caseId": "erase.ed-scroll-region",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "modes.alt-screen.enter",
+      "name": "Enter alt screen (DECSET 1049)",
+      "category": "modes",
+      "url": "https://terminfo.dev/modes/decset-1049-alt-screen-enter",
+      "siteRequirement": "Send \\x1b[?1049h ( DECSET 1049), verify altScreen mode is active.",
+      "catalogueRequirement": "App probe: query DECRPM for private mode 1049 with <code>CSI ? 1049 $ p</code>. Expected: DECRPM mode 1049 can be set. App arm: where DECRPM gives no reply or Ps 0, a controlled effect read in the same run decides: the effect appears with the mode set and not with it reset. A missing reply alone decides nothing and stays PROBE INVALID when no effect read is made.",
+      "frozenRequirement": "App probe: query DECRPM for private mode 1049 with <code>CSI ? 1049 $ p</code>. Expected: DECRPM mode 1049 can be set.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "DECRPM mode 1049 recognized (set or reset)",
+      "criterionMatch": "matched",
+      "rationale": "The same-run seeded 1049 roundtrip observes the active alternate buffer on entry, the isolated marker and exact main restoration. The stock recognition-only grade is kept separately.",
+      "evidence": [
+        {
+          "file": "svrs-observations.json",
+          "caseId": "modes.alt-screen.exit",
+          "kind": "case"
+        },
+        {
+          "file": "raw.json",
+          "caseId": "modes.alt-screen.enter",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "modes.alt-screen.exit",
+      "name": "Exit alt screen (DECRST 1049)",
+      "category": "modes",
+      "url": "https://terminfo.dev/modes/decrst-1049-alt-screen-exit",
+      "siteRequirement": "Enter then exit alt screen via \\x1b[?1049h / \\x1b[?1049l , verify altScreen mode is off.",
+      "catalogueRequirement": "Enter then exit alt screen via <code>\\x1b[?1049h</code> / <code>\\x1b[?1049l</code>, verify <code>altScreen</code> mode is off. If the same run reads the entry (modes.alt-screen.enter) Unsupported, the exit was not reached and reads Untestable (no setup), naming that entry result.",
+      "frozenRequirement": "Enter then exit alt screen via <code>\\x1b[?1049h</code> / <code>\\x1b[?1049l</code>, verify <code>altScreen</code> mode is off.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "PRIMARY-A/B restored, ALT-MARK not leaked and cursor back at 6,4 after a seeded ?1049 roundtrip (supported or inconclusive, never unsupported)",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes PRIMARY-A/B restored, ALT-MARK not leaked and cursor back at 6,4 after a seeded ?1049 roundtrip (supported or inconclusive, never unsupported).",
+      "evidence": [
+        {
+          "file": "svrs-observations.json",
+          "caseId": "modes.alt-screen.exit",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "modes.reverse-video",
+      "name": "Reverse video (DECSCNM)",
+      "category": "modes",
+      "url": "https://terminfo.dev/modes/decscnm-reverse-video",
+      "siteRequirement": "Send \\x1b[?5h ( DECSCNM ), verify reverseVideo mode is active.",
+      "catalogueRequirement": "Library mode-state criterion: DECSET private mode 5, query DECRPM and read getMode, then DECRST, query and read again. Supported requires Ps 1 after set, Ps 2 after reset and getMode true then false. Ps 0, 2 or 4 after DECSET is Unsupported. No reply stays review PROBE TODO; null or disagreeing getMode and every other reply pair, including Ps 3, stay PROBE TODO. presentation (inverted frame) unmeasured; protocol measured. App protocol criterion: snapshot DECRPM mode 5. Ps 1 or 3 is Supported without mutation; Ps 4 is Unsupported without mutation. Ps 2 sends DECSET, queries again, then restores DECRST: Ps 1 or 3 is Supported; still Ps 2 is Unsupported (recognized but DECSET refused (mode kept reset)). Requires existing disposable-terminal authority. The DECRPM reply does not measure tearing, scroll cadence or the inverted frame. App arm: where DECRPM gives no reply or Ps 0, a controlled effect read in the same run decides: the effect appears with the mode set and not with it reset. A missing reply alone decides nothing and stays PROBE INVALID when no effect read is made.",
+      "frozenRequirement": "Library mode-state criterion: DECSET private mode 5, query DECRPM and read getMode, then DECRST, query and read again. Supported requires Ps 1 after set, Ps 2 after reset and getMode true then false. Ps 0, 2 or 4 after DECSET is Unsupported. No reply stays review TEST TODO; null or disagreeing getMode and every other reply pair, including Ps 3, stay TEST TODO. presentation (inverted frame) unmeasured; protocol measured. App protocol criterion: snapshot DECRPM mode 5. Ps 1 or 3 is Supported without mutation; Ps 0 or 4 is Unsupported without mutation. Ps 2 sends DECSET, queries again, then restores DECRST: Ps 1 or 3 is Supported; still Ps 2 is Unsupported (recognized but DECSET refused (mode kept reset)). No reply is TEST TODO: no DECRPM reply. Requires existing disposable-terminal authority. presentation (tearing, scroll cadence, inverted frame) unmeasured; protocol measured",
+      "catalogueChanged": true,
+      "pinnedCriterion": "DECRPM mode 5 recognized (set or reset)",
+      "criterionMatch": "partial",
+      "rationale": "The stock trace only queries DECRPM 5 and receives Ps 2. It neither sends DECSET 5 nor observes Ps 1 followed by restored Ps 2. Recognition alone cannot satisfy the live-page activation or current catalogue transition criterion.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "modes.reverse-video",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "modes.auto-wrap",
+      "name": "Auto-wrap (DECAWM)",
+      "category": "modes",
+      "url": "https://terminfo.dev/modes/decawm-auto-wrap",
+      "siteRequirement": "Write 80+ characters, verify text wraps to the next row.",
+      "catalogueRequirement": "App probe: query DECRPM for private mode 7. A set/reset reply establishes mode recognition only; unknown or no reply from the attempted query is PROBE INVALID. The DECRPM reply does not measure line wrapping (the headless probe measures wrapping separately). App arm: where DECRPM gives no reply or Ps 0, a controlled effect read in the same run decides: the effect appears with the mode set and not with it reset. A missing reply alone decides nothing and stays PROBE INVALID when no effect read is made.",
+      "frozenRequirement": "App probe: query DECRPM for private mode 7. A set/reset reply establishes mode recognition only; unknown or no reply from the attempted query is TEST FAILURE. This does not measure line wrapping (the headless probe measures wrapping separately).",
+      "catalogueChanged": true,
+      "pinnedCriterion": "DECRPM mode 7 recognized (set or reset)",
+      "criterionMatch": "partial",
+      "rationale": "The stock mode-7 reply proves recognition. The width-dependent text.wrap trace reads cursor replies rather than the current live-page wrapped-text effect; the report does not substitute recognition or movement for the missing joined content observation.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.wrap",
+          "kind": "stock"
+        },
+        {
+          "file": "raw.json",
+          "caseId": "modes.auto-wrap",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.accumulate",
+      "name": "Scrollback accumulates",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/accumulates",
+      "siteRequirement": "Write 30 lines (exceeding the 24-row screen), verify total line count exceeds 24.",
+      "catalogueRequirement": "Write 30 lines (exceeding the 24-row screen), verify total line count exceeds 24.",
+      "frozenRequirement": "Write 30 lines (exceeding the 24-row screen), verify total line count exceeds 24.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "rows+10 lines `line N` grow the measured scrollback; observed as the exact ordered history and viewport",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes rows+10 lines `line N` grow the measured scrollback; observed as the exact ordered history and viewport.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.accumulate",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.total-lines",
+      "name": "Total line count",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/total-lines",
+      "siteRequirement": "Write 30 lines, verify total line count is at least 30.",
+      "catalogueRequirement": "Write 10 more lines than the measured screen height and verify retained history grows by at least those 10 lines. Growth of 1 to 9 lines is Unsupported. No change in the count is PROBE TODO, because nothing in the run shows that the reader counts history.",
+      "frozenRequirement": "Write 10 more lines than the measured screen height and verify retained history grows by at least those 10 lines. Growth of 1 to 9 lines is Unsupported. No change in the count is TEST TODO, because nothing in the run shows that the reader counts history.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "rows+10 lines `line N` raise the measured total line count above its baseline; observed as rows plus the exact history lines",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes rows+10 lines `line N` raise the measured total line count above its baseline; observed as rows plus the exact history lines.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.total-lines",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.scroll-up",
+      "name": "Scroll up (SU)",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/su-scroll-up",
+      "siteRequirement": "Write \"TOP\" on row 1 then fill the screen, send \\x1b[S ( SU 1), verify row 0 no longer starts with \"T\".",
+      "catalogueRequirement": "Write \"TOP\" on row 1 then fill the screen, send <code>\\x1b[S</code> (SU 1), verify row 0 no longer starts with \"T\".",
+      "frozenRequirement": "Write \"TOP\" on row 1 then fill the screen, send <code>\\x1b[S</code> (SU 1), verify row 0 no longer starts with \"T\".",
+      "catalogueChanged": false,
+      "pinnedCriterion": "Interior-region SU shifts the measured middle and bottom rows up, clearing the region bottom, with no history growth",
+      "criterionMatch": "matched",
+      "rationale": "The pinned contract establishes exact interior-region shifts and introduced blanks. The same-run main-screen history.scroll-up.main.default supplies the full-screen SU effect, unaffected cursor and actual history, so region-only evidence is not substituted for full-screen behavior.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.scroll-up",
+          "kind": "case"
+        },
+        {
+          "file": "history-observations.json",
+          "caseId": "history.scroll-up.main.default",
+          "kind": "observation"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.scroll-down",
+      "name": "Scroll down (SD)",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/sd-scroll-down",
+      "siteRequirement": "Write 3 lines, send \\x1b[T ( SD 1), verify row 0 is now blank (content shifted down).",
+      "catalogueRequirement": "Write 3 lines, send <code>\\x1b[T</code> (SD 1), verify row 0 is now blank (content shifted down).",
+      "frozenRequirement": "Write 3 lines, send <code>\\x1b[T</code> (SD 1), verify row 0 is now blank (content shifted down).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "SD inserts a blank row above the measured LINE marker",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes SD inserts a blank row above the measured LINE marker.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.scroll-down",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.reverse-index",
+      "name": "Reverse index (RI)",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/ri-reverse-index",
+      "siteRequirement": "Write 3 lines, move to row 0, send \\x1bM (RI), verify row 0 is now blank.",
+      "catalogueRequirement": "Write 3 lines, move to row 0, send <code>\\x1bM</code> (RI), verify row 0 is now blank.",
+      "frozenRequirement": "Write 3 lines, move to row 0, send <code>\\x1bM</code> (RI), verify row 0 is now blank.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "RI at the top margin inserts a blank row above the measured A marker",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes RI at the top margin inserts a blank row above the measured A marker.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.reverse-index",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.set-region",
+      "name": "Scroll region (DECSTBM)",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/decstbm-scroll-region",
+      "siteRequirement": "Send \\x1b[5;10r ( DECSTBM ), verify cursor moves to home position (0,0). Then reset with \\x1b[r .",
+      "catalogueRequirement": "Send <code>\\x1b[5;10r</code> (DECSTBM), verify cursor moves to home position (0,0). Then reset with <code>\\x1b[r</code>.",
+      "frozenRequirement": "Send <code>\\x1b[5;10r</code> (DECSTBM), verify cursor moves to home position (0,0). Then reset with <code>\\x1b[r</code>.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "DECSTBM constrains scrolling to the requested region",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes DECSTBM constrains scrolling to the requested region.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.set-region",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.alt-screen",
+      "name": "Alt screen separate scrollback",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/alt-screen-separate-scrollback",
+      "siteRequirement": "Write \"NORMAL\", enter alt screen with \\x1b[?1049h , verify altScreen mode is active.",
+      "catalogueRequirement": "Enter and leave the alternate screen, then inspect cursor position. This cannot establish independent retained scrollback without history readback, so the cursor-position attempt is PROBE INVALID for the scrollback claim without history readback.",
+      "frozenRequirement": "Enter and leave the alternate screen, then inspect cursor position. This cannot establish independent retained scrollback without history readback, so the cursor-position attempt is TEST FAILURE for the scrollback claim without history readback.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "The alternate screen preserves normal scrollback",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes The alternate screen preserves normal scrollback.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.alt-screen",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.decstbm",
+      "name": "DECSTBM constrains scrolling",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/decstbm-constrained-scrolling",
+      "siteRequirement": "Write \"FIXED_TOP\" on row 0, set DECSTBM 3;10, move inside region, write enough lines to trigger scrolling, verify row 0 still contains \"FIXED_TOP\".",
+      "catalogueRequirement": "Write \"FIXED_TOP\" on row 0, set DECSTBM 3;10, move inside region, write enough lines to trigger scrolling, verify row 0 still contains \"FIXED_TOP\".",
+      "frozenRequirement": "Write \"FIXED_TOP\" on row 0, set DECSTBM 3;10, move inside region, write enough lines to trigger scrolling, verify row 0 still contains \"FIXED_TOP\".",
+      "catalogueChanged": false,
+      "pinnedCriterion": "DECSTBM scrolls the inner marker while preserving FIXED_TOP outside the region",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes DECSTBM scrolls the inner marker while preserving FIXED_TOP outside the region.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.decstbm",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "scrollback.decstbm-reset",
+      "name": "DECSTBM reset to full screen",
+      "category": "scrollback",
+      "url": "https://terminfo.dev/scrollback/decstbm-reset-full-screen",
+      "siteRequirement": "Set DECSTBM 5;10, then send \\x1b[r (no params), write 30 lines, verify full-screen scrolling works (total lines > screen height).",
+      "catalogueRequirement": "Set DECSTBM 5;10, then send <code>\\x1b[r</code> (no params), write 30 lines, verify full-screen scrolling works (total lines > screen height).",
+      "frozenRequirement": "Set DECSTBM 5;10, then send <code>\\x1b[r</code> (no params), write 30 lines, verify full-screen scrolling works (total lines > screen height).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "Reset DECSTBM permits full-screen scrolling into history",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes Reset DECSTBM permits full-screen scrolling into history.",
+      "evidence": [
+        {
+          "file": "scrl-observations.json",
+          "caseId": "scrollback.decstbm-reset",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "text.basic",
+      "name": "Basic text rendering",
+      "category": "text",
+      "url": "https://terminfo.dev/text/basic-text-rendering",
+      "siteRequirement": "Write \"Hello\", verify the text buffer contains \"Hello\". In app mode, verify cursor advanced to column 6.",
+      "catalogueRequirement": "Write \"Hello\", verify the text buffer contains \"Hello\". In app mode, verify cursor advanced to column 6.",
+      "frozenRequirement": "Write \"Hello\", verify the text buffer contains \"Hello\". In app mode, verify cursor advanced to column 6.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "Hello appears after a measured empty control",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes Hello appears after a measured empty control.",
+      "evidence": [
+        {
+          "file": "grading-observations.json",
+          "caseId": "text.basic",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "text.wrap",
+      "name": "Text wraps at width",
+      "category": "text",
+      "url": "https://terminfo.dev/text/wrap-at-width",
+      "siteRequirement": "Write 85 characters, verify text wrapped and a character appears on row 1.",
+      "catalogueRequirement": "Write 85 characters, verify text wrapped and a character appears on row 1.",
+      "frozenRequirement": "Write 85 characters, verify text wrapped and a character appears on row 1.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "wrap after 140 columns lands the cursor at row 2, column 2",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture uses the measured 140-column width and reads CPR after width+1 characters. The current criterion writes 85 characters and reads a character on row 1; no joined cell observation or matching 80-column specimen is retained.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.wrap",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.wide.cjk",
+      "name": "CJK wide chars (2 cols)",
+      "category": "text",
+      "url": "https://terminfo.dev/text/cjk-wide-chars",
+      "siteRequirement": "Write U+4E2D ( CJK character), verify the cell has wide=true (occupies 2 columns).",
+      "catalogueRequirement": "Write U+4E2D (CJK character), verify the cell has <code>wide=true</code> (occupies 2 columns).",
+      "frozenRequirement": "Write U+4E2D (CJK character), verify the cell has <code>wide=true</code> (occupies 2 columns).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "中 occupies two columns after ASCII calibration",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace measures a two-column CPR width after ASCII calibration, but the current criterion explicitly asks for a stored wide=true cell. This run has no joined stored-cell observation of that CJK specimen.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.wide.cjk",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.tab",
+      "name": "Tab stops",
+      "category": "text",
+      "url": "https://terminfo.dev/text/ht-tab-stops",
+      "siteRequirement": "Write tab then \"X\", verify X appears at column 8 (after the default 8-column tab stop).",
+      "catalogueRequirement": "Write tab then \"X\", verify X appears at column 8 (after the default 8-column tab stop).",
+      "frozenRequirement": "Write tab then \"X\", verify X appears at column 8 (after the default 8-column tab stop).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "combined HT/HTS fixture advances to the nearest owned stop at row 1, column 6",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock fixture qualifies a custom stop at column 6 (one-based). It neither writes X nor observes X at the required default column 8 (zero-based). The explicit HTS row is separate.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.tab",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "unicode.tab-stops",
+      "name": "Tab Stops (HT)",
+      "category": "unicode",
+      "url": "https://terminfo.dev/unicode/tab-stops",
+      "siteRequirement": "Send a tab character, verify cursor moves to column 8.",
+      "catalogueRequirement": "Send a tab character, verify cursor moves to column 8.",
+      "frozenRequirement": "Send a tab character, verify cursor moves to column 8.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "cursor column 10 after tab",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock assertion expects column 10 after its custom-stop fixture. The current site and catalogue require column 8. A valid different fixture is not a failure of the requested default-stop criterion, so that criterion remains inconclusive.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "unicode.tab-stops",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.cr",
+      "name": "Carriage return",
+      "category": "text",
+      "url": "https://terminfo.dev/text/cr-carriage-return",
+      "siteRequirement": "Write \"AB\\rC\", verify C overwrote A at col 0 while B remains at col 1.",
+      "catalogueRequirement": "Write \"AB\\rC\", verify C overwrote A at col 0 while B remains at col 1.",
+      "frozenRequirement": "Write \"AB\\rC\", verify C overwrote A at col 0 while B remains at col 1.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "CR moves cursor from 1;3 to 1;1",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace writes AB and sends CR, then reads only the cursor. It never writes C or reads the resulting C/B cells, so the joined AB\\rC overwrite criterion is unmeasured.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.cr",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.newline",
+      "name": "Line feed",
+      "category": "text",
+      "url": "https://terminfo.dev/text/lf-line-feed",
+      "siteRequirement": "Write \"A\\r\\nB\", verify A is at cell (0,0) and B is at cell (1,0).",
+      "catalogueRequirement": "Headless: write \"A\\r\\nB\" and verify A and B on consecutive rows. App: establish row 3, column 5, write LF, and measure advancement to row 4; retain the final column without requiring it to stay unchanged.",
+      "frozenRequirement": "Headless: write \"A\\r\\nB\" and verify A and B on consecutive rows. App: establish row 3, column 5, write LF, and measure advancement to row 4; retain the final column without requiring it to stay unchanged.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "LF advances from row 3 to row 4",
+      "criterionMatch": "partial",
+      "rationale": "The fresh App trace validly observes LF advancing row 3 to row 4, which matches the current catalogue App alternative. The live-page criterion additionally asks for A\\r\\nB with A/B cell readback; that joined content observation is missing.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.newline",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.backspace",
+      "name": "Backspace (BS)",
+      "category": "text",
+      "url": "https://terminfo.dev/text/bs-backspace",
+      "siteRequirement": "Write \"AB\\x08C\", verify backspace moved cursor back so C overwrote B at col 1, while A remains at col 0.",
+      "catalogueRequirement": "Write \"AB\\x08C\", verify backspace moved cursor back so C overwrote B at col 1, while A remains at col 0.",
+      "frozenRequirement": "Write \"AB\\x08C\", verify backspace moved cursor back so C overwrote B at col 1, while A remains at col 0.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "BS moves from 1;5 to 1;4",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace observes cursor column 5 becoming 4 after BS. It does not measure AB\\x08C or read the surviving A and overwritten C cells; cursor movement is not evidence of that content criterion.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.backspace",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.index",
+      "name": "Index (IND)",
+      "category": "text",
+      "url": "https://terminfo.dev/text/ind-index",
+      "siteRequirement": "Write \"A\" then send \\x1bD (IND), verify cursor moved down to row 1.",
+      "catalogueRequirement": "Write \"A\" then send <code>\\x1bD</code> (IND), verify cursor moved down to row 1.",
+      "frozenRequirement": "Write \"A\" then send <code>\\x1bD</code> (IND), verify cursor moved down to row 1.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "IND advances cursor from 3;5 to 4;5",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace observes IND from 3;5 to 4;5. The current fixture writes A at the initial row and requires cursor row 1; that exact seeded fixture was not replayed.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.index",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.next-line",
+      "name": "Next line (NEL)",
+      "category": "text",
+      "url": "https://terminfo.dev/text/nel-next-line",
+      "siteRequirement": "Write \"ABC\" then send \\x1bE (NEL), verify cursor is at row 1, col 0.",
+      "catalogueRequirement": "Write \"ABC\" then send <code>\\x1bE</code> (NEL), verify cursor is at row 1, col 0.",
+      "frozenRequirement": "Write \"ABC\" then send <code>\\x1bE</code> (NEL), verify cursor is at row 1, col 0.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "NEL advances cursor from 3;5 to 4;1",
+      "criterionMatch": "partial",
+      "rationale": "The fresh stock trace observes NEL from 3;5 to 4;1. The current fixture writes ABC from home and requires row 1/column 0 (zero-based); that exact seed/address fixture is unmeasured.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.next-line",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.reverse-index-scroll",
+      "name": "Reverse Index at Scroll Top",
+      "category": "text",
+      "url": "https://terminfo.dev/text/reverse-index-scroll",
+      "siteRequirement": "Set scroll region , write text at top row, send Reverse Index ( ESC M ), verify content shifted down by one line.",
+      "catalogueRequirement": "Set scroll region, write text at top row, send Reverse Index (<code>ESC M</code>), verify content shifted down by one line.",
+      "frozenRequirement": "Set scroll region, write text at top row, send Reverse Index (<code>ESC M</code>), verify content shifted down by one line.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "Exact pinned top-boundary fixture and a separately seeded interior region; below-boundary cursor-only control.",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes Exact pinned top-boundary fixture and a separately seeded interior region; below-boundary cursor-only control..",
+      "evidence": [
+        {
+          "file": "cg-observations.json",
+          "caseId": "text.reverse-index-scroll",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "text.overwrite",
+      "name": "Overwrite at cursor",
+      "category": "text",
+      "url": "https://terminfo.dev/text/overwrite-at-cursor",
+      "siteRequirement": "Write \"AB\", move to col 1 via \\x1b[1G , write \"C\", verify cell (0,0) is \"C\" (overwrote \"A\").",
+      "catalogueRequirement": "Write \"AB\", move to col 1 via <code>\\x1b[1G</code>, write \"C\", verify cell (0,0) is \"C\" (overwrote \"A\").",
+      "frozenRequirement": "Write \"AB\", move to col 1 via <code>\\x1b[1G</code>, write \"C\", verify cell (0,0) is \"C\" (overwrote \"A\").",
+      "catalogueChanged": false,
+      "pinnedCriterion": "C overwrites A while B remains",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes C overwrites A while B remains.",
+      "evidence": [
+        {
+          "file": "grading-observations.json",
+          "caseId": "text.overwrite",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "text.hts",
+      "name": "HTS set tab stop (ESC H)",
+      "category": "text",
+      "url": "https://terminfo.dev/text/hts-set-tab-stop",
+      "siteRequirement": "Clear all tab stops with \\x1b[3g , position cursor at column 5 and send \\x1bH ( HTS ), return to column 0 and send a tab — verify cursor advances to column 5.",
+      "catalogueRequirement": "Clear all tab stops with <code>\\x1b[3g</code>, position cursor at column 5 and send <code>\\x1bH</code> (HTS), return to column 0 and send a tab — verify cursor advances to column 5.",
+      "frozenRequirement": "Clear all tab stops with <code>\\x1b[3g</code>, position cursor at column 5 and send <code>\\x1bH</code> (HTS), return to column 0 and send a tab — verify cursor advances to column 5.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "combined HT/HTS fixture advances to the nearest owned stop at row 1, column 6",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.hts",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.tbc",
+      "name": "TBC clear tab stop (CSI g)",
+      "category": "text",
+      "url": "https://terminfo.dev/text/tbc-clear-tab-stop",
+      "siteRequirement": "Clear all tab stops with \\x1b[3g , send a tab from column 1 — verify the cursor advances to the right margin ( DEC VT220 reference manual §4.8), confirming no tab stop remained.",
+      "catalogueRequirement": "In a disposable fixture at least 34 columns wide, measure stops at columns 9, 17 and 25, clear all stops with <code>CSI 3 g</code>, then measure HT from column 1: it must reach the right margin. Reaching an old stop or staying at column 1 is unsupported. If the fixture prerequisite is absent before execution, status is PROBE TODO; if an attempted setup cannot establish seeded stops, or the cursor reply is missing or ambiguous, status is PROBE INVALID. Restore conventional eight-column stops afterward.",
+      "frozenRequirement": "In a disposable fixture at least 34 columns wide, measure stops at columns 9, 17 and 25, clear all stops with <code>CSI 3 g</code>, then measure HT from column 1: it must reach the right margin. Reaching an old stop or staying at column 1 is unsupported. If the fixture prerequisite is absent before execution, status is TEST TODO; if an attempted setup cannot establish seeded stops, or the cursor reply is missing or ambiguous, status is TEST FAILURE. Restore conventional eight-column stops afterward.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "After clearing old stops at columns 9, 17 and 25, tab reaches the right margin",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.tbc",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.cht",
+      "name": "CHT forward tab (CSI I)",
+      "category": "text",
+      "url": "https://terminfo.dev/text/cht-forward-tab",
+      "siteRequirement": "From column 0, send \\x1b[2I (CHT 2) with default 8-column tab stops, verify cursor advanced to column 16 (two tab stops forward).",
+      "catalogueRequirement": "Install known stops at columns 9 and 17 in a disposable fixture, then send <code>CSI 2 I</code> from column 1 and measure column 17. Restore conventional stops afterward.",
+      "frozenRequirement": "Install known stops at columns 9 and 17 in a disposable fixture, then send <code>CSI 2 I</code> from column 1 and measure column 17. Restore conventional stops afterward.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "row 1, col 17",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.cht",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "text.cbt",
+      "name": "CBT backward tab (CSI Z)",
+      "category": "text",
+      "url": "https://terminfo.dev/text/cbt-backward-tab",
+      "siteRequirement": "Position cursor at column 20, send \\x1b[Z (CBT 1) with default 8-column tab stops, verify cursor moved back to column 16.",
+      "catalogueRequirement": "Install known stops at columns 9 and 17 in a disposable fixture, position at column 21, then send <code>CSI Z</code> and measure column 17. Restore conventional stops afterward.",
+      "frozenRequirement": "Install known stops at columns 9 and 17 in a disposable fixture, position at column 21, then send <code>CSI Z</code> and measure column 17. Restore conventional stops afterward.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "row 1, col 17",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "text.cbt",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "reset.sgr",
+      "name": "SGR reset clears attributes",
+      "category": "reset",
+      "url": "https://terminfo.dev/reset/sgr-0-reset-clears-attributes",
+      "siteRequirement": "Apply bold+italic+inverse via \\x1b[1;3;7m X then send \\x1b[0m Y, verify the second cell has all attributes cleared.",
+      "catalogueRequirement": "Apply bold+italic+inverse via <code>\\x1b[1;3;7m</code>X then send <code>\\x1b[0m</code>Y, verify the second cell has all attributes cleared. App: before any attribute is set, draw YY and save with DECSC. For each of the seven subsets of bold, italic and inverse, draw YY with the subset set, then restore with DECRC: every subset must change the crop and every restore must return it exactly. Then set all three, draw YY, send the made-up SGR 99 and draw YY: the crop must not change. Send SGR 0 and draw YY. Supported: the crop equals the original. Unsupported: the crop equals a subset's crop. A change at the made-up SGR, or a crop matching neither, is PROBE INVALID. On a multiplexer a crop equal to a subset stays PROBE TODO naming the outer terminal. If a subset or restore does not qualify, DECRQSS decides, and a silent DECRQSS keeps the row's named refusal.",
+      "frozenRequirement": "Apply bold+italic+inverse via <code>\\x1b[1;3;7m</code>X then send <code>\\x1b[0m</code>Y, verify the second cell has all attributes cleared.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "ESC[1;3;7m X ESC[0m Y: X is bold, italic and inverse, Y is none of them (a separate case from sgr.reset)",
+      "criterionMatch": "partial",
+      "rationale": "Fresh bold/italic/inverse cell reset passes the pinned and live-page tests. The current upstream App raster-matrix alternative is unmeasured; this report conservatively refuses to equate stored flags with that presentation criterion.",
+      "evidence": [
+        {
+          "file": "svrs-observations.json",
+          "caseId": "reset.sgr",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "reset.ris",
+      "name": "Full reset (RIS)",
+      "category": "reset",
+      "url": "https://terminfo.dev/reset/ris-full-reset",
+      "siteRequirement": "Write text, send \\x1bc ( RIS ), verify cursor reset to (0,0).",
+      "catalogueRequirement": "Write text, send <code>\\x1bc</code> (RIS), verify cursor reset to (0,0).",
+      "frozenRequirement": "Write text, send <code>\\x1bc</code> (RIS), verify cursor reset to (0,0).",
+      "catalogueChanged": false,
+      "pinnedCriterion": "RIS homes cursor from 5;5",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "reset.ris",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "reset.soft",
+      "name": "Soft reset (DECSTR)",
+      "category": "reset",
+      "url": "https://terminfo.dev/reset/decstr-soft-reset",
+      "siteRequirement": "Enable app cursor mode ( \\x1b[?1h ), write text, send \\x1b[!p (DECSTR), verify applicationCursor mode is off.",
+      "catalogueRequirement": "Enable app cursor mode (<code>\\x1b[?1h</code>), write text, send <code>\\x1b[!p</code> (DECSTR), verify <code>applicationCursor</code> mode is off.",
+      "frozenRequirement": "Enable app cursor mode (<code>\\x1b[?1h</code>), write text, send <code>\\x1b[!p</code> (DECSTR), verify <code>applicationCursor</code> mode is off.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "DECSTR resets previously enabled DECCKM mode 1",
+      "criterionMatch": "matched",
+      "rationale": "Fresh pinned query/behavior trace and its setup assertions are retained; the report independently checks the response sequence.",
+      "evidence": [
+        {
+          "file": "raw.json",
+          "caseId": "reset.soft",
+          "kind": "stock"
+        }
+      ]
+    },
+    {
+      "id": "reset.method",
+      "name": "Backend reset() method",
+      "category": "reset",
+      "url": "https://terminfo.dev/reset/backend-reset-method",
+      "siteRequirement": "Write text, call backend reset() method, verify cursor returned to (0,0). Specific to the Termless testing framework.",
+      "catalogueRequirement": "Write text, call backend <code>reset()</code> method, verify cursor returned to (0,0). Specific to the Termless testing framework.",
+      "frozenRequirement": "Write text, call backend <code>reset()</code> method, verify cursor returned to (0,0). Specific to the Termless testing framework.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "Actual asynchronous desktop backend reset() call; sequence implementation is retained separately from runner preparation.",
+      "criterionMatch": "matched",
+      "rationale": "Actual desktop backend reset() calls are observed after Hello World, after a dirty main screen, and after entering alternate from a dirty main bank. Origins, insert, wrap, visibility, margins, rendition, cursor and history are checked. The API sequence explicitly normalizes those named modes; a clean main bank cannot mask DECOM.",
+      "evidence": [
+        {
+          "file": "cg-observations.json",
+          "caseId": "reset.method",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "charsets.dec-special",
+      "name": "DEC Special Graphics",
+      "category": "charsets",
+      "url": "https://terminfo.dev/charsets/dec-special-graphics",
+      "siteRequirement": "Send \\x1b(0 to designate DEC Special Graphics , write \"q\", send \\x1b(B to restore ASCII . Verify the cell does not contain literal \"q\" (should be box-drawing U+2500).",
+      "catalogueRequirement": "Headless: qualify ASCII controls and require exactly U+2500 after DEC Special Graphics designation. The app cursor reply does not establish glyph rendering.",
+      "frozenRequirement": "Headless: qualify ASCII controls and require exactly U+2500 after DEC Special Graphics designation. The app cursor reply does not establish glyph rendering.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "ASCII q cells at columns 0 and 2 flank the cell at column 1, which holds U+2500 after ESC ( 0 q ESC ( B q",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes ASCII q cells at columns 0 and 2 flank the cell at column 1, which holds U+2500 after ESC ( 0 q ESC ( B q.",
+      "evidence": [
+        {
+          "file": "chrs-observations.json",
+          "caseId": "charsets.dec-special",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "charsets.utf8",
+      "name": "UTF-8 mode",
+      "category": "charsets",
+      "url": "https://terminfo.dev/charsets/utf8-mode",
+      "siteRequirement": "Write é (e-acute, 2-byte UTF-8) and 世 (CJK, 3-byte UTF-8), verify each renders as the correct Unicode character.",
+      "catalogueRequirement": "Headless: retain measured ASCII controls and require the sampled characters é and 世 in their target cells. This samples Unicode cell handling; it does not cover all UTF-8 byte forms or app-rendered pixels.",
+      "frozenRequirement": "Headless: retain measured ASCII controls and require the sampled characters é and 世 in their target cells. This samples Unicode cell handling; it does not cover all UTF-8 byte forms or app-rendered pixels.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "U+00E9 at column 1 and U+4E16 at column 2 with ASCII A at column 0 and Z at column 4",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes U+00E9 at column 1 and U+4E16 at column 2 with ASCII A at column 0 and Z at column 4.",
+      "evidence": [
+        {
+          "file": "chrs-observations.json",
+          "caseId": "charsets.utf8",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "charsets.g0-g1-switching",
+      "name": "G0/G1 character set switching",
+      "category": "charsets",
+      "url": "https://terminfo.dev/charsets/g0-g1-charset-switching",
+      "siteRequirement": "Send \\x1b(0 to designate G0 as DEC Special Graphics , write 'l', verify the cell renders as a box-drawing character (not literal 'l'). Restore with \\x1b(B .",
+      "catalogueRequirement": "Headless: designate G0 as ASCII and G1 as DEC Special Graphics, then use SI/SO to require l, U+250C, l across three target cells with separate ASCII controls. The app callback does not verify G1 switching.",
+      "frozenRequirement": "Headless: designate G0 as ASCII and G1 as DEC Special Graphics, then use SI/SO to require l, U+250C, l across three target cells with separate ASCII controls. The app callback does not verify G1 switching.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "after ESC ( B ESC ) 0 l SO l SI l the cells at columns 1-3 hold l, U+250C, l within the A and Z controls",
+      "criterionMatch": "matched",
+      "rationale": "This row observes G1 designation/invocation and restoration. The same-run DEC line-drawing case additionally observes the G0 ESC(0 l specimen as U+250C; both source identities are explicit.",
+      "evidence": [
+        {
+          "file": "chrs-observations.json",
+          "caseId": "charsets.g0-g1-switching",
+          "kind": "case"
+        },
+        {
+          "file": "chrs-observations.json",
+          "caseId": "charsets.dec-line-drawing",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "charsets.dec-line-drawing",
+      "name": "DEC line drawing character set",
+      "category": "charsets",
+      "url": "https://terminfo.dev/charsets/dec-line-drawing-chars",
+      "siteRequirement": "Send \\x1b(0jklmqx\\x1b(B , verify all six characters rendered as box-drawing glyphs (none are the literal ASCII characters j, k, l, m, q, x).",
+      "catalogueRequirement": "Headless: qualify the ASCII seed and unchanged control, then require exactly ┘┐┌└─│ for jklmqx under DEC Special Graphics. Arbitrary non-ASCII or blank cells do not pass; app pixels remain unmeasured.",
+      "frozenRequirement": "Headless: qualify the ASCII seed and unchanged control, then require exactly ┘┐┌└─│ for jklmqx under DEC Special Graphics. Arbitrary non-ASCII or blank cells do not pass; app pixels remain unmeasured.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "ESC ( 0 jklmqx ESC ( B stores U+2518 U+2510 U+250C U+2514 U+2500 U+2502 at columns 0-5 while the trailing ASCII j at column 6 is unchanged",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes ESC ( 0 jklmqx ESC ( B stores U+2518 U+2510 U+250C U+2514 U+2500 U+2502 at columns 0-5 while the trailing ASCII j at column 6 is unchanged.",
+      "evidence": [
+        {
+          "file": "chrs-observations.json",
+          "caseId": "charsets.dec-line-drawing",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "device.env-term",
+      "name": "TERM env variable",
+      "category": "device",
+      "url": "https://terminfo.dev/device/env-term",
+      "siteRequirement": "Manual verification required — no automated probe available.",
+      "catalogueRequirement": "Manual verification required — no automated probe available.",
+      "frozenRequirement": "Manual verification required — no automated probe available.",
+      "catalogueChanged": false,
+      "pinnedCriterion": "Observed xterm-256color in the retained disposable direct-local profile; expected compatible xterm-256color.",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes Observed xterm-256color in the retained disposable direct-local profile; expected compatible xterm-256color..",
+      "evidence": [
+        {
+          "file": "cg-observations.json",
+          "caseId": "device.env-term",
+          "kind": "case"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc1-icon",
+      "name": "Icon name (OSC 1)",
+      "category": "extensions",
+      "url": "https://terminfo.dev/extensions/osc-1-icon-name",
+      "siteRequirement": "Send \\x1b]1;test-icon\\x07 and verify the terminal remains responsive (icon name accepted without error).",
+      "catalogueRequirement": "Any headless title change is diagnostic only: title text does not establish icon-name behavior. No icon-name readback is available, so the attempted app check is PROBE INVALID for icon behavior.",
+      "frozenRequirement": "Any headless title change is diagnostic only: title text does not establish icon-name behavior. No icon-name readback is available, so the attempted app check is TEST FAILURE for icon behavior.",
+      "catalogueChanged": true,
+      "pinnedCriterion": "Icon-name state and independent title/stack controls only; no host icon presentation.",
+      "criterionMatch": "matched",
+      "rationale": "The independently rederived contract directly observes Icon-name state and independent title/stack controls only; no host icon presentation..",
+      "evidence": [
+        {
+          "file": "cg-observations.json",
+          "caseId": "extensions.osc1-icon",
+          "kind": "case"
+        }
+      ]
+    }
+  ]
+}

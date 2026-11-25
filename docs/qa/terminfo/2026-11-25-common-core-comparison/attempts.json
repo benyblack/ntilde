@@ -1,0 +1,94 @@
+{
+  "attempts": [
+    {
+      "name": "iterm2-baseline-preflight",
+      "disposition": "Reproduced the points-versus-pixels refusal with the historical adapter on iTerm2 3.7.7. An exited session was removed before the window finished closing. The exact owned window later proved absent and the dead lease was recovered.",
+      "runId": "bc5bdd5ea1c173f2ba5ea4aa907ba6a9",
+      "archive": {
+        "path": "attempts/iterm2-baseline-preflight.zip",
+        "sha256": "e6b5e8732c5525050968d468f8f3b9361612a580865c0d48a7f93a6540d04220"
+      }
+    },
+    {
+      "name": "iterm2-pixel-preflight",
+      "disposition": "The attempted OSC 1337 cell-size witness did not corroborate CSI 16 t on the installed iTerm2 3.7.9. Superseded by direct corroboration of the raster, native bounds and ordinary CSI replies.",
+      "runId": "a5446233372deef956f89f57d6e9e5de",
+      "archive": {
+        "path": "attempts/iterm2-pixel-preflight.zip",
+        "sha256": "bcbb20eb3d378dbaf4db043b61b52bd45e7f115a8b1c3c24df031684e6e5a3a1"
+      }
+    },
+    {
+      "name": "iterm2-geometry-preflight",
+      "disposition": "Title-bar pixels changed during calibration and the restore capture command failed. No final result.",
+      "runId": "14877e492d3cf8a03ca160f5d642523b",
+      "archive": {
+        "path": "attempts/iterm2-geometry-preflight.zip",
+        "sha256": "a428d4b16950b26493e71ddf17f78fdcfbb0eca8419794af6f00608e9fe4e4b5"
+      }
+    },
+    {
+      "name": "iterm2-geometry-retry",
+      "disposition": "A retry observed the same out-of-grid title-bar changes and a restore capture failure. No final result.",
+      "runId": "f2acbb79ce5c24934e16c6aa21de3aad",
+      "archive": {
+        "path": "attempts/iterm2-geometry-retry.zip",
+        "sha256": "64b8162df7ade65be9b2dccb75c8f999cd84bc85ffe4028084ae1157fa2d4b07"
+      }
+    },
+    {
+      "name": "ghostty-capture-timeout",
+      "disposition": "The first Ghostty run completed callbacks but its native window census timed out during capture calibration. Superseded by a full run with established native capture.",
+      "runId": "8cb9e584d7e5385a438610b6005ac647",
+      "archive": {
+        "path": "attempts/ghostty-capture-timeout.zip",
+        "sha256": "10dcda1205379c684a41f59bd365befd5bbc6f2d00786f739af526dd94b386e9"
+      }
+    },
+    {
+      "name": "ntilde-chrome-abort",
+      "disposition": "Native calibration observed a pixel change outside the terminal grid and its restore capture timed out. The owned window and worker were both gone after cleanup.",
+      "runId": "366d19c5227a96d9bb92db8b250504fd",
+      "archive": {
+        "path": "attempts/ntilde-chrome-abort.zip",
+        "sha256": "3ef5c597b7888f66be0d6f7fb0465d8b37cfe7b310a2536ec48ec3de3851e2f3"
+      }
+    },
+    {
+      "name": "ntilde-capture-timeout",
+      "disposition": "The first Ntilde run completed callbacks but its native window census timed out during capture calibration. Superseded by a full run with established native capture.",
+      "runId": "0f19fb65277b6d3080a16daf65ef235e",
+      "archive": {
+        "path": "attempts/ntilde-capture-timeout.zip",
+        "sha256": "081a83db5dba4f853f5164c4b9a22cf25d849a3f88a79e3c177150b4c7ad37ba"
+      }
+    },
+    {
+      "name": "ghostty-retry-preflight",
+      "disposition": "Two-probe diagnostic confirmed full native raster calibration and restoration after the first capture timeout.",
+      "runId": "9da98e8aa7c5661aaebd2405c7a2f87f",
+      "archive": {
+        "path": "attempts/ghostty-retry-preflight.zip",
+        "sha256": "1f189cd21708811ce750f939794413dae3746f1de9f38b4011a672f23d49c34a"
+      }
+    },
+    {
+      "name": "ntilde-retry-preflight",
+      "disposition": "Two-probe diagnostic confirmed full native raster calibration and restoration after the first capture timeout.",
+      "runId": "a1f2990e8526dcf7fa483f1ebef8e262",
+      "archive": {
+        "path": "attempts/ntilde-retry-preflight.zip",
+        "sha256": "bdc1f2b343e8879c1c2210e31913a61c4fe8beeefbded21d4f3d6f930a0fa6b9"
+      }
+    },
+    {
+      "name": "iterm2-titlebar-preflight",
+      "disposition": "Accepted the native Retina geometry with a title-bar band proved clear of the grid. Two-probe diagnostic only.",
+      "runId": "ab01c66d4b463a45e0088b3d074a70ca",
+      "archive": {
+        "path": "attempts/iterm2-titlebar-preflight.zip",
+        "sha256": "844ac83d6a609522a24a6f4e463c97bfd79f5445499440b2b0d0fa9ce9e23c3c"
+      }
+    }
+  ]
+}

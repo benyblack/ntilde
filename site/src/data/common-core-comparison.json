@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "requirementCount": 80,
   "method": {
-    "probeHash": "e122f23e91e1",
-    "sourceRevision": "ff37d198914b870281a2c0461cc682b37fce07ef",
-    "workerSha256": "7159efdd5bc56e0d804532c3f013ef7bc81afaf8cdf9469df18b63219efe8b11",
-    "workerBundleSha256": null,
+    "probeHash": "ef9c0a6b2d4a",
+    "sourceRevision": "0f01f9013053086354c941390bfd7d678c6a7e2b",
+    "workerSha256": "58099a0eef5d0559c0fa2be21265e72c3af3917fb2794939279d9bdacb48e1e3",
+    "workerBundleSha256": "ef0594d8e06d81fe901a2876f20cefe3482350c945c6b927c09fa29a41f9e545",
     "os": "27.0.1",
     "geometry": {
       "rows": 41,
@@ -13,106 +13,74 @@
     },
     "upstreamBaseRevision": "b0c8c62500199b381478a02b1f144a4de60693e5"
   },
-  "manifestSha256": "ce0ca8487dd12d7718fd903adcc70bfce11949fd6cc6ef6b1afd759b8d57957f",
+  "manifestSha256": "3b38634903522e250513916b9283ebc19462f7844801430bd7ba55fd3e00b050",
   "subjects": [
     {
       "id": "ntilde",
       "label": "Ntilde",
-      "version": "0.13.0",
+      "version": "0.14.0",
       "versionBasis": "explicit build version; executable digest retained",
-      "measuredAt": "2026-11-11T16:48:36.937Z",
-      "runId": "af1f5c275a0b3aab10fdd216ca668d10",
-      "rawSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b",
+      "measuredAt": "2026-11-25T13:08:13.266Z",
+      "runId": "e352c820049acefcb0121031820b1bf7",
+      "rawSha256": "24afb2a8bfc402c917c9945da1d7375b9eead5ea76ecc76ba300b511329aa07e",
       "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-      "launchDriverSha256": "d3a54000ca53e9db6f9e6678638cfadd6f4190f76372c27ea4d89fc366c2d581",
-      "buildPayloadSha256": "464b9ea225794bd579854334d34d8e6d5567005be4465305fb400199ce8a3cbc",
+      "launchDriverSha256": "307e73eb9ee15982a72f93bb33dccb4ade536dab033e101ec4ae913ed37d2ac9",
+      "buildPayloadSha256": "52157daf2ac0c64648c445f32576a4b644e4442198913f81d70c495b3f5c6c4d",
       "measurementLimits": {
         "captureOutcome": "installed",
         "captureRefusal": null,
         "disposableOwnership": "shared",
         "withheldProbeCount": 0,
-        "invalidWindowBoundsCount": 6
+        "invalidWindowBoundsCount": 0
       },
       "counts": {
-        "supported": 63,
+        "supported": 64,
         "unsupported": 0,
         "untestable": 1,
-        "probe-todo": 8,
-        "probe-invalid": 7,
+        "probe-todo": 13,
+        "probe-invalid": 1,
         "not-scheduled": 1
       },
-      "supportedShare": 78.75,
-      "focusedRetest": {
-        "subjectId": "ntilde",
-        "runId": "0d6902eb35805785d3b67ed55c05d499",
-        "measuredAt": "2026-11-11T17:04:43.472Z",
-        "baselineRunId": "af1f5c275a0b3aab10fdd216ca668d10",
-        "baselineRawSha256": "fbe5838d5a290a9c5eac9330099bb90e16ff8fc4d41f5f170ccb77eda0f9e94b",
-        "rawSha256": "1aca79c5c2117f518b9fd7b8f68399892fc7c2b85d49f5bbdbdae33a1718f714",
-        "launchDriverSha256": "cd03422ff7f4e4c112b13d55a212d01d0cdc935b17a1623fcdd9727e2de0dfd5",
-        "caseIds": [
-          "sgr.selective-reset.italic",
-          "sgr.selective-reset.underline",
-          "sgr.strikethrough",
-          "sgr.underline.single",
-          "text.overwrite",
-          "text.reverse-index-scroll"
-        ],
-        "counts": {
-          "supported": 6,
-          "unsupported": 0,
-          "untestable": 0,
-          "probe-todo": 0,
-          "probe-invalid": 0,
-          "not-scheduled": 0
-        },
-        "currentCounts": {
-          "supported": 69,
-          "unsupported": 0,
-          "untestable": 1,
-          "probe-todo": 8,
-          "probe-invalid": 1,
-          "not-scheduled": 1
-        }
-      }
+      "supportedShare": 80
     },
     {
       "id": "iterm2",
       "label": "iTerm2",
-      "version": "3.7.7",
+      "version": "3.7.9",
       "versionBasis": "installed application Info.plist CFBundleShortVersionString",
-      "measuredAt": "2026-11-11T16:49:30.988Z",
-      "runId": "a1729873b939d8afc6c4d32eccc7b05d",
-      "rawSha256": "40c0329b411bbad37446d11186b4daac86951114867e74253566f9d770821afb",
-      "executableSha256": "53b9badbabf1ab32e20fd8ffa720ac97a6edf0fc5e7f68573778a61d9b6a0d29",
-      "launchDriverSha256": "d3a54000ca53e9db6f9e6678638cfadd6f4190f76372c27ea4d89fc366c2d581",
+      "measuredAt": "2026-11-25T12:27:57.414Z",
+      "runId": "e7b598f31bb6b0d7648ff4fb8c6bdab1",
+      "rawSha256": "1c5b2ccc4c9705d732ceaf920424083ee176f40eca44bb2b1d5ab6b2260b8f23",
+      "executableSha256": "8d7926c217330d89bbf33828eb6b66dd06e80fd49e68555b897684241407099a",
+      "launchDriverSha256": "307e73eb9ee15982a72f93bb33dccb4ade536dab033e101ec4ae913ed37d2ac9",
       "buildPayloadSha256": null,
       "measurementLimits": {
-        "captureOutcome": "refused",
-        "captureRefusal": "Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+        "captureOutcome": "installed",
+        "captureRefusal": null,
         "disposableOwnership": "shared",
         "withheldProbeCount": 5,
         "invalidWindowBoundsCount": 0
       },
       "counts": {
-        "supported": 28,
+        "supported": 49,
         "unsupported": 0,
         "untestable": 1,
-        "probe-todo": 50,
-        "probe-invalid": 0,
+        "probe-todo": 22,
+        "probe-invalid": 7,
         "not-scheduled": 1
       },
-      "supportedShare": 35
+      "supportedShare": 61.25000000000001
     },
     {
       "id": "ghostty",
       "label": "Ghostty",
       "version": "1.4.0",
-      "measuredAt": "2026-11-11T16:34:05.593Z",
-      "runId": "6bb1ae0967e46b2e2f113175c5921177",
-      "rawSha256": "c98ec59fe48cedd236f6459fde4d66fa71076e2736b91b9d17cf437c597f31aa",
+      "versionBasis": "installed application Info.plist CFBundleShortVersionString",
+      "measuredAt": "2026-11-25T12:49:15.813Z",
+      "runId": "3cd3c30494767f72682a764f347db873",
+      "rawSha256": "61aa7fa453d7fa6c6a6cec39c7dc0db5af69d0ca25910761fb150c2d288ed25d",
       "executableSha256": "4b30ac9b049cdf9eb75b6d8c7764856c2b882de97c688dce8a1b80916b55271b",
-      "launchDriverSha256": "b0fa1720c627941ce4a1b32ae6d0ee8ff8459a7a1297d0a05f0604137c19840f",
+      "launchDriverSha256": "307e73eb9ee15982a72f93bb33dccb4ade536dab033e101ec4ae913ed37d2ac9",
       "buildPayloadSha256": null,
       "measurementLimits": {
         "captureOutcome": "installed",
@@ -122,17 +90,17 @@
         "invalidWindowBoundsCount": 0
       },
       "counts": {
-        "supported": 69,
+        "supported": 64,
         "unsupported": 0,
         "untestable": 1,
-        "probe-todo": 9,
+        "probe-todo": 14,
         "probe-invalid": 0,
         "not-scheduled": 1
       },
-      "supportedShare": 86.25
+      "supportedShare": 80
     }
   ],
-  "evidencePath": "docs/qa/terminfo/2026-11-11-common-core-comparison",
+  "evidencePath": "docs/qa/terminfo/2026-11-25-common-core-comparison",
   "rows": [
     {
       "id": "sgr.bold",
@@ -144,9 +112,9 @@
           "evidencePath": "ntilde/cases.json",
           "retest": null,
           "evidenceLine": 7,
-          "status": "supported",
-          "method": "screenshot",
-          "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "iterm2": {
@@ -154,17 +122,17 @@
           "retest": null,
           "evidenceLine": 7,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": "screenshot",
+          "reason": "sgr.bold: no paint witness return to the measured sentinel digest within 5000 ms after sgr.bold: target; the requested space/glyph roundtrip did not complete; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
           "evidenceLine": 7,
-          "status": "supported",
-          "method": "screenshot",
-          "reason": "sgr.bold: target differs from plain, made-up does not; sgr.bold: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\"}",
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         }
       }
@@ -178,28 +146,28 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 57,
-          "status": "supported",
-          "method": "screenshot",
-          "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
+          "evidenceLine": 33,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 53,
+          "evidenceLine": 42,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": "screenshot",
+          "reason": "sgr.faint: no paint witness return to the measured sentinel digest within 5000 ms after sgr.faint: target; the requested space/glyph roundtrip did not complete; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 57,
-          "status": "supported",
-          "method": "screenshot",
-          "reason": "sgr.faint: target differs from plain, made-up does not; sgr.faint: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;2\"}",
+          "evidenceLine": 33,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         }
       }
@@ -213,28 +181,28 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 107,
-          "status": "supported",
-          "method": "screenshot",
-          "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
+          "evidenceLine": 59,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 99,
+          "evidenceLine": 77,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": "screenshot",
+          "reason": "sgr.italic: no paint witness return to the measured sentinel digest within 5000 ms after sgr.italic: target; the requested space/glyph roundtrip did not complete; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 107,
-          "status": "supported",
-          "method": "screenshot",
-          "reason": "sgr.italic: target differs from plain, made-up does not; sgr.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;3\"}",
+          "evidenceLine": 59,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         }
       }
@@ -247,55 +215,29 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": {
-            "rawStatus": "supported",
-            "evidenceLine": 7,
-            "status": "supported",
-            "scheduled": true,
-            "probeId": null,
-            "method": "screenshot",
-            "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
-            "note": null,
-            "tests": [
-              {
-                "id": "attribute",
-                "status": "supported",
-                "attempt": {
-                  "scope": "probe",
-                  "startedAt": "2026-11-11T17:03:55.362Z"
-                },
-                "assertionRefs": [
-                  3
-                ],
-                "rawReplyRef": "sgr.underline.single"
-              }
-            ],
-            "runId": "0d6902eb35805785d3b67ed55c05d499",
-            "previousStatus": "probe-invalid",
-            "evidencePath": "ntilde/movement-retest/cases.json"
-          },
-          "evidenceLine": 157,
-          "status": "probe-invalid",
-          "method": "screenshot",
-          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "retest": null,
+          "evidenceLine": 85,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 145,
+          "evidenceLine": 111,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 157,
-          "status": "supported",
-          "method": "screenshot",
-          "reason": "sgr.underline.single: target differs from plain, made-up does not; sgr.underline.single: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;4\"}",
+          "evidenceLine": 85,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         }
       }
@@ -309,7 +251,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 184,
+          "evidenceLine": 111,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.inverse: target differs from plain, made-up does not; sgr.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;7\"}",
@@ -318,16 +260,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 191,
+          "evidenceLine": 137,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 207,
+          "evidenceLine": 111,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.inverse: target differs from plain, made-up does not; sgr.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;7\"}",
@@ -344,7 +286,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 233,
+          "evidenceLine": 160,
           "status": "probe-todo",
           "method": null,
           "reason": "Probe exceeded 30000ms",
@@ -353,16 +295,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 237,
+          "evidenceLine": 163,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": "screenshot",
+          "reason": "sgr.hidden: no paint witness return to the measured sentinel digest within 5000 ms after sgr.hidden: target; the requested space/glyph roundtrip did not complete; sgr.hidden: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;8\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 256,
+          "evidenceLine": 160,
           "status": "probe-todo",
           "method": null,
           "reason": "Probe exceeded 30000ms",
@@ -378,52 +320,26 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": {
-            "rawStatus": "supported",
-            "evidenceLine": 57,
-            "status": "supported",
-            "scheduled": true,
-            "probeId": null,
-            "method": "screenshot",
-            "reason": "sgr.strikethrough: target differs from plain, made-up does not; sgr.strikethrough: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;9\"}",
-            "note": null,
-            "tests": [
-              {
-                "id": "attribute",
-                "status": "supported",
-                "attempt": {
-                  "scope": "probe",
-                  "startedAt": "2026-11-11T17:03:26.434Z"
-                },
-                "assertionRefs": [
-                  2
-                ],
-                "rawReplyRef": "sgr.strikethrough"
-              }
-            ],
-            "runId": "0d6902eb35805785d3b67ed55c05d499",
-            "previousStatus": "probe-invalid",
-            "evidencePath": "ntilde/movement-retest/cases.json"
-          },
-          "evidenceLine": 259,
-          "status": "probe-invalid",
-          "method": "screenshot",
-          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "retest": null,
+          "evidenceLine": 186,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 283,
+          "evidenceLine": 197,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 282,
+          "evidenceLine": 186,
           "status": "probe-todo",
           "method": null,
           "reason": "Probe exceeded 30000ms",
@@ -440,7 +356,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 286,
+          "evidenceLine": 212,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}",
@@ -449,16 +365,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 329,
-          "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "evidenceLine": 223,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 308,
+          "evidenceLine": 212,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.fg.standard: the styled sample differs from the neutral sample and from sibling SGR 32, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.fg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;31\"}",
@@ -475,7 +391,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 333,
+          "evidenceLine": 259,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}",
@@ -484,16 +400,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 375,
-          "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "evidenceLine": 271,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 355,
+          "evidenceLine": 259,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.bg.standard: the styled sample differs from the neutral sample and from sibling SGR 42, and two paints of the same sequence agree; the rendered colour value is not interpreted; sgr.bg.standard: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;41\"}",
@@ -510,7 +426,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 380,
+          "evidenceLine": 306,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}",
@@ -519,16 +435,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 421,
-          "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "evidenceLine": 318,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 402,
+          "evidenceLine": 306,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.fg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;31\"}",
@@ -545,7 +461,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 426,
+          "evidenceLine": 352,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}",
@@ -554,16 +470,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 467,
-          "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "evidenceLine": 364,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 448,
+          "evidenceLine": 352,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.bg.default: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0\",\"baseline\":\"0\",\"setup\":\"0;42\"}",
@@ -580,16 +496,16 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 474,
+          "evidenceLine": 400,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": null,
+          "reason": "Probe exceeded 120000ms",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 513,
+          "evidenceLine": 412,
           "status": "probe-todo",
           "method": "query_reply",
           "reason": "graded from a status reply only; this row is decided by what is painted",
@@ -598,10 +514,10 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 494,
+          "evidenceLine": 398,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": null,
+          "reason": "Probe exceeded 120000ms",
           "scheduled": true
         }
       }
@@ -614,53 +530,26 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": {
-            "rawStatus": "supported",
-            "evidenceLine": 110,
-            "status": "supported",
-            "scheduled": true,
-            "probeId": null,
-            "method": "screenshot",
-            "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}",
-            "note": null,
-            "tests": [
-              {
-                "id": "criterion",
-                "status": "supported",
-                "attempt": {
-                  "scope": "probe",
-                  "startedAt": "2026-11-11T17:03:11.174Z"
-                },
-                "assertionRefs": [
-                  1
-                ],
-                "rawReplyRef": "sgr.selective-reset.underline",
-                "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}"
-              }
-            ],
-            "runId": "0d6902eb35805785d3b67ed55c05d499",
-            "previousStatus": "probe-invalid",
-            "evidencePath": "ntilde/movement-retest/cases.json"
-          },
-          "evidenceLine": 521,
-          "status": "probe-invalid",
+          "retest": null,
+          "evidenceLine": 426,
+          "status": "supported",
           "method": "screenshot",
-          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 559,
+          "evidenceLine": 459,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 541,
+          "evidenceLine": 424,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.selective-reset.underline: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;4\"}",
@@ -677,7 +566,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 548,
+          "evidenceLine": 474,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}",
@@ -686,16 +575,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 605,
-          "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "evidenceLine": 485,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 589,
+          "evidenceLine": 472,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.selective-reset.inverse: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;7\"}",
@@ -711,53 +600,26 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": {
-            "rawStatus": "supported",
-            "evidenceLine": 158,
-            "status": "supported",
-            "scheduled": true,
-            "probeId": null,
-            "method": "screenshot",
-            "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}",
-            "note": null,
-            "tests": [
-              {
-                "id": "criterion",
-                "status": "supported",
-                "attempt": {
-                  "scope": "probe",
-                  "startedAt": "2026-11-11T17:02:55.813Z"
-                },
-                "assertionRefs": [
-                  0
-                ],
-                "rawReplyRef": "sgr.selective-reset.italic",
-                "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}"
-              }
-            ],
-            "runId": "0d6902eb35805785d3b67ed55c05d499",
-            "previousStatus": "probe-invalid",
-            "evidencePath": "ntilde/movement-retest/cases.json"
-          },
-          "evidenceLine": 596,
-          "status": "probe-invalid",
+          "retest": null,
+          "evidenceLine": 522,
+          "status": "supported",
           "method": "screenshot",
-          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 651,
+          "evidenceLine": 533,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "graded from a status reply only; this row is decided by what is painted",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 637,
+          "evidenceLine": 520,
           "status": "supported",
           "method": "screenshot",
           "reason": "sgr.selective-reset.italic: the independent capture oracle supplies the visual result; DECRQSS {\"sgr\":\"0;1\",\"baseline\":\"0\",\"setup\":\"0;1;3\"}",
@@ -774,7 +636,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 623,
+          "evidenceLine": 570,
           "status": "probe-todo",
           "method": null,
           "reason": "Probe exceeded 120000ms",
@@ -783,7 +645,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 697,
+          "evidenceLine": 559,
           "status": "probe-todo",
           "method": "query_reply",
           "reason": "graded from a status reply only; this row is decided by what is painted",
@@ -792,7 +654,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 688,
+          "evidenceLine": 568,
           "status": "probe-todo",
           "method": null,
           "reason": "Probe exceeded 120000ms",
@@ -809,7 +671,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 649,
+          "evidenceLine": 596,
           "status": "probe-invalid",
           "method": "screenshot",
           "reason": "Three equal digests cannot separate an absent, off-phase or unpainted cursor in the control from an ineffective hide; no visible-cursor control was established, so this is not a negative",
@@ -818,16 +680,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 743,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "Cursor pixel fixture needs capture and measured 3x6 geometry; measured 41x140",
+          "evidenceLine": 606,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 714,
+          "evidenceLine": 594,
           "status": "supported",
           "method": "screenshot",
           "reason": "The cursor cell's raw-pixel digest changed while hidden and matched the shown control after restore",
@@ -844,7 +706,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 689,
+          "evidenceLine": 636,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -853,7 +715,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 769,
+          "evidenceLine": 647,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -862,7 +724,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 755,
+          "evidenceLine": 635,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -879,7 +741,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 726,
+          "evidenceLine": 673,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -888,7 +750,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 806,
+          "evidenceLine": 684,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -897,7 +759,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 792,
+          "evidenceLine": 672,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -914,7 +776,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 763,
+          "evidenceLine": 710,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -923,7 +785,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 843,
+          "evidenceLine": 721,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -932,7 +794,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 829,
+          "evidenceLine": 709,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -949,7 +811,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 800,
+          "evidenceLine": 747,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -958,7 +820,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 880,
+          "evidenceLine": 758,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -967,7 +829,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 866,
+          "evidenceLine": 746,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -984,7 +846,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 837,
+          "evidenceLine": 784,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -993,7 +855,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 917,
+          "evidenceLine": 795,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1002,7 +864,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 903,
+          "evidenceLine": 783,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1019,7 +881,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 874,
+          "evidenceLine": 821,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1028,7 +890,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 954,
+          "evidenceLine": 832,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1037,7 +899,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 940,
+          "evidenceLine": 820,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1054,7 +916,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 911,
+          "evidenceLine": 858,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1063,7 +925,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 991,
+          "evidenceLine": 869,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1072,7 +934,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 977,
+          "evidenceLine": 857,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1089,7 +951,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 948,
+          "evidenceLine": 895,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1098,7 +960,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1028,
+          "evidenceLine": 906,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1107,7 +969,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1014,
+          "evidenceLine": 894,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1124,7 +986,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 985,
+          "evidenceLine": 932,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1133,7 +995,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1065,
+          "evidenceLine": 943,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1142,7 +1004,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1051,
+          "evidenceLine": 931,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1159,7 +1021,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1022,
+          "evidenceLine": 969,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1168,7 +1030,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1102,
+          "evidenceLine": 980,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1177,7 +1039,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1088,
+          "evidenceLine": 968,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1194,7 +1056,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1059,
+          "evidenceLine": 1006,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1203,16 +1065,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1139,
-          "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "DECOM makes CPR region-relative (VT100: region top is 1, bottom is 11); measured 1;1, 2;1, 11;1 — the physical row 5 and the margins still need an independent observable",
+          "evidenceLine": 1017,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1125,
+          "evidenceLine": 1005,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1229,7 +1091,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1102,
+          "evidenceLine": 1049,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1238,7 +1100,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1165,
+          "evidenceLine": 1060,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1247,7 +1109,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1169,
+          "evidenceLine": 1048,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1264,7 +1126,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1139,
+          "evidenceLine": 1086,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1273,7 +1135,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1202,
+          "evidenceLine": 1097,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1282,7 +1144,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1206,
+          "evidenceLine": 1085,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1299,7 +1161,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1176,
+          "evidenceLine": 1123,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1308,7 +1170,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1239,
+          "evidenceLine": 1134,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1317,7 +1179,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1243,
+          "evidenceLine": 1122,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -1334,7 +1196,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1213,
+          "evidenceLine": 1160,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1343,16 +1205,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1276,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.line.right: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1171,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1280,
+          "evidenceLine": 1159,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1369,7 +1231,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1257,
+          "evidenceLine": 1204,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1378,16 +1240,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1302,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.line.left: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1215,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1324,
+          "evidenceLine": 1203,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1404,7 +1266,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1301,
+          "evidenceLine": 1248,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1413,16 +1275,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1328,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.line.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1259,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1368,
+          "evidenceLine": 1247,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1439,7 +1301,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1345,
+          "evidenceLine": 1292,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1448,16 +1310,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1354,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.screen.above: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1303,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1412,
+          "evidenceLine": 1291,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1474,7 +1336,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1389,
+          "evidenceLine": 1336,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1483,16 +1345,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1380,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.screen.all: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1347,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1456,
+          "evidenceLine": 1335,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1509,7 +1371,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1432,
+          "evidenceLine": 1379,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1518,16 +1380,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1406,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.screen.below: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1390,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1499,
+          "evidenceLine": 1378,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1544,7 +1406,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1476,
+          "evidenceLine": 1423,
           "status": "probe-todo",
           "method": null,
           "reason": "OS-level scrollback dump or XTEST wheel+capture",
@@ -1553,7 +1415,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1432,
+          "evidenceLine": 1434,
           "status": "probe-todo",
           "method": null,
           "reason": "OS-level scrollback dump or XTEST wheel+capture",
@@ -1562,7 +1424,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1543,
+          "evidenceLine": 1422,
           "status": "probe-todo",
           "method": null,
           "reason": "OS-level scrollback dump or XTEST wheel+capture",
@@ -1579,7 +1441,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1502,
+          "evidenceLine": 1449,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1588,16 +1450,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1458,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.character: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1460,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1569,
+          "evidenceLine": 1448,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1614,7 +1476,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1546,
+          "evidenceLine": 1493,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1623,16 +1485,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1484,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.el-with-attrs: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1504,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1613,
+          "evidenceLine": 1492,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1649,7 +1511,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1592,
+          "evidenceLine": 1539,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1658,16 +1520,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1510,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "erase.ed-scroll-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1550,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1659,
+          "evidenceLine": 1538,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1684,16 +1546,16 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1636,
+          "evidenceLine": 1583,
           "status": "supported",
           "method": "query_reply",
-          "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 79817, marker --ntilde-terminfo-owner e352c820049acefcb0121031820b1bf7",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1536,
+          "evidenceLine": 1594,
           "status": "probe-todo",
           "method": null,
           "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
@@ -1702,10 +1564,10 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1703,
+          "evidenceLine": 1582,
           "status": "supported",
           "method": "query_reply",
-          "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "reason": "DECRPM mode 1049: reset (Ps 2); Disposable prerequisite satisfied by run-scoped process owner pid 68325, marker --config-file /Users/behnam/.codex/worktrees/common-core-refresh/ntilde/artifacts/common-core-refresh/ghostty-full/ghostty-3cd3c30494767f72682a764f347db873",
           "scheduled": true
         }
       }
@@ -1719,7 +1581,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1674,
+          "evidenceLine": 1621,
           "status": "supported",
           "method": "screenshot",
           "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
@@ -1728,19 +1590,19 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1560,
-          "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "Cursor responsiveness after exit does not measure the restored buffer",
+          "evidenceLine": 1618,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1741,
-          "status": "supported",
-          "method": "screenshot",
-          "reason": "CSI ? 1049 l restores the primary buffer and the saved cursor",
+          "evidenceLine": 1620,
+          "status": "probe-todo",
+          "method": null,
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         }
       }
@@ -1754,16 +1616,16 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1759,
+          "evidenceLine": 1706,
           "status": "supported",
           "method": "query_reply",
-          "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 79817, marker --ntilde-terminfo-owner e352c820049acefcb0121031820b1bf7",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1586,
+          "evidenceLine": 1703,
           "status": "probe-todo",
           "method": null,
           "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
@@ -1772,10 +1634,10 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1826,
+          "evidenceLine": 1646,
           "status": "supported",
           "method": "query_reply",
-          "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "reason": "DECRPM mode 5: set (Ps 1); presentation (inverted frame) unmeasured; protocol measured; Disposable prerequisite satisfied by run-scoped process owner pid 68325, marker --config-file /Users/behnam/.codex/worktrees/common-core-refresh/ntilde/artifacts/common-core-refresh/ghostty-full/ghostty-3cd3c30494767f72682a764f347db873",
           "scheduled": true
         }
       }
@@ -1789,16 +1651,16 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1797,
+          "evidenceLine": 1744,
           "status": "supported",
           "method": "query_reply",
-          "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 79817, marker --ntilde-terminfo-owner e352c820049acefcb0121031820b1bf7",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1610,
+          "evidenceLine": 1727,
           "status": "probe-todo",
           "method": null,
           "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
@@ -1807,10 +1669,10 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1864,
+          "evidenceLine": 1684,
           "status": "supported",
           "method": "query_reply",
-          "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "reason": "DECRPM mode 7: set (Ps 1); Disposable prerequisite satisfied by run-scoped process owner pid 68325, marker --config-file /Users/behnam/.codex/worktrees/common-core-refresh/ntilde/artifacts/common-core-refresh/ghostty-full/ghostty-3cd3c30494767f72682a764f347db873",
           "scheduled": true
         }
       }
@@ -1824,7 +1686,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1835,
+          "evidenceLine": 1782,
           "status": "probe-todo",
           "method": "screenshot",
           "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen",
@@ -1833,16 +1695,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1634,
+          "evidenceLine": 1751,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "Cursor position does not measure scrollback history",
+          "method": "screenshot",
+          "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1902,
+          "evidenceLine": 1722,
           "status": "probe-todo",
           "method": "screenshot",
           "reason": "A line numbering beyond the TOP control shows the viewport scrolled past one screen; whether the terminal retained those lines as scrollback history, and how many, is not readable from the screen",
@@ -1859,7 +1721,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1864,
+          "evidenceLine": 1811,
           "status": "probe-todo",
           "method": "screenshot",
           "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen",
@@ -1868,16 +1730,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1660,
+          "evidenceLine": 1780,
           "status": "probe-todo",
-          "method": "query_reply",
-          "reason": "Cursor position does not measure total scrollback lines",
+          "method": "screenshot",
+          "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1931,
+          "evidenceLine": 1751,
           "status": "probe-todo",
           "method": "screenshot",
           "reason": "The TOP control leaving the top of the screen after more lines than a screen can hold shows the viewport scrolled past its height; retained-history existence and count are not readable from the screen",
@@ -1894,7 +1756,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1893,
+          "evidenceLine": 1840,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1903,16 +1765,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1686,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "scrollback.scroll-up: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1809,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "scrollback.scroll-up: two captures of one static frame were not byte-stable (sha256:f672c031eaea1ea5377d02224d09b74791ae862171656d3fe597869ee5b5bed4/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:b75a797d9a7e759290491621b61f7157178ec9d06820db9f0980b72567e05749/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 1960,
+          "evidenceLine": 1780,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1929,7 +1791,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1937,
+          "evidenceLine": 1884,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1938,16 +1800,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1712,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "scrollback.scroll-down: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1836,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "scrollback.scroll-down: two captures of one static frame were not byte-stable (sha256:5c87cb6c46cd681e59543a2b6c1b51f664ec96dcb2fe67b08a96bcf3235978b3/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:d72a9da9a4272afa1045e57aec4cd7a4d214b4dc31eaedb484cb80a1df40ee52/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2004,
+          "evidenceLine": 1824,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1964,7 +1826,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 1981,
+          "evidenceLine": 1928,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1973,16 +1835,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1738,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "scrollback.reverse-index: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1863,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "scrollback.reverse-index: two captures of one static frame were not byte-stable (sha256:61f19189fde6c01a1b52c494b1fa4a8f0f1409637a9e8cbcafd3e49f0efc1b18/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:5fbc84d8066b4b4f099d1d6dcc0831ca3aac0b67b472d784434b09c6a13d01c7/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2048,
+          "evidenceLine": 1868,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -1999,7 +1861,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2026,
+          "evidenceLine": 1973,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2008,16 +1870,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1764,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "scrollback.set-region: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1890,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "scrollback.set-region: two captures of one static frame were not byte-stable (sha256:d02d38a4772d72cbb06c64d125730e8af54ee08402a12c03baeb57431515d6ff/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:cad18c393bb9de77f508e8661afbc3202cd8645927bce9e4eaf7f9c734287ed9/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2093,
+          "evidenceLine": 1913,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2034,7 +1896,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2071,
+          "evidenceLine": 2018,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2043,16 +1905,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1790,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "scrollback.alt-screen: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1917,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "scrollback.alt-screen: two captures of one static frame were not byte-stable (sha256:bb0f9696546e6bab2c2999028f0598c3bfb82541fbaf34ad57429091966a460a/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:bdd243c88e16aa86ffe39b815e9381521236a580ed1b2b8f28511f98a81b0385/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2138,
+          "evidenceLine": 1958,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2069,7 +1931,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2117,
+          "evidenceLine": 2064,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2078,16 +1940,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1816,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "scrollback.decstbm: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1944,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "scrollback.decstbm: two captures of one static frame were not byte-stable (sha256:f672c031eaea1ea5377d02224d09b74791ae862171656d3fe597869ee5b5bed4/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:b75a797d9a7e759290491621b61f7157178ec9d06820db9f0980b72567e05749/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2184,
+          "evidenceLine": 2004,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2104,7 +1966,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2162,
+          "evidenceLine": 2109,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2113,16 +1975,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1842,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "scrollback.decstbm-reset: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 1971,
+          "status": "probe-invalid",
+          "method": "screenshot",
+          "reason": "scrollback.decstbm-reset: two captures of one static frame were not byte-stable (sha256:ee851bdcd2f3ae12e21838a86a05038cfd61ace7a3329870909b7749f8037cb4/sha256:07f63f7b23395e591018d5f15a6913af0a3a658264a1b1fdd507637670391ade then sha256:cd40b0cf2c8c13774e1caeb96d96d3346e349de85859a4eeabd307a37194218b/sha256:26a8cede81a6ed5636311d4bde5242b4246bd50bddfd9c93e5fc38f15c6c0c06)",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2229,
+          "evidenceLine": 2049,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2139,7 +2001,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2208,
+          "evidenceLine": 2155,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2148,7 +2010,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1868,
+          "evidenceLine": 1998,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2157,7 +2019,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2275,
+          "evidenceLine": 2095,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2174,16 +2036,16 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2245,
+          "evidenceLine": 2192,
           "status": "supported",
           "method": "query_reply",
-          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 79817, marker --ntilde-terminfo-owner e352c820049acefcb0121031820b1bf7",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1905,
+          "evidenceLine": 2035,
           "status": "probe-todo",
           "method": null,
           "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
@@ -2192,10 +2054,10 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2312,
+          "evidenceLine": 2132,
           "status": "supported",
           "method": "query_reply",
-          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 68325, marker --config-file /Users/behnam/.codex/worktrees/common-core-refresh/ntilde/artifacts/common-core-refresh/ghostty-full/ghostty-3cd3c30494767f72682a764f347db873",
           "scheduled": true
         }
       }
@@ -2209,7 +2071,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2283,
+          "evidenceLine": 2230,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2218,7 +2080,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1929,
+          "evidenceLine": 2059,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2227,7 +2089,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2350,
+          "evidenceLine": 2170,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2244,7 +2106,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2320,
+          "evidenceLine": 2267,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2253,7 +2115,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 1966,
+          "evidenceLine": 2096,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2262,7 +2124,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2387,
+          "evidenceLine": 2207,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2279,7 +2141,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2357,
+          "evidenceLine": 2304,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2288,7 +2150,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2003,
+          "evidenceLine": 2133,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2297,7 +2159,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2424,
+          "evidenceLine": 2244,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2314,7 +2176,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2394,
+          "evidenceLine": 2341,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2323,7 +2185,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2040,
+          "evidenceLine": 2170,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2332,7 +2194,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2461,
+          "evidenceLine": 2281,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2349,7 +2211,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2431,
+          "evidenceLine": 2378,
           "status": "supported",
           "method": "query_reply",
           "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing",
@@ -2358,7 +2220,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2077,
+          "evidenceLine": 2207,
           "status": "supported",
           "method": "query_reply",
           "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing",
@@ -2367,7 +2229,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2498,
+          "evidenceLine": 2318,
           "status": "supported",
           "method": "query_reply",
           "reason": "Column changed from 5 to 1; this probe does not distinguish terminal newline mode from TTY output processing",
@@ -2384,7 +2246,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2469,
+          "evidenceLine": 2416,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2393,7 +2255,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2115,
+          "evidenceLine": 2245,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2402,7 +2264,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2536,
+          "evidenceLine": 2356,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2419,7 +2281,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2506,
+          "evidenceLine": 2453,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2428,7 +2290,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2152,
+          "evidenceLine": 2282,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2437,7 +2299,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2573,
+          "evidenceLine": 2393,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2454,7 +2316,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2543,
+          "evidenceLine": 2490,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2463,7 +2325,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2189,
+          "evidenceLine": 2319,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2472,7 +2334,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2610,
+          "evidenceLine": 2430,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2488,52 +2350,26 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": {
-            "rawStatus": "supported",
-            "evidenceLine": 206,
-            "status": "supported",
-            "scheduled": true,
-            "probeId": null,
-            "method": "screenshot",
-            "reason": null,
-            "note": null,
-            "tests": [
-              {
-                "id": "criterion",
-                "status": "supported",
-                "attempt": {
-                  "scope": "probe",
-                  "startedAt": "2026-11-11T17:04:29.848Z"
-                },
-                "assertionRefs": [
-                  5
-                ],
-                "rawReplyRef": "text.reverse-index-scroll"
-              }
-            ],
-            "runId": "0d6902eb35805785d3b67ed55c05d499",
-            "previousStatus": "probe-invalid",
-            "evidencePath": "ntilde/movement-retest/cases.json"
-          },
-          "evidenceLine": 2580,
-          "status": "probe-invalid",
+          "retest": null,
+          "evidenceLine": 2527,
+          "status": "supported",
           "method": "screenshot",
-          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "reason": null,
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2226,
+          "evidenceLine": 2356,
           "status": "probe-todo",
           "method": null,
-          "reason": "text.reverse-index-scroll: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2647,
+          "evidenceLine": 2467,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2549,52 +2385,26 @@
       "results": {
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
-          "retest": {
-            "rawStatus": "supported",
-            "evidenceLine": 251,
-            "status": "supported",
-            "scheduled": true,
-            "probeId": null,
-            "method": "screenshot",
-            "reason": null,
-            "note": null,
-            "tests": [
-              {
-                "id": "criterion",
-                "status": "supported",
-                "attempt": {
-                  "scope": "probe",
-                  "startedAt": "2026-11-11T17:04:19.847Z"
-                },
-                "assertionRefs": [
-                  4
-                ],
-                "rawReplyRef": "text.overwrite"
-              }
-            ],
-            "runId": "0d6902eb35805785d3b67ed55c05d499",
-            "previousStatus": "probe-invalid",
-            "evidencePath": "ntilde/movement-retest/cases.json"
-          },
-          "evidenceLine": 2607,
-          "status": "probe-invalid",
+          "retest": null,
+          "evidenceLine": 2572,
+          "status": "supported",
           "method": "screenshot",
-          "reason": "Darwin owned window 32846 identity or bounds changed during capture: expected {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":183,\"width\":1200,\"height\":800}}, observed {\"id\":32846,\"ownerPid\":3292,\"layer\":0,\"bounds\":{\"x\":-1880,\"y\":182,\"width\":1200,\"height\":800}}",
+          "reason": null,
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2252,
+          "evidenceLine": 2382,
           "status": "probe-todo",
           "method": null,
-          "reason": "text.overwrite: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "reason": "Probe exceeded 30000ms",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2692,
+          "evidenceLine": 2512,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2611,7 +2421,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2634,
+          "evidenceLine": 2616,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2620,7 +2430,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2278,
+          "evidenceLine": 2408,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2629,7 +2439,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2736,
+          "evidenceLine": 2556,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2646,7 +2456,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2671,
+          "evidenceLine": 2653,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2655,7 +2465,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2315,
+          "evidenceLine": 2445,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2664,7 +2474,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2773,
+          "evidenceLine": 2593,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2681,7 +2491,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2708,
+          "evidenceLine": 2690,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2690,7 +2500,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2352,
+          "evidenceLine": 2482,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2699,7 +2509,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2810,
+          "evidenceLine": 2630,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2716,7 +2526,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2745,
+          "evidenceLine": 2727,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2725,7 +2535,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2389,
+          "evidenceLine": 2519,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2734,7 +2544,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2847,
+          "evidenceLine": 2667,
           "status": "supported",
           "method": "query_reply",
           "reason": null,
@@ -2751,7 +2561,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2782,
+          "evidenceLine": 2764,
           "status": "probe-todo",
           "method": null,
           "reason": "Probe exceeded 120000ms",
@@ -2760,16 +2570,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2426,
+          "evidenceLine": 2556,
           "status": "supported",
           "method": "query_reply",
-          "reason": null,
+          "reason": "no freshness witness",
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2884,
+          "evidenceLine": 2704,
           "status": "probe-todo",
           "method": null,
           "reason": "Probe exceeded 120000ms",
@@ -2786,7 +2596,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2808,
+          "evidenceLine": 2790,
           "status": "supported",
           "method": "query_reply",
           "reason": "Measured RIS cursor reset; other reset effects were not inspected",
@@ -2795,7 +2605,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2463,
+          "evidenceLine": 2594,
           "status": "supported",
           "method": "query_reply",
           "reason": "Measured RIS cursor reset; other reset effects were not inspected",
@@ -2804,7 +2614,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2910,
+          "evidenceLine": 2730,
           "status": "supported",
           "method": "query_reply",
           "reason": "Measured RIS cursor reset; other reset effects were not inspected",
@@ -2821,16 +2631,16 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2846,
+          "evidenceLine": 2828,
           "status": "supported",
           "method": "query_reply",
-          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 3292, marker --ntilde-terminfo-owner af1f5c275a0b3aab10fdd216ca668d10",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 79817, marker --ntilde-terminfo-owner e352c820049acefcb0121031820b1bf7",
           "scheduled": true
         },
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2501,
+          "evidenceLine": 2632,
           "status": "probe-todo",
           "method": null,
           "reason": "Required grant missing: no verified disposable-ownership receipt was presented",
@@ -2839,10 +2649,10 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2948,
+          "evidenceLine": 2768,
           "status": "supported",
           "method": "query_reply",
-          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 92785, marker --config-file /Users/behnam/.codex/worktrees/core-terminal-comparison/ntilde/artifacts/common-core-ghostty-final2/ghostty-6bb1ae0967e46b2e2f113175c5921177",
+          "reason": "Disposable prerequisite satisfied by run-scoped process owner pid 68325, marker --config-file /Users/behnam/.codex/worktrees/common-core-refresh/ntilde/artifacts/common-core-refresh/ghostty-full/ghostty-3cd3c30494767f72682a764f347db873",
           "scheduled": true
         }
       }
@@ -2856,7 +2666,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2884,
+          "evidenceLine": 2866,
           "status": "untestable",
           "method": null,
           "reason": "The app context has no reset() method or equivalent state readback",
@@ -2865,7 +2675,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2525,
+          "evidenceLine": 2656,
           "status": "untestable",
           "method": null,
           "reason": "The app context has no reset() method or equivalent state readback",
@@ -2874,7 +2684,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 2986,
+          "evidenceLine": 2806,
           "status": "untestable",
           "method": null,
           "reason": "The app context has no reset() method or equivalent state readback",
@@ -2891,7 +2701,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2911,
+          "evidenceLine": 2893,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2900,16 +2710,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2552,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "charsets.dec-special: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 2683,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 3013,
+          "evidenceLine": 2833,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2926,7 +2736,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2955,
+          "evidenceLine": 2937,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2935,16 +2745,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2578,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "charsets.utf8: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 2727,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 3057,
+          "evidenceLine": 2877,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2961,7 +2771,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 2999,
+          "evidenceLine": 2981,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2970,16 +2780,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2604,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "charsets.g0-g1-switching: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 2771,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 3101,
+          "evidenceLine": 2921,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -2996,7 +2806,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 3043,
+          "evidenceLine": 3025,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -3005,16 +2815,16 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2630,
-          "status": "probe-todo",
-          "method": null,
-          "reason": "charsets.dec-line-drawing: this run installs no capture adapter because the run's cell-to-pixel geometry was refused — Capture calibration reported geometry {\"cellHeight\":15,\"cellWidth\":7,\"textHeight\":652,\"textWidth\":990} disagrees with witnessed grid {\"cellWidth\":14,\"cellHeight\":30,\"textWidth\":1960,\"textHeight\":1230}",
+          "evidenceLine": 2815,
+          "status": "supported",
+          "method": "screenshot",
+          "reason": null,
           "scheduled": true
         },
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 3145,
+          "evidenceLine": 2965,
           "status": "supported",
           "method": "screenshot",
           "reason": null,
@@ -3031,7 +2841,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 3087,
+          "evidenceLine": 3069,
           "status": "not-scheduled",
           "method": null,
           "reason": "Not selected for this collection; no test was attempted.",
@@ -3040,7 +2850,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2656,
+          "evidenceLine": 2859,
           "status": "not-scheduled",
           "method": null,
           "reason": "Not selected for this collection; no test was attempted.",
@@ -3049,7 +2859,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 3189,
+          "evidenceLine": 3009,
           "status": "not-scheduled",
           "method": null,
           "reason": "Not selected for this collection; no test was attempted.",
@@ -3066,7 +2876,7 @@
         "ntilde": {
           "evidencePath": "ntilde/cases.json",
           "retest": null,
-          "evidenceLine": 3101,
+          "evidenceLine": 3083,
           "status": "probe-todo",
           "method": null,
           "reason": "No icon-name readback for OSC 1",
@@ -3075,7 +2885,7 @@
         "iterm2": {
           "evidencePath": "iterm2/cases.json",
           "retest": null,
-          "evidenceLine": 2670,
+          "evidenceLine": 2873,
           "status": "probe-todo",
           "method": null,
           "reason": "No icon-name readback for OSC 1",
@@ -3084,7 +2894,7 @@
         "ghostty": {
           "evidencePath": "ghostty/cases.json",
           "retest": null,
-          "evidenceLine": 3203,
+          "evidenceLine": 3023,
           "status": "probe-todo",
           "method": null,
           "reason": "No icon-name readback for OSC 1",
