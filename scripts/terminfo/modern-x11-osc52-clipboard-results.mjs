@@ -10,7 +10,7 @@ import { clipboardPeerSteps } from './modern-x11-osc52-write.mjs';
 import { buildOsc52WritePublication, publication as writePublication } from './modern-x11-osc52-write-results.mjs';
 
 export const publication = 'docs/qa/terminfo/2026-11-25-modern-osc52-clipboard-results';
-const manifestSha256 = '5c77bd1edf43e972c1ef72096279f20ad33cee711f17391adc3b52b531d24783';
+const manifestSha256 = '90740856ca4f85341039a180a31d1e8dba0fe8e01b4cfd07f021f71f059ae364';
 const criterionSha256 = 'f670914558fac01e4ef7a815bc2b499e0357e448f8cd9adbb06a208b305cce4c';
 export const osc52ClipboardPaths = base => ({ json: join(base, publication, 'report.json'), markdown: join(base, publication, 'report.md') });
 

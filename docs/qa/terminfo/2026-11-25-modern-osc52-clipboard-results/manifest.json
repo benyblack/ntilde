@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "180ff95e527232b188d840d1ef8ba943305026b4bbed80b68af97d753b2ca7c2",
-    "attempt-1.zip": "5fa24d224c1222395081a4a96bef2d840871c36cb23dc96b53ca9f35fedaaab6"
+    "owned-run.zip": "9c802cbae43be4f695c0c7cfed7d677af706e630b74e8bccd0408f58cbc3b0dd",
+    "attempt-1.zip": "5fa24d224c1222395081a4a96bef2d840871c36cb23dc96b53ca9f35fedaaab6",
+    "attempt-2.zip": "180ff95e527232b188d840d1ef8ba943305026b4bbed80b68af97d753b2ca7c2"
   },
   "attempts": [
     {
@@ -11,11 +12,18 @@
       "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
       "scriptsRevision": "199abe070b061c02a2386efceaa4413834d3a23f",
       "reason": "The GTK peer refused the second seed outside its baseline-only allowlist. The App write, independent baseline restoration, PTY restoration and cleanup are retained."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "378d02a451f6381ffd934458f9095530",
+      "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
+      "scriptsRevision": "8f3de545178a7f8f5d53892045fbff772859c0f7",
+      "reason": "This run reproduced the empty denial and verified restoration before the SonarCloud fixes changed the measured reply classifier."
     }
   ],
-  "runId": "378d02a451f6381ffd934458f9095530",
+  "runId": "abebad8878bc12365c1d96ac47f905b9",
   "appRevision": "5c7f7229102f4085640bf09e643ce592b1e65426",
-  "scriptsRevision": "8f3de545178a7f8f5d53892045fbff772859c0f7",
+  "scriptsRevision": "fb233a55f5d662e0ec254b04d4dfb565bdb443e0",
   "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
   "runtime": "linux-arm64",
   "dotnetSdk": "10.0.403",
