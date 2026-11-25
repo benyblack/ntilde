@@ -113,7 +113,7 @@ export function verifyX11Run(directory, { policy, profilePrefix, markerPrefix, r
     return { run, results, measurement: { ...cleanup, sha256: digest(frame), source } };
 }
 
-function verifyAttempts(directory, manifest) {
+export function verifyAttempts(directory, manifest) {
     const { attempts, archives } = manifest;
     requireModern(Array.isArray(attempts) && same(Object.keys(archives), ['owned-run.zip', ...attempts.map(item => item.archive)]),
         'wrong X11 attempt archive list');

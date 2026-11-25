@@ -1,5 +1,12 @@
 # Optional terminfo.dev desktop baseline
 
+The [Modern application keypad assessment](terminfo/2026-11-25-modern-application-keypad-results/report.md)
+reaches 64 pass, 0 fail and 5 inconclusive across 69 frozen criteria. On an
+owned Linux X11 display, the child received plain `a`, then `SS3 k` for
+`KP_Add` under DECKPAM and `+` under DECKPNM. Run
+`node scripts/terminfo-modern-results.mjs --check --application-keypad` to
+rederive the report.
+
 The [Modern modifyOtherKeys assessment](terminfo/2026-11-24-modern-modify-other-keys-results/report.md)
 reaches 63 pass, 0 fail and 6 inconclusive across 69 frozen criteria. On an owned
 Linux X11 display, the child received plain `a` and then `CSI 27;5;105~` for

@@ -3,6 +3,7 @@
 import ctypes as ct
 import json
 import os
+import signal
 import socket
 import struct
 import sys
@@ -81,6 +82,9 @@ class XDisplay:
         self.keymap = bind(x11, "XQueryKeymap", INT, PTR, ct.POINTER(ct.c_ubyte))
         self.keysym = bind(x11, "XStringToKeysym", XID, ct.c_char_p)
         self.keycode = bind(x11, "XKeysymToKeycode", ct.c_ubyte, PTR, XID)
+        self.keyboard_mapping = bind(x11, "XGetKeyboardMapping", XIDP, PTR, ct.c_ubyte, INT, INTP)
+        self.keysym_modifiers = bind(x11, "XkbKeysymToModifiers", UINT, PTR, XID)
+        self.lookup_keysym = bind(x11, "XkbLookupKeySym", INT, PTR, ct.c_ubyte, UINT, UINTP, XIDP)
         self.query_ids = bind(xres, "XResQueryClientIds", INT, PTR, ct.c_long,
                               ct.POINTER(ClientSpec), ct.POINTER(ct.c_long), ct.POINTER(ct.POINTER(ClientId)))
         self.get_pid = bind(xres, "XResGetClientPid", INT, ct.POINTER(ClientId))
@@ -156,9 +160,37 @@ class XDisplay:
         self.keymap(self.display, keys)
         return [code for code in range(8, 256) if keys[code // 8] & (1 << (code % 8))]
 
-    def chord(self, names, window_id):
+    def effective_keysym(self, code, state):
+        adjusted_modifiers, result = UINT(), XID()
+        demand(self.lookup_keysym(self.display, code, state, ct.byref(adjusted_modifiers), ct.byref(result)),
+               "cannot translate the KP_Add keycode")
+        return result.value
+
+    def keypad_mapping(self):
+        name = "KP_Add"
+        keysym = self.keysym(name.encode("ascii"))
+        code = self.keycode(self.display, keysym)
+        demand(code >= 8, "KP_Add keycode unavailable")
+        count = INT()
+        entries = self.keyboard_mapping(self.display, code, 1, ct.byref(count))
+        try:
+            demand(entries and 1 <= count.value <= 32, "KP_Add symbol levels unavailable")
+            levels = entries[:count.value]
+            num_lock_mask = self.keysym_modifiers(self.display, self.keysym(b"Num_Lock"))
+            unmodified = self.effective_keysym(code, 0)
+            num_locked = self.effective_keysym(code, num_lock_mask)
+            demand(0 < num_lock_mask <= 255 and unmodified == keysym == num_locked and keysym in levels,
+                   f"KP_Add translation differs under NumLock: {levels}, {num_lock_mask}, {unmodified}, {num_locked}")
+            return {"name": name, "keysym": keysym, "code": code, "levels": levels,
+                    "numLockMask": num_lock_mask, "unmodifiedKeysym": unmodified, "numLockKeysym": num_locked}
+        finally:
+            if entries:
+                self.free(entries)
+
+    def chord(self, names, window_id, mapping=None):
         held, events = [], []
-        mapping = {name: self.keycode(self.display, self.keysym(name.encode("ascii"))) for name in names}
+        if mapping is None:
+            mapping = {name: self.keycode(self.display, self.keysym(name.encode("ascii"))) for name in names}
         demand(all(mapping.values()) and len(set(mapping.values())) == len(names), "bad chord key mapping")
         try:
             for down, order in ((True, names), (False, reversed(names))):
@@ -170,31 +202,40 @@ class XDisplay:
                         held.append(code)
                     demand(self.key(self.display, code, down, 0), "XTEST key dispatch failed")
                     self.sync(self.display, 0)
-                    if not down:
-                        held.remove(code)
                     pressed, mask = self.pressed(), self.pointer()["mask"]
-                    demand(pressed == sorted(held), "XTEST held keys differ")
+                    expected = held if down else held[:-1]
+                    demand(pressed == sorted(expected), "XTEST held keys differ")
+                    if not down:
+                        held.pop()
                     events.append({"name": name, "code": code, "down": down, "at": at,
                                    "pressed": pressed, "mask": mask})
         finally:
-            for code in reversed(held):
-                self.key(self.display, code, 0, 0)
-            self.sync(self.display, 0)
+            self.release_held_keys(held)
         return events
+
+    def release_held_keys(self, held):
+        for code in reversed(held):
+            self.key(self.display, code, 0, 0)
+        self.sync(self.display, 0)
+        if held:
+            demand(not self.pressed(), "XTEST key cleanup failed")
 
     def keyboard_action(self, command, window_id):
         request, tag = command["request"], command["fence"]
-        permitted = {"a": (["a"], "zb"), "ctrl+i": (["Control_L", "i"], "zc")}
-        names, expected_tag = permitted[request["chord"]]
-        demand(tag == expected_tag and self.pressed() == [] and self.pointer()["mask"] == 0,
+        permitted = {"a": (["a"], ("zb",)), "ctrl+i": (["Control_L", "i"], ("zc",)),
+                     "KP_Add": (["KP_Add"], ("zd", "ze"))}
+        names, tags = permitted[request["chord"]]
+        demand(tag in tags and self.pressed() == [] and self.pointer()["mask"] == 0,
                "unexpected keyboard fence or initial state")
         started = str(time.monotonic_ns())
-        events = self.chord(names, window_id)
+        mapping = self.keypad_mapping() if names == ["KP_Add"] else None
+        events = self.chord(names, window_id, {mapping["name"]: mapping["code"]} if mapping else None)
         fence_start = str(time.monotonic_ns())
         fence_events = [event for letter in tag for event in self.chord([letter], window_id)]
         focus, pressed, mask = self.focus(), self.pressed(), self.pointer()["mask"]
         demand(focus == window_id and not pressed and mask == 0, "XTEST keyboard restoration failed")
         return {"request": request, "started": started, "events": events, "initialKeys": [],
+                **({"mapping": mapping} if mapping else {}),
                 "fence": {"tag": tag, "started": fence_start, "events": fence_events,
                           "keycodes": [event["code"] for event in fence_events if event["down"]]},
                 "finished": str(time.monotonic_ns()), "serverPid": self.server_pid, "appPid": command["appPid"],
@@ -238,11 +279,18 @@ class XDisplay:
                 "appPid": app_pid, "windowId": window_id, "focus": window_id, "xtest": True}
 
 
+def interrupt(_signum, _frame):
+    raise InterruptedError("XTEST action interrupted")
+
+
 def main():
     command = json.loads(sys.argv[1])
     if command["kind"] == "rpc":
         result = request_peer(command["socket"], command["pid"], command["request"])
     else:
+        if command.get("request", {}).get("kind") == "keyboard":
+            for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+                signal.signal(signum, interrupt)
         display = XDisplay(command["serverPid"])
         try:
             result = display.run(command)
