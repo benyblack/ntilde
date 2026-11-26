@@ -89,12 +89,13 @@ namespace Ntilde.AgentHost
             });
         }
 
-        public void NotifyCommandAccepted(string? commandText)
+        public void NotifyCommandAccepted(string? commandText, string? reportedCommandLine = null)
         {
             RunUnderGate(_ =>
             {
                 _precise = true;
-                _currentCommand = string.IsNullOrWhiteSpace(commandText) ? null : commandText.Trim();
+                _currentCommand = reportedCommandLine
+                    ?? (string.IsNullOrWhiteSpace(commandText) ? null : commandText.Trim());
                 return null;
             });
         }

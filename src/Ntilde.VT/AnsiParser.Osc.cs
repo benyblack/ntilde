@@ -128,8 +128,7 @@ namespace Ntilde.VT
                     HandleShellIntegrationMark(data);
                     break;
 
-                // OSC 633: the VS Code shell-integration dialect. Only the lifecycle markers A-D are
-                // handled, through the same state machine as OSC 133. See AnsiParser.ShellIntegration.cs.
+                // OSC 633: VS Code A-D lifecycle markers, E command metadata and P Cwd metadata.
                 case "633":
                     HandleVsCodeShellIntegrationMark(data);
                     break;

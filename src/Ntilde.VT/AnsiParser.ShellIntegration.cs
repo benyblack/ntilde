@@ -33,11 +33,39 @@ namespace Ntilde.VT
         //   OSC 633;C       -> pre-execution (the command is about to run)
         //   OSC 633;D[;N]   -> execution finished, with an optional exit code N
         // The dialect differs from 133 only where the documented grammar does:
-        //   - C carries no payload, so nothing after the letter is ever read as command text. The
-        //     command line travels in the separate E record, which is deliberately not handled here.
+        //   - C carries no payload. E can supply separate, unverified metadata for the cycle.
         //   - D takes an exit code only; 133's trailing duration field is not part of 633.
-        // E, P and every other 633 record are ignored (no lifecycle effect, no state).
-        private void HandleVsCodeShellIntegrationMark(string data) => DispatchShellIntegrationMark(data, vsCodeDialect: true);
+        private void HandleVsCodeShellIntegrationMark(string data)
+        {
+            ReadOnlySpan<char> record = data;
+            int separator = record.IndexOf(';');
+            ReadOnlySpan<char> marker = separator < 0 ? record : record[..separator];
+            ReadOnlySpan<char> arguments = separator < 0 ? default : record[(separator + 1)..];
+            switch (marker)
+            {
+                case "E":
+                    if (_awaitingVsCodeCommand)
+                    {
+                        _vsCodeCommandLine = TryDecodeVsCodeMetadata(arguments, out string? commandLine)
+                            && IsPlausibleCommandText(commandLine) ? commandLine : null;
+                    }
+                    break;
+
+                case "P":
+                    const string cwdProperty = "Cwd=";
+                    if (arguments.StartsWith(cwdProperty, StringComparison.Ordinal)
+                        && TryDecodeVsCodeMetadata(arguments[cwdProperty.Length..], out string? cwd)
+                        && IsPlausibleCommandText(cwd) && cwd.AsSpan().IndexOfAny('\t', '\r', '\n') < 0)
+                    {
+                        OnWorkingDirectoryChanged?.Invoke(cwd);
+                    }
+                    break;
+
+                default:
+                    DispatchShellIntegrationMark(data, vsCodeDialect: true);
+                    break;
+            }
+        }
 
         private void DispatchShellIntegrationMark(string data, bool vsCodeDialect)
         {
@@ -47,6 +75,7 @@ namespace Ntilde.VT
             switch (parts[0])
             {
                 case "A":
+                    ClearVsCodeCommandLine();
                     // We're back at a shell prompt: clear any mouse/focus reporting a TUI
                     // left enabled after an unclean exit, so pointer moves don't flood the
                     // prompt with leaked ESC[<..M reports.
@@ -55,6 +84,8 @@ namespace Ntilde.VT
                     break;
 
                 case "B":
+                    ClearVsCodeCommandLine();
+                    _awaitingVsCodeCommand = vsCodeDialect;
                     // The command-input window and the mark are one fact in two parts, so they are
                     // published together, here, under the buffer's tracked-mark lock and before any
                     // subscriber runs. Splitting them is what #448 cost twice over: first the window
@@ -73,10 +104,15 @@ namespace Ntilde.VT
                     // that stops the cells below it being served as a command line once the output
                     // starts arriving.
                     _buffer.CloseCommandInputWindow();
-                    OnCommandAccepted?.Invoke(vsCodeDialect ? null : DecodeAcceptedCommandPayload(parts));
+                    string? reportedCommandLine = vsCodeDialect ? _vsCodeCommandLine : null;
+                    ClearVsCodeCommandLine();
+                    string? acceptedCommand = vsCodeDialect ? null : DecodeAcceptedCommandPayload(parts);
+                    OnCommandAccepted?.Invoke(acceptedCommand);
+                    OnCommandAcceptedWithMetadata?.Invoke(acceptedCommand, reportedCommandLine);
                     break;
 
                 case "D":
+                    ClearVsCodeCommandLine();
                     HandleCommandFinished(parts, readDuration: !vsCodeDialect);
                     break;
             }

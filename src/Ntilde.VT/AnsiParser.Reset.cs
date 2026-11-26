@@ -50,6 +50,7 @@ namespace Ntilde.VT
         private void HardReset()
         {
             _buffer.Reset();
+            ClearVsCodeCommandLine();
             OnKittyClipboardReset?.Invoke();
             OnPointerShapeReset?.Invoke();
             ClearITerm2Multipart();
@@ -74,6 +75,7 @@ namespace Ntilde.VT
         private void SoftReset()
         {
             _buffer.SoftReset();
+            ClearVsCodeCommandLine();
             OnPointerShapeReset?.Invoke();
             ResetCharsets();
             _swallowNextNewline = false;

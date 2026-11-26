@@ -292,6 +292,13 @@ namespace Ntilde.VT
         /// </para>
         /// </remarks>
         public Action<string?>? OnCommandAccepted { get; set; }
+
+        /// <summary>
+        /// The C lifecycle edge with the existing OSC 133 payload as the first argument and
+        /// unverified OSC 633 E metadata as the second. Keep the second argument out of
+        /// command execution, history and Command Assist.
+        /// </summary>
+        public Action<string?, string?>? OnCommandAcceptedWithMetadata { get; set; }
         /// <summary>
         /// OSC 133;B — prompt end / start of the user's input line. The argument carries where
         /// the mark landed in the buffer (see <see cref="ShellIntegrationMark"/>), which is the

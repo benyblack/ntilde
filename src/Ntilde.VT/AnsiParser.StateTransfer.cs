@@ -76,6 +76,7 @@ namespace Ntilde.VT
         {
             ArgumentNullException.ThrowIfNull(state);
             ValidateParserState(state);
+            ClearVsCodeCommandLine();
 
             // The snapshot's unfinished OSC 99 notifications replace any this parser already holds: they belong to the output the import replaces and
             // must not merge with later chunks of a notification that reuses their id.
