@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { caseIds, deriveRun } from './kitty-graphics-owned.mjs';
 import { replayPinnedGraphics } from './kitty-graphics-pinned.mjs';
 import { assertRetainedSourceClosure, capturedKittyGraphicsSourceFiles, capturedKittyGraphicsSourcePolicy } from './owned-sources.mjs';
-import { digest, leaseReleasedAt, pinnedBundle, readJson, readManifest, withOwnedArchive, writeUnicodeReport } from './unicode-publication-inputs.mjs';
+import { digest, focusedMeasurement, pinnedBundle, readJson, readManifest, withOwnedArchive, writeUnicodeReport } from './unicode-publication-inputs.mjs';
 
 export const publication = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-26-rich-kitty-graphics/', import.meta.url));
 const prior = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-16-static-images/', import.meta.url));
@@ -51,21 +51,10 @@ function readRetainedMeasurement(directory, manifest) {
     assert.deepEqual(report, readJson(directory, 'graphics-report.json'));
     assert.deepEqual(receipt, readJson(directory, 'graphics-receipt.json'));
     verifySources(directory, context);
-    const m = manifest.measurement;
-    assert.equal(m.runId, context.runId);
-    assert.equal(m.sourcePolicy, context.sourceSnapshotPolicy);
-    assert.equal(m.receiptSchema, receipt.schemaVersion);
-    assert.ok(context.appVersion.endsWith('+' + m.appRevision));
-    assert.ok([context.executableSha256, context.assemblySha256].every(hash => /^[a-f\d]{64}$/.test(hash)));
-    const { rows, cols } = frames[0].screen;
     const grid = frames[1].pixels[0].renderDetails.grid;
     const stages = frames.map(frame => ({ snapshot: frame.index, stage: frame.stageId ?? frame.kind, pngs: frame.pixels.map(pixel => pixel.file) }));
-    return { ...report, stages, measurement: {
-        ...m, version: context.appVersion, nodeVersion: context.nodeVersion, startedAt: context.startedAt,
-        releasedAt: leaseReleasedAt(directory, context.runId, assert.ok), geometry: { rows, cols }, grid,
-        scale: frames[1].pixels[0].scale, executableSha256: context.executableSha256, assemblySha256: context.assemblySha256,
-        sourceSnapshotManifestSha256: context.sourceSnapshotManifestSha256, archiveSha256: manifest.archives['owned-run.zip'],
-    } };
+    const measurement = focusedMeasurement(directory, manifest, context, receipt, frames[0].screen, { grid, scale: frames[1].pixels[0].scale });
+    return { ...report, stages, measurement };
 }
 
 export async function buildPublication() {

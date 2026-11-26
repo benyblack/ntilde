@@ -11,12 +11,14 @@ export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
 export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
 export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph-v79';
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
+export const capturedOsc66SourcePolicy = 'readonly-owned-source-graph-v84';
 export const capturedKittyGraphicsSourcePolicy = 'readonly-owned-source-graph-v83';
 export const capturedUnicodeBoundarySourcePolicy = 'readonly-owned-source-graph-v82';
 export const capturedUnicodeWidthSourcePolicy = 'readonly-owned-source-graph-v81';
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 const focusedSourcePolicies = [
+    ['osc66OwnedSourceSha256', capturedOsc66SourcePolicy],
     ['kittyGraphicsOwnedSourceSha256', capturedKittyGraphicsSourcePolicy],
     ['unicodeBoundaryContractsSourceSha256', capturedUnicodeBoundarySourcePolicy],
     ['unicodeWidthContractsSourceSha256', capturedUnicodeWidthSourcePolicy],
@@ -1018,6 +1020,13 @@ export const capturedV82SourceFiles = Object.freeze({
     dslReceiptSourceSha256: 'dsl-receipt.mjs',
 });
 
+export const capturedOsc66SourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    osc66ContractsSourceSha256: 'osc66-contracts.mjs',
+    osc66OwnedSourceSha256: 'osc66-owned.mjs',
+    osc66WorkerSourceSha256: 'osc66-worker.mjs',
+});
+
 export const capturedKittyGraphicsSourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
@@ -1085,6 +1094,7 @@ export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
     const expected = {
+        [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,
         [capturedKittyGraphicsSourcePolicy]: capturedKittyGraphicsSourceFiles,
         [capturedUnicodeBoundarySourcePolicy]: capturedUnicodeBoundarySourceFiles,
         [capturedUnicodeWidthSourcePolicy]: capturedUnicodeWidthSourceFiles,

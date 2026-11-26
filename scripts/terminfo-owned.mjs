@@ -107,6 +107,11 @@ const childEnvironmentSources = {
     modernChildEnvironmentOwnedSourceSha256: 'modern-child-environment-owned.mjs',
     modernChildEnvironmentWorkerSourceSha256: 'modern-child-environment-worker.mjs',
 };
+const osc66Sources = {
+    osc66ContractsSourceSha256: 'osc66-contracts.mjs',
+    osc66OwnedSourceSha256: 'osc66-owned.mjs',
+    osc66WorkerSourceSha256: 'osc66-worker.mjs',
+};
 const kittyGraphicsSources = {
     kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
     kittyGraphicsWorkerSourceSha256: 'kitty-graphics-worker.mjs',
@@ -124,6 +129,7 @@ const unicodeWidthSources = {
 };
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
+    'osc66': { policy: 'readonly-owned-source-graph-v84', sources: osc66Sources, entry: osc66Sources.osc66OwnedSourceSha256 },
     'kitty-graphics': { policy: 'readonly-owned-source-graph-v83', sources: kittyGraphicsSources, entry: kittyGraphicsSources.kittyGraphicsOwnedSourceSha256 },
     'unicode-boundaries': { policy: 'readonly-owned-source-graph-v82', sources: unicodeBoundarySources, entry: unicodeBoundarySources.unicodeBoundaryOwnedSourceSha256 },
     'unicode-width': { policy: 'readonly-owned-source-graph-v81', sources: unicodeWidthSources, entry: unicodeWidthSources.unicodeWidthOwnedSourceSha256 },
