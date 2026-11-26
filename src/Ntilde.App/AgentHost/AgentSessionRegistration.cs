@@ -90,7 +90,7 @@ namespace Ntilde.AgentHost
         {
             ArgumentNullException.ThrowIfNull(buffer);
             _paneId = paneId;
-            Buffer = buffer;
+            _buffer = buffer;
             _title = title;
             _profileName = profileName;
             _kind = kind;
@@ -319,7 +319,10 @@ namespace Ntilde.AgentHost
         }
 
         /// <summary>The pane's VT buffer. Reads must take <see cref="TerminalBuffer.Lock"/> (endpoint milestone A1/PR3).</summary>
-        public TerminalBuffer Buffer { get; }
+        private TerminalBuffer _buffer;
+        public TerminalBuffer Buffer => Volatile.Read(ref _buffer);
+
+        internal void SetBuffer(TerminalBuffer buffer) => Volatile.Write(ref _buffer, buffer);
 
         /// <summary>Stable pane identity; re-keyed via <see cref="AgentSessionRegistry.Rekey"/> on session restore.</summary>
         public Guid PaneId

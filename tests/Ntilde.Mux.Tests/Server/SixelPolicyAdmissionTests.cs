@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Mux.TextClient;
+using Ntilde.VT;
 
 namespace Ntilde.Mux.Tests.Server;
 
@@ -10,7 +12,7 @@ public sealed class SixelPolicyAdmissionTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(int.MaxValue)]
-    public async Task Future_peer_ceiling_negotiates_only_actual_supported_legacy(int offered)
+    public async Task Negotiated_ceiling_intersects_the_peer_and_server(int offered)
     {
         using var host = new MuxTestHost();
         var raw = host.ConnectRaw();
@@ -18,8 +20,8 @@ public sealed class SixelPolicyAdmissionTests
         var reply = await raw.ReadResponseAsync();
         Assert.Null(reply.Error);
         var welcome = MuxFrames.ParseParams(reply.Result, MuxJsonContext.Default.WelcomeResult);
-        Assert.Equal(0, welcome.MaxSixelRasterPolicy);
-        Assert.DoesNotContain("maxSixelRasterPolicy", reply.Result!.Value.GetRawText());
+        Assert.Equal(Math.Min(offered, SixelRasterPolicy.EnabledVersion), welcome.MaxSixelRasterPolicy);
+        if (offered == 0) Assert.DoesNotContain("maxSixelRasterPolicy", reply.Result!.Value.GetRawText());
     }
 
     [Fact]
@@ -108,6 +110,43 @@ public sealed class SixelPolicyAdmissionTests
         await host.Mux(id).FlushAsync();
         Assert.Equal(0, host.Mux(id).AttachedClients);
         Assert.Equal((80, 24), (host.Mux(id).Buffer.Cols, host.Mux(id).Buffer.Rows));
+    }
+
+    [Fact]
+    public async Task Native_attach_restores_the_canvas_crop_and_ordered_stream_metrics()
+    {
+        using var host = new MuxTestHost();
+        var ct = TestContext.Current.CancellationToken;
+        int policy = SixelRasterPolicy.PresenterNativeVersion;
+        using var client = await host.ConnectClientAsync(new MuxClientOptions { MaxSixelRasterPolicy = policy });
+        Guid id = await client.SpawnAsync(new SpawnParams
+        {
+            Command = "scripted",
+            Cols = 80,
+            Rows = 24,
+            CellWidthPx = 10,
+            CellHeightPx = 20,
+            RequiredSixelRasterPolicy = policy,
+        }, ct);
+        Assert.Equal(policy, Assert.Single(await client.ListSessionsAsync(ct)).RequiredSixelRasterPolicy);
+        host.Fake(id).Emit("\x1b[4;4H\x1bPq#1;2;100;0;0!16~\x1b\\");
+        await host.Mux(id).FlushAsync();
+
+        using var session = client.OpenSession(id, requiredSixelRasterPolicy: policy);
+        using var model = new TextClientModel(session);
+        await session.AttachAsync(0, MuxTestHost.DefaultPresentation with { SupportsSixelScrolling = true }, ct);
+        var serverImage = Assert.Single(host.Mux(id).Buffer.Images);
+        var clientImage = Assert.Single(model.Buffer.Images);
+        Assert.NotNull(serverImage.NativeRaster);
+        Assert.Equal(serverImage.NativeRaster, clientImage.NativeRaster);
+        Assert.Equal((serverImage.CellX, serverImage.CellY, serverImage.CellWidth, serverImage.CellHeight),
+            (clientImage.CellX, clientImage.CellY, clientImage.CellWidth, clientImage.CellHeight));
+        Assert.NotNull(model.Parser.SixelCellSizeOverride);
+
+        using var old = await host.ConnectClientAsync();
+        using var oldSession = old.OpenSession(id);
+        var error = await Assert.ThrowsAsync<MuxProtocolException>(() => oldSession.AttachAsync(0, MuxTestHost.DefaultPresentation, ct));
+        Assert.Equal(MuxErrorCodes.VersionMismatch, error.Code);
     }
 
     private static void Send(RawMuxConnection raw, string method, string json)

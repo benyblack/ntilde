@@ -936,7 +936,7 @@ namespace Ntilde.Pty
             // never throw at the agent-host lifecycle call site.
             int cols = _cols > 0 ? _cols : 80;
             int rows = _rows > 0 ? _rows : 24;
-            var ring = new Ntilde.Replay.FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: _recordingDelivery.CellMetrics);
+            var ring = new Ntilde.Replay.FlightRecordingBuffer(maxTotalBytes, cols, rows, initialSixelCellSize: _recordingDelivery.CellMetrics, sixelRasterPolicy: _recordingDelivery.SixelRasterPolicy);
             _flightRecorder = ring;
             if (Volatile.Read(ref _disposed) != 0)
             {
@@ -977,6 +977,7 @@ namespace Ntilde.Pty
 
         private readonly Ntilde.Pty.RecordingOutputDelivery _recordingDelivery = new();
 
+        public void SetRecordingSixelRasterPolicy(int policy) => _recordingDelivery.SixelRasterPolicy = policy;
         public void UseHostRecordingBoundary() => _recordingDelivery.UseRawHost();
 
         public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)
@@ -1061,7 +1062,7 @@ namespace Ntilde.Pty
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted), this);
             var recorder = _manualRecording.Begin(
-                () => new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics),
+                () => new Ntilde.Replay.ReplayWriter(filePath, _cols, _rows, ShellCommand, _recordingDelivery.CellMetrics, _recordingDelivery.SixelRasterPolicy),
                 failure => RecordingFailed?.Invoke(failure));
             if (Volatile.Read(ref _disposed) != 0 || (_recordingDelivery.Mode == 2 && _outputConsumerStopped.Task.IsCompleted))
             {

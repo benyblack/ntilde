@@ -494,7 +494,7 @@ namespace Ntilde.Controls
             InitializeComponent();
             StartupPerformanceTracker.Current?.TryMarkCheckpoint("TerminalPane.Ctor.AfterInitializeComponent");
             _sshDiagnosticsLevel = SshDiagnosticsLevel.None;
-            Buffer = new TerminalBuffer(80, 24);
+            Buffer = new TerminalBuffer(80, 24, SixelRasterPolicy.PresenterNativeVersion);
             TermView.SetBuffer(Buffer);
             TermView.Ready += (c, r) => InitializeSession(null, null, c, r);
             SetupCommon(null);
@@ -511,7 +511,7 @@ namespace Ntilde.Controls
             InitializeComponent();
             StartupPerformanceTracker.Current?.TryMarkCheckpoint("TerminalPane.Ctor.AfterInitializeComponent");
             _sshDiagnosticsLevel = SshDiagnosticsLevel.None;
-            Buffer = new TerminalBuffer(80, 24);
+            Buffer = new TerminalBuffer(80, 24, SixelRasterPolicy.PresenterNativeVersion);
             TermView.SetBuffer(Buffer);
             // Record the requested command NOW, not only once the session starts. Until
             // InitializeSessionCore ran, the shell lived solely in this lambda's closure,
@@ -534,7 +534,7 @@ namespace Ntilde.Controls
             InitializeComponent();
             StartupPerformanceTracker.Current?.TryMarkCheckpoint("TerminalPane.Ctor.AfterInitializeComponent");
             _sshDiagnosticsLevel = SshDiagnosticsLevel.None;
-            Buffer = new TerminalBuffer(80, 24);
+            Buffer = new TerminalBuffer(80, 24, SixelRasterPolicy.PresenterNativeVersion);
             TermView.SetBuffer(Buffer);
             // See the single-argument overload: the requested command must be observable
             // before the session starts, or the attach-time fallback spawns an empty one.
@@ -566,7 +566,7 @@ namespace Ntilde.Controls
             InitializeComponent();
             StartupPerformanceTracker.Current?.TryMarkCheckpoint("TerminalPane.Ctor.AfterInitializeComponent");
             _sshDiagnosticsLevel = sshDiagnosticsLevel;
-            Buffer = new TerminalBuffer(80, 24);
+            Buffer = new TerminalBuffer(80, 24, SixelRasterPolicy.PresenterNativeVersion);
             TermView.SetBuffer(Buffer);
             TermView.ShellOverride = profile.ShellOverride;
             // As above: keep the profile's command visible to the attach-time fallback,

@@ -14,6 +14,7 @@ namespace Ntilde.VT
         public AnsiParserState ExportState()
         {
             SixelCellSize? size = SixelCellSizeOverride;
+            if (_buffer.NativeSixelBudget is not null) TerminalBuffer.RequireNativeSixelMetrics(size);
             var state = new AnsiParserState
             {
                 SixelCellWidthPx = size?.WidthPx,
@@ -226,6 +227,9 @@ namespace Ntilde.VT
         internal void ValidateParserState(AnsiParserState state)
         {
             ArgumentNullException.ThrowIfNull(state);
+            if (_buffer.NativeSixelBudget is not null)
+                TerminalBuffer.RequireNativeSixelMetrics(state.SixelCellWidthPx is float nativeWidth && state.SixelCellHeightPx is float nativeHeight
+                    ? new SixelCellSize(nativeWidth, nativeHeight) : null);
             if (state.SixelCellWidthPx.HasValue != state.SixelCellHeightPx.HasValue ||
                 (state.SixelCellWidthPx is float width && (!float.IsFinite(width) || width <= 0)) ||
                 (state.SixelCellHeightPx is float height && (!float.IsFinite(height) || height <= 0)))

@@ -322,12 +322,19 @@ namespace Ntilde.VT
         public TerminalBuffer(int cols, int rows, int sixelRasterPolicyVersion)
             : this(cols, rows, sixelRasterPolicyVersion, null) { }
 
-        // Test-only construction keeps the unadvertised implementation exercised while the public ceiling is zero.
         /// <summary>
-        /// Constructs only the internal test path with native accounting; it does not raise the public policy ceiling.
+        /// Constructs a native buffer with a deterministic test budget and metric context.
         /// </summary>
-        internal static TerminalBuffer CreateNativeSixelTestBuffer(int cols, int rows, NativeSixelBudget budget, SixelSourceBudget? sources = null) =>
-            new(cols, rows, SixelRasterPolicy.PresenterNativeVersion, budget ?? throw new ArgumentNullException(nameof(budget))) { SixelSources = sources ?? new() };
+        internal static TerminalBuffer CreateNativeSixelTestBuffer(int cols, int rows, NativeSixelBudget budget,
+            SixelCellSize? metrics, SixelSourceBudget? sources = null)
+        {
+            if (metrics is not null) RequireNativeSixelMetrics(metrics);
+            var buffer = new TerminalBuffer(cols, rows, SixelRasterPolicy.PresenterNativeVersion,
+                budget ?? throw new ArgumentNullException(nameof(budget)))
+            { SixelSources = sources ?? new() };
+            if (metrics is not null) buffer.SetNativeSixelCellMetrics(metrics);
+            return buffer;
+        }
 
         internal NativeSixelBudget? NativeSixelBudget { get; }
 
@@ -336,7 +343,8 @@ namespace Ntilde.VT
         /// </summary>
         private TerminalBuffer(int cols, int rows, int sixelRasterPolicyVersion, NativeSixelBudget? budget)
         {
-            if (budget is null) SixelRasterPolicy.RequireSupported(sixelRasterPolicyVersion);
+            SixelRasterPolicy.RequireSupported(sixelRasterPolicyVersion);
+            if (sixelRasterPolicyVersion != 0) budget ??= new NativeSixelBudget();
             budget?.BindToBuffer();
             NativeSixelBudget = budget;
             SixelRasterPolicyVersion = sixelRasterPolicyVersion;

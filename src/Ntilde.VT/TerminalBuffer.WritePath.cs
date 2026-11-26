@@ -575,6 +575,9 @@ namespace Ntilde.VT
             Invalidate(); // Notify outside lock (optional, Invalidate delegates)
         }
 
+        /// <summary>
+        /// Moves active rows and images, retaining main history and applying canonical crop only to actual regional or eviction loss.
+        /// </summary>
         private void ScrollUpInternal()
         {
             // Horizontal margins scroll only the band between them, never into scrollback.
@@ -623,7 +626,7 @@ namespace Ntilde.VT
                         int delta = newlyEvicted > int.MaxValue ? int.MaxValue : (int)newlyEvicted;
                         img.CellY -= delta;
                         // If the image's entire area is now before the new index 0, prune it.
-                        if (img.CellY + img.CellHeight <= 0)
+                        if (DiscardImageBeforeOrigin(img))
                         {
                             RetireImage(img);
                             _images.RemoveAt(i);
@@ -648,7 +651,7 @@ namespace Ntilde.VT
 
                     // If image overlaps with the scrolling region, it moves.
                     // Accurate overlap: Ends after top AND Starts before bottom.
-                    if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY <= absBottom)
+                    if (img.IsSticky && ImageOverlapsRows(img, absTop, absBottom + 1))
                     {
                         img.CellY--;
                         if (ClipSixelImage(img, absTop, absBottom))
@@ -700,6 +703,9 @@ namespace Ntilde.VT
             Invalidate();
         }
 
+        /// <summary>
+        /// Moves the active region downward; discarded native source pixels stay clipped when the stream later reverses direction.
+        /// </summary>
         private void ScrollDownInternal(TerminalCell blank)
         {
             if (HasHorizontalMargins)
@@ -713,29 +719,7 @@ namespace Ntilde.VT
             EraseTextSizingAcrossBoundary(sizedTop);
             EraseTextSizingAcrossBoundary(sizedBottom);
             EraseTextSizingRange(0, Cols, sizedBottom - 1, sizedBottom);
-            // Update images: Shift images in the region DOWN (CellY++)
-            int absTop = _isAltScreen ? ScrollTop : (_scrollback.Count + ScrollTop);
-            int absBottom = _isAltScreen ? ScrollBottom : (_scrollback.Count + ScrollBottom);
-
-            for (int i = _images.Count - 1; i >= 0; i--)
-            {
-                var img = _images[i];
-                // Only the active screen's images move (see ScrollUpInternal).
-                if (img.IsAltScreenImage != _isAltScreen) continue;
-
-                // If image overlaps with the scrolling region, it moves.
-                if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY < absBottom)
-                {
-                    img.CellY++;
-                    bool clipped = ClipSixelImage(img, absTop, absBottom);
-                    // If the image moves below the region, remove it
-                    if (clipped || img.CellY > absBottom)
-                    {
-                        RetireImage(img);
-                        _images.RemoveAt(i);
-                    }
-                }
-            }
+            ScrollImagesDownNoLock();
 
             // Shift rows down within the region
             for (int i = ScrollBottom; i > ScrollTop; i--)
@@ -748,6 +732,35 @@ namespace Ntilde.VT
 
             // Moved rows keep their revisions, as in ScrollUpInternal (#657).
         }
+
+        private void ScrollImagesDownNoLock()
+        {
+            // Update images: Shift images in the region DOWN (CellY++)
+            int absTop = _isAltScreen ? ScrollTop : (_scrollback.Count + ScrollTop);
+            int absBottom = _isAltScreen ? ScrollBottom : (_scrollback.Count + ScrollBottom);
+
+            for (int i = _images.Count - 1; i >= 0; i--)
+            {
+                var img = _images[i];
+                // Only the active screen's images move (see ScrollUpInternal).
+                if (img.IsAltScreenImage != _isAltScreen) continue;
+
+                // If image overlaps with the scrolling region, it moves.
+                if (!img.IsSticky || !ImageOverlapsDownScrollRegion(img, absTop, absBottom)) continue;
+                img.CellY++;
+                bool clipped = ClipSixelImage(img, absTop, absBottom);
+                if (clipped || img.CellY > absBottom)
+                {
+                    RetireImage(img);
+                    _images.RemoveAt(i);
+                }
+            }
+        }
+
+        private bool ImageOverlapsDownScrollRegion(TerminalImage image, int top, int bottom) =>
+            image.NativeRaster is null
+                ? image.CellY + image.CellHeight > top && image.CellY < bottom
+                : ImageOverlapsRows(image, top, bottom + 1);
 
         public void InsertCharacters(int count)
         {

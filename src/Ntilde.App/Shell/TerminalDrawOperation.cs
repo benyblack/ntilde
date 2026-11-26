@@ -69,6 +69,9 @@ namespace Ntilde.Shell
         private readonly int _cellWidthDevicePx;
         private readonly int _cellHeightDevicePx;
         private readonly PixelGrid _pixelGrid;
+        private readonly NativeRasterPresenterContext? _nativeRasterPresenter;
+        private readonly NativeSixelViewProjection? _nativeSixelProjection;
+        internal bool NativeRasterUnavailable { get; private set; }
         private readonly bool _showRenderHud;
 
         /// <summary>
@@ -208,6 +211,9 @@ namespace Ntilde.Shell
 
         public Rect Bounds => _bounds;
 
+        /// <summary>
+        /// Freezes draw inputs and independent native presenter/capture densities before acquiring font resources.
+        /// </summary>
         public TerminalDrawOperation(
             Rect bounds,
             TerminalBuffer buffer,
@@ -249,8 +255,14 @@ namespace Ntilde.Shell
             bool collectRenderDetails = false,
             bool selectionRelativeToViewport = false,
             bool collectImageDetails = false,
-            Action? afterSnapshotForTest = null)
+            Action? afterSnapshotForTest = null,
+            double? nativePresenterDevicePixelsPerDip = null)
         {
+            if (buffer.SixelRasterPolicyVersion != 0 && (!double.IsFinite(renderScaling) ||
+                !float.IsFinite((float)renderScaling) || (float)renderScaling <= 0))
+                throw new ArgumentOutOfRangeException(nameof(renderScaling));
+            _nativeRasterPresenter = nativePresenterDevicePixelsPerDip is double presenterScale
+                ? new NativeRasterPresenterContext(presenterScale) : null;
             _bounds = bounds;
             _preferredCursorStyle = preferredCursorStyle;
             _cacheLease = cacheLease;
@@ -293,6 +305,9 @@ namespace Ntilde.Shell
             _isolatedSnapshot = isolatedSnapshot;
             _requestImageFrame = requestImageFrame;
             _pixelGrid = CreatePixelGrid(_metrics, _renderScaling);
+            if (_nativeRasterPresenter is { } presenter)
+                _nativeSixelProjection = new(_pixelGrid.CellWidthPx * presenter.DevicePixelsPerDip / _renderScaling,
+                    _pixelGrid.CellHeightPx * presenter.DevicePixelsPerDip / _renderScaling);
             _cellWidthDevicePx = _pixelGrid.CellWidthPx;
             _cellHeightDevicePx = _pixelGrid.CellHeightPx;
         }
@@ -441,6 +456,7 @@ namespace Ntilde.Shell
                     ActiveSearchIndex = _activeSearchIndex,
                     Isolated = _isolatedSnapshot,
                     SnapshotSessionId = snapshotSession,
+                    NativeSixelProjection = _nativeSixelProjection,
                 };
                 TerminalRenderSnapshot renderSnapshot = _buffer.CaptureRenderSnapshot(snapshotRequest, out long readLockMs);
                 RendererStatistics.RecordBufferReadLockTimeMs(readLockMs);
@@ -829,6 +845,15 @@ namespace Ntilde.Shell
                     {
                         var img = frame.Images[imageIndex];
                         int visualY = img.CellY - absDisplayStart;
+                        if (img.NativeRaster is not null)
+                        {
+                            var nativeBitmap = DrawNativeSixel(canvas, img, visualY,
+                                imagePaint, imageBgPaint, ref remainingImageDecodes, ref pendingImageDecode);
+                            if (nativeBitmap is not null && imageFacts is { Complete: true })
+                                imageFacts.Placements[imageIndex] = imageFacts.Placements[imageIndex] with
+                                { BitmapWidthPx = nativeBitmap.Width, BitmapHeightPx = nativeBitmap.Height };
+                            continue;
+                        }
                         if (visualY + img.CellHeight > 0 && visualY < bufferRows)
                         {
                             // The image's columns are its anchor row's: twice as wide on a double-size row.

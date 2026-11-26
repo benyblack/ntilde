@@ -47,6 +47,9 @@ namespace Ntilde.VT
         [JsonPropertyName("required_sixel_raster"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int RequiredSixelRasterPolicy { get; set; }
 
+        [JsonPropertyName("native_sixel_cells"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public SixelCellSize? NativeSixelCellMetrics { get; set; }
+
         [JsonPropertyName("v")] public int Version { get; set; } = CurrentVersion;
         [JsonPropertyName("cols")] public int Cols { get; set; }
         [JsonPropertyName("rows")] public int Rows { get; set; }
@@ -311,9 +314,13 @@ namespace Ntilde.VT
 
     public sealed class TerminalSixelImageState
     {
-        /// <summary>Absent legacy placements retain whole-cell sizing. Native imports remain disabled.</summary>
+        /// <summary>Absent native intent preserves legacy whole-cell sizing.</summary>
         [JsonPropertyName("native_raster"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public SixelRasterIntent? NativeRaster { get; set; }
+
+        /// <summary>Retains native layout and encoded source from a placement that owns no raster allocation.</summary>
+        [JsonPropertyName("source_only"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool SourceOnly { get; set; }
 
         [JsonPropertyName("source")] public string Source { get; set; } = string.Empty;
         [JsonPropertyName("x")] public int X { get; set; }

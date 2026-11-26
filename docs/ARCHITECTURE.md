@@ -507,7 +507,7 @@ Erasing a placement cannot retire a stored handle. Hard deletion, replacement,
 quota eviction, full clear/reset and state import retire each final owned handle
 through the existing snapshot-session gate. Weak per-handle lifetime records cancel
 obsolete retirement generations on nonnative re-admission; the same tracking covers
-preceding iTerm2/SIXEL/legacy retirement. The inactive native SIXEL owner instead
+preceding iTerm2/SIXEL/legacy retirement. The native SIXEL owner instead
 makes final retirement irreversible before handoff; its live aliases remain shareable.
 Both kinds reject a handle already handed to the disposer.
 A short private gate serializes admission and drain without waiting on the parser
@@ -587,44 +587,27 @@ default wire/PNG behavior and renderer geometry remain unchanged. This observes 
 and projection; it does not promise native-pixel fidelity. The source-to-pixel oracle must
 independently derive its input canvas and recompute reservation before checking pixels.
 
-The #851 native-raster foundation is deliberately inactive. VT's immutable versioned
-canvas/crop values are separate from the ephemeral reservation provenance above.
-Optional native state is omitted when null; the enabled policy ceiling remains zero
-and import refuses any native placement before resize, decode or mutation. Replay's
-optional required-policy marker is omitted at zero and rejects unsupported/malformed
-requirements before header callbacks or data.
-GUI indexing uses that same parser and retains its reader through index consumption.
-Every seek/playback validates its selected stream before a cancellation-aware host callback
-restores a cached checkpoint or the initial state, then consumes that same open stream.
-Path replacement cannot switch the validated input between restoration and replay;
-live append is preserved without promising immutable bytes against arbitrary in-place writes.
-Existing v1/v2 recordings and ordinary
-v2 writers retain their formats; no v3 writer or mux capability is enabled.
-The buffer owns an immutable creation policy selected before startup bytes; RIS and
-DECSTR cannot change it. Snapshot requirements must match that buffer generation
-before resize/import/decode, including native placements hidden behind legacy or
-unknown-version replay fallback. Historical playback selects policy 0 when creating
-or replacing a buffer generation, never by downgrading a running native session.
-Mux intersects explicit peer ceilings (absent means 0) and refuses unsupported
-spawn/attach/readScreen before process creation, subscription, presentation changes
-or snapshot delivery; client snapshot admission checks every native placement too.
-Recognized replay headers with unsupported/malformed/duplicate/missing versions
-fail before resume, indexing or host preparation. Replay snapshot JSON also rejects
-duplicate requirements; supported zero-policy legacy fields retain their behavior.
-The enabled ceiling is still 0: no native session or mux capability is advertised.
-App presenter context and QA provenance cannot select or reconstruct stream policy.
-Old binaries' byte-offset resume may bypass a v3 header; upgraded readers remain a
-prerequisite for eventual native-policy replay.
-App carries an immutable presenter density P with the UI-published font/grid values,
-clearing it on detach. Offscreen requested scale S stays separate. This plumbing
-changes neither geometry nor the raw v1 capture schemas. The
-[staged native-raster contract](sixel-native-raster-foundation.md) records the remaining
-transform, clipping and compatibility gates before activation. The internal native
-test path reserves fixed decoder scratch and pixel storage before decode (256
-placements, 64 MiB), keeps deferred/retired/pinned and alias charges until actual
-disposal, and uses Rendering's fixed-plane span decoder. VT owns only BCL accounting
-and admission; native disposal remains in the Rendering owner outside buffer locks.
-Public policy remains zero and legacy draw/serialized behavior is unchanged.
+Policy 1 enables the [presenter-native SIXEL raster](sixel-native-layout.md) for direct
+sessions and upgraded mux peers. VT stores an immutable versioned source canvas and crop
+alongside the cell anchor and reservation. Policy-zero streams and snapshots keep their
+legacy whole-cell layout. Required policy is validated before resize, decode, state
+mutation, replay callbacks, or stream delivery. RIS and DECSTR do not change a buffer's
+policy. Mux negotiates the lower explicit peer ceiling, treating an absent ceiling as zero.
+A session's immutable policy must fit that negotiation before attach or readScreen.
+
+Native recordings write v3 and include the required policy and ordered cell metrics.
+Existing v1/v2 recordings replay under policy zero. The replay reader validates version and
+policy before indexing, playback, or byte-offset resume and uses the same open stream for
+validation and playback. Upgraded readers are required for native recordings.
+
+App publishes the presenter density with the snapped font grid and keeps offscreen capture
+scale independent. Native images take their anchor from that grid and their extent from the
+presenter density. The [native layout contract](sixel-native-layout.md) covers the transform,
+canonical crop and state admission. The decoder reserves fixed scratch and pixel storage
+before decoding (256 placements and 64 MiB per buffer). Under decoder pressure the bounded
+source keeps its cell layout. Retired or snapshot-pinned raster owners keep their charge
+until actual disposal. VT owns the accounting and admission. Rendering owns the native
+resources and disposes them outside buffer locks.
 
 Skia-only helpers: glyph atlas (`GlyphAtlas`), glyph cache (`GlyphCache`), pixel grid math (`PixelGrid`), font wrappers (`SharedSKFont`, `SharedSKTypeface`), image registry, sixel decoder, render performance metrics.
 

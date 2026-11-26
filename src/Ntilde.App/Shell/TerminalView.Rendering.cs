@@ -64,6 +64,37 @@ namespace Ntilde.Shell
             _retiredImageHandleScratch.Clear();
         }
 
+        // Once a view switches streams, there is no next frame for the old buffer.
+        // In-flight snapshots still own their handles through the usual retirement gate.
+        internal static void ReleaseReplacedBufferImages(TerminalBuffer buffer)
+        {
+            buffer.ReleaseImagesAfterSnapshots(Drain);
+
+            void Drain()
+            {
+                var retired = new List<object>();
+                // A replaced buffer has no upcoming frame to retry a transient disposal failure.
+                if (DisposePass(retired))
+                {
+                    retired.Clear();
+                    DisposePass(retired);
+                }
+            }
+
+            bool DisposePass(List<object> retired)
+            {
+                if (!buffer.DrainRetiredImageHandles(retired, long.MaxValue)) return false;
+                bool retry = false;
+                foreach (var handle in retired)
+                {
+                    if (handle is not IDisposable disposable) continue;
+                    try { disposable.Dispose(); }
+                    catch { retry |= buffer.RetryRetiredImageDisposal(handle); }
+                }
+                return retry;
+            }
+        }
+
         // Non-zero while RenderOffscreen is rasterizing this view. UI thread only.
         private int _offscreenRenderDepth;
 
@@ -248,7 +279,8 @@ namespace Ntilde.Shell
                 requestImageFrame: offscreen ? null : () => Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Render),
                 preferredCursorStyle: _preferredCursorStyle,
                 textBlinkVisible: _textBlink.ForegroundVisible,
-                reportTextBlinkCells: offscreen ? null : _reportTextBlinkCells
+                reportTextBlinkCells: offscreen ? null : _reportTextBlinkCells,
+                nativePresenterDevicePixelsPerDip: NativeRasterPresenter?.DevicePixelsPerDip
             ));
 
             if (_hoveredLink != null)

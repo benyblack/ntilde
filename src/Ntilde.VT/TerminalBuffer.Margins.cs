@@ -241,13 +241,17 @@ public partial class TerminalBuffer
         {
             var img = _images[i];
             if (img.IsAltScreenImage != _isAltScreen || !img.IsSticky) continue;
-            bool rowsOverlap = img.CellY + img.CellHeight > absTop && img.CellY <= absBottom;
-            // The band is in page columns, and so is what the image shows: its clipped extent, doubled on a double-size row.
-            (int imageLeft, int imageRight) = ImagePageColumnsNoLock(img);
-            bool colsOverlap = imageRight > left && imageLeft <= right;
-            if (!rowsOverlap || !colsOverlap) continue;
+            if (!ImageIntersectsMarginBand(img, absTop, absBottom, left, right)) continue;
             RetireImage(img);
             _images.RemoveAt(i);
         }
+    }
+
+    private bool ImageIntersectsMarginBand(TerminalImage image, int top, int bottom, int left, int right)
+    {
+        if (image.NativeRaster is not null) return NativeSixelOverlaps(image, top, bottom + 1, left, right + 1);
+        if (image.CellY + image.CellHeight <= top || image.CellY > bottom) return false;
+        (int imageLeft, int imageRight) = ImagePageColumnsNoLock(image);
+        return imageRight > left && imageLeft <= right;
     }
 }

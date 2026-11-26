@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "measurement": {
+    "appRevision": "f9b0da195bce62cf2626d5ca65d9f57c826ca744",
+    "scriptsRevision": "f9b0da195bce62cf2626d5ca65d9f57c826ca744",
+    "runId": "c0e02b05af46e65e61c64782bb920edd",
+    "sourcePolicy": "readonly-owned-source-graph-v80",
+    "receiptSchema": 82,
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "3de2258d27d68228767ecbe3e96927003d69d489c96e96289b9c1aae94ee6a5c",
+    "sourceManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259"
+  },
+  "archives": {
+    "owned-run.zip": "5536cebe4283e904c8379c30921dd7958997e28c0140fd258639784c96a3cdfc",
+    "before-fixed-metrics.zip": "ab5a83811b7269a5344c851856df17c0cb61d3544aaf3f88ed76aeacce9f6c54",
+    "inconclusive-owned-run.zip": "1e374f7acabb89212ed0d9f9f2ff1a4be581ec82b643c7537fc39fdbe551484e",
+    "prior-attempts.json": "5653daa80f247c6961844923c5c7e6d590d705a65571a821b57846a034e56577"
+  }
+}

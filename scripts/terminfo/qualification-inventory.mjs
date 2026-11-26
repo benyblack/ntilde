@@ -83,6 +83,7 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('osc633', '2026-11-16-osc633-implementation', '2026-11-16-osc633-implementation-qualification.md'), module: 'osc633-inventory.mjs', exports: ['osc633SuiteId', 'osc633ContractsVersion', 'osc633CaseIds'], test: 'osc633-implementation-publication.test.mjs' },
     // Static SIXEL and iTerm2 pixels: pinned callbacks replayed, effect contracts composed from the owned static-image carrier suite of the same run.
     { ...directory('static-images', '2026-11-16-static-images', '2026-11-16-static-images-qualification.md'), module: 'static-images-qualification.mjs', exports: ['staticImagesQualificationSuiteId', 'staticImagesQualificationVersion', 'staticImagesQualificationIds'], receiptSuiteId: 'ntilde-owned-static-images-v1', test: 'static-images-publication.test.mjs' },
+    { ...directory('sixel-native-fidelity', '2026-11-26-sixel-native-fidelity', '2026-11-26-sixel-native-fidelity/report.md'), module: 'sixel-native-publication.mjs', exports: ['sixelNativeSuiteId', 'sixelNativeVersion', 'sixelNativeIds'], receiptSuiteId: 'ntilde-owned-static-images-v1', test: 'sixel-native-publication.test.mjs' },
     // Issue #984: the first aggregate qualification. Both pinned aggregate probes read only the declared semanticPrompts
     // capability and perform no readback; this projection replays them over two admitted, separately receipted marker
     // publications and binds the primary (OSC 633) carrier receipt at the suite level, the OSC 133 carrier per case.

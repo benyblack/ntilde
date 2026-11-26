@@ -262,7 +262,7 @@ import { OwnedQueryObserver, rejectQueryOwnerRequest } from './terminfo/query-ca
 import { querySuiteId, ownedQueryPolicy, queryPriorCounts } from './terminfo/queries.mjs';
 import { OwnedStaticImageObserver } from './terminfo/static-images-capture.mjs';
 import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
-import { ownedStaticImagePolicy } from './terminfo/static-images.mjs';
+import { calibratedStaticImageCaptureScale, ownedStaticImagePolicy } from './terminfo/static-images.mjs';
 import { OwnedAnimationObserver, animationObserverOf } from './terminfo/kitty-animation-capture.mjs';
 import { animationSuiteId, animationSuiteIds, animationCases, animationCasesByVersion, currentAnimationVersion, restoreAnimationVersion } from './terminfo/kitty-animation-cases.mjs';
 import { ownedAnimationPolicy, ownedAnimationPolicies, animationPlannedStages, animationSuites } from './terminfo/kitty-animation.mjs';
@@ -426,7 +426,7 @@ const focusedSuite = globalThis[Symbol.for('ntilde.terminfo.focusedSuite')];
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport', 'modern-osc-titles', 'modern-osc7-cwd', 'modern-child-environment', 'unicode-width', 'unicode-boundaries', 'kitty-graphics', 'osc66', 'sixel-reports'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'static-images', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport', 'modern-osc-titles', 'modern-osc7-cwd', 'modern-child-environment', 'unicode-width', 'unicode-boundaries', 'kitty-graphics', 'osc66', 'sixel-reports'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -619,7 +619,7 @@ async function observeImageCarrierIn(environment, carrier, request, budget, owne
         const priorChallenges = carrier.priorFrames().filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
         state = carrier.setState({ workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
             observer: new carrier.Observer({ appData, ownerPid: app.pid, profileName, output,
-                nonce: 'NTILDE_IMG_' + runId, expectedPaneId: reference?.paneId, priorChallenges, deferReport: environment.deferReport === true }) });
+                nonce: 'NTILDE_IMG_' + runId, expectedPaneId: reference?.paneId, priorChallenges, captureScale: carrier.captureScale, deferReport: environment.deferReport === true }) });
         proofs[0][carrier.proof].actions = state.observer.actions;
     }
     if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error(carrier.label + ' fixture ownership changed.');
@@ -2261,7 +2261,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport|modern-osc-titles|modern-osc7-cwd|modern-child-environment|unicode-width|unicode-boundaries|kitty-graphics|osc66|sixel-reports]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|static-images|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport|modern-osc-titles|modern-osc7-cwd|modern-child-environment|unicode-width|unicode-boundaries|kitty-graphics|osc66|sixel-reports]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2504,8 +2504,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
-        settings.FontSize = 40 / 3; // Ten points at unity zoom, within the existing full-grid raster budget.
+        settings.FontSize = 40 / 3; // Ten points at unity zoom.
         settings.UiScale = 1;
+        const staticImageCaptureScale = args[5] === 'static-images' ? calibratedStaticImageCaptureScale : undefined;
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
@@ -2607,6 +2608,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             clipboard: 'armed synthetic App-private storage only; no native interchange or OSC52 read permission',
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
             privateClipboardReferenceScope: 'selected App/VT observational reference inputs; not complete App closure or binary-source attestation',
+            staticImageCaptureScale,
             retainedOriginalCollector: 'collector-original.mjs', terminalOutput: privateClipboardOutputPolicy, querySuiteId, ownedQueryPolicy, staticImageSuiteId, ownedStaticImagePolicy, animationSuiteId, ownedAnimationPolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             gradingAdapterId, asciiSgrSuiteId, gradingBundleSha256, gradingContractsVersion: asciiSgrContractsVersion,
             grading: 'versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output',
@@ -3562,6 +3564,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const observeImageCarrier = (carrier, request, budget, ownership) => observeImageCarrierIn(imageEnvironment, carrier, request, budget, ownership);
 
         const staticImageCarrier = { label: 'Image', prefix: 'images-', proof: 'staticImages', file: 'image', suiteId: staticImageSuiteId, Observer: OwnedStaticImageObserver,
+            captureScale: staticImageCaptureScale,
             pixelDir: 'image-pixels', inputDir: 'image-inputs', planned: { experiments: 5, stages: 23 },
             require: () => requireInputCompletion(inputState), state: () => staticImageState, setState: value => (staticImageState = value),
             priorFrames: () => inputState.observer?.frames ?? [] };

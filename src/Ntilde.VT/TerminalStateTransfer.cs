@@ -91,12 +91,10 @@ namespace Ntilde.VT
             // Both ImportState methods still call them - deliberate belt-and-braces, since both
             // are public and independently callable, not redundancy to optimise away.
             buffer.RequireSixelSessionPolicy(snapshot.RequiredSixelRasterPolicy);
-            TerminalBuffer.ValidateBufferState(snapshot);
-            AnsiParser.ValidateOutputTail(snapshot.DecoderTail);
-            if (snapshot.Parser is not null)
-            {
-                parser.ValidateParserState(snapshot.Parser);
-            }
+            buffer.ValidateStateForImport(snapshot);
+            buffer.ValidateParserForImport(parser, snapshot);
+
+            using var prepared = buffer.PrepareStateImport(snapshot, parser.ImageDecoder, parser);
 
             // Before anything else, and before ImportState's own validation runs: a caller that
             // got this wrong gets a correct screen rather than a subtly wrong one. Resize ignores
@@ -108,8 +106,8 @@ namespace Ntilde.VT
                 buffer.Resize(snapshot.Cols, snapshot.Rows);
             }
 
-            IReadOnlyList<Hyperlink> links = buffer.ImportState(snapshot);
-            buffer.DecodeTransferredSixels(parser.ImageDecoder);
+            IReadOnlyList<Hyperlink> links = buffer.ImportPreparedState(snapshot, prepared);
+            if (buffer.NativeSixelBudget is null) buffer.DecodeTransferredSixels(parser.ImageDecoder);
             buffer.DecodeTransferredImages(parser.ImageDecoder);
 
             if (snapshot.Parser is not null)

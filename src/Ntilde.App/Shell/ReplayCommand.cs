@@ -74,7 +74,16 @@ internal static class ReplayCommand
                     return System.Threading.Tasks.Task.CompletedTask;
                 },
                 options: new ReplayRunOptions { PlaybackMode = ReplayPlaybackMode.Virtual },
-                onHeaderCallback: header => { ReplayRunner.ApplyHeaderMetrics(parser, header); return System.Threading.Tasks.Task.CompletedTask; },
+                onHeaderCallback: header =>
+                {
+                    if (header.RequiredSixelRasterPolicy != 0)
+                    {
+                        buffer = new TerminalBuffer(header.Cols, header.Rows, header.RequiredSixelRasterPolicy);
+                        parser = new AnsiParser(buffer);
+                    }
+                    ReplayRunner.ApplyHeaderMetrics(parser, header);
+                    return System.Threading.Tasks.Task.CompletedTask;
+                },
                 onSixelCellSizeCallback: (width, height) =>
                 {
                     parser.SixelCellSizeOverride = new SixelCellSize(width, height);

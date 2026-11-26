@@ -85,6 +85,11 @@ namespace Ntilde.Controls
                 float width = (float)(TermView.Metrics.CellWidth * scale);
                 float height = (float)(TermView.Metrics.CellHeight * scale);
                 if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0) return;
+                if (Buffer?.SixelRasterPolicyVersion > 0)
+                {
+                    width = Math.Max(1, width);
+                    height = Math.Max(1, height);
+                }
                 parser.SixelCellSizeOverride = new SixelCellSize(width, height);
                 (Session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(width, height);
             }
@@ -168,6 +173,7 @@ namespace Ntilde.Controls
             // decodes the bitmaps: SIXEL always, Kitty and iTerm2 where the session's policy carries them.
             ResetSessionPointerShapes();
             Parser = new AnsiParser(Buffer, forceConPtyFiltering);
+            if (!muxBacked && Buffer.SixelRasterPolicyVersion != 0) SyncLocalSixelCellSize();
             WireKittyClipboard(muxBacked);
             if (!muxBacked)
             {
@@ -731,6 +737,8 @@ namespace Ntilde.Controls
         /// </summary>
         private void WireSessionLifecycle(ITerminalSession session, TerminalProfile? profile)
         {
+            if (session is not MuxClientSession && UseBufferSixelPolicy(SixelRasterPolicy.PresenterNativeVersion))
+                CreateAndWireParser();
             TermView.SetSession(session);
             SyncLocalSixelCellSize();
             session.OnExit += code =>
@@ -805,7 +813,10 @@ namespace Ntilde.Controls
             }
 
             if (session is ITerminalRecordingBoundary boundary)
+            {
+                boundary.SetRecordingSixelRasterPolicy(Buffer?.SixelRasterPolicyVersion ?? 0);
                 boundary.SubscribeTerminalOutput((text, chunk) => ApplyOutput(text, chunk, chunk.Bytes.Span));
+            }
             else if (session is MuxClientSession mux)
                 mux.OutputBytesReceived += bytes => ApplyOutput(string.Empty, default, bytes);
             else session.OnOutputReceived += text => ApplyOutput(text, default, default);

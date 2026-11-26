@@ -26,6 +26,9 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>
+        /// Reshapes/reflows the terminal and irreversibly crops native domain loss; identical geometry is not a crop operation.
+        /// </summary>
         public void Resize(int newCols, int newRows)
         {
             // Ignore degenerate dimensions. A transient 0/negative size (e.g. a window
@@ -35,13 +38,12 @@ namespace Ntilde.VT
             if (newCols <= 0 || newRows <= 0) return;
 
             AcquireWriteLock();
+            int oldCols = Cols;
+            int oldRows = Rows;
             try
             {
                 if (newCols == Cols && newRows == Rows) return;
-
                 PrepareTextSizingResize(newCols, newRows);
-                int oldCols = Cols;
-                int oldRows = Rows;
 
                 if (newCols == oldCols)
                 {
@@ -132,7 +134,7 @@ namespace Ntilde.VT
 
                                     int delta = newlyEvicted > int.MaxValue ? int.MaxValue : (int)newlyEvicted;
                                     img.CellY -= delta;
-                                    if (img.CellY + img.CellHeight <= 0) { RetireImage(img); _images.RemoveAt(i); }
+                                    if (DiscardImageBeforeOrigin(img)) { RetireImage(img); _images.RemoveAt(i); }
                                 }
                             }
                         }
@@ -266,7 +268,9 @@ namespace Ntilde.VT
             }
             finally
             {
-                Lock.ExitWriteLock();
+                try { ClipNativeSixelsAfterResize(Cols < oldCols, Rows < oldRows); }
+                finally { Lock.ExitWriteLock(); }
+                DisposeRetiredHeadlessSixelSources();
             }
 
             OnInvalidate?.Invoke();
@@ -316,12 +320,14 @@ namespace Ntilde.VT
                 Array.Copy(_viewport, 0, newViewport, linesNeeded, oldRows);
                 _cursorRow += linesNeeded;
 
-                // Shift MAIN-screen images DOWN (alt coordinates are viewport-relative
-                // and unaffected by the scrollback/viewport redistribution).
-                for (int i = 0; i < _images.Count; i++)
+                // These anchors use rows relative to the start of history. Pulling a
+                // row into the viewport keeps its index; only newly inserted padding
+                // moves native anchors. Alternate coordinates are viewport-relative.
+                int addedPadding = linesNeeded - pulled;
+                foreach (var image in _images)
                 {
-                    if (_images[i].IsAltScreenImage) continue;
-                    _images[i].CellY += linesNeeded;
+                    if (image.IsAltScreenImage) continue;
+                    image.CellY += image.NativeRaster is null ? linesNeeded : addedPadding;
                 }
             }
             else
@@ -352,14 +358,15 @@ namespace Ntilde.VT
 
                 int newlyDiscarded = (int)(_scrollback.TotalRowsEvicted - prevEvicted);
 
-                // Shift MAIN-screen images UP (see grow path above).
+                // Only real history eviction shifts a native anchor. Pushing
+                // the row into history without eviction preserves its index.
                 for (int i = _images.Count - 1; i >= 0; i--)
                 {
                     var img = _images[i];
                     if (img.IsAltScreenImage) continue;
 
-                    img.CellY -= (linesToPush + newlyDiscarded);
-                    if (img.CellY + img.CellHeight <= 0) { RetireImage(img); _images.RemoveAt(i); }
+                    img.CellY -= img.NativeRaster is null ? linesToPush + newlyDiscarded : newlyDiscarded;
+                    if (DiscardImageBeforeOrigin(img)) { RetireImage(img); _images.RemoveAt(i); }
                 }
             }
 
@@ -443,6 +450,9 @@ namespace Ntilde.VT
             return true;
         }
 
+        /// <summary>
+        /// Treats canonical native overhang as occupied main-screen content so resize cannot discard its underlying rows as padding.
+        /// </summary>
         private bool MainScreenImageCoversRowNoLock(int absoluteRow)
         {
             for (int i = 0; i < _images.Count; i++)
@@ -453,7 +463,9 @@ namespace Ntilde.VT
                 // absolute row asked about here.
                 if (image.IsAltScreenImage) continue;
 
-                if (absoluteRow >= image.CellY && absoluteRow < image.CellY + image.CellHeight)
+                if (image.NativeRaster is null
+                    ? absoluteRow >= image.CellY && absoluteRow < image.CellY + image.CellHeight
+                    : ImageOverlapsRows(image, absoluteRow, absoluteRow + 1))
                 {
                     return true;
                 }

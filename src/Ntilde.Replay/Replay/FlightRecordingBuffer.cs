@@ -81,13 +81,17 @@ namespace Ntilde.Replay
         /// Monotonic millisecond clock (tests inject a fake). Defaults to
         /// <see cref="Environment.TickCount64"/>.
         /// </param>
-        public FlightRecordingBuffer(long maxTotalBytes, int initialCols, int initialRows, Func<long>? clock = null, RecordingCellMetrics? initialSixelCellSize = null)
+        private readonly int _sixelRasterPolicy;
+
+        public FlightRecordingBuffer(long maxTotalBytes, int initialCols, int initialRows, Func<long>? clock = null, RecordingCellMetrics? initialSixelCellSize = null, int sixelRasterPolicy = 0)
         {
             if (maxTotalBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maxTotalBytes), maxTotalBytes, "Retention budget must be positive.");
             if (initialCols <= 0) throw new ArgumentOutOfRangeException(nameof(initialCols), initialCols, "Columns must be positive.");
             if (initialRows <= 0) throw new ArgumentOutOfRangeException(nameof(initialRows), initialRows, "Rows must be positive.");
 
             _windowStartCellSize = RecordingCellMetrics.FromOptional(initialSixelCellSize?.WidthPx, initialSixelCellSize?.HeightPx);
+            ReplayRunner.ValidateSixelMetrics(sixelRasterPolicy, _windowStartCellSize);
+            _sixelRasterPolicy = sixelRasterPolicy;
             _currentCellSize = _windowStartCellSize;
             _maxTotalBytes = maxTotalBytes;
             _windowStartCols = initialCols;
@@ -117,6 +121,7 @@ namespace Ntilde.Replay
 
         public void RecordSixelCellSize(RecordingCellMetrics size)
         {
+            ReplayRunner.ValidateSixelMetrics(_sixelRasterPolicy, size);
             lock (_gate)
             {
                 if (_currentCellSize == size) return;
@@ -142,7 +147,7 @@ namespace Ntilde.Replay
 
         /// <summary>
         /// Writes the retained window to <paramref name="filePath"/> as a standard
-        /// replay v2 file. Event timestamps are rebased
+        /// replay file. Event timestamps are rebased
         /// so the first retained event is at t=0. Concurrent writers keep recording;
         /// the export is a consistent point-in-time snapshot of the ring.
         /// Throws (IOException, UnauthorizedAccessException, …) when the target path
@@ -170,7 +175,7 @@ namespace Ntilde.Replay
             return filePath => WriteCapturedWindow(filePath, shell, entries, cols, rows, truncated, cellSize);
         }
 
-        private static FlightExportInfo WriteCapturedWindow(string filePath, string shell, Entry[] entries,
+        private FlightExportInfo WriteCapturedWindow(string filePath, string shell, Entry[] entries,
             int cols, int rows, bool truncated, RecordingCellMetrics? cellSize)
         {
             ArgumentNullException.ThrowIfNull(filePath);
@@ -178,6 +183,8 @@ namespace Ntilde.Replay
             writer.WriteLine(JsonSerializer.Serialize(new ReplayHeader
             {
                 Type = ReplayHeader.TypeToken,
+                Version = _sixelRasterPolicy == 0 ? ReplayHeader.LegacyLayoutVersion : ReplayHeader.NativeSixelLayoutVersion,
+                RequiredSixelRasterPolicy = _sixelRasterPolicy,
                 Cols = cols,
                 Rows = rows,
                 Shell = shell ?? string.Empty,

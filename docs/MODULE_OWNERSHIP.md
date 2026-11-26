@@ -330,7 +330,7 @@ invariant changes.
   eviction, reset/full clear and snapshot import release the final asset ownership
   through the snapshot-session gate, exactly once per handle. Nonnative re-admission
   cancels pending retirement generations across Kitty/iTerm2/SIXEL/legacy admissions;
-  the inactive native SIXEL owner is stricter: final retirement is irreversible even
+  the native SIXEL owner is stricter: final retirement is irreversible even
   before handoff, while live aliases remain shareable. Handed-off handles of either
   kind cannot become live again. Generic retirement retains its
   existing grace; fresh handles avoid history scans and bulk unlink is linear.
@@ -359,31 +359,16 @@ invariant changes.
   same division-before-ceiling locals. Render snapshots copy those facts by value. Decoder
   reports need not mean materialized pixels; generic/imported/legacy placements keep null
   provenance. State/replay/mux formats do not grow or reconstruct historical metrics.
-- **Native SIXEL foundation is inactive (#851).** VT owns immutable, bounded canvas/crop
-  values and the omitted-by-default `native_raster` state field. Its enabled policy ceiling
-  is zero: every non-null native placement is rejected before state mutation, even if
-  source-budget truncation would discard it. No parser path creates native intent.
-  Replay rejects nonzero/malformed required-policy markers before callbacks or bytes;
-  its shared reader gate also protects App indexing and checkpoint/initial-state restoration.
-  Replay retains its selected stream through a cancellation-aware validated-start host callback
-  and byte delivery; App restores state inside that boundary, outside VT locks. Indexing uses
-  one reader too. Live append remains supported; this does not seal arbitrary in-place writes.
-  ordinary headers retain exact v2 bytes. App owns the detached presenter density P,
-  published with font/grid inputs and withdrawn on detach; requested capture scale S
-  remains independent. Neither changes draw sizing or `renderDetails`/`imageDetails` v1.
-  Internal native test buffers now exercise predecode pixel/placement admission and
-  Rendering's fixed-storage decoder/owning handle. The 256-placement/64 MiB budget
-  spans deferred, live, retired and pinned owners, with conservative alias charges;
-  only successful actual disposal returns pixel credit. Each budget binds once to
-  its buffer generation. Native decode state is lock-free metadata, so VT pruning
-  never waits for native decoding under the write lock; skipped in-flight sources
-  are revisited after completion or failure, including before reservation checks
-  when their own charge could refuse admission. Removal invalidates the view for
-  outside-lock disposal without returning credit early. Source budgets and existing
-  snapshot gates remain their respective lifetime owners. Public selection stays
-  zero. Activation additionally requires native transforms/culling/crop and explicit
-  mux/replay compatibility; see
-  [the staged contract](sixel-native-raster-foundation.md).
+- **Native SIXEL raster policy 1 separates raster pixels from cells (#851).** VT owns
+  canonical stream metrics, reservation and irreversible crop, and Rendering owns
+  the bounded decoded bitmap. The App anchors to the current snapped cell grid and
+  draws at one source pixel per presenter device pixel. An offscreen capture projects
+  that same extent by capture scale divided by presenter scale. Legacy null-intent
+  images retain cell-envelope sizing. The 256-placement/64 MiB admission budget spans
+  deferred, live, retired and pinned owners. Actual disposal returns credit after
+  the snapshot gate. Import stages bounded owners and revalidates after the decoder
+  callback. Export refuses a partial native snapshot when retained source is missing.
+  See the [layout and transfer contract](sixel-native-layout.md).
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
   Exception: `RuntimeForeground` and `RuntimeBackground` each read one immutable,
   volatile-published color frame without the buffer lock, so UI preference queries
@@ -1390,5 +1375,5 @@ Native SIXEL creation policy is buffer-owned immutable stream state, selected
 before startup output. VT validates snapshot requirements against that generation
 before mutation; Mux owns peer intersection and refusal before process creation,
 subscription or snapshot delivery; Replay owns recognized-header admission before
-any resume or host preparation. Policy remains disabled (ceiling 0). App presenter
-context and QA provenance do not select or reconstruct stream policy.
+any resume or host preparation. Native streams use v3 recordings. App presenter
+context and QA provenance remain separate from stream policy.

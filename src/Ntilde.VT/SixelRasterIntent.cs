@@ -6,18 +6,26 @@ namespace Ntilde.VT;
 public static class SixelRasterPolicy
 {
     public const int PresenterNativeVersion = 1;
-    // Activation requires native transforms, irreversible clipping, bounded ownership and peer negotiation.
-    public const int EnabledVersion = 0;
+    public const int EnabledVersion = PresenterNativeVersion;
 
     /// <summary>Checks required semantics even when an unknown state version uses legacy replay fields.</summary>
     public static void RequireSupportedState(TerminalStateSnapshot state)
     {
         ArgumentNullException.ThrowIfNull(state);
         RequireSupported(state.RequiredSixelRasterPolicy);
+        if (state.RequiredSixelRasterPolicy != 0 && state.Version != TerminalStateSnapshot.CurrentVersion)
+            throw new InvalidOperationException("Native SIXEL requires a complete supported state version.");
+        if (state.NativeSixelCellMetrics is not null && state.RequiredSixelRasterPolicy != PresenterNativeVersion)
+            throw new InvalidOperationException("Native SIXEL metrics require their native session policy.");
         if (state.Sixels is null) return;
         foreach (var placement in state.Sixels)
         {
-            if (placement?.NativeRaster is not { } native) continue;
+            if (placement?.NativeRaster is not { } native)
+            {
+                if (placement?.SourceOnly == true)
+                    throw new InvalidOperationException("A source-only SIXEL placement requires native intent.");
+                continue;
+            }
             RequireSupported(native.Version);
             if (native.Version != state.RequiredSixelRasterPolicy)
                 throw new InvalidOperationException("Native placement policy does not match its state requirement.");
@@ -55,7 +63,6 @@ public sealed record SixelSourceCrop
 
 /// <summary>
 /// Versioned production intent, independent of decoder handles, font metrics and QA provenance.
-/// This build can describe it but deliberately refuses to restore it while the policy is disabled.
 /// </summary>
 public sealed record SixelRasterIntent
 {

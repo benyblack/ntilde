@@ -442,6 +442,7 @@ namespace Ntilde.Controls
         private void WireMuxSession(MuxClientSession mux, bool previousLost)
         {
             ApplyMuxSharing(null);
+            UseBufferSixelPolicy(mux.RequiredSixelRasterPolicy);
             CreateAndWireParser(mux.ForceConPtyFiltering, muxBacked: true, mux.RequiredImagePolicy, mux.ReadTransportFile);
             float cw = TermView.Metrics.CellWidth, ch = TermView.Metrics.CellHeight;
             if (cw > 0) Parser!.CellWidth = cw;
@@ -481,6 +482,33 @@ namespace Ntilde.Controls
                 });
             };
             _ = AttachMuxAsync(mux, previousLost);
+        }
+
+        internal bool UseBufferSixelPolicy(int policy)
+        {
+            if (Buffer is not { } old || old.SixelRasterPolicyVersion == policy) return false;
+
+            // A new stream generation keeps the pane's host-owned presentation defaults.
+            var buffer = new TerminalBuffer(old.Cols, old.Rows, policy) { MaxHistory = old.MaxHistory };
+            buffer.Modes.AlternateScrollDefault = old.Modes.AlternateScrollDefault;
+            buffer.Modes.CursorStyle = TermView.PreferredCursorStyle;
+            if (_settings is { } settings)
+                buffer.Modes.IsCursorBlinkEnabled = Profile?.CursorBlink ?? settings.CursorBlink;
+            var defaultTheme = buffer.Theme;
+            buffer.Theme = old.Theme;
+            buffer.UpdateThemeColors(defaultTheme);
+            old.OnScreenSwitched -= OnBufferScreenSwitched;
+            buffer.OnScreenSwitched += OnBufferScreenSwitched;
+            if (_agentOutputTracker is { } tracker)
+            {
+                old.OnInvalidate -= tracker.NotifyInvalidate;
+                buffer.OnInvalidate += tracker.NotifyInvalidate;
+            }
+            Buffer = buffer;
+            TermView.SetBuffer(buffer);
+            _agentRegistration?.SetBuffer(buffer);
+            Ntilde.Shell.TerminalView.ReleaseReplacedBufferImages(old);
+            return true;
         }
 
         private void ApplyMuxSixelCellSize(MuxClientSession source, float width, float height)

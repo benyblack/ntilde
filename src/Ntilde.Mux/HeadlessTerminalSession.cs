@@ -183,6 +183,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (PersistentImagePolicy.AllowsFileTransport(RequiredImagePolicy)) _parser.ReadFileBytes = ReadTransportFile;
         ApplyHostColors(options.DefaultFg, options.DefaultBg, options.CursorColor,
             options.SelectionFg, options.SelectionBg, options.AnsiPalette);
+        (_session as ITerminalRecordingBoundary)?.SetRecordingSixelRasterPolicy(RequiredSixelRasterPolicy);
         (_session as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
         (_session as ITerminalRecordingCellMetrics)?.SetRecordingCellMetrics(cellWidth, cellHeight);
         // Keep replies ordered with keyboard input on the writer so parsing never blocks on stdin.
@@ -782,6 +783,9 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
+    /// <summary>
+    /// Stops producers before bounded thread joins; native source ownership is cleared only after parsing has stopped.
+    /// </summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
@@ -801,6 +805,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         _control.CompleteAdding();
         _data.CompleteAdding();
         DrainAfterStop();
+        if (parseThreadStopped && _buffer.SixelRasterPolicyVersion != 0) _buffer.ClearImages();
         try { _session.Dispose(); }
         catch (Exception ex) { Log($"[Mux] session {Id}: disposing the child failed: {ex.Message}"); }
 
@@ -856,6 +861,9 @@ public sealed class HeadlessTerminalSession : IDisposable
         catch (InvalidOperationException) { return false; }
     }
 
+    /// <summary>
+    /// Consumes ordered controls/output and closes pending work on stop; disposal then clears native BCL source owners.
+    /// </summary>
     private void ParseLoop()
     {
         try
@@ -910,6 +918,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             _control.CompleteAdding();
             _data.CompleteAdding();
             DrainAfterStop();
+            if (Volatile.Read(ref _disposed) != 0 && _buffer.SixelRasterPolicyVersion != 0) _buffer.ClearImages();
         }
     }
 
@@ -1370,6 +1379,11 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         float width = float.IsFinite(presentation.CellWidthPx) && presentation.CellWidthPx > 0 ? presentation.CellWidthPx : _parser.CellWidth;
         float height = float.IsFinite(presentation.CellHeightPx) && presentation.CellHeightPx > 0 ? presentation.CellHeightPx : _parser.CellHeight;
+        if (RequiredSixelRasterPolicy != 0)
+        {
+            width = Math.Max(1, width);
+            height = Math.Max(1, height);
+        }
         // Compare the immutable value pair exactly: subpixel changes can cross a cell-count ceiling.
         var size = new SixelCellSize(width, height);
         if (_parser.SixelCellSizeOverride != size)

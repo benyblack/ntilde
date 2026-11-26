@@ -45,13 +45,13 @@ namespace Ntilde.Replay
         private readonly ReplayHeader _header;
         private RecordingCellMetrics? _sixelCellSize;
 
-        public PtyRecorder(string filePath, int cols, int rows, string shell = "", RecordingCellMetrics? sixelCellSize = null)
+        public PtyRecorder(string filePath, int cols, int rows, string shell = "", RecordingCellMetrics? sixelCellSize = null, int sixelRasterPolicy = 0)
             : this(filePath, cols, rows, shell, sixelCellSize, new RecorderSinkOptions(DefaultMaxPendingBytes,
-                () => new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, useAsync: true)))
+                () => new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, useAsync: true)), sixelRasterPolicy)
         { }
 
         internal PtyRecorder(string filePath, int cols, int rows, string shell, RecordingCellMetrics? sixelCellSize,
-            RecorderSinkOptions sink)
+            RecorderSinkOptions sink, int sixelRasterPolicy = 0)
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sink.MaxPendingBytes);
             _maxPendingBytes = sink.MaxPendingBytes;
@@ -61,9 +61,12 @@ namespace Ntilde.Replay
             _startTime = DateTime.UtcNow;
 
             _sixelCellSize = RecordingCellMetrics.FromOptional(sixelCellSize?.WidthPx, sixelCellSize?.HeightPx);
+            ReplayRunner.ValidateSixelMetrics(sixelRasterPolicy, _sixelCellSize);
             _header = new ReplayHeader
             {
                 Type = ReplayHeader.TypeToken,
+                Version = sixelRasterPolicy == 0 ? ReplayHeader.LegacyLayoutVersion : ReplayHeader.NativeSixelLayoutVersion,
+                RequiredSixelRasterPolicy = sixelRasterPolicy,
                 Cols = cols,
                 Rows = rows,
                 SixelCellWidthPx = sixelCellSize?.WidthPx,
@@ -168,6 +171,7 @@ namespace Ntilde.Replay
         {
             ArgumentOutOfRangeException.ThrowIfNegative(timeOffsetMs);
             var cellSize = RecordingCellMetrics.FromOptional(width, height);
+            ReplayRunner.ValidateSixelMetrics(_header.RequiredSixelRasterPolicy, cellSize);
             Volatile.Write(ref _sixelCellSize, cellSize);
             if (!IsAccepting) return;
             TryEnqueue(new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = timeOffsetMs, SixelCellWidthPx = width, SixelCellHeightPx = height });
@@ -184,6 +188,10 @@ namespace Ntilde.Replay
             snapshot.RowWrapColumns[index] = width;
         }
 
+        private bool CanRecordSnapshot(TerminalBuffer buffer, AnsiParser? parser) =>
+            IsAccepting && _header.RequiredSixelRasterPolicy == buffer.SixelRasterPolicyVersion &&
+            (_header.RequiredSixelRasterPolicy == 0 || parser is not null);
+
         /// <summary>
         /// Captures viewport fields and, when a parser is supplied, a complete terminal/parser cut.
         /// Buffer-only snapshots preserve the replay parser's existing continuation; callers
@@ -198,7 +206,7 @@ namespace Ntilde.Replay
             {
                 lock (_producerGate)
                 {
-                    if (!IsAccepting) return;
+                    if (!CanRecordSnapshot(buffer, parser)) return;
                     var cellSize = SnapshotCellMetrics(parser);
                     ReplaySnapshot snapshot;
                     var rows = buffer.ViewportRows;

@@ -150,10 +150,17 @@ namespace Ntilde.VT
         /// <summary>Host policy for image protocols without headless geometry support. SIXEL remains independent.</summary>
         public bool AllowNonSixelImages { get; set; } = true;
 
+        /// <summary>
+        /// Uses one buffer-owned canonical pair for native sessions; legacy hosts retain the independent atomic override.
+        /// </summary>
         public SixelCellSize? SixelCellSizeOverride
         {
-            get => System.Threading.Volatile.Read(ref _sixelCellSizeOverride);
-            set => System.Threading.Volatile.Write(ref _sixelCellSizeOverride, value);
+            get => _buffer.NativeSixelBudget is not null ? _buffer.NativeSixelCellMetrics : System.Threading.Volatile.Read(ref _sixelCellSizeOverride);
+            set
+            {
+                if (_buffer.NativeSixelBudget is not null) _buffer.SetNativeSixelCellMetrics(value);
+                else System.Threading.Volatile.Write(ref _sixelCellSizeOverride, value);
+            }
         }
         public float? SixelCellWidthPx => SixelCellSizeOverride?.WidthPx;
         public float? SixelCellHeightPx => SixelCellSizeOverride?.HeightPx;
@@ -619,6 +626,9 @@ namespace Ntilde.VT
             _state == State.Normal && _buffer.Modes.IsLocalEchoEnabled
             && text.Length > 0 && !text.Any(char.IsControl);
 
+        /// <summary>
+        /// Applies one ordered terminal batch, then revisits sealed headless source disposal only after releasing the VT write cut.
+        /// </summary>
         public void Process(string input)
         {
             if (!string.IsNullOrEmpty(input)) ProcessOutput(input, default, fromBytes: false);
@@ -631,11 +641,10 @@ namespace Ntilde.VT
             _sawCursorHideInBatch = false;
             _sawCursorShowAfterHideInBatch = false;
 
-
-
             _buffer.EnterBatchWrite();
             try
             {
+                if (_buffer.NativeSixelBudget is not null) TerminalBuffer.RequireNativeSixelMetrics(SixelCellSizeOverride);
                 char lowSurrogate = '\0';
                 int textIndex = 0;
                 while (true)
@@ -996,6 +1005,7 @@ namespace Ntilde.VT
             finally
             {
                 _buffer.ExitBatchWrite();
+                _buffer.DisposeRetiredHeadlessSixelSources();
                 sw.Stop();
             }
             return processed;

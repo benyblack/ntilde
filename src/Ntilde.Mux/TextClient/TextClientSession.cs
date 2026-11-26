@@ -17,6 +17,7 @@ public sealed class TextClientOptions
 
     /// <summary>The session's image policy (#838), from its <see cref="Contracts.SessionSummary"/>; the attach must name it.</summary>
     public int RequiredImagePolicy { get; init; }
+    public int RequiredSixelRasterPolicy { get; init; }
 }
 
 public enum TextClientExit
@@ -100,7 +101,7 @@ public sealed class TextClientSession : IDisposable
         var registrations = new List<IDisposable>();
         try
         {
-            session = _client.OpenSession(_sessionId, string.Empty, null, mode, requiredImagePolicy: _options.RequiredImagePolicy);
+            session = _client.OpenSession(_sessionId, string.Empty, null, mode, requiredSixelRasterPolicy: _options.RequiredSixelRasterPolicy, requiredImagePolicy: _options.RequiredImagePolicy);
             model = new TextClientModel(session);
             var renderer = new TextClientRenderer(model.Buffer) { ReadOnly = _options.ReadOnly };
             model.Changed += Wake;

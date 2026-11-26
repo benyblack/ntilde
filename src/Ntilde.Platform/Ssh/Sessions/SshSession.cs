@@ -97,6 +97,7 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput, ITermina
     public bool TrySendDeviceReply(string response) => _inner.TrySendDeviceReply(response);
     public bool TrySendDeviceReply(string response, ReadOnlyMemory<byte> wireBytes) => _inner.TrySendDeviceReply(response, wireBytes);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
+    public void SetRecordingSixelRasterPolicy(int policy) => _inner.SetRecordingSixelRasterPolicy(policy);
     public void UseHostRecordingBoundary() => _inner.UseHostRecordingBoundary();
     public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler) => _inner.SubscribeRecordingOutput(handler);
     public void SubscribeTerminalOutput(Action<string, TerminalOutputChunk> handler) => _inner.SubscribeTerminalOutput(handler);

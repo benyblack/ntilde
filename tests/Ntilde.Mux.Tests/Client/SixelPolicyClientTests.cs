@@ -11,7 +11,7 @@ public sealed class SixelPolicyClientTests
 
     [Theory]
     [InlineData(-1)]
-    [InlineData(1)]
+    [InlineData(2)]
     public async Task Unsupported_client_ceiling_is_rejected_before_hello(int policy)
     {
         using var stream = new OwnedStreamProbe();

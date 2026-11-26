@@ -12,8 +12,8 @@ export function pristineColorTheme(theme) {
     return ['foregroundOverride', 'backgroundOverride', 'cursorOverride', 'selectionBackgroundOverride', 'selectionForegroundOverride']
         .every(key => theme[key] === false) && theme.paletteOverrideIndices.length === 0;
 }
-export function validateColorCapture(result, screen, selection) {
-    const value = validateRenderedCapture(result, screen, 0), theme = value.details.theme;
+export function validateColorCapture(result, screen, selection, scale = 1) {
+    const value = validateRenderedCapture(result, screen, 0, scale), theme = value.details.theme;
     if (!['cursorOverride', 'selectionBackgroundOverride', 'selectionForegroundOverride'].every(key => typeof theme[key] === 'boolean')
         || !['selectionBackgroundArgb', 'selectionForegroundArgb', 'effectiveSelectionForegroundArgb'].every(key => Object.hasOwn(theme, key) && nullableColor(theme[key]))
         || !uint(theme.effectiveSelectionBackgroundArgb) || !Array.isArray(theme.paletteOverrideIndices)

@@ -25,6 +25,9 @@ public sealed class SixelSourceBudget
         _maxSources = maxSources;
     }
 
+    /// <summary>Checks a complete incoming source set against immutable quotas without retention, eviction or decoder effects.</summary>
+    internal bool FitsRetentionSet(int count, long chars) => count >= 0 && count <= _maxSources && chars >= 0 && chars <= _maxChars;
+
     public int RetainedChars { get { lock (_gate) return _retainedChars; } }
     public int Count { get { lock (_gate) return _sources.Count + _retiredSources.Count; } }
 

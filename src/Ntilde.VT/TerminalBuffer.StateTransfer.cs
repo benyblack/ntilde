@@ -30,12 +30,14 @@ namespace Ntilde.VT
             bool lockTaken = EnterReadLockIfNeeded();
             try
             {
+                if (NativeSixelBudget is not null) RequireNativeSixelMetrics(NativeSixelCellMetrics);
                 var links = new HyperlinkTableBuilder();
                 var underlines = new UnderlineTableBuilder();
                 var snapshot = new TerminalStateSnapshot
                 {
                     Version = TerminalStateSnapshot.CurrentVersion,
                     RequiredSixelRasterPolicy = SixelRasterPolicyVersion,
+                    NativeSixelCellMetrics = NativeSixelCellMetrics,
                     Cols = Cols,
                     Rows = Rows,
                     CellsSizeOf = Unsafe.SizeOf<TerminalCell>(),
@@ -146,8 +148,17 @@ namespace Ntilde.VT
             // every rejection this import can make happens here, outside the write lock and
             // before a single field is written. The decoded blobs and the synchronized-output
             // timestamp come back with it because proving them well-formed *is* decoding them.
-            RequireSixelSessionPolicy(snapshot.RequiredSixelRasterPolicy);
-            ValidatedBufferState validated = ValidateBufferState(snapshot);
+            using var prepared = PrepareStateImport(snapshot, decoder: null);
+            return ImportPreparedState(snapshot, prepared);
+        }
+
+        /// <summary>
+        /// Commits one target-owned prevalidated cut; native owners are already reserved and source disposal remains deferred.
+        /// </summary>
+        internal IReadOnlyList<Hyperlink> ImportPreparedState(TerminalStateSnapshot snapshot, PreparedStateImport prepared)
+        {
+            ValidatePreparedNativeImport(snapshot, prepared);
+            ValidatedBufferState validated = prepared.Validated;
             byte[]? mainCells = validated.MainCells;
             byte[]? altCells = validated.AltCells;
             byte[]? scrollbackCells = validated.ScrollbackCells;
@@ -158,6 +169,8 @@ namespace Ntilde.VT
             AcquireWriteLock();
             try
             {
+                // Resize also takes this lock. Recheck before the first write to the target.
+                ValidatePreparedNativeImport(snapshot, prepared);
                 links = RebuildHyperlinks(snapshot.Hyperlinks);
                 CellUnderline?[] underlines = RebuildUnderlines(snapshot.Underlines);
 
@@ -245,18 +258,7 @@ namespace Ntilde.VT
                 _lastCharRow = snapshot.Grapheme.LastCharRow;
                 _isAfterZwj = snapshot.Grapheme.IsAfterZwj;
 
-                // Replace old decoder handles through the snapshot-session retirement gate.
-                // Retained SIXEL, Kitty and iTerm2 sources are restored at their transferred
-                // positions below, undecoded; TerminalStateTransfer.Restore decodes them.
-                ClearImagePlacements();
-                ClearRetainedKittyImages();
-                var placementOrder = new Dictionary<TerminalImage, int>();
-                // History rows this buffer's scrollback budget could not keep are gone, so main-screen
-                // placements move up by as many rows, the way scrollback eviction moves live ones.
-                int expiredRows = Math.Max(0, snapshot.ScrollbackRowCount - _scrollback.Count);
-                ImportSixelState(snapshot, placementOrder, expiredRows);
-                ImportImageState(snapshot, placementOrder, expiredRows);
-                RestorePlacementOrder(placementOrder);
+                ImportPlacementsNoLock(snapshot, prepared);
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields
                 // above on the next write, and the render-diff cache stays cold so the first
@@ -269,6 +271,8 @@ namespace Ntilde.VT
             {
                 Lock.ExitWriteLock();
             }
+
+            DisposeRetiredHeadlessSixelSources();
 
             // Also excluded from the payload (see TerminalStateSnapshot's remarks: the marks carry
             // a process-local scrollback generation and a 133;B re-arms them). Cleared outside the
@@ -306,6 +310,59 @@ namespace Ntilde.VT
             }
 
             return links;
+        }
+
+        private void ValidatePreparedNativeImport(TerminalStateSnapshot snapshot, PreparedStateImport prepared)
+        {
+            if (prepared.NativeImages is not null &&
+                (!ReferenceEquals(prepared.Owner, this) || prepared.Committed || prepared.Disposed))
+                throw StateTransferValidation.Reject(NativeSixelImportContext, "staged state belongs to one target and one commit");
+            if (prepared.NativeImages is not null && (snapshot.Cols != Cols || snapshot.Rows != Rows))
+                throw StateTransferValidation.Reject(NativeSixelImportContext, "target geometry must match its declared state");
+        }
+
+        private void ImportPlacementsNoLock(TerminalStateSnapshot snapshot, PreparedStateImport prepared)
+        {
+            // Replace old decoder handles through the snapshot-session retirement gate.
+            // Retained SIXEL, Kitty and iTerm2 sources are restored at their transferred
+            // positions below, undecoded; TerminalStateTransfer.Restore decodes them.
+            ClearImagePlacements();
+            ClearRetainedKittyImages();
+            var placementOrder = new Dictionary<TerminalImage, int>();
+            // History rows this buffer's scrollback budget could not keep are gone, so main-screen
+            // placements move up by as many rows, the way scrollback eviction moves live ones.
+            int expiredRows = Math.Max(0, snapshot.ScrollbackRowCount - _scrollback.Count);
+            if (prepared.NativeImages is { } nativeImages)
+            {
+                SetNativeSixelCellMetrics(prepared.NativeMetrics);
+                ImportNativeSixelPlacementsNoLock(snapshot.Sixels ?? [], nativeImages, placementOrder, expiredRows);
+                prepared.Committed = true;
+            }
+            else ImportSixelState(snapshot, placementOrder, expiredRows);
+            ImportImageState(snapshot, placementOrder, expiredRows);
+            RestorePlacementOrder(placementOrder);
+        }
+
+        private void ImportNativeSixelPlacementsNoLock(List<TerminalSixelImageState> states, List<TerminalImage> images,
+            Dictionary<TerminalImage, int> placementOrder, int expiredRows)
+        {
+            for (int i = 0; i < images.Count; i++)
+            {
+                var image = images[i];
+                if (DiscardExpiredNativePlacement(image, expiredRows)) continue;
+                if (states[i].Order is int order) placementOrder.Add(image, order);
+                if (!TryAddSixelPlacement(image)) throw new InvalidOperationException("Staged native placement lost its admission.");
+            }
+        }
+
+        private bool DiscardExpiredNativePlacement(TerminalImage image, int expiredRows)
+        {
+            if (image.IsAltScreenImage || expiredRows <= 0) return false;
+            image.CellY -= expiredRows;
+            if (!DiscardImageBeforeOrigin(image)) return false;
+            if (image.ImageHandle is INativeSixelImage native) RetireUnplacedNativeSixel(native);
+            else image.SixelSource?.Dispose();
+            return true;
         }
 
         // ── screens ──────────────────────────────────────────────────────────────
@@ -988,19 +1045,33 @@ namespace Ntilde.VT
         /// </remarks>
         internal void RequireSixelSessionPolicy(int requiredVersion)
         {
-            SixelRasterPolicy.RequireSupported(requiredVersion);
+            if (NativeSixelBudget is null) SixelRasterPolicy.RequireSupported(requiredVersion);
             if (requiredVersion != SixelRasterPolicyVersion)
                 throw new InvalidOperationException("SIXEL raster policy does not match this buffer generation.");
         }
 
-        internal static ValidatedBufferState ValidateBufferState(TerminalStateSnapshot snapshot)
+        internal static ValidatedBufferState ValidateBufferState(TerminalStateSnapshot snapshot) =>
+            ValidateBufferStateCore(snapshot, nativeAllowed: false);
+
+        /// <summary>
+        /// Admits only this buffer generation's policy; the internal native budget is not a public capability override.
+        /// </summary>
+        internal ValidatedBufferState ValidateStateForImport(TerminalStateSnapshot snapshot)
         {
-            SixelRasterPolicy.RequireSupported(snapshot.RequiredSixelRasterPolicy);
+            RequireSixelSessionPolicy(snapshot.RequiredSixelRasterPolicy);
+            return ValidateBufferStateCore(snapshot, NativeSixelBudget is not null);
+        }
+
+        /// <summary>
+        /// Validates the complete buffer envelope and decodes cell blobs before resize or mutation; parser validation is separate.
+        /// </summary>
+        private static ValidatedBufferState ValidateBufferStateCore(TerminalStateSnapshot snapshot, bool nativeAllowed)
+        {
+            if (!nativeAllowed) SixelRasterPolicy.RequireSupported(snapshot.RequiredSixelRasterPolicy);
             ValidateVersionAndCellLayout(snapshot);
             ValidateRequiredStructure(snapshot);
-            ValidateSixelState(snapshot);
-            ValidateImageState(snapshot);
-            TerminalRuntimeColors.Validate(snapshot.Colors);
+            ValidateSixelState(snapshot, nativeAllowed);
+            ValidateImageState(snapshot); TerminalRuntimeColors.Validate(snapshot.Colors);
             ValidateSgrStack(snapshot.SgrStack);
             ValidateSavedModes(snapshot.SavedModes);
 

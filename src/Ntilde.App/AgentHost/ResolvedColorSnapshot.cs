@@ -59,7 +59,7 @@ internal static class ResolvedColorSnapshot
             || rows != expectedRows || cols != expectedCols) return false;
 
         using var snapshot = buffer.CaptureRenderSnapshot(
-            new RenderSnapshotRequest { ViewportRows = rows, ViewportCols = cols, Isolated = true }, out _);
+            new RenderSnapshotRequest { ViewportRows = rows, ViewportCols = cols, Isolated = true, OmitImages = true }, out _);
         // A concurrent resize between the dimension read and the capture would mix geometries;
         // refuse rather than project a torn viewport.
         if (snapshot.ViewportRows != rows || snapshot.ViewportCols != cols

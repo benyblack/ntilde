@@ -12,6 +12,8 @@ public sealed class RecordingOutputDelivery
     private Ntilde.Replay.RecordingCellMetrics _cellMetrics = new(10, 20);
     public Ntilde.Replay.RecordingCellMetrics CellMetrics => Volatile.Read(ref _cellMetrics);
 
+    public int SixelRasterPolicy { get; set; }
+
     private int _mode; // 0: transport, 1: external raw host, 2: decoded-output host
     public int Mode => Volatile.Read(ref _mode);
     public TerminalOutputChunk Chunk { get; set; }

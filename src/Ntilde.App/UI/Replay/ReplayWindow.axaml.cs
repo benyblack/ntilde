@@ -25,7 +25,8 @@ namespace Ntilde.UI.Replay
         private readonly PlaybackSessionGate _playbackSessionGate = new();
         private TerminalBuffer? _buffer;
         private AnsiParser? _parser;
-        private readonly TerminalStateSnapshot? _initialReplayState;
+        private TerminalStateSnapshot? _initialReplayState;
+        private bool _acceptedReplayPolicy;
         private string? _filePath;
         private bool _isUserScrubbing;
         private long _displayedTimeMs;
@@ -169,6 +170,7 @@ namespace Ntilde.UI.Replay
             base.OnClosed(e);
             // Its glyph atlas and row pictures go once the last frame drawn with them does, as a closed pane's (#644).
             this.FindControl<TerminalView>("TermView")?.Retire();
+            if (_buffer is { } buffer) TerminalView.ReleaseReplacedBufferImages(buffer);
         }
 
         private void StartPlayback()
@@ -201,6 +203,36 @@ namespace Ntilde.UI.Replay
             {
                 if (!cancellationToken.IsCancellationRequested && _playbackSessionGate.IsCurrent(sessionId)) apply();
             }, DispatcherPriority.Normal, cancellationToken);
+        }
+
+        private async Task<bool> PrepareReplayLayoutAsync(int sessionId, ReplayHeader? header, CancellationToken cancellationToken)
+        {
+            bool accepted = false;
+            await ApplyInSessionAsync(sessionId, () =>
+            {
+                if (_buffer is not { } current) return;
+                int policy = header?.RequiredSixelRasterPolicy ?? 0;
+                if (current.SixelRasterPolicyVersion != policy)
+                {
+                    if (_acceptedReplayPolicy || header is null) return;
+                    var buffer = new TerminalBuffer(current.Cols, current.Rows, policy);
+                    var defaultTheme = buffer.Theme;
+                    buffer.Theme = current.Theme;
+                    buffer.UpdateThemeColors(defaultTheme);
+                    buffer.KittyAnimationPaused = true;
+                    var parser = new AnsiParser(buffer) { ImageDecoder = new Ntilde.Rendering.SkiaImageDecoder() };
+                    ReplayRunner.ApplyHeaderMetrics(parser, header);
+                    _initialReplayState = buffer.ExportState(maxScrollbackRows: 0);
+                    _initialReplayState.Parser = parser.ExportState();
+                    _buffer = buffer;
+                    _parser = parser;
+                    this.FindControl<TerminalView>("TermView")?.SetBuffer(buffer);
+                    TerminalView.ReleaseReplacedBufferImages(current);
+                }
+                _acceptedReplayPolicy = true;
+                accepted = true;
+            }, cancellationToken);
+            return accepted;
         }
 
         private Task ApplyHeaderMetricsAsync(int sessionId, ReplayHeader header, bool restoreHeader, CancellationToken cancellationToken) =>
@@ -264,6 +296,7 @@ namespace Ntilde.UI.Replay
                         StopAtTimeMs = targetTimeMs,
                         ApplyHeaderResize = snapEntry is null,
                         StartAfterLineNumber = snapEntry?.LineNumber ?? 0,
+                        OnValidatedHeader = (header, token) => PrepareReplayLayoutAsync(sessionId, header, token),
                         OnValidatedStart = async token =>
                         {
                             restored = await ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, snapEntry?.TimeMs ?? 0, token);
@@ -371,6 +404,7 @@ namespace Ntilde.UI.Replay
                         PlaybackMode = ReplayPlaybackMode.Realtime,
                         ApplyHeaderResize = snapEntry is null,
                         StartAfterLineNumber = snapEntry?.LineNumber ?? 0,
+                        OnValidatedHeader = (header, token) => PrepareReplayLayoutAsync(sessionId, header, token),
                         OnValidatedStart = token => ApplySeekSnapshotAsync(sessionId, snapEntry?.Snapshot, startTimeMs, token),
                         OnSkippedData = output.ObserveSkipped
                     },

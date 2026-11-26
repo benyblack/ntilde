@@ -8,13 +8,16 @@ namespace Ntilde.VT
 {
     public partial class TerminalBuffer
     {
-        private static (int Row, int Column) MapReflowImageOffset(List<int>? rowStarts, int offset, int columns)
+        private static (int Row, int Column) MapReflowImageOffset(List<int>? rowStarts, int offset, int columns, bool keepInFlow)
         {
             ArgumentNullException.ThrowIfNull(rowStarts);
             int row = rowStarts.BinarySearch(offset);
             if (row < 0) row = Math.Max(0, ~row - 1);
             int column = offset - rowStarts[row];
-            return (row + column / columns, column % columns);
+            int targetRow = row + column / columns;
+            return keepInFlow && targetRow >= rowStarts.Count
+                ? (rowStarts.Count - 1, columns - 1)
+                : (targetRow, column % columns);
         }
 
         private sealed class ReflowEngineContext
@@ -309,7 +312,8 @@ namespace Ntilde.VT
                         if (!isEmpty || row.LineSize != LineSize.SingleWidth || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
                     }
 
-                    int vpRowsToTake = lastActiveVpRow + 1;
+                    int vpRowsToTake = Math.Max(lastActiveVpRow + 1,
+                        _source.NativeSixelViewportRowsToFlow(oldScrollbackCount, Math.Min(oldRows, actualVpLen)));
                     int totalPhysRows = oldScrollbackCount + vpRowsToTake;
 
                     // Logical lines that start before this physical row are history: every row they
@@ -542,7 +546,8 @@ namespace Ntilde.VT
 
                         foreach (var (image, offsetInLine) in lineAnchors)
                         {
-                            var position = MapReflowImageOffset(targetRowOffsets, offsetInLine, newCols);
+                            var position = MapReflowImageOffset(targetRowOffsets, offsetInLine, newCols,
+                                keepInFlow: image.NativeRaster is not null);
                             imagePlacements.Add((image, startFlowIndex + position.Row, position.Column));
                         }
                     }
@@ -1267,7 +1272,7 @@ namespace Ntilde.VT
                             img.CellX = placement.NewX;
 
                             // Prune if shifted out of history bounds
-                            if (img.CellY + img.CellHeight < 0)
+                            if (img.NativeRaster is null ? img.CellY + img.CellHeight < 0 : _source.DiscardImageBeforeOrigin(img))
                             {
                                 _source.RetireImage(img);
                                 _images.RemoveAt(i);

@@ -1,0 +1,129 @@
+[
+  {
+    "runId": "8376fec348d0aa1f42998ce0085416a2",
+    "appVersion": "0.14.0+32188db310b1df2800fd22dc69173c36eb4029fc",
+    "sourceSnapshotManifestSha256": "3c6ce56f6604527158ae4d257376585b85a55b060c5dc337b65cbda9a40e1698",
+    "cleanupVerifiedAt": "2026-11-26T12:24:53.997Z",
+    "error": "Unexpected input during cell collection.",
+    "failureSha256": "e01cb8e371a4413a56ecad596c626f4601f0373f949b5ccd1a6f9deefad8c438"
+  },
+  {
+    "runId": "7caf6c3f7c1b10840f63ffee818da1e9",
+    "appVersion": "0.14.0+32188db310b1df2800fd22dc69173c36eb4029fc",
+    "sourceSnapshotManifestSha256": "3c6ce56f6604527158ae4d257376585b85a55b060c5dc337b65cbda9a40e1698",
+    "cleanupVerifiedAt": "2026-11-26T12:27:55.163Z",
+    "outcome": "inconclusive",
+    "detail": "Two color regions have no safe pixels outside the fixed edge band."
+  },
+  {
+    "runId": "5a8432f8db851b641110e8bc5596fa17",
+    "appVersion": "0.14.0+32188db310b1df2800fd22dc69173c36eb4029fc",
+    "sourceSnapshotManifestSha256": "93536bf6fffe884acc0a63ffd1f41c9737b3956fe59554f4c1fe27039ed87eb8",
+    "cleanupVerifiedAt": "2026-11-26T12:29:44.549Z",
+    "error": "Unexpected input during cell collection.",
+    "failureSha256": "fa96f31187c318749db4b85ac04504dd5c2cf30f4e4ea264947bc64f35329e6f"
+  },
+  {
+    "runId": "395b9bf084e2250e10d12fcd959a58a8",
+    "appVersion": "0.14.0+32188db310b1df2800fd22dc69173c36eb4029fc",
+    "sourceSnapshotManifestSha256": "93536bf6fffe884acc0a63ffd1f41c9737b3956fe59554f4c1fe27039ed87eb8",
+    "cleanupVerifiedAt": "2026-11-26T12:31:38.758Z",
+    "error": "Font query contract requires an integer point size within conversion roundoff.",
+    "failureSha256": "e592156109eceae5c3e156b6ec66e00534396a9f707723a5ddf702c5abfe75b4"
+  },
+  {
+    "runId": "8cecd5e44da9b9fe14690b661769507a",
+    "appVersion": "0.14.0+ac806e73c1b25e2051c3703b7868ed5a464135cc",
+    "sourceSnapshotManifestSha256": "2aa1c297def095f8df6f88a036ba64472e55126e519343b9cb55d0de2b438528",
+    "cleanupVerifiedAt": "2026-11-26T12:33:36.425Z",
+    "error": "Observer response timed out.",
+    "failureSha256": "5fbc6656697a54a3638fa9ec48df1d225ead51573da3ae4c4a5aee3543fd344d"
+  },
+  {
+    "runId": "0e72c6fa43d565f20565b6ec254fe6b5",
+    "appVersion": "0.14.0+ac806e73c1b25e2051c3703b7868ed5a464135cc",
+    "sourceSnapshotManifestSha256": "2aa1c297def095f8df6f88a036ba64472e55126e519343b9cb55d0de2b438528",
+    "cleanupVerifiedAt": "2026-11-26T12:34:38.785Z",
+    "error": "Observer response timed out.",
+    "failureSha256": "aa439848ef8920f069c47bf70d8c80fa1e4413553b0847bccb1a7878c1b1589f"
+  },
+  {
+    "runId": "8946c08dd1989612ccc52ebb828c0d5e",
+    "appVersion": "0.14.0+c7ed5b6f19a909f982951e1a55264e3cc381fe6f",
+    "sourceSnapshotManifestSha256": "6075f6467834af388e4fc718cf54f2709a5142b96e708d2d1e9dbb56d0be4ea5",
+    "cleanupVerifiedAt": "2026-11-26T12:38:15.282Z",
+    "error": "Invalid or changed controlled pixel capture.",
+    "failureSha256": "8ac7e8767138c736c706c510f86c1b1b00792369518a417cec4d3b5855031cf3"
+  },
+  {
+    "runId": "f41b1892291389651e96bfe690993fd7",
+    "appVersion": "0.14.0+c7ed5b6f19a909f982951e1a55264e3cc381fe6f",
+    "sourceSnapshotManifestSha256": "be6821f4ec806ad46d2f47554c6204f8e5d038bafd9201d47548231675a9bd46",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/15427969a1b4aad0b5cf049a7002337ee932cb47/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "59d50b3c682af6fb27547bde13d5f6e873fc6c5ca5293eaf961bc0dfc55b5d4d"
+  },
+  {
+    "runId": "77a86ffa5d817cbe474119d60ddac977",
+    "appVersion": "0.14.0+921465c1bf7689ff92dee5403e4c65502d218d08",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/c122146c7b571d13d5034fb2eef634879adbd68a/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "8c8f3497dab417701f5bc6e66e6fdf1e657a1555a1ca2bc8f802903e0502caa8"
+  },
+  {
+    "runId": "03b564fcff82a3d1d4e95fcf5b99b5cd",
+    "appVersion": "0.14.0+3391b755b639ed900bc6f14faa0290b208abb9e1",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/b47f7a68a215ed6b7026d4308f5a5489626eae6e/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "67e76565334a7f060bd4bf88b5d223fa22bdddf00215b3d9024ac8f3eca6bd16"
+  },
+  {
+    "runId": "a150ec542707c343c1a8ec66b2aa9832",
+    "appVersion": "0.14.0+a4019203f2c474f4efcd2e6c64e4f5aecc2e341f",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "cleanupVerifiedAt": "2026-11-26T13:37:55.471Z",
+    "outcome": "superseded",
+    "detail": "The capture completed before the hidden-main reflow and state-transfer corrections. Its raw run remains in batch custody.",
+    "receiptSha256": "099cc6872e469b1bc255ccc0cf58341d3f15ff1c7673ff6c17f76f52b65c02b8"
+  },
+  {
+    "runId": "4c41a0579dbe94a6900f88711eaf2797",
+    "appVersion": "0.14.0+f2233a46ee2b441be3bb7a9e5284c52f65048bbd",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/c18932075c54ae95e37fd515329bdf19311e902f/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "68c7ad0be90ef3f6200f1e314284a0bdfcd82a31c0380db01d0109db0bb282d0"
+  },
+  {
+    "runId": "448d97d90468f073bc51e786c5931463",
+    "appVersion": "0.14.0+2da987427973726d392bb0272110b4890be8e79f",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/3503c894f2ad075ea6866d81d7815f25851a6382/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "dde9fa71535749d6ca6b3dd5cd3ce5d583210332727c77a3e94ed691e3191862"
+  },
+  {
+    "runId": "903de40105407e5f791e5a4a17621ee9",
+    "appVersion": "0.14.0+0f3e1be7da7bea8e724758ed0f7f9edf276e2612",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "cleanupVerifiedAt": "2026-11-26T14:16:42.395Z",
+    "error": "Unexpected input during cell collection.",
+    "failureSha256": "6bb4091828fab8e47dd2fc08faf6c17a82adf8dd8143e23f99c674c267ddc010"
+  },
+  {
+    "runId": "c772f43d5f211e43b2d5bb25307fd1ea",
+    "appVersion": "0.14.0+0f3e1be7da7bea8e724758ed0f7f9edf276e2612",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/e94cca3455611239a827967d2f36b963d3910f20/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "870faaea27429b7c26a02fc2e6e7a0768ad8f566fb208dede5eb027cdbf0d987"
+  }
+]

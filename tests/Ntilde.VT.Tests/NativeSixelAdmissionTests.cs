@@ -7,10 +7,10 @@ public sealed class NativeSixelAdmissionTests
     private const string Wire = "\x1bPq~\x1b\\";
 
     [Fact]
-    public void Refusal_precedes_decoder_and_cursor_effects_and_cannot_fall_back_to_legacy()
+    public void Decode_refusal_keeps_native_layout_and_skips_the_unbounded_legacy_decoder()
     {
         var budget = new NativeSixelBudget(maxPlacements: 1);
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget);
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20));
         var decoder = new ProbeDecoder(budget, buffer);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process(Wire);
@@ -20,21 +20,112 @@ public sealed class NativeSixelAdmissionTests
         int row = buffer.CursorRow, col = buffer.CursorCol;
         parser.Process(Wire);
         Assert.Equal(1, decoder.Calls);
-        Assert.Equal((row, col), (buffer.CursorRow, buffer.CursorCol));
-        Assert.Single(buffer.Images);
-        var unsupported = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, new NativeSixelBudget());
+        Assert.Equal((row + 1, col), (buffer.CursorRow, buffer.CursorCol));
+        var fallback = buffer.Images[1];
+        Assert.IsType<SixelSource>(fallback.ImageHandle);
+        Assert.Equal(buffer.Images[0].NativeRaster, fallback.NativeRaster);
+        Assert.Equal(1, budget.Usage.Placements);
+        var unsupported = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, new NativeSixelBudget(), new SixelCellSize(10, 20));
         var legacy = new LegacyOnlyDecoder();
         new AnsiParser(unsupported, forceConPtyFiltering: false) { ImageDecoder = legacy }.Process(Wire);
         Assert.Equal(0, legacy.Calls);
-        Assert.Empty(unsupported.Images);
-        Assert.Equal((0, 0), (unsupported.CursorRow, unsupported.CursorCol));
+        Assert.IsType<SixelSource>(Assert.Single(unsupported.Images).ImageHandle);
+        Assert.Equal((0, 1), (unsupported.CursorCol, unsupported.CursorRow));
+    }
+
+    [Fact]
+    public void A_pinned_presenter_and_a_headless_host_apply_the_same_stream_layout_under_pressure()
+    {
+        var size = new SixelCellSize(10, 20);
+        var budget = new NativeSixelBudget(maxPlacements: 1);
+        var rendered = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, size);
+        var headless = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, new NativeSixelBudget(maxPlacements: 1), size);
+        var presenter = new ProbeDecoder(budget, rendered);
+        var renderedParser = new AnsiParser(rendered, forceConPtyFiltering: false) { ImageDecoder = presenter };
+        var headlessParser = new AnsiParser(headless, forceConPtyFiltering: false);
+        renderedParser.Process(Wire);
+        headlessParser.Process(Wire);
+        // The headless owner can retire immediately. The renderer's reservation remains pinned.
+        int session = rendered.BeginSnapshotSession();
+        rendered.Clear(true);
+        headless.Clear(true);
+        try
+        {
+            for (int i = 0; i < 7; i++)
+            {
+                renderedParser.Process(Wire + "\r\n");
+                headlessParser.Process(Wire + "\r\n");
+            }
+            Assert.Equal(1, presenter.Calls);
+            Assert.Equal((headless.CursorCol, headless.CursorRow, headless.TotalLines),
+                (rendered.CursorCol, rendered.CursorRow, rendered.TotalLines));
+            Assert.Equal(headless.Images.Select(image => (image.CellX, image.CellY, image.CellWidth, image.CellHeight, image.NativeRaster)),
+                rendered.Images.Select(image => (image.CellX, image.CellY, image.CellWidth, image.CellHeight, image.NativeRaster)));
+            Assert.All(rendered.Images, image => Assert.IsType<SixelSource>(image.ImageHandle));
+        }
+        finally { rendered.EndSnapshotSession(session); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Source_only_placement_roundtrips_without_consuming_raster_credit(bool presenter)
+    {
+        var size = new SixelCellSize(10, 20);
+        var source = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, new NativeSixelBudget(maxPlacements: 1), size);
+        var parser = new AnsiParser(source, forceConPtyFiltering: false);
+        parser.Process(Wire);
+        parser.Process(Wire);
+        var state = source.ExportState(0);
+        state.Parser = parser.ExportState();
+
+        var transferred = TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(state));
+
+        Assert.Collection(transferred.Sixels ?? [],
+            first => Assert.False(first.SourceOnly),
+            second => Assert.True(second.SourceOnly));
+        var budget = new NativeSixelBudget(maxPlacements: 1);
+        var target = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, size);
+        var decoder = presenter ? new ProbeDecoder(budget, target) : null;
+        var restored = new AnsiParser(target, forceConPtyFiltering: false) { ImageDecoder = decoder };
+        TerminalStateTransfer.Restore(target, restored, transferred);
+
+        Assert.Equal((source.CursorCol, source.CursorRow), (target.CursorCol, target.CursorRow));
+        Assert.Equal(1, budget.Usage.Placements);
+        if (decoder is not null) Assert.Equal(1, decoder.Calls);
+        Assert.IsAssignableFrom<INativeSixelImage>(target.Images[0].ImageHandle);
+        var fallback = target.Images[1];
+        Assert.IsType<SixelSource>(fallback.ImageHandle);
+        Assert.Equal(source.Images[1].NativeRaster, fallback.NativeRaster);
+        Assert.Equal((0, 1, 1, 1), (fallback.CellX, fallback.CellY, fallback.CellWidth, fallback.CellHeight));
+        Assert.True(target.ExportState(0).Sixels?[1].SourceOnly);
+        target.ClearImages();
+        var retired = new List<object>();
+        target.DrainRetiredImageHandles(retired, long.MaxValue);
+        foreach (var handle in retired) ((IDisposable)handle).Dispose();
+        Assert.Equal((0, 0L), budget.Usage);
+        source.ClearImages();
+    }
+
+    [Fact]
+    public void A_source_only_flag_cannot_be_admitted_without_native_intent()
+    {
+        var legacy = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(legacy, forceConPtyFiltering: false) { RetainSixelSources = true };
+        parser.Process(Wire);
+        var state = legacy.ExportState(0);
+        Assert.NotNull(state.Sixels);
+        Assert.Single(state.Sixels).SourceOnly = true;
+
+        Assert.Throws<InvalidOperationException>(() => SixelRasterPolicy.RequireSupportedState(state));
+        Assert.Throws<InvalidOperationException>(() => new TerminalBuffer(10, 5).ImportState(state));
     }
 
     [Fact]
     public void Retired_and_drained_handles_stay_charged_until_successful_outside_lock_disposal()
     {
         var budget = new NativeSixelBudget(maxPlacements: 1);
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget);
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20));
         var decoder = new ProbeDecoder(budget, buffer);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process(Wire);
@@ -75,7 +166,7 @@ public sealed class NativeSixelAdmissionTests
     public void Alias_placements_cannot_exceed_the_limit_or_revive_after_handoff_or_cross_buffers()
     {
         var budget = new NativeSixelBudget(maxPlacements: 2);
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget);
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20));
         var decoder = new ProbeDecoder(budget, buffer);
         new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder }.Process(Wire);
         var handle = Assert.IsType<ProbeImage>(Assert.Single(buffer.Images).ImageHandle);
@@ -84,7 +175,7 @@ public sealed class NativeSixelAdmissionTests
         Assert.Equal((2, bytes), budget.Usage);
         Assert.Throws<InvalidOperationException>(() => buffer.AddImage(new TerminalImage(handle, 7, 0, 1, 1)));
         Assert.Equal(2, buffer.Images.Count);
-        var other = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, new NativeSixelBudget());
+        var other = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, new NativeSixelBudget(), new SixelCellSize(10, 20));
         Assert.Throws<InvalidOperationException>(() => other.AddImage(new TerminalImage(handle, 0, 0, 1, 1)));
         Assert.Empty(other.Images);
         buffer.Clear(true);
@@ -97,18 +188,43 @@ public sealed class NativeSixelAdmissionTests
         Assert.Equal((0, 0L), budget.Usage);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("\r\n")]
+    public void A_raster_larger_than_the_source_budget_preserves_cursor_and_newline_handling(string followingNewline)
+    {
+        string wire = "\x1bPq" + new string('?', SixelSourceBudget.DefaultMaxChars) + "~\x1b\\" + followingNewline + "Z";
+        var buffer = new TerminalBuffer(80, 24, SixelRasterPolicy.PresenterNativeVersion);
+        var decoder = new LegacyOnlyDecoder();
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false)
+        {
+            SixelCellSizeOverride = new(10, 20),
+            ImageDecoder = decoder,
+        };
+
+        parser.Process(wire);
+
+        Assert.Equal((1, 1), (buffer.CursorCol, buffer.CursorRow));
+        Assert.Equal('Z', buffer.ViewportRows[1].Cells[0].Character);
+        Assert.Empty(buffer.Images);
+        Assert.Equal(0, buffer.SixelSources.Count);
+        Assert.Equal(0, decoder.Calls);
+    }
+
     [Fact]
     public void Source_refusal_and_decoder_null_release_unallocated_reservations_but_unknown_exception_fails_closed()
     {
         var budget = new NativeSixelBudget();
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelSourceBudget(1, 1));
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20), new SixelSourceBudget(1, 1));
         var decoder = new ProbeDecoder(budget, buffer);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process(Wire);
         Assert.Equal(0, decoder.Calls);
+        Assert.Empty(buffer.Images);
+        Assert.Equal((0, 1), (buffer.CursorCol, buffer.CursorRow));
         Assert.Equal((0, 0L), budget.Usage);
         budget = new NativeSixelBudget();
-        var normal = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget);
+        var normal = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20));
         decoder = new ProbeDecoder(budget, normal) { ReturnNull = true };
         parser = new AnsiParser(normal, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process(Wire);
@@ -116,7 +232,8 @@ public sealed class NativeSixelAdmissionTests
         decoder.ReturnNull = false;
         decoder.Throw = true;
         parser.Process(Wire);
-        Assert.Empty(normal.Images);
+        Assert.Equal(2, normal.Images.Count);
+        Assert.All(normal.Images, image => Assert.IsType<SixelSource>(image.ImageHandle));
         Assert.Equal((1, 6L * 6 + 16384), budget.Usage);
     }
 
@@ -124,7 +241,7 @@ public sealed class NativeSixelAdmissionTests
     public void Source_eviction_retires_undecoded_owner_without_returning_its_native_credit()
     {
         var budget = new NativeSixelBudget();
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelSourceBudget(2, 1));
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20), new SixelSourceBudget(2, 1));
         var decoder = new ProbeDecoder(budget, buffer);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process(Wire);
@@ -145,7 +262,7 @@ public sealed class NativeSixelAdmissionTests
     public void Default_limit_includes_all_256_retired_snapshot_pinned_placements()
     {
         var budget = new NativeSixelBudget();
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget);
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20));
         var decoder = new ProbeDecoder(budget, buffer);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process("\x1b[?80h");
@@ -170,7 +287,7 @@ public sealed class NativeSixelAdmissionTests
     public void Retiring_one_native_alias_keeps_its_shared_source_live_ahead_of_retired_source_pressure()
     {
         var budget = new NativeSixelBudget();
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelSourceBudget(10, 2));
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelCellSize(10, 20), new SixelSourceBudget(10, 2));
         var decoder = new ProbeDecoder(budget, buffer);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process(Wire);
@@ -195,7 +312,7 @@ public sealed class NativeSixelAdmissionTests
     public void Final_retained_asset_release_retires_its_native_source_before_live_source_pressure()
     {
         var budget = new NativeSixelBudget();
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelSourceBudget(10, 2));
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelCellSize(10, 20), new SixelSourceBudget(10, 2));
         var decoder = new ProbeDecoder(budget, buffer);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process(Wire);
@@ -231,7 +348,7 @@ public sealed class NativeSixelAdmissionTests
     public void Final_native_retirement_is_irreversible_even_before_disposal_handoff(bool retainedAsset, bool alternate)
     {
         var budget = new NativeSixelBudget();
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget);
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelCellSize(10, 20));
         var decoder = new ProbeDecoder(budget, buffer);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         if (alternate) parser.Process("\x1b[?1049h");
@@ -256,12 +373,12 @@ public sealed class NativeSixelAdmissionTests
     public void A_native_budget_can_belong_to_only_one_buffer_generation()
     {
         var budget = new NativeSixelBudget();
-        var first = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget);
+        var first = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelCellSize(10, 20));
         var decoder = new ProbeDecoder(budget, first);
         new AnsiParser(first, forceConPtyFiltering: false) { ImageDecoder = decoder }.Process(Wire);
         var handle = Assert.Single(first.Images).ImageHandle;
         var before = budget.Usage;
-        Assert.Throws<InvalidOperationException>(() => TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget));
+        Assert.Throws<InvalidOperationException>(() => TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelCellSize(10, 20)));
         Assert.Same(handle, Assert.Single(first.Images).ImageHandle);
         Assert.Equal(before, budget.Usage);
     }
