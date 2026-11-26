@@ -1,8 +1,8 @@
 {
-  "ownedRunId": "288e6be5e572753d412b32a87c26926e",
-  "measuredAt": "2026-11-26T17:41:46.281Z",
-  "appRevision": "939fab38d9ed2da1c67a644300ad27dcb6973652",
-  "scriptsRevision": "939fab38d9ed2da1c67a644300ad27dcb6973652",
+  "ownedRunId": "afc329c4574e6de7f38695e39db9ac59",
+  "measuredAt": "2026-11-26T17:52:53.526Z",
+  "appRevision": "b0d9a2de0b61d19a23a77513ec533a8a84471006",
+  "scriptsRevision": "b0d9a2de0b61d19a23a77513ec533a8a84471006",
   "context": {
     "adapter": "ntilde-owned-osc633-metadata-v1",
     "collectionScope": {
@@ -10,11 +10,11 @@
       "persistence": "Off",
       "deadlineMs": 90000
     },
-    "appVersion": "0.14.0+939fab38d9ed2da1c67a644300ad27dcb6973652",
+    "appVersion": "0.14.0+b0d9a2de0b61d19a23a77513ec533a8a84471006",
     "appVersionSource": "operator supplied; not independently verified",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-v86",
-    "sourceSnapshotManifestSha256": "e5464f7181c8224d6ce47eaa6b54dbaa56c7c8b61f81c162098ae25b91b9abe1",
-    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-abRhnO",
+    "sourceSnapshotManifestSha256": "aa31209864fafb7c55dd60a4a5cd928dc97dec0048b0cf781efa8c9ea067791d",
+    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-xKKe42",
     "runnerSourceSha256": "0fb362baa0b8db535e40d7aacb1bd033eb67844a7dad106de2d2dc5e03c0d5a5",
     "adapterSourceSha256": "d21ad64158e39ca20c093cb1cad82f772a42afc0a460b5117ed6f3ff3f4d50e3",
     "ownershipSourceSha256": "65f599b31de43913682a7baf1182a1a8b70da216ae8c38a0acdbe37d68783f8c",
@@ -509,29 +509,29 @@
     "dslGradingSourceSha256": "10ccae81e09dec850dc1bb7137becbba0a349d4c8497b9ae236babe7b8ab822b",
     "dslGradingCollectorSourceSha256": "770599a028e964758a3a0b2260388ef9681bbb55ffc0ae2bc199c11e232954f2",
     "dslReceiptSourceSha256": "7104ca40b713fe1370772c2acf763d087d8b191080fad793342fee050c42f235",
-    "osc633MetadataContractsSourceSha256": "ea3807f67a50dc57da2728846d3ebf52057a0fb9939f4f44be89f4654bfa76a7",
-    "osc633MetadataOwnedSourceSha256": "f6afdcc2bcdbc7bdc2d4231db11ca0a00f711e3ff0f5662cc2920894b1663014",
-    "osc633MetadataWorkerSourceSha256": "72e989c211ccb669dd89abc218913cae04b2b9c3818a307a47246ea0db5d02ac",
-    "initialSettingsSha256": "ae018290574e67fb684954cd9fbba088695af62e8dac3d12acedded549a4627f",
-    "executable": "/Users/behnam/.ntilde-qa-sidecars/issue-983-osc633-metadata-vt-final/Ntilde",
+    "osc633MetadataContractsSourceSha256": "1b00ae38c323a24f9fb69c8166103253c3fc36c424e99ae4849bd43da01b5947",
+    "osc633MetadataOwnedSourceSha256": "efcb163d089c860d8a0d684ec460b039979710376f714495a0d60124cd4eda0f",
+    "osc633MetadataWorkerSourceSha256": "03c9707c0b20609d1cd9c38bb458bfc443792b2a68032d2772458ec3bfd15994",
+    "initialSettingsSha256": "928d5a287961c18d886783009da42f6dc6b93cedadfee45796feff8d638240f8",
+    "executable": "/Users/behnam/.ntilde-qa-sidecars/issue-983-osc633-metadata-sonar/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "406efa67a330614e72fe67f57f54f20ebdfae5f5f7f59375b7650a7bb492457b",
+    "assemblySha256": "9c60e7662ab99a4394e948151527fa274cd3594c93b8c310cee4ea56d29e1d80",
     "nodeVersion": "v24.22.2",
-    "startedAt": "2026-11-26T17:41:46.281Z",
-    "runId": "288e6be5e572753d412b32a87c26926e",
-    "ownerPid": 68452
+    "startedAt": "2026-11-26T17:52:53.526Z",
+    "runId": "afc329c4574e6de7f38695e39db9ac59",
+    "ownerPid": 77532
   },
   "receipt": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-osc633-metadata-v1",
-    "runId": "288e6be5e572753d412b32a87c26926e",
+    "runId": "afc329c4574e6de7f38695e39db9ac59",
     "fixtureRemoved": true,
     "files": {
-      "osc633-metadata-frames.jsonl": "6c715d586ac01aeaf1fd6b48d3caa01ca7147cc818af46f18301990e24db3977",
-      "context.json": "05efe249f3960071f48bcbadb41bd26330cd20370d96ac40284702be1daa8e5f",
-      "ownership-proof.json": "83f813793e5df47f04585e39829d59948eb0c09ac5fc39421ec268729de7d3b7",
-      "source-snapshot.json": "e5464f7181c8224d6ce47eaa6b54dbaa56c7c8b61f81c162098ae25b91b9abe1",
-      "initial-settings.json": "ae018290574e67fb684954cd9fbba088695af62e8dac3d12acedded549a4627f"
+      "osc633-metadata-frames.jsonl": "f4560ef66933d3e3720415ebc83acad71028ab3eb545930b7d3c8fdf02bac0f8",
+      "context.json": "a90e2b2734aa922b14d90913649809acfb3ff2e2b29158ea52bb8fa3a09b0879",
+      "ownership-proof.json": "796fe8eae284ad02d0cec9647a5bc5ba05da2695ddf7230289ff7618d291cdf3",
+      "source-snapshot.json": "aa31209864fafb7c55dd60a4a5cd928dc97dec0048b0cf781efa8c9ea067791d",
+      "initial-settings.json": "928d5a287961c18d886783009da42f6dc6b93cedadfee45796feff8d638240f8"
     }
   },
   "stockCollector": {

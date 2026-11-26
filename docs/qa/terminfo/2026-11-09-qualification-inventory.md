@@ -101,7 +101,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `pxm` | 1 | v1 | passed | 67 | `9972a6fc` | v61 | 4 | `82badba3` |
 | `extensions-truecolor` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 3 | `5e017718` |
 | `osc633` | 4 | v1 | passed | 69 | `9c814b13` | v62 | 4 | `8cf95ba4` |
-| `osc633-metadata` | 2 | v1 | passed | 1 | `939fab38` | v86 | 5 | `1f9f6132` |
+| `osc633-metadata` | 2 | v1 | passed | 1 | `b0d9a2de` | v86 | 5 | `7e5f5cab` |
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
 | `sixel-native-fidelity` | 1 | v1 | passed | 82 | `f9b0da19` | v80 | 8 | `965880c2` |
 | `shell-integration-aggregates` | 2 | v1 | passed | 69 | `9c814b13` | v62 | 3 | `768bef04` |

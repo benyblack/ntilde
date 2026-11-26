@@ -38,7 +38,7 @@ scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained
   -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false \
   -p:SkipCliShim=true -o /absolute/private/sidecar
 node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde \
-  --app-version 0.14.0+939fab38d9ed2da1c67a644300ad27dcb6973652 --scope osc633-metadata
+  --app-version 0.14.0+b0d9a2de0b61d19a23a77513ec533a8a84471006 --scope osc633-metadata
 ~~~
 
 The [owned archive](owned-run.zip) and [machine-readable report](report.json) cover two exact IDs in the [frozen Rich TUI catalogue](../2026-11-26-rich-tui/report.md). The two supported effects add inventory claims. The pinned and stock verdicts remain inconclusive.
