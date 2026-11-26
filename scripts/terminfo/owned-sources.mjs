@@ -11,6 +11,7 @@ export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
 export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
 export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph-v79';
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
+export const capturedOsc633MetadataSourcePolicy = 'readonly-owned-source-graph-v86';
 export const capturedSixelReportsSourcePolicy = 'readonly-owned-source-graph-v85';
 export const capturedOsc66SourcePolicy = 'readonly-owned-source-graph-v84';
 export const capturedKittyGraphicsSourcePolicy = 'readonly-owned-source-graph-v83';
@@ -19,6 +20,7 @@ export const capturedUnicodeWidthSourcePolicy = 'readonly-owned-source-graph-v81
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 const focusedSourcePolicies = [
+    ['osc633MetadataOwnedSourceSha256', capturedOsc633MetadataSourcePolicy],
     ['sixelReportsOwnedSourceSha256', capturedSixelReportsSourcePolicy],
     ['osc66OwnedSourceSha256', capturedOsc66SourcePolicy],
     ['kittyGraphicsOwnedSourceSha256', capturedKittyGraphicsSourcePolicy],
@@ -1022,6 +1024,13 @@ export const capturedV82SourceFiles = Object.freeze({
     dslReceiptSourceSha256: 'dsl-receipt.mjs',
 });
 
+export const capturedOsc633MetadataSourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    osc633MetadataContractsSourceSha256: 'osc633-metadata-contracts.mjs',
+    osc633MetadataOwnedSourceSha256: 'osc633-metadata-owned.mjs',
+    osc633MetadataWorkerSourceSha256: 'osc633-metadata-worker.mjs',
+});
+
 export const capturedSixelReportsSourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     sixelReportsContractsSourceSha256: 'sixel-reports-contracts.mjs',
@@ -1103,6 +1112,7 @@ export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
     const expected = {
+        [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
         [capturedSixelReportsSourcePolicy]: capturedSixelReportsSourceFiles,
         [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,
         [capturedKittyGraphicsSourcePolicy]: capturedKittyGraphicsSourceFiles,
