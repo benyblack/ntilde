@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "baseline": "unicode",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "runId": "dfb282c4652eda8cea4df315a764df57",
+  "suite": "ntilde-owned-unicode-boundaries-v1",
+  "rows": [
+    {
+      "id": "unicode.east-asian-ambiguous",
+      "terminal": "supported",
+      "ptyWidth": 1,
+      "effect": "supported",
+      "observed": {
+        "line": "●X",
+        "cursor": [
+          0,
+          2
+        ],
+        "flags": [
+          768,
+          768,
+          768,
+          768
+        ]
+      }
+    },
+    {
+      "id": "unicode.grapheme-cursor",
+      "terminal": "supported",
+      "ptyWidth": 2,
+      "effect": "supported",
+      "backspace": "supported",
+      "observed": {
+        "line": "👨‍👩‍👧",
+        "cursor": [
+          0,
+          2
+        ],
+        "backspaceCursor": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "id": "unicode.wrap-boundary",
+      "terminal": "supported",
+      "effect": "supported",
+      "observed": {
+        "parserCursor": [
+          1,
+          2
+        ],
+        "terminalCursor": [
+          1,
+          2
+        ],
+        "terminalReply": {
+          "raw": "\u001b[2;3R",
+          "row": 2,
+          "col": 3
+        },
+        "parserRow0": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "terminalRow0": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "parserRow1": "中",
+        "terminalRow1": "中"
+      }
+    }
+  ],
+  "measurement": {
+    "runId": "dfb282c4652eda8cea4df315a764df57",
+    "sourcePolicy": "readonly-owned-source-graph-v82",
+    "receiptSchema": 1,
+    "appRevision": "3138158796f02c6bbec9bab7ee28ad6dde6b3249",
+    "scriptsRevision": "94ee43cf41ac059d48deb8a421a5c1d5396b12af",
+    "platform": "27.0.1 (26A434), arm64",
+    "version": "0.14.0+3138158796f02c6bbec9bab7ee28ad6dde6b3249",
+    "nodeVersion": "v24.22.2",
+    "geometry": {
+      "rows": 41,
+      "columns": 140
+    },
+    "startedAt": "2026-11-25T22:08:26.656Z",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "fbf21657e456c535d9d0aa1bb6202313dd0bc9d256f1830add7d2cb74cb705be",
+    "sourceSnapshotManifestSha256": "03985780c0bbb95e75734a5674fcf87ceb8c13dfbc94163e516b95a308224367",
+    "releasedAt": "2026-11-25T22:08:29.223Z",
+    "archiveSha256": "fc5cbca0893f87df6977b8a8eda2708c979201baf5bdb5a6eae5bd788c2f8943"
+  }
+}
