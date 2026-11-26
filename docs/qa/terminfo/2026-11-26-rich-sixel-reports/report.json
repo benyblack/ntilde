@@ -1,0 +1,432 @@
+{
+  "schemaVersion": 1,
+  "suite": "ntilde-owned-sixel-reports-v1",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "history": [
+    {
+      "file": "2026-11-04-reset-observations-evidence.zip",
+      "sha256": "d3d85d29f5d90c17ef8dfb62739d94b29ce46018b258534c0c038e9fa3a7992d",
+      "runId": "489508bf4da51d4d9f33a0d382982b06",
+      "cases": [
+        {
+          "id": "extensions.sixel-da1",
+          "exchange": {
+            "sequence": "\u001b[c",
+            "match": [
+              "\u001b[?62;4;22c",
+              "62;4;22"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          },
+          "outcome": "supported"
+        },
+        {
+          "id": "extensions.sixel-geometry-report",
+          "exchange": {
+            "sequence": "\u001b[?2;1;0S\u001b[c",
+            "match": null,
+            "reason": "sentinel",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          },
+          "outcome": "inconclusive"
+        }
+      ]
+    },
+    {
+      "file": "2026-11-16-static-images/owned-run.zip",
+      "sha256": "7d5ab79451faad63090f8ab29cffee27f6af94a7032a0a3ce0841811d18e3eed",
+      "runId": "620df11352a96f08f8a6fd01d0c01e98",
+      "cases": [
+        {
+          "id": "extensions.sixel-da1",
+          "exchange": {
+            "sequence": "\u001b[c",
+            "match": [
+              "\u001b[?62;4;22c",
+              "62;4;22"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?62;4;22c",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          },
+          "outcome": "supported"
+        },
+        {
+          "id": "extensions.sixel-geometry-report",
+          "exchange": {
+            "sequence": "\u001b[?2;1;0S\u001b[c",
+            "match": [
+              "\u001b[?2;0;2000;1480S"
+            ],
+            "reason": "reply",
+            "raw": "\u001b[?2;0;2000;1480S\u001b[?62;4;22c",
+            "rawBase64": "G1s/MjswOzIwMDA7MTQ4MFMbWz82Mjs0OzIyYw=="
+          },
+          "outcome": "supported"
+        }
+      ]
+    }
+  ],
+  "stock": {
+    "extensions.sixel-da1": "supported",
+    "extensions.sixel-geometry-report": "supported"
+  },
+  "pinnedReplies": [
+    {
+      "stage": "initial",
+      "cases": [
+        {
+          "id": "extensions.sixel-da1",
+          "exchange": {
+            "sequence": "\u001b[c",
+            "raw": "\u001b[?62;4;22c",
+            "match": [
+              "\u001b[?62;4;22c",
+              "62;4;22"
+            ],
+            "reason": "reply",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          },
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "Complete DA1 advertises Sixel attribute 4",
+                "observed": "\u001b[?62;4;22c"
+              }
+            ]
+          }
+        },
+        {
+          "id": "extensions.sixel-geometry-report",
+          "exchange": {
+            "sequence": "\u001b[?2;1;0S\u001b[c",
+            "raw": "\u001b[?2;0;2000;1480S\u001b[?62;4;22c",
+            "match": [
+              "\u001b[?2;0;2000;1480S"
+            ],
+            "reason": "reply",
+            "rawBase64": "G1s/MjswOzIwMDA7MTQ4MFMbWz82Mjs0OzIyYw=="
+          },
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[?2;0;2000;1480S\u001b[?62;4;22c",
+            "note": "Current Sixel geometry reported as 2000×1480 pixels",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query",
+              "note": "Current Sixel geometry reported as 2000×1480 pixels"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "XTSMGRAPHICS item 2 read returns status 0 and two positive pixel dimensions",
+                "observed": "\u001b[?2;0;2000;1480S"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stage": "resized",
+      "cases": [
+        {
+          "id": "extensions.sixel-da1",
+          "exchange": {
+            "sequence": "\u001b[c",
+            "raw": "\u001b[?62;4;22c",
+            "match": [
+              "\u001b[?62;4;22c",
+              "62;4;22"
+            ],
+            "reason": "reply",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          },
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "Complete DA1 advertises Sixel attribute 4",
+                "observed": "\u001b[?62;4;22c"
+              }
+            ]
+          }
+        },
+        {
+          "id": "extensions.sixel-geometry-report",
+          "exchange": {
+            "sequence": "\u001b[?2;1;0S\u001b[c",
+            "raw": "\u001b[?2;0;1428;962S\u001b[?62;4;22c",
+            "match": [
+              "\u001b[?2;0;1428;962S"
+            ],
+            "reason": "reply",
+            "rawBase64": "G1s/MjswOzE0Mjg7OTYyUxtbPzYyOzQ7MjJj"
+          },
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[?2;0;1428;962S\u001b[?62;4;22c",
+            "note": "Current Sixel geometry reported as 1428×962 pixels",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query",
+              "note": "Current Sixel geometry reported as 1428×962 pixels"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "XTSMGRAPHICS item 2 read returns status 0 and two positive pixel dimensions",
+                "observed": "\u001b[?2;0;1428;962S"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stage": "restored",
+      "cases": [
+        {
+          "id": "extensions.sixel-da1",
+          "exchange": {
+            "sequence": "\u001b[c",
+            "raw": "\u001b[?62;4;22c",
+            "match": [
+              "\u001b[?62;4;22c",
+              "62;4;22"
+            ],
+            "reason": "reply",
+            "rawBase64": "G1s/NjI7NDsyMmM="
+          },
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "Complete DA1 advertises Sixel attribute 4",
+                "observed": "\u001b[?62;4;22c"
+              }
+            ]
+          }
+        },
+        {
+          "id": "extensions.sixel-geometry-report",
+          "exchange": {
+            "sequence": "\u001b[?2;1;0S\u001b[c",
+            "raw": "\u001b[?2;0;2000;1480S\u001b[?62;4;22c",
+            "match": [
+              "\u001b[?2;0;2000;1480S"
+            ],
+            "reason": "reply",
+            "rawBase64": "G1s/MjswOzIwMDA7MTQ4MFMbWz82Mjs0OzIyYw=="
+          },
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[?2;0;2000;1480S\u001b[?62;4;22c",
+            "note": "Current Sixel geometry reported as 2000×1480 pixels",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query",
+              "note": "Current Sixel geometry reported as 2000×1480 pixels"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "XTSMGRAPHICS item 2 read returns status 0 and two positive pixel dimensions",
+                "observed": "\u001b[?2;0;2000;1480S"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "ownedGeometry": {
+    "pixelCap": 2000,
+    "geometry": [
+      {
+        "stage": "initial",
+        "grid": {
+          "rows": 40,
+          "cols": 140
+        },
+        "cell": {
+          "viewRows": 40,
+          "viewCols": 140,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "fontAscentDip": 14.280059814453125,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "reference": {
+          "request": "\u001b[14t",
+          "reply": "\u001b[4;1480;2380t",
+          "width": 2380,
+          "height": 1480
+        },
+        "expected": {
+          "width": 2000,
+          "height": 1480
+        },
+        "observed": {
+          "width": 2000,
+          "height": 1480
+        },
+        "outcome": "passed"
+      },
+      {
+        "stage": "resized",
+        "grid": {
+          "rows": 26,
+          "cols": 84
+        },
+        "cell": {
+          "viewRows": 26,
+          "viewCols": 84,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "fontAscentDip": 14.280059814453125,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "reference": {
+          "request": "\u001b[14t",
+          "reply": "\u001b[4;962;1428t",
+          "width": 1428,
+          "height": 962
+        },
+        "expected": {
+          "width": 1428,
+          "height": 962
+        },
+        "observed": {
+          "width": 1428,
+          "height": 962
+        },
+        "outcome": "passed"
+      },
+      {
+        "stage": "restored",
+        "grid": {
+          "rows": 40,
+          "cols": 140
+        },
+        "cell": {
+          "viewRows": 40,
+          "viewCols": 140,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "fontAscentDip": 14.280059814453125,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "reference": {
+          "request": "\u001b[14t",
+          "reply": "\u001b[4;1480;2380t",
+          "width": 2380,
+          "height": 1480
+        },
+        "expected": {
+          "width": 2000,
+          "height": 1480
+        },
+        "observed": {
+          "width": 2000,
+          "height": 1480
+        },
+        "outcome": "passed"
+      }
+    ],
+    "actions": [
+      {
+        "stage": "resize",
+        "target": {
+          "rows": 26,
+          "cols": 84
+        },
+        "observed": {
+          "paneId": "6bfa4659-ec68-4d91-9551-62e228dab6a6",
+          "runId": "4462d1c03136aa903680ab975e92b0bc",
+          "observedAt": "2026-11-26T10:50:47.144Z",
+          "app": {
+            "rows": 26,
+            "cols": 84,
+            "layoutSettled": true,
+            "exact": true
+          },
+          "terminalOutput": {
+            "tool": "/bin/stty",
+            "outputProcessing": false,
+            "description": "speed 9600 baud; 26 rows; 84 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+          }
+        }
+      },
+      {
+        "stage": "restore",
+        "target": {
+          "rows": 40,
+          "cols": 140
+        },
+        "observed": {
+          "paneId": "6bfa4659-ec68-4d91-9551-62e228dab6a6",
+          "runId": "4462d1c03136aa903680ab975e92b0bc",
+          "observedAt": "2026-11-26T10:50:47.216Z",
+          "app": {
+            "rows": 40,
+            "cols": 140,
+            "layoutSettled": true,
+            "exact": true
+          },
+          "terminalOutput": {
+            "tool": "/bin/stty",
+            "outputProcessing": false,
+            "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+          }
+        }
+      }
+    ],
+    "restored": true
+  },
+  "measurement": {
+    "runId": "4462d1c03136aa903680ab975e92b0bc",
+    "appRevision": "cbc33bf4cc62622343f27206bb3fba927c50892a",
+    "scriptsRevision": "04f93456e49e2406e6c4d40559885e0994b75801",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-v85",
+    "receiptSchema": 1,
+    "version": "0.14.0+cbc33bf4cc62622343f27206bb3fba927c50892a",
+    "nodeVersion": "v24.22.2",
+    "startedAt": "2026-11-26T10:50:44.017Z",
+    "releasedAt": "2026-11-26T10:50:47.675Z",
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "feeaead92aec1f9866125b53f31588ec8b4fdc668e94aaa2c2666ef52d96e3ca",
+    "sourceSnapshotManifestSha256": "f12417e94888fb51bc9e29c7e7308b8a5344465344114fec636ebcb92d14f26c",
+    "archiveSha256": "a1fed9b5e0e3d2539a964c1b348c80aa00ba057db4395aea04a452e64421dfc3"
+  }
+}

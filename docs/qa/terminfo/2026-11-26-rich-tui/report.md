@@ -26,4 +26,8 @@ The [Kitty graphics assessment](../2026-11-26-rich-kitty-graphics/report.md) rec
 
 The [OSC 66 assessment](../2026-11-26-rich-osc66/report.md) rederives the historical cursor grades, records the pinned width and scale replies on current main, and compares rendered ink against ordinary glyphs in a separate fixture.
 
+## Sixel DA1 and geometry reporting
+
+The [Sixel report assessment](../2026-11-26-rich-sixel-reports/report.md) rederives the retained replies and compares the exact child PTY results across a controlled resize and restoration. The prior Sixel raster-fidelity evidence remains in its own publication.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.

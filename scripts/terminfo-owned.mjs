@@ -107,6 +107,11 @@ const childEnvironmentSources = {
     modernChildEnvironmentOwnedSourceSha256: 'modern-child-environment-owned.mjs',
     modernChildEnvironmentWorkerSourceSha256: 'modern-child-environment-worker.mjs',
 };
+const sixelReportsSources = {
+    sixelReportsContractsSourceSha256: 'sixel-reports-contracts.mjs',
+    sixelReportsOwnedSourceSha256: 'sixel-reports-owned.mjs',
+    sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
+};
 const osc66Sources = {
     osc66ContractsSourceSha256: 'osc66-contracts.mjs',
     osc66OwnedSourceSha256: 'osc66-owned.mjs',
@@ -129,6 +134,7 @@ const unicodeWidthSources = {
 };
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
+    'sixel-reports': { policy: 'readonly-owned-source-graph-v85', sources: sixelReportsSources, entry: sixelReportsSources.sixelReportsOwnedSourceSha256 },
     'osc66': { policy: 'readonly-owned-source-graph-v84', sources: osc66Sources, entry: osc66Sources.osc66OwnedSourceSha256 },
     'kitty-graphics': { policy: 'readonly-owned-source-graph-v83', sources: kittyGraphicsSources, entry: kittyGraphicsSources.kittyGraphicsOwnedSourceSha256 },
     'unicode-boundaries': { policy: 'readonly-owned-source-graph-v82', sources: unicodeBoundarySources, entry: unicodeBoundarySources.unicodeBoundaryOwnedSourceSha256 },
