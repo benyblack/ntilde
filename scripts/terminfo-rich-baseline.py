@@ -24,10 +24,11 @@ SOURCES = {
     "commonCore": "2026-11-25-common-core-comparison/report.json",
 }
 OMITTED = {"input.xtest-key", "input.xtest-click", "input.xtest-wheel"}
+KEYBOARD_HISTORY = "historical query and implementation tests"
 ADDITIONAL = {
-    "extensions.kitty-keyboard.report-alternate": ("2026-11-01-alternate-keys.md", "historical query and implementation tests"),
-    "extensions.kitty-keyboard.report-all-keys": ("2026-11-01-all-keys.md", "historical query and implementation tests"),
-    "extensions.kitty-keyboard.report-text": ("2026-11-01-associated-text.md", "historical query and implementation tests"),
+    "extensions.kitty-keyboard.report-alternate": ("2026-11-01-alternate-keys.md", KEYBOARD_HISTORY),
+    "extensions.kitty-keyboard.report-all-keys": ("2026-11-01-all-keys.md", KEYBOARD_HISTORY),
+    "extensions.kitty-keyboard.report-text": ("2026-11-01-associated-text.md", KEYBOARD_HISTORY),
     "extensions.osc5522-clipboard": ("2026-11-01-clipboard.md", "historical mode recognition and implementation tests"),
     "extensions.osc52-read": ("2026-11-25-modern-osc52-clipboard-results/report.md", "related exact OSC 52 denial observation in the Modern round trip"),
     "input.modify-other-keys-3": ("2026-11-17-modify-other-keys-3-policy.md", "source audit and explicit policy"),
@@ -50,8 +51,8 @@ def requirements(membership):
     catalogue_zip = main_input(CATALOGUE)
     with zipfile.ZipFile(io.BytesIO(catalogue_zip)) as archive:
         catalogue = json.loads(archive.read("features.json"))
-    rich = {id: item for id, item in catalogue.items() if isinstance(item, dict) and item.get("baseline") == "rich"}
-    slugs = {item["slug"]: id for id, item in rich.items()}
+    rich = {case_id: item for case_id, item in catalogue.items() if isinstance(item, dict) and item.get("baseline") == "rich"}
+    slugs = {item["slug"]: case_id for case_id, item in rich.items()}
     rows = [{"id": slugs[row["path"].rsplit("/", 1)[-1]], "name": row["name"],
              "page": "https://terminfo.dev" + row["path"]} for row in membership["rows"]]
     ids = [row["id"] for row in rows]
@@ -81,14 +82,14 @@ def evidence_map(frozen):
 
     rows = []
     for requirement in frozen["rows"]:
-        id = requirement["id"]
+        case_id = requirement["id"]
         owned = [{"publication": suites[claim["suite"]], "status": claim["status"],
                   "pinned": claim["pinned"]["verdict"], "effect": claim["effect"]["verdict"]}
-                 for claim in inventory.get(id, {}).get("claims", [])]
-        additional = ADDITIONAL.get(id)
+                 for claim in inventory.get(case_id, {}).get("claims", [])]
+        additional = ADDITIONAL.get(case_id)
         rows.append({
-            "id": id, "stock": stock.get(id), "owned": owned, "core": core.get(id),
-            "modern": modern.get(id), "commonCore": common.get(id),
+            "id": case_id, "stock": stock.get(case_id), "owned": owned, "core": core.get(case_id),
+            "modern": modern.get(case_id), "commonCore": common.get(case_id),
             "additionalEvidence": dict(zip(("path", "scope"), additional)) if additional else None,
         })
     return {

@@ -33,3 +33,26 @@ test('false keyboard custody, release or negotiation evidence refuses replay', (
         assert.throws(() => replayKeyboard(delimiter), /fence/);
     });
 });
+
+test('an Escape hold with no observed autorepeat is inconclusive', () => {
+    withMeasurement(directory => {
+        const run = JSON.parse(readFileSync(join(directory, 'observation.json')));
+        const capture = run.cases[1].target.capture;
+        capture.chunks = capture.chunks.filter(chunk => chunk.hex !== '1b5b32373b313a3275');
+        const noRepeat = replayKeyboard(run).rows[1];
+        assert.equal(noRepeat.childHex, '1b5b3237751b5b32373b313a3375');
+        assert.equal(noRepeat.repeats, 0);
+        assert.equal(noRepeat.effect, 'inconclusive');
+    });
+});
+
+test('an observed Escape repeat establishes delivery even when the release frame is absent', () => {
+    withMeasurement(directory => {
+        const run = JSON.parse(readFileSync(join(directory, 'observation.json')));
+        const capture = run.cases[1].target.capture;
+        capture.chunks = capture.chunks.filter(chunk => chunk.hex !== '1b5b32373b313a3375');
+        const noRelease = replayKeyboard(run).rows[1];
+        assert.ok(noRelease.repeats > 0);
+        assert.equal(noRelease.effect, 'unsupported');
+    });
+});

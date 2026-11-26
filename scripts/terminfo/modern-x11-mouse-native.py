@@ -211,25 +211,26 @@ class XDisplay:
         if mapping is None:
             mapping = {name: self.keycode(self.display, self.keysym(name.encode("ascii"))) for name in names}
         demand(all(mapping.values()) and len(set(mapping.values())) == len(names), "bad chord key mapping")
+        transitions = [(True, name) for name in names]
+        transitions.extend((False, name) for name in reversed(names))
         try:
-            for down, order in ((True, names), (False, reversed(names))):
-                if hold and not down:
+            for down, name in transitions:
+                if hold and not down and len(held) == len(names):
                     time.sleep(hold)
-                for name in order:
-                    code = mapping[name]
-                    demand(self.focus() == window_id, "XTEST keyboard focus changed")
-                    at = str(time.monotonic_ns())
-                    if down:
-                        held.append(code)
-                    demand(self.key(self.display, code, down, 0), "XTEST key dispatch failed")
-                    self.sync(self.display, 0)
-                    pressed, mask = self.pressed(), self.pointer()["mask"]
-                    expected = held if down else held[:-1]
-                    demand(pressed == sorted(expected), "XTEST held keys differ")
-                    if not down:
-                        held.pop()
-                    events.append({"name": name, "code": code, "down": down, "at": at,
-                                   "pressed": pressed, "mask": mask})
+                code = mapping[name]
+                demand(self.focus() == window_id, "XTEST keyboard focus changed")
+                at = str(time.monotonic_ns())
+                if down:
+                    held.append(code)
+                demand(self.key(self.display, code, down, 0), "XTEST key dispatch failed")
+                self.sync(self.display, 0)
+                pressed, mask = self.pressed(), self.pointer()["mask"]
+                expected = held if down else held[:-1]
+                demand(pressed == sorted(expected), "XTEST held keys differ")
+                if not down:
+                    held.pop()
+                events.append({"name": name, "code": code, "down": down, "at": at,
+                               "pressed": pressed, "mask": mask})
         finally:
             self.release_held_keys(held)
         return events

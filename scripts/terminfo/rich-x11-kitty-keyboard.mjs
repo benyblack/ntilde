@@ -30,7 +30,7 @@ export const modePlan = Object.freeze({
 function fenceBytes({ mask, tag }) {
     if (!(mask & 8)) return undefined;
     const sequence = Array.from(tag, letter => {
-        const point = letter.charCodeAt(0);
+        const point = letter.codePointAt(0);
         return code(point, mask & 16 ? ';1;' + point : '');
     }).join('');
     return Buffer.from(sequence, 'ascii');
@@ -50,15 +50,28 @@ function verifyAction(step, key, plan, previous, identity) {
     return result;
 }
 
-const eventFrames = /^\x1b\[27u((?:\x1b\[27;1:2u)+)\x1b\[27;1:3u$/;
+const escapeRepeat = code(27, ';1:2');
 
-function gradeTrial(plan, observed, controlsValid) {
-    const raw = Buffer.from(observed, 'hex').toString('latin1');
-    const repeats = plan.name === 'report-events' ? eventFrames.exec(raw)?.[1].length / code(27, ';1:2').length || 0 : null;
-    const matches = repeats === null ? observed === hex(plan.expected) : repeats > 0;
-    let effect = 'inconclusive';
-    if (controlsValid) effect = matches ? 'supported' : 'unsupported';
-    return { id: plan.id, mask: plan.mask, chord: plan.chord, childHex: observed, effect, repeats };
+function gradeTrial(plan, childHex, controlsValid) {
+    const observed = { id: plan.id, mask: plan.mask, chord: plan.chord, childHex };
+    if (plan.name !== 'report-events') {
+        const matches = childHex === hex(plan.expected);
+        return { ...observed, effect: effectVerdict(controlsValid, matches), repeats: null };
+    }
+    const raw = Buffer.from(childHex, 'hex').toString('latin1');
+    const repeats = raw.split(escapeRepeat).length - 1;
+    // Without a repeat frame, the recorded key hold alone cannot prove that
+    // X11 delivered an autorepeat event to the App.
+    if (repeats === 0) {
+        return { ...observed, effect: 'inconclusive', repeats, reason: 'The child observed no Escape autorepeat frame.' };
+    }
+    const expected = code(27) + escapeRepeat.repeat(repeats) + code(27, ';1:3');
+    return { ...observed, effect: effectVerdict(controlsValid, raw === expected), repeats };
+}
+
+function effectVerdict(valid, matches) {
+    if (!valid) return 'inconclusive';
+    return matches ? 'supported' : 'unsupported';
 }
 
 export async function observeKeyboard(record, modes, action) {
