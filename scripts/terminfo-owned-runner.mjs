@@ -2504,10 +2504,11 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
-        // The static-image qualification uses the original 14 DIP fixture to leave
-        // gradeable interiors in all four SIXEL color regions at 1x capture.
-        settings.FontSize = args[5] === 'static-images' ? 14 : 40 / 3;
-        settings.UiScale = 1;
+        // At 1x capture, lower presenter zoom leaves gradeable interiors in all
+        // four SIXEL color regions. Both fixtures keep an integer point size.
+        const staticImageFixture = args[5] === 'static-images';
+        settings.FontSize = staticImageFixture ? 15 : 40 / 3;
+        settings.UiScale = staticImageFixture ? 0.8 : 1;
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
