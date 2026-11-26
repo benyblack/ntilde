@@ -1,4 +1,4 @@
-# Ntilde Replay Format v2
+# Ntilde Replay Formats v2 and v3
 
 This document defines the replay file format used by Ntilde (`.rec` / `.ntilderec`).
 
@@ -6,7 +6,7 @@ This document defines the replay file format used by Ntilde (`.rec` / `.ntildere
 
 - Encoding: UTF-8 text
 - Container: JSON Lines
-- Line 1: v2 header (`ReplayHeader`)
+- Line 1: v2 or v3 header (`ReplayHeader`)
 - Remaining lines: replay events (`ReplayEvent`)
 
 ## Header
@@ -20,11 +20,25 @@ The first line must be a JSON object:
 Fields:
 
 - `type` (`string`): must be `"ntilderec"`; readers also accept the pre-rebrand `"novarec"`
-- `v` (`int`): format version (`2`)
+- `v` (`int`): format version (`2` or `3`)
 - `cols` (`int`): initial terminal columns
 - `rows` (`int`): initial terminal rows
 - `date` (`string`): ISO-8601 UTC timestamp
 - `shell` (`string`): shell command used during recording
+
+### Native SIXEL streams
+
+A native SIXEL recording uses a v3 header with `required_sixel_raster: 1`
+and explicit `sixel_cw` and `sixel_ch` metrics in device pixels. Each metric
+must be finite and at least one pixel. The events use the v2 layout including
+ordered `sixelCellSize` changes. A complete checkpoint must carry the same
+native policy and placement crop. Legacy v1 and v2 recordings preserve their
+original placement behavior.
+
+Both recording writers use v3 only for native streams. Readers refuse
+unknown required policies before preparing the replay target or delivering
+bytes. Older readers that predate the required-policy gate may still resume
+from a byte offset without recognizing the v3 header.
 
 ## Events
 

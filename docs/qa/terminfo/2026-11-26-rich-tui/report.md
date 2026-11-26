@@ -28,6 +28,6 @@ The [OSC 66 assessment](../2026-11-26-rich-osc66/report.md) rederives the histor
 
 ## Sixel DA1 and geometry reporting
 
-The [Sixel report assessment](../2026-11-26-rich-sixel-reports/report.md) rederives the retained replies and compares the exact child PTY results across a controlled resize and restoration. The prior Sixel raster-fidelity evidence remains in its own publication.
+The [Sixel report assessment](../2026-11-26-rich-sixel-reports/report.md) rederives the retained replies and compares the exact child PTY results across a controlled resize and restoration. The [native Sixel raster qualification](../2026-11-26-sixel-native-fidelity/report.md) records the fixed pixel effect and links the earlier unsupported measurement.
 
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.

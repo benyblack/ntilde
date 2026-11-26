@@ -1,0 +1,58 @@
+[
+  {
+    "runId": "8376fec348d0aa1f42998ce0085416a2",
+    "appVersion": "0.14.0+32188db310b1df2800fd22dc69173c36eb4029fc",
+    "sourceSnapshotManifestSha256": "3c6ce56f6604527158ae4d257376585b85a55b060c5dc337b65cbda9a40e1698",
+    "cleanupVerifiedAt": "2026-11-26T12:24:53.997Z",
+    "error": "Unexpected input during cell collection.",
+    "failureSha256": "e01cb8e371a4413a56ecad596c626f4601f0373f949b5ccd1a6f9deefad8c438"
+  },
+  {
+    "runId": "7caf6c3f7c1b10840f63ffee818da1e9",
+    "appVersion": "0.14.0+32188db310b1df2800fd22dc69173c36eb4029fc",
+    "sourceSnapshotManifestSha256": "3c6ce56f6604527158ae4d257376585b85a55b060c5dc337b65cbda9a40e1698",
+    "cleanupVerifiedAt": "2026-11-26T12:27:55.163Z",
+    "outcome": "inconclusive",
+    "detail": "Two color regions have no safe pixels outside the fixed edge band."
+  },
+  {
+    "runId": "5a8432f8db851b641110e8bc5596fa17",
+    "appVersion": "0.14.0+32188db310b1df2800fd22dc69173c36eb4029fc",
+    "sourceSnapshotManifestSha256": "93536bf6fffe884acc0a63ffd1f41c9737b3956fe59554f4c1fe27039ed87eb8",
+    "cleanupVerifiedAt": "2026-11-26T12:29:44.549Z",
+    "error": "Unexpected input during cell collection.",
+    "failureSha256": "fa96f31187c318749db4b85ac04504dd5c2cf30f4e4ea264947bc64f35329e6f"
+  },
+  {
+    "runId": "395b9bf084e2250e10d12fcd959a58a8",
+    "appVersion": "0.14.0+32188db310b1df2800fd22dc69173c36eb4029fc",
+    "sourceSnapshotManifestSha256": "93536bf6fffe884acc0a63ffd1f41c9737b3956fe59554f4c1fe27039ed87eb8",
+    "cleanupVerifiedAt": "2026-11-26T12:31:38.758Z",
+    "error": "Font query contract requires an integer point size within conversion roundoff.",
+    "failureSha256": "e592156109eceae5c3e156b6ec66e00534396a9f707723a5ddf702c5abfe75b4"
+  },
+  {
+    "runId": "8cecd5e44da9b9fe14690b661769507a",
+    "appVersion": "0.14.0+ac806e73c1b25e2051c3703b7868ed5a464135cc",
+    "sourceSnapshotManifestSha256": "2aa1c297def095f8df6f88a036ba64472e55126e519343b9cb55d0de2b438528",
+    "cleanupVerifiedAt": "2026-11-26T12:33:36.425Z",
+    "error": "Observer response timed out.",
+    "failureSha256": "5fbc6656697a54a3638fa9ec48df1d225ead51573da3ae4c4a5aee3543fd344d"
+  },
+  {
+    "runId": "0e72c6fa43d565f20565b6ec254fe6b5",
+    "appVersion": "0.14.0+ac806e73c1b25e2051c3703b7868ed5a464135cc",
+    "sourceSnapshotManifestSha256": "2aa1c297def095f8df6f88a036ba64472e55126e519343b9cb55d0de2b438528",
+    "cleanupVerifiedAt": "2026-11-26T12:34:38.785Z",
+    "error": "Observer response timed out.",
+    "failureSha256": "aa439848ef8920f069c47bf70d8c80fa1e4413553b0847bccb1a7878c1b1589f"
+  },
+  {
+    "runId": "8946c08dd1989612ccc52ebb828c0d5e",
+    "appVersion": "0.14.0+c7ed5b6f19a909f982951e1a55264e3cc381fe6f",
+    "sourceSnapshotManifestSha256": "6075f6467834af388e4fc718cf54f2709a5142b96e708d2d1e9dbb56d0be4ea5",
+    "cleanupVerifiedAt": "2026-11-26T12:38:15.282Z",
+    "error": "Invalid or changed controlled pixel capture.",
+    "failureSha256": "8ac7e8767138c736c706c510f86c1b1b00792369518a417cec4d3b5855031cf3"
+  }
+]

@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "ntilde-owned-sixel-native-fidelity-v1",
+  "carrierSuiteId": "ntilde-owned-static-images-v1",
+  "contractsVersion": 1,
+  "runId": "f41b1892291389651e96bfe690993fd7",
+  "adapter": {
+    "id": "ntilde-owned-macos-v1",
+    "upstreamBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "pinnedSpans": {
+      "helper": "e337ddbb1f81a40c2c6f997912e6f53aa9a86fa4d0cfde2705dbdb0b6b9899bb",
+      "extensions.sixel": "e9e53d23730ef28bba98b9dbd1ff348b2aa2860d5cfb405a1b554e179bb080e5",
+      "extensions.iterm2-images": "20c0502f9c40648d3bae8eaf044f731a772bde9a4b9e49ce533c88c600992568"
+    }
+  },
+  "scope": "Current App, one fixed square-pixel SIXEL raster with stable font and capture metrics in a disposable direct-local macOS pane.",
+  "cases": [
+    {
+      "caseId": "extensions.sixel",
+      "pinnedCriterion": {
+        "termless": "Declared Sixel capability does not establish rendered pixels (always inconclusive, evidence legacy)",
+        "terminal": "No pixel readback for Sixel rendering (always inconclusive, evidence none)"
+      },
+      "pinned": {
+        "pass": false,
+        "note": "Declared Sixel capability does not establish rendered pixels",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy",
+          "note": "Declared Sixel capability does not establish rendered pixels"
+        },
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":true}",
+          "note": "Declared Sixel capability does not establish rendered pixels",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Sixel capability does not establish rendered pixels"
+          },
+          "declaredFalseResponse": "{\"declared\":false}"
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No pixel readback for Sixel rendering",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No pixel readback for Sixel rendering"
+          }
+        }
+      },
+      "effectContract": {
+        "id": "ntilde-sixel-native-raster-effect-v1",
+        "version": 1,
+        "statement": "A fixed DEC SIXEL packet (7-bit DCS, explicit 1:1 aspect, declared 16x16 raster, RGB-percent palette, unequal four-colour quadrants, P2=1) is absent before the write, paints the independently source-derived native raster at the controlled anchor with unchanged surroundings, and is absent again after an erase.",
+        "primary": "https://vt100.net/docs/vt3xx-gp/chapter14.html",
+        "carrierCases": [
+          "sixel.native-raster"
+        ],
+        "validity": [
+          {
+            "name": "receipt-binds-image-report",
+            "held": true,
+            "detail": "the complete receipt binds this exact report and records fixture removal"
+          },
+          {
+            "name": "carrier-policy",
+            "held": true,
+            "detail": "the retained report is the paired raw render policy v2 report of this run"
+          },
+          {
+            "name": "raw-reader-healthy",
+            "held": true,
+            "detail": "the exclusive raw reader sealed without failure over every admitted write"
+          },
+          {
+            "name": "state-restored",
+            "held": true,
+            "detail": "the final paired state is bound to the initial state after every write"
+          },
+          {
+            "name": "controlled-background",
+            "held": true,
+            "detail": "every write before the final restoration independently queried the matching controlled OSC 11 and cell background; the final control is the restored original theme"
+          },
+          {
+            "name": "fresh-paired-fences",
+            "held": true,
+            "detail": "every capture carries its own unpredictable paired challenges, none reused from the earlier input phase or another capture (a stale capture cannot qualify)"
+          },
+          {
+            "name": "blank-before-controls",
+            "held": true,
+            "detail": "every case began from an independently blank, unchanged-surroundings target"
+          },
+          {
+            "name": "acknowledgement-separate-from-pixels",
+            "held": true,
+            "detail": "every write was acknowledged by its raw fence while pixel assertions were graded separately"
+          }
+        ]
+      },
+      "contractResult": {
+        "outcome": "supported",
+        "carrierCases": [
+          {
+            "caseId": "sixel.native-raster",
+            "result": "passed"
+          }
+        ]
+      },
+      "observations": [
+        {
+          "caseId": "sixel.native-raster",
+          "result": "passed",
+          "stages": [
+            {
+              "stage": "sixel.native-raster.blank",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 80,
+                  "width": 36,
+                  "height": 40
+                },
+                "contentBounds": null,
+                "geometry": "native"
+              }
+            },
+            {
+              "stage": "sixel.native-raster.show",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "calibrated native raster fidelity",
+                  "passed": true
+                },
+                {
+                  "description": "independent source canvas matches reservation and actual bitmap dimensions",
+                  "passed": true
+                },
+                {
+                  "description": "independent float32 ceiling reservation, anchor and unclipped native intent",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "sixel.native-raster.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 80,
+                  "width": 36,
+                  "height": 40
+                },
+                "contentBounds": {
+                  "x": 31,
+                  "y": 80,
+                  "width": 9,
+                  "height": 9
+                },
+                "geometry": "native",
+                "sourceCanvas": {
+                  "declaredWidth": 16,
+                  "declaredHeight": 16,
+                  "width": 16,
+                  "height": 18,
+                  "paintedWidth": 16,
+                  "paintedHeight": 16
+                },
+                "reservationCells": {
+                  "cols": 1,
+                  "rows": 1
+                },
+                "nativeProjection": {
+                  "x": 31,
+                  "y": 80,
+                  "width": 9,
+                  "height": 10,
+                  "paintedWidth": 9,
+                  "paintedHeight": 8.88888888888889
+                },
+                "nativeRaster": {
+                  "passed": true,
+                  "mismatches": 0,
+                  "safeColorPixels": [
+                    2,
+                    8,
+                    3,
+                    12
+                  ],
+                  "safeBackgroundPixels": 1340,
+                  "uncertaintyPixels": 75,
+                  "edgeTolerancePx": 1,
+                  "discriminating": true
+                },
+                "compatibility": {
+                  "passed": false,
+                  "mismatches": 55,
+                  "safeColorPixels": [
+                    6,
+                    24,
+                    8,
+                    32
+                  ],
+                  "safeBackgroundPixels": 1250,
+                  "uncertaintyPixels": 120,
+                  "edgeTolerancePx": 1,
+                  "discriminating": true
+                },
+                "nonTargetEnvelope": {
+                  "x": 30,
+                  "y": 79,
+                  "width": 11,
+                  "height": 22
+                }
+              }
+            },
+            {
+              "stage": "sixel.native-raster.clear",
+              "result": "passed",
+              "inconclusiveReason": null,
+              "acknowledgement": {
+                "passed": true,
+                "id": null,
+                "status": null
+              },
+              "assertions": [
+                {
+                  "description": "no displayed image pixels in target envelope",
+                  "passed": true
+                },
+                {
+                  "description": "all non-target capture pixels remain unchanged",
+                  "passed": true
+                }
+              ],
+              "causality": [
+                {
+                  "featureId": "sixel.native-raster.blank",
+                  "snapshot": 2,
+                  "result": "passed",
+                  "passed": true
+                },
+                {
+                  "featureId": "sixel.native-raster.show",
+                  "snapshot": 3,
+                  "result": "passed",
+                  "passed": true
+                }
+              ],
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 80,
+                  "width": 36,
+                  "height": 40
+                },
+                "contentBounds": null,
+                "geometry": "native"
+              }
+            }
+          ]
+        }
+      ],
+      "stock": {
+        "featureId": "extensions.sixel",
+        "outcome": "inconclusive",
+        "reason": "insufficient-evidence",
+        "evidence": "none",
+        "note": "No pixel readback for Sixel rendering",
+        "rawReplyRef": "extensions.sixel"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "pinned-callbacks-preserved-plus-owned-pixel-effect-v1",
+        "evidence": "owned-controlled-pixels-paired-raw-render",
+        "note": "Declared Sixel capability does not establish rendered pixels"
+      }
+    }
+  ]
+}

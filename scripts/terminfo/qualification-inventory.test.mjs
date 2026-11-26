@@ -119,7 +119,7 @@ test('only controlled pixels are measured, by the cursor, runtime-color reset, s
     assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.iterm2-images', 'static-images'], ['extensions.kitty-graphics.animation', 'kitty-animation'], ['extensions.kitty-graphics.unicode-placeholders', 'kitty-placeholders'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
         ['extensions.osc111-reset-bg', 'color-reset'], ['extensions.osc112-reset-cursor', 'color-reset'],
         ['extensions.osc117-reset-highlight-bg', 'selection-colors'], ['extensions.osc119-reset-highlight-fg', 'selection-colors'],
-        ['extensions.osc17-highlight-bg', 'selection-colors'], ['extensions.osc19-highlight-fg', 'selection-colors'], ['extensions.sixel', 'static-images']]);
+        ['extensions.osc17-highlight-bg', 'selection-colors'], ['extensions.osc19-highlight-fg', 'selection-colors'], ['extensions.sixel', 'static-images'], ['extensions.sixel', 'sixel-native-fidelity']]);
     assert.deepEqual(measuredLayersOf('owned-stored-physical-cursor-and-cpr', ''), ['stored-state', 'cursor-position-report']);
     assert.deepEqual(measuredLayersOf('owned-stored-cursor-and-controlled-pixels', ''), ['stored-state', 'controlled-pixels']);
     assert.deepEqual(measuredLayersOf('owned-cells', 'graded from parent-journaled readScreen cells'), ['stored-state']);
@@ -168,7 +168,11 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
             + (suite.suite === 'font-size' || suite.suite === 'caps' || suite.suite === 'pcl' || suite.suite === 'dcl' || suite.suite === 'dsl' ? 2 : 0)
             + (suite.suite === 'caps' || suite.suite === 'pcl' || suite.suite === 'dcl' || suite.suite === 'dsl' ? 1 : 0);
         const expected = { ...base.counts, inconclusive: base.counts.inconclusive - moved, supported: base.counts.supported + moved };
-        if (suite.stock.basis !== 'carried-forward' && suite.suite !== 'ascii-reflow') assert.deepEqual(suite.stock.counts, expected, suite.suite);
+        if (suite.suite === 'sixel-native-fidelity') {
+            assert.deepEqual(suite.stock.counts, { inconclusive: 157, supported: 97, unsupported: 1 });
+        } else if (suite.stock.basis !== 'carried-forward' && suite.suite !== 'ascii-reflow') {
+            assert.deepEqual(suite.stock.counts, expected, suite.suite);
+        }
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock?.basis === 'carried-forward');
@@ -342,16 +346,10 @@ test('OSC cell-size qualification adds two effect-supported ids while preserving
 
 test('current effect totals preserve the separate unsupported and measured-other claims without inflating pinned scores', () => {
     const stored = committed(), { totals } = stored;
-    // The OSC 633 implementation remeasurement turned its four ids from effect-unsupported to effect-supported (pinned stays inconclusive). The static-image qualification (#987)
-    // then measured extensions.sixel effect-unsupported (native-size defect #851), the only measured-unsupported id, and extensions.iterm2-images effect-supported.
-    // The OSC 720 qualification (#999) adds the second measured-unsupported id: the pinned terminal path is inconclusive by design and the effect contract observed no effect.
-    // The DECSCLM qualification (#1001) adds the sixth: both pinned paths are inconclusive and the effect contract observed no pacing of scrolling output.
-    // The pointer-color qualification (#991) adds the third and fourth: both pinned paths are inconclusive and the effect contract observed every OSC 13/14/113/114 spelling ignored.
-    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc113-reset-pointer-fg', 'extensions.osc114-reset-pointer-bg', 'extensions.osc720-scroll-up', 'extensions.sixel', 'modes.deccolm', 'modes.decsclm']);
-    assert.equal(totals.effectUnsupportedIds, 6);
-    // The aggregate batch adds the first measured-other id: extensions.osc-633-vscode is measured, stock-inconclusive and inconclusive
-    // while its required E/P publications (#983) are pending; extensions.semantic-prompts joins the supported measures.
-    assert.deepEqual(totals.effectOtherIds, 1);
+    // Sixel retains the old unsupported result and the fixed supported result, so its effect roll-up is mixed.
+    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc113-reset-pointer-fg', 'extensions.osc114-reset-pointer-bg', 'extensions.osc720-scroll-up', 'modes.deccolm', 'modes.decsclm']);
+    assert.equal(totals.effectUnsupportedIds, 5);
+    assert.equal(totals.effectOtherIds, 2);
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.reflow'));
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.iterm2-images'));
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
@@ -371,7 +369,7 @@ test('current effect totals preserve the separate unsupported and measured-other
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 21, effectMeasuredUnsupported: 6, effectMeasuredOther: 1, effectNotMeasured: 14, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 21, effectMeasuredUnsupported: 5, effectMeasuredOther: 2, effectNotMeasured: 14, notPinnedSupported: 72 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -464,9 +462,9 @@ test('every publication test is a registered suite or finding, or is explicitly 
 
 test('the generated summary defines unsupported and not-measured separately and lists the unsupported id without counting it as supported', () => {
     const text = renderSummary(committed());
-    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 6 \|/);
-    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc113-reset-pointer-fg`, `extensions\.osc114-reset-pointer-bg`, `extensions\.osc720-scroll-up`, `extensions\.sixel`, `modes\.deccolm`, `modes\.decsclm`\./);
-    assert.match(text, /\| of which measured, effect unsupported \| 6 \|/);
+    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 5 \|/);
+    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc113-reset-pointer-fg`, `extensions\.osc114-reset-pointer-bg`, `extensions\.osc720-scroll-up`, `modes\.deccolm`, `modes\.decsclm`\./);
+    assert.match(text, /\| of which measured, effect unsupported \| 5 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
     assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 14 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
@@ -633,9 +631,7 @@ test('the aggregate projection qualifies the two aggregate ids over one claim ea
         assert.equal(item.claims[0].reportedConclusion.outcome, 'inconclusive', id);
         assert.equal(item.claims[0].reportedConclusion.grading, 'aggregate-pinned-replay-preserved-by-design', id);
     }
-    // The stock-inconclusive remaining counts: semantic-prompts left "not measured" for the supported measures;
-    // osc-633-vscode is the first measured-other id (its E/P evidence is pending, not a demonstrated failure).
-    assert.deepEqual(stored.totals.remainingAgainstStockInconclusive.effectMeasuredOther, 1);
+    assert.equal(stored.totals.remainingAgainstStockInconclusive.effectMeasuredOther, 2);
     assert.equal(row(stored, 'extensions.osc-633-vscode').effect.verdict, 'inconclusive');
     assert.ok(totalsOf(stored.benchmark, baseline()).effectSupportedPinnedInconclusiveIds.includes('extensions.semantic-prompts'));
     // A failed rederivation of the projection refuses to count either claim; neither id silently reverts to another suite.
@@ -654,7 +650,7 @@ test('the aggregate projection qualifies the two aggregate ids over one claim ea
     assert.equal(osc133Failed.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 5);
 });
 
-test('the static-image qualification keeps the SIXEL native-size negative and the iTerm2 support as separate, rederived effect claims', async () => {
+test('the two SIXEL raster measurements retain their revision-specific verdicts alongside the original iTerm2 claim', async () => {
     const suite = benchmarkSuites.find(entry => entry.suite === 'static-images');
     assert.equal(suite.dir, '2026-11-16-static-images');
     const { report, summary } = loadPublication(defaultQaRoot, suite);
@@ -664,20 +660,23 @@ test('the static-image qualification keeps the SIXEL native-size negative and th
     const stored = committed();
     for (const id of ['extensions.sixel', 'extensions.iterm2-images']) {
         const item = row(stored, id);
-        assert.equal(item.claims.length, 1);
+        assert.equal(item.claims.length, id === 'extensions.sixel' ? 2 : 1);
         assert.equal(item.stockOutcome, 'inconclusive');
         assert.equal(item.pinned.best, 'inconclusive');
         assert.equal(item.claims[0].divergence.kind, 'pinned-inconclusive-by-design');
         assert.deepEqual(item.claims[0].measuredLayers, ['controlled-pixels']);
         assert.equal(item.claims[0].status, 'qualified');
     }
-    assert.equal(row(stored, 'extensions.sixel').effect.verdict, 'unsupported');
+    assert.deepEqual(row(stored, 'extensions.sixel').effect, {
+        verdict: 'mixed',
+        byClaim: [{ suite: 'static-images', verdict: 'unsupported' }, { suite: 'sixel-native-fidelity', verdict: 'supported' }],
+    });
     assert.equal(row(stored, 'extensions.iterm2-images').effect.verdict, 'supported');
     // The unsupported verdict is a measured result: it is never promoted, counted as supported, or silently dropped.
     assert.ok(!stored.totals.effectSupportedPinnedInconclusiveIds.includes('extensions.sixel'));
     const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'static-images' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
     assert.equal(row(failing, 'extensions.sixel').claims[0].status, 'declared-not-rederived');
-    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 2);
+    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 1);
     assert.equal(failing.totals.effectUnsupportedIds, 5, 'the OSC 720, the two pointer-color, the DECCOLM and the DECSCLM measured negatives remain');
 });
 

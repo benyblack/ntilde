@@ -41,14 +41,15 @@
   },
   "totals": {
     "uniqueBenchmarkIds": 155,
-    "suiteClaims": 157,
+    "suiteClaims": 158,
     "idsWithMultipleClaims": [
+      "extensions.sixel",
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
     "effectSupportedIds": 148,
-    "effectUnsupportedIds": 6,
-    "effectOtherIds": 1,
+    "effectUnsupportedIds": 5,
+    "effectOtherIds": 2,
     "pinnedAndEffectSupportedIds": 97,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
@@ -107,12 +108,11 @@
       "extensions.osc113-reset-pointer-fg",
       "extensions.osc114-reset-pointer-bg",
       "extensions.osc720-scroll-up",
-      "extensions.sixel",
       "modes.deccolm",
       "modes.decsclm"
     ],
     "effectSupportedOfStockInconclusive": 147,
-    "effectUnsupportedOfStockInconclusive": 6,
+    "effectUnsupportedOfStockInconclusive": 5,
     "pinnedSupportedOfStockInconclusive": 96,
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
@@ -127,8 +127,8 @@
     },
     "remainingAgainstStockInconclusive": {
       "effectUnqualified": 21,
-      "effectMeasuredUnsupported": 6,
-      "effectMeasuredOther": 1,
+      "effectMeasuredUnsupported": 5,
+      "effectMeasuredOther": 2,
       "effectNotMeasured": 14,
       "notPinnedSupported": 72
     }
@@ -3700,6 +3700,73 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/static-images-publication.test.mjs",
         "testSha256": "6435aebac9ce848c93541dc60004d73e449b61f08352de51297852aeb041edad"
+      }
+    },
+    {
+      "suite": "sixel-native-fidelity",
+      "suiteId": "ntilde-owned-sixel-native-fidelity-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-26-sixel-native-fidelity/",
+      "doc": "2026-11-26-sixel-native-fidelity/report.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.sixel"
+      ],
+      "evidence": {
+        "files": 8,
+        "bytes": 35090007,
+        "sha256": "d608a22841a64a258b8725840efedadec65ac349661c2119e1083eb439cadb61"
+      },
+      "receipt": {
+        "schemaVersion": 82,
+        "runId": "f41b1892291389651e96bfe690993fd7",
+        "cellReceipt": {
+          "file": "cell-observations.json",
+          "sha256": "25221c80363a1999ef5867786ac8fadb764b324cfa5f44d627623c628ac90f7d"
+        },
+        "suiteEvidence": {
+          "suiteId": "ntilde-owned-static-images-v1",
+          "file": "image-observations.json",
+          "sha256": "1c4ce1d63cf7c4008364d1ec50ccddbc230f50997f987664035cddc34f9b57f3",
+          "counts": {
+            "passed": 23
+          }
+        }
+      },
+      "run": {
+        "ownedRunId": "f41b1892291389651e96bfe690993fd7",
+        "measuredAt": "2026-11-26T12:40:54.287Z",
+        "appRevision": "c7ed5b6f19a909f982951e1a55264e3cc381fe6f",
+        "appVersion": "0.14.0+c7ed5b6f19a909f982951e1a55264e3cc381fe6f",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "e257e51b0fb2e64f2650fa64c64daf1e9e2ce97f",
+        "collectorAdapterId": "ntilde-owned-macos-v1",
+        "collectorAdapterBundleSha256": "7f49f8ce91bb2709c88b6fb3f0b1558d89280557f1f017f9e628901b487e996d",
+        "gradingAdapterId": "ntilde-owned-macos-v1",
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-v80",
+        "sourceSnapshotManifestSha256": "be6821f4ec806ad46d2f47554c6204f8e5d038bafd9201d47548231675a9bd46"
+      },
+      "stock": {
+        "basis": "collected-run-id-recorded",
+        "runId": "8787fa15323ba9568f01f01f6f26c55a",
+        "counts": {
+          "inconclusive": 157,
+          "supported": 97,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "dc88ad51571ea7de68afab7246b010c42a958b11bd28abd322b63110b8be0ffd",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": null
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/sixel-native-publication.test.mjs",
+        "testSha256": "a16f043040e6c3945940b1549a9f1d08adba0a9e5bc54c48724c32d15d7d5090"
       }
     },
     {
@@ -8831,15 +8898,23 @@
           {
             "suite": "static-images",
             "verdict": "inconclusive"
+          },
+          {
+            "suite": "sixel-native-fidelity",
+            "verdict": "inconclusive"
           }
         ]
       },
       "effect": {
-        "verdict": "unsupported",
+        "verdict": "mixed",
         "byClaim": [
           {
             "suite": "static-images",
             "verdict": "unsupported"
+          },
+          {
+            "suite": "sixel-native-fidelity",
+            "verdict": "supported"
           }
         ]
       },
@@ -8864,6 +8939,33 @@
             "kind": "pinned-inconclusive-by-design",
             "pinned": "inconclusive",
             "effect": "unsupported",
+            "reason": "Declared Sixel capability does not establish rendered pixels"
+          },
+          "measuredLayers": [
+            "controlled-pixels"
+          ],
+          "evidenceTag": "owned-controlled-pixels-paired-raw-render"
+        },
+        {
+          "id": "extensions.sixel",
+          "suite": "sixel-native-fidelity",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Declared Sixel capability does not establish rendered pixels"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "pinned-callbacks-preserved-plus-owned-pixel-effect-v1"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
             "reason": "Declared Sixel capability does not establish rendered pixels"
           },
           "measuredLayers": [

@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, readFileSync, writeFileSync, symlinkSync } from 'n
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { captureRequest, agentRequest } from './agent-observer.mjs';
-import { OwnedPixelObserver, validatePixelCapture, retainedPixel } from './pixels-capture.mjs';
+import { OwnedPixelObserver, validatePixelCapture, validateRenderedCapture, retainedPixel } from './pixels-capture.mjs';
 import { pixelCapture, pixelScreen, pixelPaneId, syntheticPng } from './fixtures/pixel-capture.mjs';
 import { pixelPlan, collectPixels, pixelScenes } from './pixels-cases.mjs';
 import { regionPixels, countColorCoverage } from './pixels.mjs';
@@ -50,6 +50,18 @@ test('wire validation accepts synthetic phases but rejects metadata, image and c
     const changed = pixelCapture(screen); changed.renderDetails.presentation.cursorStyle = 0;
     assert.throws(() => validatePixelCapture(changed, screen, 0));
     for (const time of [0, 529, 530, 1059, 1060]) assert.ok(validatePixelCapture(pixelCapture(pixelScreen(), time), pixelScreen(), time));
+});
+
+test('calibrated captures require the selected scale and its snapped grid', () => {
+    const value = pixelCapture();
+    value.scale = 1.1;
+    const { grid } = value.renderDetails;
+    grid.cellWidthDip = grid.cellWidthPx / value.scale;
+    grid.cellHeightDip = grid.cellHeightPx / value.scale;
+    assert.ok(validateRenderedCapture(value, pixelScreen(), 0, 1.1));
+    assert.throws(() => validatePixelCapture(value, pixelScreen(), 0));
+    grid.cellWidthDip = grid.cellWidthPx;
+    assert.throws(() => validateRenderedCapture(value, pixelScreen(), 0, 1.1));
 });
 
 async function fixture(action) {

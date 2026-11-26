@@ -10,13 +10,13 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 | Measure | Value |
 |---|---:|
 | Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 155 |
-| Suite claims (an id covered by two suites has two claims) | 157 |
-| Ids with more than one claim | 2 (`sgr.bg.standard`, `sgr.fg.standard`) |
+| Suite claims (an id covered by two suites has two claims) | 158 |
+| Ids with more than one claim | 3 (`extensions.sixel`, `sgr.bg.standard`, `sgr.fg.standard`) |
 | Effect contract supported | 148 |
-| Effect contract unsupported (measured, retained, not supported) | 6 |
+| Effect contract unsupported (measured, retained, not supported) | 5 |
 | Supported by both the pinned probe and the effect contract | 97 |
 | Effect supported, pinned verdict inconclusive | 51 |
-| Effect unsupported, pinned verdict inconclusive | 6 |
+| Effect unsupported, pinned verdict inconclusive | 5 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
@@ -24,7 +24,7 @@ An unsupported effect verdict is a measured result: the id is counted among the 
 
 Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.iterm2-images`, `extensions.kitty-graphics.animation`, `extensions.kitty-graphics.unicode-placeholders`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc1337-cellsize`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc22-pointer`, `extensions.osc3008-context`, `extensions.osc633-a`, `extensions.osc633-b`, `extensions.osc633-c`, `extensions.osc633-d`, `extensions.osc7-cwd`, `extensions.osc776-cell-size`, `extensions.osc777-notify`, `extensions.osc9-progress`, `extensions.reflow`, `extensions.semantic-prompts`, `input.button-event-mouse`, `input.modify-other-keys`, `input.pixel-mouse`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `modes.xtrestore`, `modes.xtsave`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
-Effect unsupported, pinned inconclusive (by design): `extensions.osc113-reset-pointer-fg`, `extensions.osc114-reset-pointer-bg`, `extensions.osc720-scroll-up`, `extensions.sixel`, `modes.deccolm`, `modes.decsclm`.
+Effect unsupported, pinned inconclusive (by design): `extensions.osc113-reset-pointer-fg`, `extensions.osc114-reset-pointer-bg`, `extensions.osc720-scroll-up`, `modes.deccolm`, `modes.decsclm`.
 
 ## Remaining cases against an explicit baseline
 
@@ -33,8 +33,8 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 | Remaining | Count |
 |---|---:|
 | Not effect-supported, `effectUnqualified` (168 − 147) | 21 |
-| of which measured, effect unsupported | 6 |
-| of which measured, another non-supported verdict | 1 |
+| of which measured, effect unsupported | 5 |
+| of which measured, another non-supported verdict | 2 |
 | of which not measured (no qualified effect evidence) | 14 |
 | Not pinned-supported (168 − 96) | 72 |
 
@@ -102,6 +102,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `extensions-truecolor` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 3 | `5e017718` |
 | `osc633` | 4 | v1 | passed | 69 | `9c814b13` | v62 | 4 | `8cf95ba4` |
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
+| `sixel-native-fidelity` | 1 | v1 | passed | 82 | `c7ed5b6f` | v80 | 8 | `d608a228` |
 | `shell-integration-aggregates` | 2 | v1 | passed | 69 | `9c814b13` | v62 | 3 | `768bef04` |
 | `osc5` | 1 | v1 | passed | 72 | `0f5de80b` | v65 | 4 | `9b62b038` |
 | `osc720` | 1 | v1 | passed | 74 | `06ee7177` | v67 | 16 | `4ab8f61d` |
@@ -174,6 +175,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `extensions-truecolor` | collected-raw-digest-recorded | raw `d7da4d74` | 161/93/1 | `cf7d8759` |
 | `osc633` | collected-run-id-recorded | `cb002bb5` | 161/93/1 | `cf7d8759` |
 | `static-images` | collected-run-id-recorded | `620df113` | 161/93/1 | `cf7d8759` |
+| `sixel-native-fidelity` | collected-run-id-recorded | `8787fa15` | 157/97/1 | `cf7d8759` |
 | `shell-integration-aggregates` | collected-raw-digest-recorded | raw `a554f4cf` | 161/93/1 | `cf7d8759` |
 | `osc5` | collected-run-id-recorded | `f5aea47d` | 160/94/1 | `cf7d8759` |
 | `osc720` | collected-run-id-recorded | `14210241` | 160/94/1 | `cf7d8759` |
@@ -281,7 +283,7 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.osc99-kitty-notify` | inconclusive | supported | supported | stored-state + pane-metadata-and-session-status | notify | - |
 | `extensions.reflow` | inconclusive | inconclusive | supported | stored-state + actual-scrollback | ascii-reflow | ascii-reflow: pinned-inconclusive-by-design |
 | `extensions.semantic-prompts` | inconclusive | inconclusive | supported | stored-state + pane-metadata-and-session-status | shell-integration-aggregates | shell-integration-aggregates: pinned-inconclusive-by-design |
-| `extensions.sixel` | inconclusive | inconclusive | unsupported | controlled-pixels | static-images | static-images: pinned-inconclusive-by-design |
+| `extensions.sixel` | inconclusive | static-images=inconclusive, sixel-native-fidelity=inconclusive | mixed | controlled-pixels | static-images, sixel-native-fidelity | static-images: pinned-inconclusive-by-design; sixel-native-fidelity: pinned-inconclusive-by-design |
 | `extensions.truecolor` | inconclusive | supported | supported | stored-state + app-resolved-color | extensions-truecolor | - |
 | `input.button-event-mouse` | inconclusive | inconclusive | supported | generated-input-child-bytes | routed-input | routed-input: pinned-inconclusive-by-design |
 | `input.modify-other-keys` | inconclusive | inconclusive | supported | generated-input-child-bytes | modify-other-keys | modify-other-keys: pinned-inconclusive-by-design |
