@@ -114,12 +114,31 @@ public class Osc633MetadataTests
         parser.Process("\x1b]7;file:///tmp/control\a\x1b]633;P;Cwd=/tmp/one\\");
         parser.Process("x3b=two\x1b");
         Assert.Equal(["/tmp/control"], directories);
-        parser.Process("\\" + Mark(@"P;Cwd=C:\\second\x20x" + ";opaque")
+        parser.Process("\\" + Mark(@"P;Cwd=C:\\second\x20x")
             + Mark("P;Other=/tmp/irrelevant") + Mark("P;Cwd") + Mark("P;Cwd=")
-            + Mark(@"P;Cwd=/tmp/\x0a") + Mark("P;Cwd=/tmp;token;extra")
+            + Mark(@"P;Cwd=/tmp/\x0a") + Mark("P;Cwd=C:\\bad\tsegment")
             + "\x1b]133;P;Cwd=/tmp/ignored\a");
 
         Assert.Equal(["/tmp/control", "/tmp/one;=two", @"C:\second x"], directories);
+    }
+
+    [Theory]
+    [InlineData(@"C:\Users\me", @"C:\Users\me")]
+    [InlineData(@"C:\x64;literal=dir", @"C:\x64;literal=dir")]
+    [InlineData(@"C:\\Users\\name\x20here", @"C:\Users\name here")]
+    [InlineData(@"\\host\share\x64", @"\\host\share\x64")]
+    [InlineData(@"\\\\host\\share\\x64", @"\\host\share\x64")]
+    [InlineData(@"/tmp/name;with;semicolons=1", @"/tmp/name;with;semicolons=1")]
+    [InlineData(@"/tmp/literal\name\", @"/tmp/literal\name\")]
+    public void Cwd_AcceptsPlainPathsAndProtocolEscaping(string wirePath, string expected)
+    {
+        var parser = Make();
+        List<string> directories = [];
+        parser.OnWorkingDirectoryChanged = directories.Add;
+
+        parser.Process(Mark("P;Cwd=" + wirePath));
+
+        Assert.Equal(expected, Assert.Single(directories));
     }
 
     [Fact]

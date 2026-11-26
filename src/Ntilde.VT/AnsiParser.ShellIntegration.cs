@@ -46,7 +46,7 @@ namespace Ntilde.VT
                 case "E":
                     if (_awaitingVsCodeCommand)
                     {
-                        _vsCodeCommandLine = TryDecodeVsCodeMetadata(arguments, out string? commandLine)
+                        _vsCodeCommandLine = TryDecodeVsCodeCommandLine(arguments, out string? commandLine)
                             && IsPlausibleCommandText(commandLine) ? commandLine : null;
                     }
                     break;
@@ -54,8 +54,7 @@ namespace Ntilde.VT
                 case "P":
                     const string cwdProperty = "Cwd=";
                     if (arguments.StartsWith(cwdProperty, StringComparison.Ordinal)
-                        && TryDecodeVsCodeMetadata(arguments[cwdProperty.Length..], out string? cwd)
-                        && IsPlausibleCommandText(cwd) && cwd.AsSpan().IndexOfAny('\t', '\r', '\n') < 0)
+                        && DecodeVsCodeDirectory(arguments[cwdProperty.Length..]) is { } cwd)
                     {
                         OnWorkingDirectoryChanged?.Invoke(cwd);
                     }

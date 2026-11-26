@@ -29,7 +29,7 @@ export function requireMetadata(condition, detail) {
 
 function paths(runId) {
     const root = '/qa-633-' + runId;
-    return { baseline: root + '/baseline', control: root + '/osc7-control', first: root + '/east;one', second: root + '/west=two' };
+    return { baseline: root + '/baseline', control: root + '/osc7-control', first: root + '/east;one', second: String.raw`C:\QA-633-${runId}\x64;west=two` };
 }
 export const nonce = runId => 'NTILDE_633_' + runId;
 export const restore = runId => end + cwd(paths(runId).baseline) + clear;
@@ -60,7 +60,7 @@ export function planFor(runId) {
         write('p-osc7-control', cwd(control)),
         write('p-first', mark('P;Cwd=' + first.replace(';', String.raw`\x3b`))),
         write('p-second', '\x1b]633;P;Cwd=' + second + '\x1b\\'),
-        write('p-malformed', mark(String.raw`P;Cwd=/bad\xGG`)),
+        write('p-malformed', mark(String.raw`P;Cwd=/bad\x00`)),
         write('p-unknown', mark('P;IsWindows=True')),
         write('finish', restore(runId)),
         { stage: 'seal' },
