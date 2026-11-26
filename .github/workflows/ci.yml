@@ -381,6 +381,7 @@ jobs:
           scripts/terminfo/dcl-grading-collector.test.mjs
           scripts/terminfo/dsl-grading-collector.test.mjs
           scripts/terminfo/unicode-width-grading-collector.test.mjs
+          scripts/terminfo/unicode-boundary-grading-collector.test.mjs
           scripts/terminfo/modify-other-keys-3-policy.test.mjs
           scripts/terminfo/osc133-p-policy.test.mjs
           scripts/terminfo/osc22-grading-collector.test.mjs

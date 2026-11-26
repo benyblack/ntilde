@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "measurement": {
+    "runId": "dfb282c4652eda8cea4df315a764df57",
+    "sourcePolicy": "readonly-owned-source-graph-v82",
+    "receiptSchema": 1,
+    "appRevision": "3138158796f02c6bbec9bab7ee28ad6dde6b3249",
+    "scriptsRevision": "94ee43cf41ac059d48deb8a421a5c1d5396b12af",
+    "platform": "27.0.1 (26A434), arm64"
+  },
+  "archives": {
+    "owned-run.zip": "fc5cbca0893f87df6977b8a8eda2708c979201baf5bdb5a6eae5bd788c2f8943"
+  }
+}

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { cases, clearRow, deriveWidth, describeFrame, gradeCase, widthWrites } from './unicode-width-contracts.mjs';
-import { pinnedBundle, withMeasurement } from './unicode-width-publication.mjs';
+import { withMeasurement } from './unicode-width-publication.mjs';
 import { testWithPinnedCollector } from './real-bundle-test.mjs';
+import { pinnedUnicodeProbes } from './unicode-pinned-test.mjs';
 
 const raw = (row, col) => ({ raw: `\x1b[${row};${col}R`, row, col });
 const barrier = '\x1b[?62;4;22c';
@@ -46,19 +46,6 @@ test('same-width wrong clusters or cells fail the owned effect while bad control
     });
 });
 
-// The package integrity check binds the exact upstream bytes. Append a test-only export to the
-// verified bundle so both original callbacks run with their real helpers.
-async function realProbes(bundleUrl) {
-    const bytes = readFileSync(bundleUrl);
-    assert.equal(createHash('sha256').update(bytes).digest('hex'), pinnedBundle);
-    const adapted = new URL('./ntilde-unicode-width-replay.mjs', bundleUrl);
-    const entry = 'program.parse();', source = bytes.toString('utf8');
-    assert.equal(source.split(entry).length, 2);
-    const exports = '\ninit_src();\nexport { ALL_PROBES as ntildeUnicodeProbes };\n';
-    writeFileSync(adapted, source.replace(entry, '// No CLI dispatch during replay.') + exports, { flag: 'wx' });
-    return (await import(adapted.href)).ntildeUnicodeProbes;
-}
-
 function parserProjection(item, seed, target) {
     const row = target.lines[0], hasSuffix = item.suffix.length > 0;
     const text = hasSuffix ? row.slice(0, -1) : row;
@@ -83,7 +70,7 @@ function parserProjection(item, seed, target) {
 }
 
 testWithPinnedCollector('Unicode replay matches both pinned callbacks on the retained App run', async bundleUrl => {
-    const probes = await realProbes(bundleUrl);
+    const probes = await pinnedUnicodeProbes(bundleUrl);
     const frames = withMeasurement(path => journal(path));
     for (const item of cases) {
         const [seedFrame, blankFrame, targetFrame, width] = frames.filter(frame => frame.id === item.id);

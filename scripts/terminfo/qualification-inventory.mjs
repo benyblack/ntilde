@@ -118,6 +118,7 @@ export const benchmarkSuites = Object.freeze([
  * the inventory: the registry is explicit, and `qualification-inventory.test.mjs` refuses an unclassified test.
  */
 export const nonInventoryPublicationTests = Object.freeze({
+    'unicode-boundary-publication.test.mjs': 'standalone owned Unicode assessment of three cases already supported by the stock baseline',
     'unicode-width-publication.test.mjs': 'standalone owned Unicode assessment of five cases already supported by the stock baseline',
     'cell-size-publication.test.mjs': 'frozen pre-integration source-policy v63 cell-size result; current integrated v64 remeasurement is the active suite claim',
     'osc633-publication.test.mjs': 'frozen historical unsupported OSC 633 result; the current implementing-App remeasurement is the active suite claim',
