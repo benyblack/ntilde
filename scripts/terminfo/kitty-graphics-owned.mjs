@@ -52,27 +52,33 @@ function acceptReply(bytes, entry, states) {
 }
 
 const cells = Object.freeze({ cols: 2, rows: 1 });
+function comparePixelRow(before, after, envelope, y, difference) {
+    const targetRow = y >= envelope.y && y < envelope.y + envelope.height;
+    for (let x = 0; x < before.width; x++) {
+        const offset = (y * before.width + x) * 4;
+        const within = targetRow && x >= envelope.x && x < envelope.x + envelope.width;
+        const initial = before.pixels.readUInt32BE(offset), observed = after.pixels.readUInt32BE(offset);
+        if (within && initial !== 0x101010ff) difference.background = false;
+        if (initial === observed) continue;
+        if (!within) { difference.outside++; continue; }
+        difference.changed++;
+        if (observed !== 0xff0000ff) difference.otherColor++;
+        difference.left = Math.min(difference.left, x);
+        difference.top = Math.min(difference.top, y);
+        difference.right = Math.max(difference.right, x);
+        difference.bottom = Math.max(difference.bottom, y);
+    }
+}
+
 // Derive changed bounds from the PNGs. The source is a solid red square fitted
 // inside the requested cells. A one-pixel rounding tolerance permits fractional scale.
 export function redPixels(before, after, grid) {
     const envelope = staticImageEnvelope(before, grid, staticImageAnchor, cells);
     checkImages(after.width === before.width && after.height === before.height);
-    let left = Infinity, top = Infinity, right = -1, bottom = -1;
-    let changed = 0, outside = 0, otherColor = 0, background = true;
-    for (let y = 0; y < before.height; y++) {
-        for (let x = 0; x < before.width; x++) {
-            const offset = (y * before.width + x) * 4;
-            const within = x >= envelope.x && x < envelope.x + envelope.width && y >= envelope.y && y < envelope.y + envelope.height;
-            const initial = before.pixels.readUInt32BE(offset), observed = after.pixels.readUInt32BE(offset);
-            if (within && initial !== 0x101010ff) background = false;
-            if (initial === observed) continue;
-            if (!within) { outside++; continue; }
-            changed++;
-            if (observed !== 0xff0000ff) otherColor++;
-            left = Math.min(left, x); top = Math.min(top, y);
-            right = Math.max(right, x); bottom = Math.max(bottom, y);
-        }
-    }
+    const difference = { left: Infinity, top: Infinity, right: -1, bottom: -1,
+        changed: 0, outside: 0, otherColor: 0, background: true };
+    for (let y = 0; y < before.height; y++) comparePixelRow(before, after, envelope, y, difference);
+    const { left, top, right, bottom, changed, outside, otherColor, background } = difference;
     const bounds = changed ? { x: left, y: top, width: right - left + 1, height: bottom - top + 1 } : null;
     const side = Math.min(envelope.width, envelope.height);
     const square = bounds && Math.abs(bounds.width - side) <= 1 && Math.abs(bounds.height - side) <= 1
@@ -96,7 +102,8 @@ class GraphicsReport extends StaticImageReport {
         checkImages(measurement.background);
         const sameAsBlank = measurement.changed === 0 && measurement.outside === 0 && pixel.imageDetails.totalPlacements === 0;
         const passed = placing ? measurement.redSquare && placementMatches(pixel.imageDetails) : sameAsBlank;
-        const verdict = expected.skipReason ? 'inconclusive' : passed ? 'passed' : 'failed';
+        let verdict = passed ? 'passed' : 'failed';
+        if (expected.skipReason) verdict = 'inconclusive';
         this.observations.push({
             caseId: entry.caseId, stage: entry.stageId, snapshot: index,
             replyEvidence: { requestHex: action.commandHex, replyHex: replyBytes.toString('hex') },

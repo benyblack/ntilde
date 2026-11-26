@@ -6,7 +6,7 @@ import { digest, pinnedBundle } from './unicode-publication-inputs.mjs';
 
 function span(source, start, end) {
     const from = source.indexOf(start), to = source.indexOf(end, from + start.length);
-    assert.ok(from >= 0 && to > from && source.indexOf(start, from + start.length) === -1);
+    assert.ok(from >= 0 && to > from && !source.includes(start, from + start.length));
     return source.slice(from, to);
 }
 
@@ -45,18 +45,20 @@ async function replayPath(definition, rows, path) {
     return structuredClone(result);
 }
 
+async function replayCase(source, id, observations) {
+    const rows = observations.filter(row => row.caseId === id);
+    const upload = Buffer.from(rows[0]?.replyEvidence.requestHex ?? '', 'hex').toString('ascii');
+    const number = Number(/,I=([1-9]\d*);/.exec(upload)?.[1]);
+    assert.ok(Number.isSafeInteger(number) && number >= 1 && number <= maximumPinnedNumber);
+    const definition = loadDefinition(source, id, number);
+    assert.equal(definition.id, id);
+    const [termless, terminal] = await Promise.all([replayPath(definition, rows, 'termless'), replayPath(definition, rows, 'term')]);
+    return [id, { termless, terminal }];
+}
+
 export async function replayPinnedGraphics(archive, observations) {
     const bundle = gunzipSync(archive, { maxOutputLength: 1_000_000 });
     assert.equal(digest(bundle), pinnedBundle);
-    const source = bundle.toString('utf8'), pinned = {};
-    for (const id of caseIds) {
-        const rows = observations.filter(row => row.caseId === id);
-        const upload = Buffer.from(rows[0]?.replyEvidence.requestHex ?? '', 'hex').toString('ascii');
-        const number = Number(/,I=([1-9]\d*);/.exec(upload)?.[1]);
-        assert.ok(Number.isSafeInteger(number) && number >= 1 && number <= maximumPinnedNumber);
-        const definition = loadDefinition(source, id, number);
-        assert.equal(definition.id, id);
-        pinned[id] = { termless: await replayPath(definition, rows, 'termless'), terminal: await replayPath(definition, rows, 'term') };
-    }
-    return pinned;
+    const source = bundle.toString('utf8');
+    return Object.fromEntries(await Promise.all(caseIds.map(id => replayCase(source, id, observations))));
 }

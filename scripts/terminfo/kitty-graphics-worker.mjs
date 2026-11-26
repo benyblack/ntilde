@@ -20,7 +20,7 @@ async function collect(config, tty) {
             checkImages(bytes.toString('hex') === action.commandHex && pngHash(bytes) === action.commandSha256
                 && action.index === index && action.kind === prefix + entry.kind
                 && action.caseId === (entry.caseId ?? null) && action.stageId === (entry.stageId ?? null));
-            const observed = await capture.capture(() => write(process.stdout, Buffer.concat([bytes, Buffer.from(imageModeQueries)])));
+            const observed = await capture.capture(() => write(process.stdout, Buffer.concat([bytes, Buffer.from(imageModeQueries)]))); // NOSONAR: finish each PTY capture before admitting the next write.
             await send(entry.kind, { ...ids, capture: observed }); // NOSONAR: owner must seal each pixel pair before the next write.
         }
         capture.dispose();
