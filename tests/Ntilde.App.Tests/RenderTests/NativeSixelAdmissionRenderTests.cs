@@ -100,11 +100,22 @@ public sealed class NativeSixelAdmissionRenderTests
     public void A_direct_session_replaces_a_retained_legacy_mux_buffer_before_output()
     {
         using var pane = new TerminalPane();
-        PaneSpawnTestHelpers.DisableShellIntegration(pane);
+        pane.ApplySettings(new TerminalSettings
+        {
+            AlternateScroll = false,
+            CursorStyle = "bar",
+            CursorBlink = false,
+            CommandAssistShellIntegrationEnabled = false,
+        });
+        pane.Buffer!.Modes.AlternateScrollOverride = true;
         var session = new FakeTerminalSession();
         pane.SessionFactory = new RecordingSessionFactory(session);
         Assert.True(pane.UseBufferSixelPolicy(0));
-        var legacy = pane.Buffer;
+        var legacy = Assert.IsType<TerminalBuffer>(pane.Buffer);
+        Assert.False(legacy.Modes.IsAlternateScroll);
+        Assert.Null(legacy.Modes.AlternateScrollOverride);
+        Assert.Equal(CursorStyle.Beam, legacy.Modes.CursorStyle);
+        Assert.False(legacy.Modes.IsCursorBlinkEnabled);
         pane.CreateAndWireParser(muxBacked: true);
         var oldParser = pane.Parser;
 
@@ -114,6 +125,9 @@ public sealed class NativeSixelAdmissionRenderTests
         Assert.NotSame(legacy, pane.Buffer);
         Assert.NotSame(oldParser, pane.Parser);
         Assert.Equal(SixelRasterPolicy.PresenterNativeVersion, pane.Buffer!.SixelRasterPolicyVersion);
+        Assert.False(pane.Buffer.Modes.IsAlternateScroll);
+        Assert.Equal(CursorStyle.Beam, pane.Buffer.Modes.CursorStyle);
+        Assert.False(pane.Buffer.Modes.IsCursorBlinkEnabled);
         var metrics = Assert.IsType<SixelCellSize>(pane.Parser!.SixelCellSizeOverride);
         Assert.True(metrics.WidthPx >= 1 && metrics.HeightPx >= 1);
         session.EmitOutput("\x1bPq~\x1b\\");

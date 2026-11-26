@@ -488,8 +488,12 @@ namespace Ntilde.Controls
         {
             if (Buffer is not { } old || old.SixelRasterPolicyVersion == policy) return false;
 
-            // A new stream generation keeps the existing display geometry and theme.
+            // A new stream generation keeps the pane's host-owned presentation defaults.
             var buffer = new TerminalBuffer(old.Cols, old.Rows, policy) { MaxHistory = old.MaxHistory };
+            buffer.Modes.AlternateScrollDefault = old.Modes.AlternateScrollDefault;
+            buffer.Modes.CursorStyle = TermView.PreferredCursorStyle;
+            if (_settings is { } settings)
+                buffer.Modes.IsCursorBlinkEnabled = Profile?.CursorBlink ?? settings.CursorBlink;
             var defaultTheme = buffer.Theme;
             buffer.Theme = old.Theme;
             buffer.UpdateThemeColors(defaultTheme);
