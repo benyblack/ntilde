@@ -107,6 +107,10 @@ const childEnvironmentSources = {
     modernChildEnvironmentOwnedSourceSha256: 'modern-child-environment-owned.mjs',
     modernChildEnvironmentWorkerSourceSha256: 'modern-child-environment-worker.mjs',
 };
+const kittyGraphicsSources = {
+    kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
+    kittyGraphicsWorkerSourceSha256: 'kitty-graphics-worker.mjs',
+};
 const unicodeBoundarySources = {
     unicodeBoundaryContractsSourceSha256: 'unicode-boundary-contracts.mjs',
     unicodeBoundaryOwnedSourceSha256: 'unicode-boundary-owned.mjs',
@@ -120,6 +124,7 @@ const unicodeWidthSources = {
 };
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
+    'kitty-graphics': { policy: 'readonly-owned-source-graph-v83', sources: kittyGraphicsSources, entry: kittyGraphicsSources.kittyGraphicsOwnedSourceSha256 },
     'unicode-boundaries': { policy: 'readonly-owned-source-graph-v82', sources: unicodeBoundarySources, entry: unicodeBoundarySources.unicodeBoundaryOwnedSourceSha256 },
     'unicode-width': { policy: 'readonly-owned-source-graph-v81', sources: unicodeWidthSources, entry: unicodeWidthSources.unicodeWidthOwnedSourceSha256 },
     'modern-blink': { policy: blinkPolicy, sources: blinkSources, entry: blinkSources.modernBlinkOwnedSourceSha256 },
