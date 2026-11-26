@@ -25,8 +25,8 @@ A disposable direct-local macOS arm64 pane used a 40×140 grid and a 1.1× offsc
 
 Blank, show, and clear all passed. The fixed one-pixel edge band left 2, 8, 3, and 12 safe color pixels and 1,340 safe background pixels. All matched. The whole-cell projection gave 55 mismatches. The paired raw fences bound each write to the captures, which retained an unchanged surrounding and verified clearing. The earlier 1× attempt painted 8×8 in its capture but had no gradeable pixels in two color regions outside the fixed edge band. Its result remains inconclusive. The attempt record lists the superseded captures and links their previously published archives. [1× run](inconclusive-owned-run.zip) · [Attempt record](prior-attempts.json)
 
-- App build `0f3e1be7da7bea8e724758ed0f7f9edf276e2612`. The version label was operator-supplied. The receipt binds the sidecar executable and assembly digests.
-- Collector `0f3e1be7da7bea8e724758ed0f7f9edf276e2612`, source graph `readonly-owned-source-graph-v80`. Owned run `c772f43d5f211e43b2d5bb25307fd1ea`, stock run `35804ce4521fa0a40b9c33fd9149edc6`.
+- App build `f9b0da195bce62cf2626d5ca65d9f57c826ca744`. The version label was operator-supplied. The receipt binds the sidecar executable and assembly digests.
+- Collector `f9b0da195bce62cf2626d5ca65d9f57c826ca744`, source graph `readonly-owned-source-graph-v80`. Owned run `c0e02b05af46e65e61c64782bb920edd`, stock run `6c7dc83522a9b65ecef4bf872d05475b`.
 - `--scope static-images` runs the existing OSC 633 carrier scope and requests 1.1× solely for the paired static-image captures. The collector retains the scale, original PNGs, grid, cell and image facts, raw writes and replies, and cleanup proof in the [owned archive](owned-run.zip). See the [summary](summary.json), [machine-readable verdicts](report.json), and [manifest](manifest.json).
 
 ## Production path and limits
@@ -50,5 +50,5 @@ scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained
   -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false \
   -p:SkipCliShim=true -o /absolute/private/sidecar
 node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde \
-  --app-version 0.14.0+0f3e1be7da7bea8e724758ed0f7f9edf276e2612 --scope static-images
+  --app-version 0.14.0+f9b0da195bce62cf2626d5ca65d9f57c826ca744 --scope static-images
 ```

@@ -116,5 +116,14 @@
     "cleanupVerifiedAt": "2026-11-26T14:16:42.395Z",
     "error": "Unexpected input during cell collection.",
     "failureSha256": "6bb4091828fab8e47dd2fc08faf6c17a82adf8dd8143e23f99c674c267ddc010"
+  },
+  {
+    "runId": "c772f43d5f211e43b2d5bb25307fd1ea",
+    "appVersion": "0.14.0+0f3e1be7da7bea8e724758ed0f7f9edf276e2612",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/e94cca3455611239a827967d2f36b963d3910f20/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "870faaea27429b7c26a02fc2e6e7a0768ad8f566fb208dede5eb027cdbf0d987"
   }
 ]
