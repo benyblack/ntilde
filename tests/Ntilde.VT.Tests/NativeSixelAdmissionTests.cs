@@ -133,6 +133,29 @@ public sealed class NativeSixelAdmissionTests
         Assert.Equal((0, 0L), budget.Usage);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("\r\n")]
+    public void A_raster_larger_than_the_source_budget_preserves_cursor_and_newline_handling(string followingNewline)
+    {
+        string wire = "\x1bPq" + new string('?', SixelSourceBudget.DefaultMaxChars) + "~\x1b\\" + followingNewline + "Z";
+        var buffer = new TerminalBuffer(80, 24, SixelRasterPolicy.PresenterNativeVersion);
+        var decoder = new LegacyOnlyDecoder();
+        var parser = new AnsiParser(buffer, forceConPtyFiltering: false)
+        {
+            SixelCellSizeOverride = new(10, 20),
+            ImageDecoder = decoder,
+        };
+
+        parser.Process(wire);
+
+        Assert.Equal((1, 1), (buffer.CursorCol, buffer.CursorRow));
+        Assert.Equal('Z', buffer.ViewportRows[1].Cells[0].Character);
+        Assert.Empty(buffer.Images);
+        Assert.Equal(0, buffer.SixelSources.Count);
+        Assert.Equal(0, decoder.Calls);
+    }
+
     [Fact]
     public void Source_refusal_and_decoder_null_release_unallocated_reservations_but_unknown_exception_fails_closed()
     {
@@ -142,6 +165,8 @@ public sealed class NativeSixelAdmissionTests
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = decoder };
         parser.Process(Wire);
         Assert.Equal(0, decoder.Calls);
+        Assert.Empty(buffer.Images);
+        Assert.Equal((0, 1), (buffer.CursorCol, buffer.CursorRow));
         Assert.Equal((0, 0L), budget.Usage);
         budget = new NativeSixelBudget();
         var normal = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20));

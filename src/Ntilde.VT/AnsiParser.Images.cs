@@ -225,14 +225,19 @@ namespace Ntilde.VT
             var (width, height) = SixelGeometry.Measure(dcs);
             if (width <= 0 || height <= 0) return;
 
-            SixelSource source = _buffer.SixelSources.CreateProvisional(dcs);
-            if (source.DecodeData is null)
+            SixelSource? source = _buffer.SixelSources.CreateProvisional(dcs);
+            INativeSixelImage? image = null;
+            if (source.DecodeData is not null)
             {
+                image = TryCreateNativeSixelOwner(source, budget, width, height, dcs.Length);
+            }
+            else
+            {
+                // A parser-accepted raster still moves the cursor when its source exceeds retention.
                 source.Dispose();
-                return;
+                source = null;
             }
 
-            var image = TryCreateNativeSixelOwner(source, budget, width, height, dcs.Length);
             var intent = new SixelRasterIntent(SixelRasterPolicy.PresenterNativeVersion, width, height, new(0, 0, width, height));
             var (cw, ch) = ImageCellPixels();
             var provenance = new SixelPlacementProvenance(width, height, SixelReservationDimensionOrigin.SixelGeometry,
