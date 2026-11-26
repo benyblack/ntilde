@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { verifySample } from './sixel-reports-contracts.mjs';
+import { smallerGrid, verifySample } from './sixel-reports-contracts.mjs';
+import { Collection } from './sixel-reports-owned.mjs';
 import { readPinnedBundle, replaySixelReport } from './sixel-reports-pinned.mjs';
 import { buildPublication, publication, renderReport, withSixelArchive } from './sixel-reports-publication.mjs';
 import { readJson } from './unicode-publication-inputs.mjs';
@@ -51,4 +52,38 @@ test('a wrong text-area reply cannot serve as the reference geometry', async () 
     resized.samples[2].sample.byteLength = stale.length;
     assert.throws(() => verifySample(resized.samples, new Set(), resized.metadata.cellGeometry),
         /text-area control disagrees with independently observed App geometry/);
+});
+
+test('the smaller grid meets the observer limit and fits the pixel budget', () => {
+    const cell = { viewRows: 40, viewCols: 79, cellWidthDip: 10, cellHeightDip: 20, renderScaling: 1 };
+    assert.deepEqual(smallerGrid(cell), { rows: 26, cols: 48 });
+    assert.throws(() => smallerGrid({ ...cell, cellWidthDip: 40 }), /bounded smaller grid unavailable/);
+    assert.throws(() => smallerGrid({ ...cell, viewCols: 48 }), /bounded smaller grid unavailable/);
+});
+
+test('abort rejects rollback when the App and private PTY disagree on the restored grid', async t => {
+    const report = readJson(publication, 'report.json');
+    const [resize, restoration] = report.ownedGeometry.actions;
+    const owner = new Collection({ app: { pid: 2 }, runId: report.measurement.runId });
+    owner.frames.push({ paneId: restoration.observed.paneId, screen: restoration.target });
+    owner.resizeAttempted = true;
+    t.mock.method(owner, 'resize', async (stage, target) => {
+        assert.equal(stage, 'abort');
+        assert.deepEqual(target, restoration.target);
+        return { stage, target, observed: { ...restoration.observed, terminalOutput: resize.observed.terminalOutput } };
+    });
+    await assert.rejects(() => owner.observe({ kind: 'sxreport-abort' }, () => 500),
+        /Private PTY geometry does not match the observed App screen/);
+    assert.equal(owner.aborted, true);
+    assert.equal(owner.restored, false);
+});
+
+test('the report summary follows the comparisons and the observed width cap crossing', () => {
+    const report = readJson(publication, 'report.json');
+    const [initial, resized] = report.ownedGeometry.geometry;
+    initial.reference.width = 1900;
+    resized.outcome = 'failed';
+    const markdown = renderReport(report);
+    assert.match(markdown, /The check column records the failed or inconclusive geometry stages/);
+    assert.doesNotMatch(markdown, /The Sixel report matched|width crossed that cap/);
 });

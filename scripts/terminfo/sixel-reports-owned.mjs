@@ -92,13 +92,19 @@ export class Collection {
         requireSixel(!this.busy && !this.restored && !this.aborted && (step?.stage === stage || stage === 'abort'), 'unexpected or concurrent stage');
         this.busy = true;
         try {
-            if (stage === 'abort') {
-                this.aborted = true;
-                if (this.resizeAttempted) await this.resize(stage, gridOf(this.frames[0].screen), request, budget);
-                return {};
-            }
+            if (stage === 'abort') return await this.abort(request, budget);
             return await this.observeStage(request, budget, ownership, step);
         } finally { this.busy = false; }
+    }
+
+    async abort(request, budget) {
+        this.aborted = true;
+        if (this.resizeAttempted) {
+            const original = this.frames[0], target = gridOf(original.screen);
+            const action = await this.resize('abort', target, request, budget);
+            requireResize(action, 'abort', target, original.paneId, this.run.runId);
+        }
+        return {};
     }
 
     async resize(stage, target, request, budget) {

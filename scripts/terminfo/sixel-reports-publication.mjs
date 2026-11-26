@@ -63,6 +63,21 @@ const code = value => '\x60' + value + '\x60';
 const csi = raw => raw ? code(raw.replaceAll('\x1b[', 'CSI ')) : 'Absent';
 const size = value => value ? value.width + ' × ' + value.height : 'Absent';
 
+function describeGeometry({ geometry, pixelCap, restored }) {
+    const [initial, resized] = geometry;
+    const sentences = ['The parent resized only the nonce-bound pane and independently checked its kernel grid. App cell metrics and device scaling give the text-area dimensions, corroborated by ' + code('CSI 14 t') + '.'];
+    if (geometry.every(row => row.outcome === 'passed')) {
+        sentences.push('The Sixel report matched those dimensions with a ' + pixelCap + '-pixel cap per axis.');
+    } else {
+        sentences.push('The check column records the failed or inconclusive geometry stages.');
+    }
+    if (initial.reference.width > pixelCap && resized.reference.width < pixelCap) {
+        sentences.push('The initial width crossed that cap, and the resized width fell below it.');
+    }
+    if (restored) sentences.push('Returning to the original grid reproduced the original report.');
+    return sentences.join(' ');
+}
+
 export function renderReport(report) {
     const { history, pinnedReplies, ownedGeometry, measurement: m } = report;
     const [older, later] = history;
@@ -83,8 +98,7 @@ export function renderReport(report) {
         '| --- | --- | --- | --- | --- |',
         ...ownedGeometry.geometry.map(row => '| ' + row.stage + ' | ' + row.grid.rows + ' × ' + row.grid.cols + ' | ' + size(row.reference)
             + ' | ' + size(row.observed) + ' | ' + row.outcome + ' |'),
-        '', 'The parent resized only the nonce-bound pane and independently checked its kernel grid. App cell metrics and device scaling give the text-area dimensions, corroborated by ' + code('CSI 14 t') + '. The Sixel report matched those dimensions with a '
-            + ownedGeometry.pixelCap + '-pixel cap per axis. The initial width crossed that cap, and the resized width fell below it. Returning to the original grid reproduced the original report.', '',
+        '', describeGeometry(ownedGeometry), '',
         '## Raster evidence', '',
         'These cases measure device reports. The [separate native Sixel raster qualification](../2026-11-16-static-images-qualification.md) records an unsupported raster-fidelity effect. Its pixel evidence and outcome are unchanged.', '',
         '## Reproduce', '',

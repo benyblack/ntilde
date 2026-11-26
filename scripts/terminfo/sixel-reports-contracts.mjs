@@ -42,9 +42,11 @@ export const sameScale = (a, b) => same(scaleOf(a), scaleOf(b));
 export function smallerGrid(cell) {
     const { viewRows: rows, viewCols: cols } = cell;
     const width = cell.cellWidthDip * cell.renderScaling, height = cell.cellHeightDip * cell.renderScaling;
+    // screenSnapshot requires 48 columns, which also keeps the pane nonce intact.
+    const minimumCols = 48;
     const target = { rows: Math.min(Math.floor(rows * 0.65), Math.floor(1900 / height)),
-        cols: Math.min(Math.floor(cols * 0.6), Math.floor(1900 / width)) };
-    requireSixel(target.rows >= 8 && target.cols > 45 && target.rows < rows && target.cols < cols, 'bounded smaller grid unavailable');
+        cols: Math.min(Math.max(minimumCols, Math.floor(cols * 0.6)), Math.floor(1900 / width)) };
+    requireSixel(target.rows >= 8 && target.cols >= minimumCols && target.rows < rows && target.cols < cols, 'bounded smaller grid unavailable');
     return target;
 }
 
