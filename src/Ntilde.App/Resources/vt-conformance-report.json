@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "ba141460222ecbd7884f96913fffce4d7b303d333be5de3f1325702c8c7ee6c6",
+  "matrixSha256": "158b5b8dabd3cbf85b1277edacee3ce921ee551b26525fca24477be49ba618be",
   "summary": {
     "totalRows": 158,
     "supportedCount": 75,
@@ -3946,10 +3946,10 @@
     },
     {
       "section": "8) OSC sequences",
-      "feature": "OSC 633 (A-D)",
+      "feature": "OSC 633 (A\u2013E, P/Cwd)",
       "status": "\u26A0 Partial",
       "specOrNotes": "",
-      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/Osc633LifecycleTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Controls/PaneCommandOutputCaptureTests.cs\u0060; Manual: \u0060docs/qa/terminfo/osc633.md\u0060",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/Osc633LifecycleTests.cs\u0060, \u0060tests/Ntilde.VT.Tests/Osc633MetadataTests.cs\u0060, \u0060tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs\u0060; Manual: \u0060docs/qa/terminfo/osc633.md\u0060",
       "evidenceKinds": [
         "manual",
         "unit"
@@ -3960,18 +3960,22 @@
           "exists": true
         },
         {
-          "path": "tests/Ntilde.App.Tests/Controls/PaneCommandOutputCaptureTests.cs",
+          "path": "tests/Ntilde.App.Tests/Controls/PaneParserWiringTests.cs",
           "exists": true
         },
         {
           "path": "tests/Ntilde.VT.Tests/Osc633LifecycleTests.cs",
           "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/Osc633MetadataTests.cs",
+          "exists": true
         }
       ],
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
-      "ownership": "Parser\u002BCommand Assist",
-      "knownDeviations": "A-D drive the same prompt, input-window, anchor and event state as OSC 133 A-D (one handler, not a copy). C carries no payload, so nothing after it is read as command text; D reads its exit code only, never 133\u0027s duration field. E (command line), P (properties) and every other record are ignored and have no lifecycle effect; a shell that emits both families would raise each edge twice. See the retained terminfo qualification under \u0060docs/qa/terminfo/\u0060 for the observed App effect.",
+      "ownership": "Parser\u002BApp",
+      "knownDeviations": "A\u2013D drive the same lifecycle as OSC 133, with a payload-free C and an optional exit code at D. E supplies unverified status metadata for the matching submission. P recognizes Cwd as shell-reported directory metadata. Other P properties are ignored.",
       "sourceLine": 246
     },
     {

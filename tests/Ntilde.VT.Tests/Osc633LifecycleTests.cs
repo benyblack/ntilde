@@ -7,7 +7,7 @@ namespace Ntilde.VT.Tests;
 /// documented semantics agree (prompt start, prompt end, pre-execution, execution finished), so
 /// the contract under test is twofold: the same state and events result, and the places where the
 /// 633 grammar differs from 133 (C has no payload, D has no duration) are not read as 133's.
-/// E, P and every other record are outside this scope and must have no lifecycle effect.
+/// Non-lifecycle records must never raise lifecycle events on their own.
 /// </summary>
 public class Osc633LifecycleTests
 {

@@ -361,7 +361,7 @@ namespace Ntilde.Controls
                 _shellLifecycleTracker?.HandlePromptReady();
                 _agentRegistration?.StatusMachine.NotifyPromptReady();
             };
-            Parser.OnCommandAccepted += commandText =>
+            Parser.OnCommandAcceptedWithMetadata += (commandText, reportedCommandLine) =>
             {
                 NoteShellIntegrationMarkObserved();
 
@@ -398,7 +398,8 @@ namespace Ntilde.Controls
                 // command-lifecycle signals keep their emission order relative to
                 // OnCommandStarted/OnPromptReady (the UI post below would let a
                 // snapshot briefly see AwaitingInput with CurrentCommand set).
-                _agentRegistration?.StatusMachine.NotifyCommandAccepted(commandText);
+                // E is status metadata; only the existing C payload can reach Command Assist.
+                _agentRegistration?.StatusMachine.NotifyCommandAccepted(commandText, reportedCommandLine);
                 _agentRegistration?.StatusMachine.NotifyCommandStarted();
                 _lastCommandStartedAtUtc = DateTimeOffset.UtcNow;
                 this.Dispatcher.Post(() =>

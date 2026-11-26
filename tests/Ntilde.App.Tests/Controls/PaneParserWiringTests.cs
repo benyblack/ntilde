@@ -106,7 +106,7 @@ public class PaneParserWiringTests
         (nameof(parser.OnWorkingDirectoryChanged), HandlerCount(parser.OnWorkingDirectoryChanged)),
         (nameof(parser.OnTitleChanged), HandlerCount(parser.OnTitleChanged)),
         (nameof(parser.OnPromptReady), HandlerCount(parser.OnPromptReady)),
-        (nameof(parser.OnCommandAccepted), HandlerCount(parser.OnCommandAccepted)),
+        (nameof(parser.OnCommandAcceptedWithMetadata), HandlerCount(parser.OnCommandAcceptedWithMetadata)),
         (nameof(parser.OnCommandStarted), HandlerCount(parser.OnCommandStarted)),
         (nameof(parser.OnCommandFinished), HandlerCount(parser.OnCommandFinished)),
         (nameof(parser.OnCommandFinishedDetailed), HandlerCount(parser.OnCommandFinishedDetailed)),
@@ -495,6 +495,41 @@ public class PaneParserWiringTests
         var snapshot = registration.StatusMachine.Snapshot();
         Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Running, snapshot.Kind);
         Assert.Equal("sleep 5", snapshot.CurrentCommand);
+    }
+
+    [AvaloniaFact]
+    public void Osc633_EReportsTheCurrentCycleAndPUsesTheExistingDirectoryPath()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        var parser = pane.Parser!;
+        var status = pane.AgentRegistrationForTesting!.StatusMachine;
+        parser.Process("\x1b]633;A\a$ \x1b]633;B\aGRID TEXT");
+        parser.Process("\x1b]633;E;report\\x20from\\x20E;unverified-token\a");
+
+        Assert.Null(status.Snapshot().CurrentCommand);
+        parser.Process("\x1b]633;C\a");
+        Assert.Equal("report from E", status.Snapshot().CurrentCommand);
+        Assert.Null(pane.LastRelevantCommandTextForTest);
+        Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Running, status.Snapshot().Kind);
+        parser.Process("\x1b]633;D;0\a");
+        Assert.Null(status.Snapshot().CurrentCommand);
+        parser.Process("\x1b]633;A\a$ \x1b]633;B\aGRID TEXT\x1b]633;C;ignored\a");
+        Assert.Null(status.Snapshot().CurrentCommand);
+        Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Running, status.Snapshot().Kind);
+
+        parser.Process("\x1b]7;file:///tmp/control\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("/tmp/control", pane.CurrentWorkingDirectory);
+        parser.Process("\x1b]633;P;Cwd=/tmp/report\\x3b1\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("/tmp/report;1", pane.CurrentWorkingDirectory);
+        parser.Process("\x1b]633;P;Cwd=/tmp/report-2\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("/tmp/report-2", pane.CurrentWorkingDirectory);
+        parser.Process("\x1b]633;P;Other=/tmp/ignored\a\x1b]633;P;Cwd=\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("/tmp/report-2", pane.CurrentWorkingDirectory);
     }
 
     private static string CreateTempAppRoot()
