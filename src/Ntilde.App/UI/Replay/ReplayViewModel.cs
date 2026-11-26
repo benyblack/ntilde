@@ -111,11 +111,11 @@ namespace Ntilde.UI.Replay
         }
 
         /// <summary>Admits embedded requirements before either snapshot or timestamp can enter the index.</summary>
-        private static ReplayEvent? ParseIndexEvent(string line)
+        private ReplayEvent? ParseIndexEvent(string line)
         {
             var ev = System.Text.Json.JsonSerializer.Deserialize(line, ReplayJsonContext.Default.ReplayEvent);
-            if (ev is { Type: "snapshot", Snapshot.State: { } state })
-                SixelRasterPolicy.RequireSupportedState(state);
+            if (ev is { Type: "snapshot", Snapshot: { } snapshot })
+                ReplayRunner.ValidateSnapshotSixelPolicy(snapshot, _header?.RequiredSixelRasterPolicy ?? 0);
             return ev;
         }
 

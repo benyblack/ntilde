@@ -12,7 +12,7 @@ namespace Ntilde.Tests.RenderTests;
 public sealed class NativeSixelAdmissionRenderTests
 {
     [Fact]
-    public void Internal_native_owner_materializes_through_the_real_offscreen_path_without_public_activation()
+    public void Budgeted_native_owner_materializes_through_the_real_offscreen_path()
     {
         var budget = new NativeSixelBudget();
         var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget, new SixelCellSize(10, 20));
@@ -33,10 +33,10 @@ public sealed class NativeSixelAdmissionRenderTests
             new SnapshotCaptureOptions { HideCursor = true, NativeRasterPresenter = new(1) }));
         Assert.True(owner.IsMaterialized);
         Assert.Equal((1, 16L * 18 * 4), budget.Usage);
-        Assert.Equal(SKColors.Red, pixels.GetPixel(19, 15)); // Internal native extent; public sessions remain legacy.
+        Assert.Equal(SKColors.Red, pixels.GetPixel(19, 15));
         Assert.NotEqual(SKColors.Red, pixels.GetPixel(21, 15));
         Assert.Equal(SixelRasterPolicy.PresenterNativeVersion, SixelRasterPolicy.EnabledVersion);
-        Assert.Throws<InvalidOperationException>(() => new TerminalBuffer(10, 6, 1));
+        Assert.Throws<InvalidOperationException>(() => new TerminalBuffer(10, 6, SixelRasterPolicy.EnabledVersion + 1));
         buffer.Clear(true);
         var retired = new List<object>();
         buffer.DrainRetiredImageHandles(retired, long.MaxValue);

@@ -480,7 +480,7 @@ namespace Ntilde.Replay
                     if (ev.Snapshot != null)
                     {
                         ValidateSnapshotCellLayout(ev.Snapshot);
-                        RequireSnapshotSixelPolicy(ev.Snapshot, sixelPolicy);
+                        ValidateSnapshotSixelPolicy(ev.Snapshot, sixelPolicy);
                         if (onSnapshotCallback != null)
                         {
                             await onSnapshotCallback(ev.Snapshot);
@@ -498,7 +498,7 @@ namespace Ntilde.Replay
         public static void ApplySnapshot(TerminalBuffer buffer, AnsiParser parser, ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
-            RequireSnapshotSixelPolicy(snapshot, buffer.SixelRasterPolicyVersion);
+            ValidateSnapshotSixelPolicy(snapshot, buffer.SixelRasterPolicyVersion);
             if (snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
             {
                 if (snapshot.State.Parser is null)
@@ -516,8 +516,10 @@ namespace Ntilde.Replay
             ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
         }
 
-        private static void RequireSnapshotSixelPolicy(ReplaySnapshot snapshot, int policy)
+        /// <summary>Checks that a checkpoint can be used by the selected recording policy.</summary>
+        public static void ValidateSnapshotSixelPolicy(ReplaySnapshot snapshot, int policy)
         {
+            if (snapshot.State is { } state) SixelRasterPolicy.RequireSupportedState(state);
             if ((snapshot.State?.RequiredSixelRasterPolicy ?? 0) != policy ||
                 (policy != 0 && snapshot.State?.Version != TerminalStateSnapshot.CurrentVersion))
                 throw new InvalidOperationException("The recording checkpoint has a different SIXEL raster policy.");
