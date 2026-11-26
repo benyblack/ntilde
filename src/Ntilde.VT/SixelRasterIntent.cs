@@ -13,6 +13,8 @@ public static class SixelRasterPolicy
     {
         ArgumentNullException.ThrowIfNull(state);
         RequireSupported(state.RequiredSixelRasterPolicy);
+        if (state.RequiredSixelRasterPolicy != 0 && state.Version != TerminalStateSnapshot.CurrentVersion)
+            throw new InvalidOperationException("Native SIXEL requires a complete supported state version.");
         if (state.NativeSixelCellMetrics is not null && state.RequiredSixelRasterPolicy != PresenterNativeVersion)
             throw new InvalidOperationException("Native SIXEL metrics require their native session policy.");
         if (state.Sixels is null) return;

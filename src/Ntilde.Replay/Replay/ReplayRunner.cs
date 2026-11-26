@@ -520,7 +520,7 @@ namespace Ntilde.Replay
         {
             if ((snapshot.State?.RequiredSixelRasterPolicy ?? 0) != policy ||
                 (policy != 0 && snapshot.State?.Version != TerminalStateSnapshot.CurrentVersion))
-                throw new InvalidDataException("The recording checkpoint has a different SIXEL raster policy.");
+                throw new InvalidOperationException("The recording checkpoint has a different SIXEL raster policy.");
         }
 
         private static void ApplyCellMetrics(AnsiParser parser, float? width, float? height)

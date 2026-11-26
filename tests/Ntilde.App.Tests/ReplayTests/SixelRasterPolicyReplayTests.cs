@@ -112,13 +112,59 @@ public sealed class SixelRasterPolicyReplayTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Both_recording_writers_replay_native_layout_with_ordered_metrics(bool flight)
+    {
+        int policy = SixelRasterPolicy.PresenterNativeVersion;
+        var initial = new RecordingCellMetrics(10, 20);
+        byte[] data = System.Text.Encoding.ASCII.GetBytes("\x1b[4;4H\x1bPq#1;2;100;0;0!16~\x1b\\");
+        string path = Path.GetTempFileName();
+        try
+        {
+            if (flight)
+            {
+                var ring = new FlightRecordingBuffer(4096, 20, 8, initialSixelCellSize: initial, sixelRasterPolicy: policy);
+                ring.RecordSixelCellSize(8, 20);
+                ring.RecordChunk(data, data.Length);
+                ring.ExportTo(path, "");
+            }
+            else
+            {
+                using var writer = new ReplayWriter(path, 20, 8, sixelCellSize: initial, sixelRasterPolicy: policy);
+                writer.RecordSixelCellSize(8, 20);
+                writer.RecordChunk(data, data.Length);
+            }
+
+            var buffer = new TerminalBuffer(20, 8, policy);
+            var parser = new AnsiParser(buffer);
+            await new ReplayRunner(path).RunAsync(
+                bytes => { parser.ProcessBytes(bytes); return Task.CompletedTask; },
+                onHeaderCallback: header =>
+                {
+                    Assert.Equal((3, policy), (header.Version, header.RequiredSixelRasterPolicy));
+                    ReplayRunner.ApplyHeaderMetrics(parser, header);
+                    Assert.Equal(new SixelCellSize(10, 20), parser.SixelCellSizeOverride);
+                    return Task.CompletedTask;
+                },
+                onSixelCellSizeCallback: (w, h) => { parser.SixelCellSizeOverride = new(w, h); return Task.CompletedTask; },
+                ct: TestContext.Current.CancellationToken);
+            var placement = Assert.Single(buffer.Images);
+            Assert.Equal((3, 3, 2, 1), (placement.CellX, placement.CellY, placement.CellWidth, placement.CellHeight));
+            Assert.Equal(new SixelRasterIntent(policy, 16, 6, new(0, 0, 16, 6)), placement.NativeRaster);
+            buffer.ClearImages();
+        }
+        finally { File.Delete(path); }
+    }
+
     [Fact]
     public async Task Required_native_policy_is_rejected_on_a_future_version_header()
     {
         string path = Path.GetTempFileName();
         try
         {
-            await File.WriteAllTextAsync(path, "{\"type\":\"ntilderec\",\"v\":3,\"required_sixel_raster\":1}\n{\"t\":0,\"type\":\"data\",\"d\":\"WA==\"}\n", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(path, "{\"type\":\"ntilderec\",\"v\":4,\"required_sixel_raster\":1}\n{\"t\":0,\"type\":\"data\",\"d\":\"WA==\"}\n", TestContext.Current.CancellationToken);
             int calls = 0;
             await Assert.ThrowsAsync<InvalidDataException>(() => new ReplayRunner(path).RunAsync(_ => { calls++; return Task.CompletedTask; }, ct: TestContext.Current.CancellationToken));
             Assert.Equal(0, calls);
