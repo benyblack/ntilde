@@ -5,9 +5,9 @@ export const id = 'input.modify-other-keys';
 const csi = '\x1b[';
 const hex = value => Buffer.from(value, 'ascii').toString('hex');
 const decModes = [1, 66, 1049];
-export function keyboardModes(level, write = '', modes = decModes) {
+export function keyboardModes(level, write = '', modes = decModes, kittyFlags = 0) {
     const query = modes.map(mode => csi + '?' + mode + '$p').join('') + csi + '?u' + csi + '?4m';
-    const reply = modes.map(mode => csi + '?' + mode + ';2$y').join('') + csi + '?0u' + csi + '>4;' + level + 'm';
+    const reply = modes.map(mode => csi + '?' + mode + ';2$y').join('') + csi + '?' + kittyFlags + 'u' + csi + '>4;' + level + 'm';
     return { writeHex: hex(write + query), replyHex: hex(reply) };
 }
 export const modePlan = {
@@ -46,12 +46,12 @@ function verifyChord(events, keys, start, end) {
             held.delete(event.name);
         }
         need(equal(event.pressed, [...held.values()].toSorted((a, b) => a - b))
-            && event.mask === (held.has('Control_L') ? 4 : 0), 'incorrect XTEST key or modifier state');
+            && event.mask === (Number(held.has('Control_L')) * 4 + Number(held.has('Shift_L'))), 'incorrect XTEST key or modifier state');
         start = event.at;
     }
 }
 
-export function verifyKeyboardStep(step, key, { chord, keys, tag, firstInput }, previous, identity) {
+export function verifyKeyboardStep(step, key, { chord, keys, tag, firstInput, fenceBytes }, previous, identity) {
     const native = step?.native;
     need(native?.xtest === true && native.serverPid === identity.serverPid && native.appPid === identity.appPid
         && native.windowId === identity.window.id && native.focus === identity.window.id
@@ -62,7 +62,7 @@ export function verifyKeyboardStep(step, key, { chord, keys, tag, firstInput }, 
     need(events?.length === 4 && equal(native.fence.keycodes, [events[0].code, events[2].code]), 'invalid keyboard delimiter');
     verifyChord(events.slice(0, 2), [tag[0]], native.fence.started, events[2].at);
     verifyChord(events.slice(2), [tag[1]], events[1].at, native.finished);
-    return actionWindow(step, previous, key, tag, firstInput ?? native.events[keys.length - 1].at);
+    return actionWindow(step, previous, key, tag, firstInput ?? native.events[keys.length - 1].at, fenceBytes);
 }
 
 const verifyStep = (step, phase, previous, identity) => verifyKeyboardStep(step, id + '/' + phase, plan[phase], previous, identity);

@@ -206,28 +206,31 @@ class XDisplay:
             if entries:
                 self.free(entries)
 
-    def chord(self, names, window_id, mapping=None):
+    def chord(self, names, window_id, mapping=None, hold=0):
         held, events = [], []
         if mapping is None:
             mapping = {name: self.keycode(self.display, self.keysym(name.encode("ascii"))) for name in names}
         demand(all(mapping.values()) and len(set(mapping.values())) == len(names), "bad chord key mapping")
+        transitions = [(True, name) for name in names]
+        transitions.extend((False, name) for name in reversed(names))
         try:
-            for down, order in ((True, names), (False, reversed(names))):
-                for name in order:
-                    code = mapping[name]
-                    demand(self.focus() == window_id, "XTEST keyboard focus changed")
-                    at = str(time.monotonic_ns())
-                    if down:
-                        held.append(code)
-                    demand(self.key(self.display, code, down, 0), "XTEST key dispatch failed")
-                    self.sync(self.display, 0)
-                    pressed, mask = self.pressed(), self.pointer()["mask"]
-                    expected = held if down else held[:-1]
-                    demand(pressed == sorted(expected), "XTEST held keys differ")
-                    if not down:
-                        held.pop()
-                    events.append({"name": name, "code": code, "down": down, "at": at,
-                                   "pressed": pressed, "mask": mask})
+            for down, name in transitions:
+                if hold and not down and len(held) == len(names):
+                    time.sleep(hold)
+                code = mapping[name]
+                demand(self.focus() == window_id, "XTEST keyboard focus changed")
+                at = str(time.monotonic_ns())
+                if down:
+                    held.append(code)
+                demand(self.key(self.display, code, down, 0), "XTEST key dispatch failed")
+                self.sync(self.display, 0)
+                pressed, mask = self.pressed(), self.pointer()["mask"]
+                expected = held if down else held[:-1]
+                demand(pressed == sorted(expected), "XTEST held keys differ")
+                if not down:
+                    held.pop()
+                events.append({"name": name, "code": code, "down": down, "at": at,
+                               "pressed": pressed, "mask": mask})
         finally:
             self.release_held_keys(held)
         return events
@@ -241,15 +244,22 @@ class XDisplay:
 
     def keyboard_action(self, command, window_id):
         request, tag = command["request"], command["fence"]
-        permitted = {"a": (["a"], ("zb", "zf", "zg", "zh")), "ctrl+i": (["Control_L", "i"], ("zc",)),
+        permitted = {"a": (["a"], ("zb", "zf", "zg", "zh", "zl", "zp", "zq")), "ctrl+i": (["Control_L", "i"], ("zc", "zm", "zr")),
                      "KP_Add": (["KP_Add"], ("zd", "ze")),
+                     "escape-hold": (["Escape"], ("zn",)),
+                     "ctrl+shift+a": (["Control_L", "Shift_L", "a"], ("zo",)),
                      "ctrl+v": (["Control_L", "v"], ("zi", "zj", "zk"))}
         names, tags = permitted[request["chord"]]
         demand(tag in tags and self.pressed() == [] and self.pointer()["mask"] == 0,
                "unexpected keyboard fence or initial state")
         started = str(time.monotonic_ns())
         mapping = self.keypad_mapping() if names == ["KP_Add"] else None
-        events = self.chord(names, window_id, {mapping["name"]: mapping["code"]} if mapping else None)
+        hold = 0.9 if request["chord"] == "escape-hold" else 0
+        events = self.chord(names, window_id, {mapping["name"]: mapping["code"]} if mapping else None, hold)
+        if request["chord"] == "ctrl+shift+a":
+            code = events[2]["code"]
+            mapping = {"code": code, "unmodifiedKeysym": self.effective_keysym(code, 0),
+                       "shiftedKeysym": self.effective_keysym(code, 1)}
         if request["chord"] == "ctrl+v":
             # The App reads the X11 selection asynchronously. Leave its whole
             # delivery window before injecting the in-band PTY delimiter.

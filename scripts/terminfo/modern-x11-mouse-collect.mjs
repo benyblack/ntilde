@@ -363,13 +363,19 @@ async function restoreClipboardPane(run) {
     return replay;
 }
 
+function keyboardScope(keypad, richKitty) {
+    if (richKitty) return import('./rich-x11-kitty-keyboard.mjs');
+    return keypad ? import('./modern-x11-keypad.mjs') : import('./modern-x11-keyboard.mjs');
+}
+
 async function observeRoutedInput(run) {
     const { record } = run;
     if (run.keyboard === '--focus-tracking') return observeFocus(run);
     if (run.keyboard) {
         const keypad = run.keyboard === '--application-keypad';
-        const keyboard = keypad ? await import('./modern-x11-keypad.mjs') : await import('./modern-x11-keyboard.mjs');
-        const readModes = key => modes(run, key, keyboard.modePlan, keypad && key === 'restore');
+        const richKitty = run.keyboard === '--rich-kitty-keyboard';
+        const keyboard = await keyboardScope(keypad, richKitty);
+        const readModes = key => modes(run, key, keyboard.modePlan, (keypad || richKitty) && key === 'restore');
         await keyboard.observeKeyboard(record, readModes, (step, request, key, fence) => recordAction(run, step, request, key, fence));
         return keyboard.replayKeyboard;
     }

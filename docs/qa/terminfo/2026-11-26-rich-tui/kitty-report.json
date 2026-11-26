@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "controls": [
+    {
+      "name": "plain-a",
+      "expected": "61",
+      "childHex": "61"
+    },
+    {
+      "name": "legacy-ctrl-i",
+      "expected": "09",
+      "childHex": "09"
+    }
+  ],
+  "rows": [
+    {
+      "id": "extensions.kitty-keyboard.disambiguate",
+      "mask": 1,
+      "chord": "ctrl+i",
+      "childHex": "1b5b3130353b3575",
+      "effect": "supported",
+      "repeats": null,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f31751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-events",
+      "mask": 3,
+      "chord": "escape-hold",
+      "childHex": "1b5b3237751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a3375",
+      "effect": "supported",
+      "repeats": 6,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f33751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-alternate",
+      "mask": 5,
+      "chord": "ctrl+shift+a",
+      "childHex": "1b5b39373a36353b3675",
+      "effect": "supported",
+      "repeats": null,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f35751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-all-keys",
+      "mask": 9,
+      "chord": "a",
+      "childHex": "1b5b393775",
+      "effect": "supported",
+      "repeats": null,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f39751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-text",
+      "mask": 25,
+      "chord": "a",
+      "childHex": "1b5b39373b313b393775",
+      "effect": "supported",
+      "repeats": null,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f3235751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    }
+  ],
+  "measurement": {
+    "manifestSha256": "df18fe95b651d4e86bc9f7ee1976294f9702fee6b8261819b64a128d59649e2c",
+    "schemaVersion": 1,
+    "runId": "280c46035958c01f0e6f1317b2733c6c",
+    "appRevision": "caea956de1f8b391892f61f89ba6fbf6c462cc77",
+    "scriptsRevision": "fc73fe7ae8ab701f36aff06a8f1fdd9a8907eec5",
+    "appSourceArchiveSha256": "24c892fcbe3889202016f8ff15b0fc284f0935017590fb5cfd3ab93b526dd0f6",
+    "dotnetSdk": "10.0.403",
+    "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
+    "archives": {
+      "owned-run.zip": "d4a15db38f5a5b2bfe1eb2f906b4472c1b3df6a44ea89bad4a4ecb08dd53830e"
+    },
+    "startedAt": "2026-11-26T08:22:47.015Z",
+    "fixtureRemovedAt": "2026-11-26T08:22:51.298Z",
+    "leaseReleasedAt": "2026-11-26T08:22:51.299Z",
+    "sha256": "ac17959b7180c86282da4aa659c726648af8849d4c746be93ca25dfd55b8d1b2",
+    "source": {
+      "policy": "owned-rich-x11-kitty-keyboard-v1",
+      "sha256": "f390480bcc7d932d53fc3f47fe76d3c707c17c5f50b5114a5b1bbed098383419"
+    },
+    "nodeVersion": "v24.22.2",
+    "appVersion": "0.14.0",
+    "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
+    "assemblySha256": "5e983d054f59990ed2d5aeaabcebb7e085e25f144c333ed55863250321259a5c",
+    "xtest": [
+      2,
+      2
+    ],
+    "appPid": 30,
+    "childPid": 83,
+    "paneId": "d90c0442-4e2d-4251-894e-5a28effd1099",
+    "tty": "/dev/pts/0",
+    "geometry": {
+      "rows": 40,
+      "columns": 149
+    }
+  }
+}
