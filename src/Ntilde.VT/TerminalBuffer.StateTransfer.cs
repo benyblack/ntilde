@@ -349,19 +349,20 @@ namespace Ntilde.VT
             for (int i = 0; i < images.Count; i++)
             {
                 var image = images[i];
-                if (!image.IsAltScreenImage && expiredRows > 0)
-                {
-                    image.CellY -= expiredRows;
-                    if (DiscardImageBeforeOrigin(image))
-                    {
-                        if (image.ImageHandle is INativeSixelImage native) RetireUnplacedNativeSixel(native);
-                        else image.SixelSource?.Dispose();
-                        continue;
-                    }
-                }
+                if (DiscardExpiredNativePlacement(image, expiredRows)) continue;
                 if (states[i].Order is int order) placementOrder.Add(image, order);
                 if (!TryAddSixelPlacement(image)) throw new InvalidOperationException("Staged native placement lost its admission.");
             }
+        }
+
+        private bool DiscardExpiredNativePlacement(TerminalImage image, int expiredRows)
+        {
+            if (image.IsAltScreenImage || expiredRows <= 0) return false;
+            image.CellY -= expiredRows;
+            if (!DiscardImageBeforeOrigin(image)) return false;
+            if (image.ImageHandle is INativeSixelImage native) RetireUnplacedNativeSixel(native);
+            else image.SixelSource?.Dispose();
+            return true;
         }
 
         // ── screens ──────────────────────────────────────────────────────────────
