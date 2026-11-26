@@ -36,6 +36,20 @@ function checkSeal(attempt, sample) {
     'the last fenced exchange did not seal');
 }
 
+function checkExchange(frame, step, screen, used) {
+    if (!step.writes) {
+        requireMetadata(!frame.writes && !frame.query && !frame.sample, 'initial frame unexpectedly carried PTY traffic');
+        return;
+    }
+
+    requireMetadata(same(frame.writes, step.writes) && frame.query === step.query, 'PTY write schedule differs');
+    validateInputBytes(frame.sample, null, used, false);
+    const reply = Buffer.from(frame.sample.hex, 'hex').toString('latin1');
+    // The terminal callbacks receive the raw CPR, corroborated by the independent App read.
+    const expected = step.query ? '\x1b[' + (screen.cursorRow + 1) + ';' + (screen.cursorCol + 1) + 'R' : '';
+    requireMetadata(reply === expected, 'unexpected PTY reply or CPR disagrees with App cursor');
+}
+
 function checkStage(frame, step, initial, prior, runId, used) {
     requireMetadata(frame?.stage === step.stage && frame.paneId === initial.paneId, 'unexpected stage or pane');
     validateImageOwnership(frame.ownership, initial.ownership, initial.before.screen);
@@ -63,15 +77,7 @@ function checkStage(frame, step, initial, prior, runId, used) {
         requireMetadata(metadata.workingDirectory === baseline && status.confidence === 'precise'
             && ['awaitingInput', 'idle'].includes(status.status), 'prepared directory or prompt baseline did not verify');
     }
-    if (step.writes) {
-        requireMetadata(same(frame.writes, step.writes) && frame.query === step.query, 'PTY write schedule differs');
-        validateInputBytes(frame.sample, null, used, false);
-        const reply = Buffer.from(frame.sample.hex, 'hex').toString('latin1');
-        if (step.query) {
-            // Pin the exact CPR, and cross-check the coordinates against the independent App read.
-            requireMetadata(reply === '\x1b[' + (screen.cursorRow + 1) + ';' + (screen.cursorCol + 1) + 'R', 'CPR and App cursor disagree');
-        } else requireMetadata(reply === '', 'unexpected reply to a metadata write');
-    } else requireMetadata(!frame.writes && !frame.query && !frame.sample, 'initial frame unexpectedly carried PTY traffic');
+    checkExchange(frame, step, screen, used);
     return before;
 }
 
@@ -81,13 +87,14 @@ export class Collection {
         this.plan = planFor(run.runId);
         this.frames = [];
         this.used = new Set();
-        const options = { appData: run.appData, ownerPid: run.app.pid, profileName: run.profileName,
-            includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true };
-        this.before = new OwnedCellObserver(options);
-        this.after = new OwnedCellObserver(options);
+        this.observer = new OwnedCellObserver({
+            appData: run.appData, ownerPid: run.app.pid, profileName: run.profileName,
+            includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true,
+        });
     }
 
-    async capture(observer, budget) {
+    async capture(budget) {
+        const { observer } = this;
         const screen = await observer.capture(budget);
         const paneId = observer.paneId;
         const metadata = await observer.request('readPaneMetadata', { paneId }, budget);
@@ -102,11 +109,11 @@ export class Collection {
         try {
             const frame = { stage: step.stage, ownership };
             if (step.stage === 'seal') {
-                Object.assign(frame, { paneId: this.before.paneId, attempts: request.attempts });
+                Object.assign(frame, { paneId: this.observer.paneId, attempts: request.attempts });
             } else {
-                frame.before = await this.capture(this.before, budget);
-                frame.paneId = this.after.paneId ??= this.before.paneId;
-                frame.after = await this.capture(this.after, budget);
+                frame.before = await this.capture(budget);
+                frame.paneId = this.observer.paneId;
+                frame.after = await this.capture(budget);
                 frame.screenSha256 = snapshotHash(frame.before.screen);
                 Object.assign(frame, { writes: request.writes, query: request.query, sample: request.sample });
             }

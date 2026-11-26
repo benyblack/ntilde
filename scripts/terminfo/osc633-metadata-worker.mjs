@@ -27,26 +27,32 @@ async function collect(runId, send) {
     } finally { capture.dispose(); }
 }
 
-async function run(config) {
+function describeFailure(error) {
+    if (error instanceof AggregateError) {
+        return error.message + ': ' + error.errors.map(describeFailure).join(' / ');
+    }
+    return error.message;
+}
+
+async function run(configPath) {
+    assertPrivateFile(configPath);
+    const config = JSON.parse(readFileSync(configPath, 'utf8'));
     const { tabTty: tty, originalTerminalState: original } = await verifyNtildeOutput(config, process.stdout);
     const request = (kind, details) => requestOwner(config, kind, { ...details, tty });
+    const collectMetadata = async () => {
+        await request('raw-output');
+        await collect(config.runId, (stage, value) => request(prefix + stage, value));
+    };
     try {
-        await withOwnedOutput({ tty, original, restoreInput: () => {} }, async () => {
-            await request('raw-output');
-            await collect(config.runId, (stage, value) => request(prefix + stage, value));
-        });
+        await withOwnedOutput({ tty, original, restoreInput: () => {} }, collectMetadata);
         await request('done');
     } catch (error) {
-        const message = error instanceof AggregateError ? error.errors.map(item => item.message).join('; ') : error.message;
-        await request('failed', { error: message }).catch(() => {});
+        await request('failed', { error: describeFailure(error) }).catch(() => {});
         throw error;
     }
 }
 
-try {
-    assertPrivateFile(process.argv[2]);
-    await run(JSON.parse(readFileSync(process.argv[2], 'utf8')));
-} catch (error) {
-    console.error(error.message);
+await run(process.argv[2]).catch(error => {
+    console.error(describeFailure(error));
     process.exitCode = 1;
-}
+});

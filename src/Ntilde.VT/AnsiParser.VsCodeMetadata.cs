@@ -66,9 +66,10 @@ namespace Ntilde.VT
         private static string? DecodeVsCodeText(ReadOnlySpan<char> encoded)
         {
             var decoded = new StringBuilder(encoded.Length);
-            for (int i = 0; i < encoded.Length; i++)
+            while (!encoded.IsEmpty)
             {
-                char c = encoded[i];
+                char c = encoded[0];
+                encoded = encoded[1..];
                 if (c != '\\')
                 {
                     if (c < ' ')
@@ -80,27 +81,28 @@ namespace Ntilde.VT
                     continue;
                 }
 
-                if (++i == encoded.Length)
+                if (encoded.IsEmpty)
                 {
                     return null;
                 }
 
-                char escape = encoded[i];
+                char escape = encoded[0];
                 if (escape == '\\')
                 {
                     decoded.Append(escape);
+                    encoded = encoded[1..];
                     continue;
                 }
 
-                if (escape is not ('x' or 'X') || i + 2 >= encoded.Length
-                    || !byte.TryParse(encoded.Slice(i + 1, 2), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out byte ascii)
+                if (escape is not ('x' or 'X') || encoded.Length < 3
+                    || !byte.TryParse(encoded.Slice(1, 2), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out byte ascii)
                     || ascii > 0x7F)
                 {
                     return null;
                 }
 
                 decoded.Append((char)ascii);
-                i += 2;
+                encoded = encoded[3..];
             }
 
             return decoded.ToString();

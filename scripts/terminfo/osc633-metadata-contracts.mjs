@@ -58,9 +58,9 @@ export function planFor(runId) {
         ...pinned('p', caseIds[1]),
         write('p-baseline', cwd(baseline)),
         write('p-osc7-control', cwd(control)),
-        write('p-first', mark('P;Cwd=' + first.replace(';', '\\x3b'))),
+        write('p-first', mark('P;Cwd=' + first.replace(';', String.raw`\x3b`))),
         write('p-second', '\x1b]633;P;Cwd=' + second + '\x1b\\'),
-        write('p-malformed', mark('P;Cwd=/bad\\xGG')),
+        write('p-malformed', mark(String.raw`P;Cwd=/bad\xGG`)),
         write('p-unknown', mark('P;IsWindows=True')),
         write('finish', restore(runId)),
         { stage: 'seal' },
@@ -76,7 +76,10 @@ export function expectedCwd(runId, stage) {
     })[stage];
 }
 
-const outcome = (controls, target) => controls ? (target ? 'supported' : 'unsupported') : 'inconclusive';
+function outcome(controls, target) {
+    if (!controls) return 'inconclusive';
+    return target ? 'supported' : 'unsupported';
+}
 const row = (phase, state) => ({ phase, command: state.status.currentCommand, status: state.status.status,
     accepting: state.metadata.buffer.acceptingCommandInput, cwd: state.metadata.workingDirectory });
 
@@ -85,12 +88,14 @@ export function deriveEffects(runId, frames) {
     const read = stage => observed[stage];
     const idle = phase => ['awaitingInput', 'idle'].includes(read(phase).status) && read(phase).command === null;
     const submitted = phase => read(phase).status === 'running' && read(phase).accepting === false;
-    const eControls = idle('e-input') && read('e-input').accepting && submitted('e-running')
+    const gridText = stage => frames.find(frame => frame.stage === stage).before.screen.lines[0];
+    const eControls = ['e-input', 'e-running', 'e-no-report'].every(stage => gridText(stage) === 'grid command')
+        && idle('e-input') && read('e-input').accepting && submitted('e-running')
         && submitted('e-no-report') && idle('e-finished') && idle('e-no-report-finished')
         && submitted('e-133-control') && read('e-133-control').command === 'echo control';
     const eStayed = same(frames.find(frame => frame.stage === 'e-input').before.screen,
         frames.find(frame => frame.stage === 'e-reported').before.screen);
-    const expectedCommand = 'echo reported;\\part';
+    const expectedCommand = String.raw`echo reported;\part`;
     const eMatched = eStayed && idle('e-reported') && read('e-reported').accepting
         && read('e-running').command === expectedCommand && read('e-no-report').command === null;
     const pControls = ['p-baseline', 'p-osc7-control'].every(stage => read(stage).cwd === expectedCwd(runId, stage))
