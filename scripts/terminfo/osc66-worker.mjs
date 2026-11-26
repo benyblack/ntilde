@@ -10,10 +10,10 @@ async function record(fence, send, step) {
     await send(step.stage, { ...captured, requestBytes: step.bytes + (step.query ? cursorReportQuery : '') + da });
 }
 
-async function collect(config, tty, fence) {
-    const send = (stage, value = {}) => requestOwner(config, prefix + stage, { tty, ...value });
+async function collect(runId, request, fence) {
+    const send = (stage, value) => request(prefix + stage, value);
     const { cursorVisible } = await send('start');
-    const plan = planFor(config.runId, cursorVisible), finish = plan.at(-1);
+    const plan = planFor(runId, cursorVisible), finish = plan.at(-1);
     let failure;
     try {
         for (const step of plan.slice(1, -1)) {
@@ -34,17 +34,18 @@ async function collect(config, tty, fence) {
 }
 
 async function run(config) {
-    const binding = await verifyNtildeOutput(config, process.stdout);
-    const tty = binding.tabTty, fence = terminalFence(process.stdin, process.stdout);
+    const { tabTty: tty, originalTerminalState: original } = await verifyNtildeOutput(config, process.stdout);
+    const request = (kind, details) => requestOwner(config, kind, { ...details, tty });
+    const fence = terminalFence(process.stdin, process.stdout);
     try {
-        await withOwnedOutput({ tty, original: binding.originalTerminalState, restoreInput: fence.dispose }, async () => {
-            await requestOwner(config, 'raw-output', { tty });
-            await collect(config, tty, fence);
+        await withOwnedOutput({ tty, original, restoreInput: fence.dispose }, async () => {
+            await request('raw-output');
+            await collect(config.runId, request, fence);
         });
-        await requestOwner(config, 'done', { tty });
+        await request('done');
     } catch (error) {
         const message = error instanceof AggregateError ? error.errors.map(item => item.message).join('; ') : error.message;
-        await requestOwner(config, 'failed', { tty, error: message }).catch(() => {});
+        await request('failed', { error: message }).catch(() => {});
         throw error;
     }
 }

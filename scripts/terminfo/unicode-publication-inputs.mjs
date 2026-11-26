@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -36,6 +37,22 @@ export function leaseReleasedAt(directory, runId, require) {
             && Number.isFinite(Date.parse(record.at)) && (!index || Date.parse(record.at) >= Date.parse(records[index - 1].at)))
         && records[0].entrypoint === 'terminfo-owned.mjs' && records[2].by === 'marker-scan', 'desktop lease release did not verify');
     return records.at(-1).at;
+}
+
+/** Describe a focused run only after its receipt, binary identities and lease agree. */
+export function focusedMeasurement(directory, manifest, context, receipt, screen, render = {}) {
+    const m = manifest.measurement;
+    assert.equal(m.runId, context.runId);
+    assert.equal(m.sourcePolicy, context.sourceSnapshotPolicy);
+    assert.equal(m.receiptSchema, receipt.schemaVersion);
+    assert.ok(context.appVersion.endsWith('+' + m.appRevision));
+    assert.ok([context.executableSha256, context.assemblySha256].every(hash => /^[a-f\d]{64}$/.test(hash)));
+    return {
+        ...m, version: context.appVersion, nodeVersion: context.nodeVersion, startedAt: context.startedAt,
+        releasedAt: leaseReleasedAt(directory, context.runId, assert.ok), geometry: { rows: screen.rows, cols: screen.cols },
+        ...render, executableSha256: context.executableSha256, assemblySha256: context.assemblySha256,
+        sourceSnapshotManifestSha256: context.sourceSnapshotManifestSha256, archiveSha256: manifest.archives['owned-run.zip'],
+    };
 }
 
 export function writeUnicodeReport(directory, report, markdown, check, require) {

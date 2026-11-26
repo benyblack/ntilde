@@ -19,6 +19,18 @@ const isBarrier = value => typeof value === 'string' && value.length <= 128 && /
 const pixelFile = (index, side) => pixelDir + '/frame-' + String(index * 2 + side).padStart(3, '0') + '.png';
 const write = (output, name, value) => writeFileSync(join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
 
+function verifyStageScreen(screen, sha256, step, first, runId) {
+    const main = ['start', 'finish'].includes(step.stage);
+    requireOsc66(screen.bufferState.alternateScreen === !main && !screen.bufferState.originMode && !screen.bufferState.insertMode,
+        'wrong screen or origin/insert mode');
+    if (step.stage === 'start') requireOsc66(pristineImageBaseline(screen), 'main screen did not start pristine');
+    if (step.stage === 'finish') requireOsc66(sha256 === first.sha256, 'main screen did not restore');
+    if (step.stage === 'bind') requireOsc66(screen.lines[0] === nonce(runId) && screen.cursorRow === 0
+        && screen.cursorCol === nonce(runId).length, 'App pane nonce did not bind');
+    if (step.pixel && !main) requireOsc66(!screen.cursorVisible && screen.lines[4][2] === '|'
+        && screen.lines[4].endsWith('KEEP') && screen.lines[6] === '    KEEP', 'visible fixture guards or cursor changed');
+}
+
 function verifyFrame(frame, step, first, runId) {
     requireOsc66(frame?.stage === step.stage && frame.paneId === first.paneId, 'stage or pane differs');
     const screen = screenSnapshot(frame.screen, false, true, true, true, true);
@@ -28,15 +40,7 @@ function verifyFrame(frame, step, first, runId) {
     const query = step.query ? cursorReportQuery : '';
     const expected = step.bytes === null ? null : step.bytes + query + da;
     requireOsc66(frame.requestBytes === expected && (expected === null ? frame.barrier === null : isBarrier(frame.barrier)), 'write or fence differs');
-    const main = ['start', 'finish'].includes(step.stage);
-    requireOsc66(screen.bufferState.alternateScreen === !main && !screen.bufferState.originMode && !screen.bufferState.insertMode,
-        'wrong screen or origin/insert mode');
-    if (step.stage === 'start') requireOsc66(pristineImageBaseline(screen), 'main screen did not start pristine');
-    if (step.stage === 'finish') requireOsc66(frame.sha256 === first.sha256, 'main screen did not restore');
-    if (step.stage === 'bind') requireOsc66(screen.lines[0] === nonce(runId) && screen.cursorRow === 0
-        && screen.cursorCol === nonce(runId).length, 'App pane nonce did not bind');
-    if (step.pixel && !main) requireOsc66(!screen.cursorVisible && screen.lines[4][2] === '|'
-        && screen.lines[4].endsWith('KEEP') && screen.lines[6] === '    KEEP', 'visible fixture guards or cursor changed');
+    verifyStageScreen(screen, frame.sha256, step, first, runId);
     if (!step.query) return null;
     const { reply } = validateCursorReport(frame);
     requireOsc66(reply === null || (reply.row === screen.cursorRow + 1 && reply.col === screen.cursorCol + 1), 'CPR disagrees with physical cursor');

@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { deriveRun } from './osc66-owned.mjs';
 import { featureId, pinnedOsc66, replayOsc66, rederiveHistoricalOsc66 } from './osc66-pinned.mjs';
 import { assertRetainedSourceClosure, capturedOsc66SourceFiles, capturedOsc66SourcePolicy } from './owned-sources.mjs';
-import { digest, leaseReleasedAt, pinnedBundle, readJson, readManifest, withOwnedArchive, writeUnicodeReport } from './unicode-publication-inputs.mjs';
+import { digest, focusedMeasurement, pinnedBundle, readJson, readManifest, withOwnedArchive, writeUnicodeReport } from './unicode-publication-inputs.mjs';
 
 export const publication = fileURLToPath(new URL('../../docs/qa/terminfo/2026-11-26-rich-osc66/', import.meta.url));
 const manifestHash = '579083ed116c6e3c8c34fa244776357aacf7addc79a1c6e0fe02cedbb3d28700';
@@ -38,19 +38,7 @@ function readRetainedMeasurement(directory, manifest) {
     assert.deepEqual(report, readJson(directory, 'osc66-report.json'));
     assert.deepEqual(receipt, readJson(directory, 'osc66-receipt.json'));
     verifySources(directory, context);
-    const m = manifest.measurement;
-    assert.equal(m.runId, context.runId);
-    assert.equal(m.sourcePolicy, context.sourceSnapshotPolicy);
-    assert.equal(m.receiptSchema, receipt.schemaVersion);
-    assert.ok(context.appVersion.endsWith('+' + m.appRevision));
-    assert.ok([context.executableSha256, context.assemblySha256].every(hash => /^[a-f\d]{64}$/.test(hash)));
-    const { rows, cols } = frames[0].screen;
-    return { report, measurement: {
-        ...m, version: context.appVersion, nodeVersion: context.nodeVersion, startedAt: context.startedAt,
-        releasedAt: leaseReleasedAt(directory, context.runId, assert.ok), geometry: { rows, cols },
-        executableSha256: context.executableSha256, assemblySha256: context.assemblySha256,
-        sourceSnapshotManifestSha256: context.sourceSnapshotManifestSha256, archiveSha256: manifest.archives['owned-run.zip'],
-    } };
+    return { report, measurement: focusedMeasurement(directory, manifest, context, receipt, frames[0].screen) };
 }
 
 export async function buildPublication() {
