@@ -90,6 +90,9 @@ export const benchmarkSuites = Object.freeze([
     // publications and binds the primary (OSC 633) carrier receipt at the suite level, the OSC 133 carrier per case.
     // `carrierSuites` makes its claims transitive: a carrier whose own rederivation fails lends no verdict to them.
     { ...directory('shell-integration-aggregates', '2026-11-16-shell-integration-aggregates', '2026-11-16-shell-integration-aggregates-qualification.md'), module: 'shell-integration-aggregates-contracts.mjs', exports: ['aggregatesSuiteId', 'aggregatesVersion', 'aggregateCaseIds'], carrierSuites: ['osc133', 'osc633'], receiptSuiteId: 'ntilde-owned-osc633-graded-v1', test: 'shell-integration-aggregates-publication.test.mjs' },
+    { ...directory('osc633-vscode-reassessment', '2026-11-26-osc633-aggregate-reassessment', '2026-11-26-osc633-aggregate-reassessment/report.md'),
+        module: 'osc633-aggregate-reassessment.mjs', exports: ['suiteId', 'contractsVersion', 'caseIds'],
+        carrierSuites: ['osc633', 'osc633-metadata'], supersedesInconclusive: 'shell-integration-aggregates', test: 'osc633-aggregate-reassessment-publication.test.mjs' },
     // OSC 5/105 qualification on the integrated App: the registered run uses receipt schema 72 and source policy v65; earlier publications remain retained.
     { ...directory('osc5', '2026-11-17-osc5-special-colors-integrated', '2026-11-17-osc5-special-colors-qualification.md'), module: 'osc5-inventory.mjs', exports: ['osc5SuiteId', 'osc5ContractsVersion', 'osc5CaseIds'], test: 'osc5-publication.test.mjs' },
     // rxvt OSC 720 (view up / erase saved lines): pinned terminal path preserved inconclusive by design, the replayed termless function and one effect contract, graded from the App view position, history, cursor and screen with wheel and ED 3 controls.
@@ -419,6 +422,7 @@ const claimOf = (suite, report, item, rederivationStatus, carriers = null) => {
         suite: suite.suite,
         status: allowed ? 'qualified' : 'declared-not-rederived',
         ...(carriers ? { carrierSuites: carriers.names } : {}),
+        ...(suite.supersedesInconclusive ? { supersedesInconclusive: suite.supersedesInconclusive } : {}),
         pinned: { verdict: pinned, note: item.pinned?.note ?? item.pinned?.observation?.note ?? null },
         effect: { verdict: effect },
         reportedConclusion: { outcome: item.conclusion?.outcome ?? null, grading: item.conclusion?.grading ?? null },
@@ -429,7 +433,11 @@ const claimOf = (suite, report, item, rederivationStatus, carriers = null) => {
 };
 
 const rollup = claims => {
-    const effectVerdicts = [...new Set(claims.map(claim => claim.effect.verdict))];
+    // A qualified reassessment can close a named inconclusive claim. Keep both claim records and
+    // leave the original in force if the reassessment or one of its carriers fails rederivation.
+    const superseded = new Set(claims.filter(claim => claim.status === 'qualified').map(claim => claim.supersedesInconclusive));
+    const active = claims.filter(claim => !superseded.has(claim.suite) && (!claim.supersedesInconclusive || claim.status === 'qualified'));
+    const effectVerdicts = [...new Set((active.length ? active : claims).map(claim => claim.effect.verdict))];
     return {
         pinned: { best: claims.some(claim => claim.pinned.verdict === 'supported') ? 'supported' : claims[0].pinned.verdict, byClaim: claims.map(claim => ({ suite: claim.suite, verdict: claim.pinned.verdict })) },
         effect: { verdict: effectVerdicts.length === 1 ? effectVerdicts[0] : 'mixed', byClaim: claims.map(claim => ({ suite: claim.suite, verdict: claim.effect.verdict })) },
@@ -556,6 +564,12 @@ function claimProblems(inventory, row, claim, suiteNames, seenClaims) {
     const key = `${row.id}\u0000${claim.suite}`;
     if (seenClaims.has(key)) problems.push(`${row.id}: duplicate claim for suite ${claim.suite}.`);
     seenClaims.add(key);
+    if (claim.supersedesInconclusive) {
+        const previous = row.claims.find(item => item.suite === claim.supersedesInconclusive);
+        if (!previous || previous === claim || previous.effect.verdict !== 'inconclusive' || claim.effect.verdict === 'inconclusive') {
+            problems.push(`${row.id}: an effect reassessment must close a different inconclusive claim of the same case.`);
+        }
+    }
     if (!suiteNames.has(claim.suite)) problems.push(`${row.id}: claim names unknown suite ${claim.suite}.`);
     if (!verdicts.includes(claim.pinned.verdict) || !verdicts.includes(claim.effect.verdict)) problems.push(`${row.id}: unknown verdict.`);
     for (const layer of claim.measuredLayers) if (!measuredLayerNames.includes(layer)) problems.push(`${row.id}: unknown measured layer ${layer}.`);
@@ -659,6 +673,7 @@ function totalsSection(inventory) {
         `| Effect supported, pinned verdict inconclusive | ${totals.effectSupportedPinnedInconclusiveIds.length} |`,
         `| Effect unsupported, pinned verdict inconclusive | ${unsupportedIds.length} |`, '',
         'The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim\'s pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.', '',
+        'A qualified reassessment can close an explicitly named inconclusive effect. Both claims remain in the inventory, with the current effect derived from the qualified reassessment.', '',
         'An unsupported effect verdict is a measured result: the id is counted among the qualified ids and claims (its evidence was rederived), is **not** counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement, and never lowers a stock grade.', '',
         `Effect supported but pinned inconclusive: ${codeList(totals.effectSupportedPinnedInconclusiveIds)}.`, '',
         `Effect unsupported, pinned inconclusive (by design): ${codeList(unsupportedIds)}.`, '',
@@ -680,7 +695,7 @@ function suitesSection(inventory) {
         '| Suite | Cases | Contracts | Rederivation | Receipt | App revision | Policy | Evidence files | Evidence SHA-256 |', '|---|---:|---:|---|---:|---|---|---:|---|'];
     for (const suite of inventory.suites) {
         const policy = suite.run.sourceSnapshotPolicy?.replace('readonly-owned-source-graph-', '') ?? 'n/a';
-        lines.push(`| ${code(suite.suite)} | ${suite.caseCount} | v${suite.contractsVersion} | ${suite.rederivation.status} | ${suite.receipt.schemaVersion ?? 'n/a'} | ${code(short(suite.run.appRevision, 8))} | ${policy} | ${suite.evidence.files} | ${code(short(suite.evidence.sha256))} |`);
+        lines.push(`| ${code(suite.suite)} | ${suite.caseCount} | v${suite.contractsVersion} | ${suite.rederivation.status} | ${suite.receipt?.schemaVersion ?? 'n/a'} | ${code(short(suite.run.appRevision, 8))} | ${policy} | ${suite.evidence.files} | ${code(short(suite.evidence.sha256))} |`);
     }
     lines.push('', 'Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.', '');
     return lines;

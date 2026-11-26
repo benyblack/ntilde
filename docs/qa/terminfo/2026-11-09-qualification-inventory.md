@@ -10,19 +10,21 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 | Measure | Value |
 |---|---:|
 | Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 157 |
-| Suite claims (an id covered by two suites has two claims) | 160 |
-| Ids with more than one claim | 3 (`extensions.sixel`, `sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 150 |
+| Suite claims (an id covered by two suites has two claims) | 161 |
+| Ids with more than one claim | 4 (`extensions.osc-633-vscode`, `extensions.sixel`, `sgr.bg.standard`, `sgr.fg.standard`) |
+| Effect contract supported | 151 |
 | Effect contract unsupported (measured, retained, not supported) | 5 |
 | Supported by both the pinned probe and the effect contract | 97 |
-| Effect supported, pinned verdict inconclusive | 53 |
+| Effect supported, pinned verdict inconclusive | 54 |
 | Effect unsupported, pinned verdict inconclusive | 5 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
+A qualified reassessment can close an explicitly named inconclusive effect. Both claims remain in the inventory, with the current effect derived from the qualified reassessment.
+
 An unsupported effect verdict is a measured result: the id is counted among the qualified ids and claims (its evidence was rederived), is **not** counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement, and never lowers a stock grade.
 
-Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.iterm2-images`, `extensions.kitty-graphics.animation`, `extensions.kitty-graphics.unicode-placeholders`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc1337-cellsize`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc22-pointer`, `extensions.osc3008-context`, `extensions.osc633-a`, `extensions.osc633-b`, `extensions.osc633-c`, `extensions.osc633-d`, `extensions.osc633-e`, `extensions.osc633-p`, `extensions.osc7-cwd`, `extensions.osc776-cell-size`, `extensions.osc777-notify`, `extensions.osc9-progress`, `extensions.reflow`, `extensions.semantic-prompts`, `input.button-event-mouse`, `input.modify-other-keys`, `input.pixel-mouse`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `modes.xtrestore`, `modes.xtsave`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.iterm2-images`, `extensions.kitty-graphics.animation`, `extensions.kitty-graphics.unicode-placeholders`, `extensions.notifications`, `extensions.osc-633-vscode`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc1337-cellsize`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc22-pointer`, `extensions.osc3008-context`, `extensions.osc633-a`, `extensions.osc633-b`, `extensions.osc633-c`, `extensions.osc633-d`, `extensions.osc633-e`, `extensions.osc633-p`, `extensions.osc7-cwd`, `extensions.osc776-cell-size`, `extensions.osc777-notify`, `extensions.osc9-progress`, `extensions.reflow`, `extensions.semantic-prompts`, `input.button-event-mouse`, `input.modify-other-keys`, `input.pixel-mouse`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `modes.xtrestore`, `modes.xtsave`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 Effect unsupported, pinned inconclusive (by design): `extensions.osc113-reset-pointer-fg`, `extensions.osc114-reset-pointer-bg`, `extensions.osc720-scroll-up`, `modes.deccolm`, `modes.decsclm`.
 
@@ -32,9 +34,9 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Not effect-supported, `effectUnqualified` (168 − 149) | 19 |
+| Not effect-supported, `effectUnqualified` (168 − 150) | 18 |
 | of which measured, effect unsupported | 5 |
-| of which measured, another non-supported verdict | 2 |
+| of which measured, another non-supported verdict | 1 |
 | of which not measured (no qualified effect evidence) | 12 |
 | Not pinned-supported (168 − 96) | 72 |
 
@@ -105,6 +107,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
 | `sixel-native-fidelity` | 1 | v1 | passed | 82 | `f9b0da19` | v80 | 8 | `965880c2` |
 | `shell-integration-aggregates` | 2 | v1 | passed | 69 | `9c814b13` | v62 | 3 | `768bef04` |
+| `osc633-vscode-reassessment` | 1 | v2 | passed | n/a | `n/a` | n/a | 3 | `d88bc141` |
 | `osc5` | 1 | v1 | passed | 72 | `0f5de80b` | v65 | 4 | `9b62b038` |
 | `osc720` | 1 | v1 | passed | 74 | `06ee7177` | v67 | 16 | `4ab8f61d` |
 | `osc22` | 1 | v1 | passed | 75 | `de218cd7` | v68 | 23 | `6c7e4a8b` |
@@ -179,6 +182,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `static-images` | collected-run-id-recorded | `620df113` | 161/93/1 | `cf7d8759` |
 | `sixel-native-fidelity` | collected-run-id-recorded | `6c7dc835` | 157/97/1 | `cf7d8759` |
 | `shell-integration-aggregates` | collected-raw-digest-recorded | raw `a554f4cf` | 161/93/1 | `cf7d8759` |
+| `osc633-vscode-reassessment` | carried-forward | n/a | carried (see note) | n/a |
 | `osc5` | collected-run-id-recorded | `f5aea47d` | 160/94/1 | `cf7d8759` |
 | `osc720` | collected-run-id-recorded | `14210241` | 160/94/1 | `cf7d8759` |
 | `osc22` | collected-run-id-recorded | `d53e66b7` | 160/94/1 | `cf7d8759` |
@@ -246,7 +250,7 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.kitty-graphics.animation` | inconclusive | inconclusive | supported | controlled-pixels | kitty-animation | kitty-animation: pinned-inconclusive-by-design |
 | `extensions.kitty-graphics.unicode-placeholders` | inconclusive | inconclusive | supported | controlled-pixels | kitty-placeholders | kitty-placeholders: pinned-inconclusive-by-design |
 | `extensions.notifications` | inconclusive | inconclusive | supported | stored-state + pane-metadata-and-session-status | osc9 | osc9: pinned-inconclusive-by-design |
-| `extensions.osc-633-vscode` | inconclusive | inconclusive | inconclusive | stored-state + pane-metadata-and-session-status | shell-integration-aggregates | - |
+| `extensions.osc-633-vscode` | inconclusive | shell-integration-aggregates=inconclusive, osc633-vscode-reassessment=inconclusive | supported | stored-state + pane-metadata-and-session-status | shell-integration-aggregates, osc633-vscode-reassessment | osc633-vscode-reassessment: pinned-inconclusive-by-design |
 | `extensions.osc0-icon-title` | inconclusive | inconclusive | supported | stored-state + pane-metadata-and-session-status | osc-title | osc-title: pinned-termless-vs-effect |
 | `extensions.osc1-icon` | inconclusive | inconclusive | supported | stored-state + pane-metadata-and-session-status | osc-title | osc-title: pinned-termless-vs-effect |
 | `extensions.osc104-reset-palette` | inconclusive | supported | supported | stored-state + app-resolved-color + controlled-pixels | color-reset | - |

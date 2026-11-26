@@ -41,15 +41,16 @@
   },
   "totals": {
     "uniqueBenchmarkIds": 157,
-    "suiteClaims": 160,
+    "suiteClaims": 161,
     "idsWithMultipleClaims": [
+      "extensions.osc-633-vscode",
       "extensions.sixel",
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 150,
+    "effectSupportedIds": 151,
     "effectUnsupportedIds": 5,
-    "effectOtherIds": 2,
+    "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 97,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
@@ -61,6 +62,7 @@
       "extensions.kitty-graphics.animation",
       "extensions.kitty-graphics.unicode-placeholders",
       "extensions.notifications",
+      "extensions.osc-633-vscode",
       "extensions.osc0-icon-title",
       "extensions.osc1-icon",
       "extensions.osc117-reset-highlight-bg",
@@ -113,7 +115,7 @@
       "modes.deccolm",
       "modes.decsclm"
     ],
-    "effectSupportedOfStockInconclusive": 149,
+    "effectSupportedOfStockInconclusive": 150,
     "effectUnsupportedOfStockInconclusive": 5,
     "pinnedSupportedOfStockInconclusive": 96,
     "ungradedStockIdsWithEvidence": [
@@ -128,9 +130,9 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 19,
+      "effectUnqualified": 18,
       "effectMeasuredUnsupported": 5,
-      "effectMeasuredOther": 2,
+      "effectMeasuredOther": 1,
       "effectNotMeasured": 12,
       "notPinnedSupported": 72
     }
@@ -3901,6 +3903,58 @@
       }
     },
     {
+      "suite": "osc633-vscode-reassessment",
+      "suiteId": "ntilde-owned-osc633-aggregate-projection-v2",
+      "contractsVersion": 2,
+      "liveContractsVersion": 2,
+      "publication": "2026-11-26-osc633-aggregate-reassessment/",
+      "doc": "2026-11-26-osc633-aggregate-reassessment/report.md",
+      "carrierSuites": [
+        "osc633",
+        "osc633-metadata"
+      ],
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc-633-vscode"
+      ],
+      "evidence": {
+        "files": 3,
+        "bytes": 15811,
+        "sha256": "d88bc141d5c52cd500b87a366e1c25bc46d3b08a5dd7ebe5483d9b417ec151d5"
+      },
+      "receipt": null,
+      "run": {
+        "ownedRunId": null,
+        "measuredAt": null,
+        "appRevision": null,
+        "appVersion": null,
+        "appVersionSource": null,
+        "executableSha256": null,
+        "scriptsRevision": null,
+        "collectorAdapterId": null,
+        "collectorAdapterBundleSha256": null,
+        "gradingAdapterId": null,
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": null,
+        "sourceSnapshotManifestSha256": null
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": null,
+        "counts": null,
+        "suiteComplete": null,
+        "probeHash": null,
+        "rawSha256": null,
+        "sourceRevision": null,
+        "note": "Per-case grade carried forward from 2026-11-09-stock-baseline.json"
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc633-aggregate-reassessment-publication.test.mjs",
+        "testSha256": "56861299c0671dc29c8dbc8236e921c2ea29f2800b0f3af4c635b1761407d49a"
+      }
+    },
+    {
       "suite": "osc5",
       "suiteId": "ntilde-owned-osc5-special-colors-graded-v1",
       "contractsVersion": 1,
@@ -6971,15 +7025,23 @@
           {
             "suite": "shell-integration-aggregates",
             "verdict": "inconclusive"
+          },
+          {
+            "suite": "osc633-vscode-reassessment",
+            "verdict": "inconclusive"
           }
         ]
       },
       "effect": {
-        "verdict": "inconclusive",
+        "verdict": "supported",
         "byClaim": [
           {
             "suite": "shell-integration-aggregates",
             "verdict": "inconclusive"
+          },
+          {
+            "suite": "osc633-vscode-reassessment",
+            "verdict": "supported"
           }
         ]
       },
@@ -7003,6 +7065,39 @@
             "grading": "aggregate-pinned-replay-preserved-by-design"
           },
           "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "pane-metadata-and-session-status"
+          ],
+          "evidenceTag": "admitted-stored-cells-and-pane-metadata-lifecycle-publications"
+        },
+        {
+          "id": "extensions.osc-633-vscode",
+          "suite": "osc633-vscode-reassessment",
+          "status": "qualified",
+          "carrierSuites": [
+            "osc633",
+            "osc633-metadata"
+          ],
+          "supersedesInconclusive": "shell-integration-aggregates",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "aggregate-pinned-replay-preserved-by-design"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration"
+          },
           "measuredLayers": [
             "stored-state",
             "pane-metadata-and-session-status"
