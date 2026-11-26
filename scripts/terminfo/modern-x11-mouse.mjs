@@ -82,7 +82,7 @@ function verifyAction(step, expected, previous, identity, key, tag) {
     return actionWindow(step, previous, key, tag, native.started);
 }
 
-export function actionWindow(step, previous, key, tag, firstInput) {
+export function actionWindow(step, previous, key, tag, firstInput, fenceBytes = Buffer.from(tag, 'ascii')) {
     const { arm, native, capture } = step;
     need(arm?.key === key && capture?.key === key && before(previous, arm.armed)
         && before(arm.armed, native.started) && before(native.started, native.finished)
@@ -91,17 +91,18 @@ export function actionWindow(step, previous, key, tag, firstInput) {
     need(Array.isArray(capture.chunks) && capture.chunks.every((chunk, index, all) =>
         isHex(chunk.hex) && chunk.hex.length > 0 && before(all[index - 1]?.at ?? firstInput, chunk.at)
         && before(chunk.at, capture.sealed)), 'stale or malformed raw reply');
-    return { sealed: capture.sealed, raw: stripFence(capture, native, tag) };
+    return { sealed: capture.sealed, raw: stripFence(capture, native, tag, fenceBytes) };
 }
 
-function stripFence(capture, native, tag) {
+function stripFence(capture, native, tag, fenceBytes) {
     const fence = native.fence;
     need(fence?.tag === tag && before(native.started, fence.started) && before(fence.started, native.finished)
         && fence.keycodes?.length === 2 && fence.keycodes.every(code => Number.isInteger(code) && code >= 8 && code <= 255),
     'missing native XTEST keyboard fence');
     const raw = capture.chunks.map(chunk => chunk.hex).join('');
     need(isHex(raw), 'oversized observation window');
-    const buffer = Buffer.from(raw, 'hex'), delimiter = Buffer.from(tag, 'ascii');
+    const buffer = Buffer.from(raw, 'hex'), delimiter = fenceBytes;
+    need(Buffer.isBuffer(delimiter) && delimiter.length > 0 && delimiter.length <= 128, 'invalid keyboard fence bytes');
     const offset = buffer.indexOf(delimiter);
     need(offset >= 0 && offset + delimiter.length === buffer.length, 'missing, duplicated or trailing input around the PTY fence');
     let pos = 0;
