@@ -6,24 +6,24 @@
   "upstreamCollectorRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
   "probeHash": "16a690f34c0e",
   "measurement": {
-    "runId": "afc329c4574e6de7f38695e39db9ac59",
-    "appRevision": "b0d9a2de0b61d19a23a77513ec533a8a84471006",
-    "scriptsRevision": "b0d9a2de0b61d19a23a77513ec533a8a84471006",
+    "runId": "b106bfc4e964bcdbd07506fcc63efcdb",
+    "appRevision": "a3319b62029f434b3420ed24fad646d76e163aaa",
+    "scriptsRevision": "a3319b62029f434b3420ed24fad646d76e163aaa",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-v86",
     "receiptSchema": 1,
-    "version": "0.14.0+b0d9a2de0b61d19a23a77513ec533a8a84471006",
+    "version": "0.14.0+a3319b62029f434b3420ed24fad646d76e163aaa",
     "nodeVersion": "v24.22.2",
-    "startedAt": "2026-11-26T17:52:53.526Z",
-    "releasedAt": "2026-11-26T17:52:55.822Z",
+    "startedAt": "2026-11-26T18:04:54.550Z",
+    "releasedAt": "2026-11-26T18:04:56.734Z",
     "geometry": {
       "rows": 41,
       "cols": 140
     },
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "9c60e7662ab99a4394e948151527fa274cd3594c93b8c310cee4ea56d29e1d80",
-    "sourceSnapshotManifestSha256": "aa31209864fafb7c55dd60a4a5cd928dc97dec0048b0cf781efa8c9ea067791d",
-    "archiveSha256": "28abfa66fbe16e69d111b0e6ab11773bb5a03422cadadd84e1d6793a48850d5c"
+    "assemblySha256": "22aaadfa967138df83bfdea1495e035f63e0e23f3c8c6be7eb192411c3806810",
+    "sourceSnapshotManifestSha256": "ce2bed90e16fb302b965cbe1b83f6ba83e5191ceceaf70a85eebaf60e89930a7",
+    "archiveSha256": "7864c99e5f79c08932051f917fb93b076237b6e48402e0d9e57a8e3ec9bec13b"
   },
   "cases": [
     {
@@ -71,56 +71,56 @@
             "command": null,
             "status": "awaitingInput",
             "accepting": true,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           },
           {
             "phase": "e-reported",
             "command": null,
             "status": "awaitingInput",
             "accepting": true,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           },
           {
             "phase": "e-running",
             "command": "echo reported;\\part",
             "status": "running",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           },
           {
             "phase": "e-finished",
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           },
           {
             "phase": "e-no-report",
             "command": null,
             "status": "running",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           },
           {
             "phase": "e-no-report-finished",
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           },
           {
             "phase": "e-133-control",
             "command": "echo control",
             "status": "running",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           },
           {
             "phase": "e-133-finished",
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           }
         ]
       },
@@ -179,10 +179,10 @@
         "controls": true,
         "outcome": "supported",
         "expectedPaths": {
-          "baseline": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline",
-          "control": "/qa-633-afc329c4574e6de7f38695e39db9ac59/osc7-control",
-          "first": "/qa-633-afc329c4574e6de7f38695e39db9ac59/east;one",
-          "second": "/qa-633-afc329c4574e6de7f38695e39db9ac59/west=two"
+          "baseline": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline",
+          "control": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/osc7-control",
+          "first": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/east;one",
+          "second": "C:\\QA-633-b106bfc4e964bcdbd07506fcc63efcdb\\x64;west=two"
         },
         "observations": [
           {
@@ -190,42 +190,42 @@
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/baseline"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/baseline"
           },
           {
             "phase": "p-osc7-control",
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/osc7-control"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/osc7-control"
           },
           {
             "phase": "p-first",
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/east;one"
+            "cwd": "/qa-633-b106bfc4e964bcdbd07506fcc63efcdb/east;one"
           },
           {
             "phase": "p-second",
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/west=two"
+            "cwd": "C:\\QA-633-b106bfc4e964bcdbd07506fcc63efcdb\\x64;west=two"
           },
           {
             "phase": "p-malformed",
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/west=two"
+            "cwd": "C:\\QA-633-b106bfc4e964bcdbd07506fcc63efcdb\\x64;west=two"
           },
           {
             "phase": "p-unknown",
             "command": null,
             "status": "awaitingInput",
             "accepting": false,
-            "cwd": "/qa-633-afc329c4574e6de7f38695e39db9ac59/west=two"
+            "cwd": "C:\\QA-633-b106bfc4e964bcdbd07506fcc63efcdb\\x64;west=two"
           }
         ]
       },

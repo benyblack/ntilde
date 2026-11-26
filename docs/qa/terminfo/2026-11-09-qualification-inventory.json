@@ -3648,29 +3648,29 @@
       ],
       "evidence": {
         "files": 5,
-        "bytes": 1896056,
-        "sha256": "7e5f5cabad4bf3e31a647c4b09ae085427d4a3d71df24ba91ce2f045353d146c"
+        "bytes": 1896555,
+        "sha256": "4bed2c3b858741c0a9f30fa9703b84df9eccb0cf9f8270b774270dfd7fa7e603"
       },
       "receipt": {
         "schemaVersion": 1,
-        "runId": "afc329c4574e6de7f38695e39db9ac59",
+        "runId": "b106bfc4e964bcdbd07506fcc63efcdb",
         "cellReceipt": null,
         "suiteEvidence": null
       },
       "run": {
-        "ownedRunId": "afc329c4574e6de7f38695e39db9ac59",
-        "measuredAt": "2026-11-26T17:52:53.526Z",
-        "appRevision": "b0d9a2de0b61d19a23a77513ec533a8a84471006",
-        "appVersion": "0.14.0+b0d9a2de0b61d19a23a77513ec533a8a84471006",
+        "ownedRunId": "b106bfc4e964bcdbd07506fcc63efcdb",
+        "measuredAt": "2026-11-26T18:04:54.550Z",
+        "appRevision": "a3319b62029f434b3420ed24fad646d76e163aaa",
+        "appVersion": "0.14.0+a3319b62029f434b3420ed24fad646d76e163aaa",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "b0d9a2de0b61d19a23a77513ec533a8a84471006",
+        "scriptsRevision": "a3319b62029f434b3420ed24fad646d76e163aaa",
         "collectorAdapterId": "ntilde-owned-osc633-metadata-v1",
         "collectorAdapterBundleSha256": null,
         "gradingAdapterId": null,
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v86",
-        "sourceSnapshotManifestSha256": "aa31209864fafb7c55dd60a4a5cd928dc97dec0048b0cf781efa8c9ea067791d"
+        "sourceSnapshotManifestSha256": "ce2bed90e16fb302b965cbe1b83f6ba83e5191ceceaf70a85eebaf60e89930a7"
       },
       "stock": {
         "basis": "carried-forward",
@@ -3685,7 +3685,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/osc633-metadata-publication.test.mjs",
-        "testSha256": "c2d0f3aaca9d51a2393119a95317460808195c984919b9feceb23cb16c225ff6"
+        "testSha256": "b92e33fc1a7b156208d053962e3f44a4902260083cdb7923d9183093355e6118"
       }
     },
     {

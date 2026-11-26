@@ -30,6 +30,7 @@ test('reissues the receipt and replays both pinned callbacks for each case', asy
     assert.equal(e['e-running'].command, 'echo reported;\\part');
     assert.equal(e['e-no-report'].command, null);
     assert.notEqual(p['p-first'].cwd, p['p-second'].cwd);
+    assert.match(p['p-second'].cwd, /^C:\\QA-633-[a-f\d]{32}\\x64;west=two$/);
     assert.equal(p['p-malformed'].cwd, p['p-second'].cwd);
     assert.equal(p['p-unknown'].cwd, p['p-second'].cwd);
 });

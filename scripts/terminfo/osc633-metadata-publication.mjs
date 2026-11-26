@@ -11,7 +11,7 @@ import { digest, focusedMeasurement, pinnedBundle, readJson, readManifest, withO
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(qa, '2026-11-26-osc633-metadata');
-const manifestHash = '6d3c8940bbb061c32364e887d1ff3e9e368bd7854183ea78051afd132aed50d8';
+const manifestHash = '6f7f3b92100d5d5e378ab1b2f0a2731171d36358f818f8c58a3310fe5d825dfe';
 const stockFile = '2026-11-09-stock-baseline.json';
 const upstream = '2026-11-16-static-images/terminfo-dev-4.0.0.bundle.mjs.gz';
 
