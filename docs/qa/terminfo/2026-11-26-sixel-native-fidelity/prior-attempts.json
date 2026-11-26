@@ -72,5 +72,23 @@
     "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
     "rawArchive": "https://github.com/benyblack/ntilde/blob/c122146c7b571d13d5034fb2eef634879adbd68a/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
     "rawArchiveSha256": "8c8f3497dab417701f5bc6e66e6fdf1e657a1555a1ca2bc8f802903e0502caa8"
+  },
+  {
+    "runId": "03b564fcff82a3d1d4e95fcf5b99b5cd",
+    "appVersion": "0.14.0+3391b755b639ed900bc6f14faa0290b208abb9e1",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/b47f7a68a215ed6b7026d4308f5a5489626eae6e/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "67e76565334a7f060bd4bf88b5d223fa22bdddf00215b3d9024ac8f3eca6bd16"
+  },
+  {
+    "runId": "a150ec542707c343c1a8ec66b2aa9832",
+    "appVersion": "0.14.0+a4019203f2c474f4efcd2e6c64e4f5aecc2e341f",
+    "sourceSnapshotManifestSha256": "80d4d9e4911d7830e653f9b5535b8086bcaac55d169b394ecc6972e758108259",
+    "cleanupVerifiedAt": "2026-11-26T13:37:55.471Z",
+    "outcome": "superseded",
+    "detail": "The capture completed before the hidden-main reflow and state-transfer corrections. Its raw run remains in batch custody.",
+    "receiptSha256": "099cc6872e469b1bc255ccc0cf58341d3f15ff1c7673ff6c17f76f52b65c02b8"
   }
 ]

@@ -3715,35 +3715,35 @@
       ],
       "evidence": {
         "files": 8,
-        "bytes": 35116471,
-        "sha256": "2a20f88aceb9041bb22f371b85d1da7db6237c765044105dcc7664102112fda0"
+        "bytes": 35106533,
+        "sha256": "3c4b7c4449e33cc567e0cfdaeab3f426d6116f0a67183f08936f63254b239146"
       },
       "receipt": {
         "schemaVersion": 82,
-        "runId": "03b564fcff82a3d1d4e95fcf5b99b5cd",
+        "runId": "4c41a0579dbe94a6900f88711eaf2797",
         "cellReceipt": {
           "file": "cell-observations.json",
-          "sha256": "b09a02ce0a57d4a9493d36187ec814fbb00240d520fb8fe1615f7ba10b229aa9"
+          "sha256": "356f67ccebb1c0e7a86345f1a520497a7ff44a7cbe569c29927e5eacedcef93d"
         },
         "suiteEvidence": {
           "suiteId": "ntilde-owned-static-images-v1",
           "file": "image-observations.json",
-          "sha256": "bfbedc06d2926163cd2dc49a7d32165a86ce64b29dc3ba00619f19e7c690862c",
+          "sha256": "ad32751f180f43195da5ccc1bec4ddf4840dd0dc474a77d50d12e66f22ed9598",
           "counts": {
             "passed": 23
           }
         }
       },
       "run": {
-        "ownedRunId": "03b564fcff82a3d1d4e95fcf5b99b5cd",
-        "measuredAt": "2026-11-26T13:26:19.558Z",
-        "appRevision": "3391b755b639ed900bc6f14faa0290b208abb9e1",
-        "appVersion": "0.14.0+3391b755b639ed900bc6f14faa0290b208abb9e1",
+        "ownedRunId": "4c41a0579dbe94a6900f88711eaf2797",
+        "measuredAt": "2026-11-26T13:46:46.456Z",
+        "appRevision": "f2233a46ee2b441be3bb7a9e5284c52f65048bbd",
+        "appVersion": "0.14.0+f2233a46ee2b441be3bb7a9e5284c52f65048bbd",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "3391b755b639ed900bc6f14faa0290b208abb9e1",
+        "scriptsRevision": "f2233a46ee2b441be3bb7a9e5284c52f65048bbd",
         "collectorAdapterId": "ntilde-owned-macos-v1",
-        "collectorAdapterBundleSha256": "10850c8ec63d962c152fef3c57d57b63d61b8ad0822f40ff343c7a0c2359ce7d",
+        "collectorAdapterBundleSha256": "6b53eaba16b30d0cba1af09f37acb875eea9e593c1a89d69dfb0f1130a0bb334",
         "gradingAdapterId": "ntilde-owned-macos-v1",
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "readonly-owned-source-graph-v80",
@@ -3751,7 +3751,7 @@
       },
       "stock": {
         "basis": "collected-run-id-recorded",
-        "runId": "1e2601ace5a9b9e90ef1fde12b754d64",
+        "runId": "8c8d95b53a5ab258646e2ba447a72911",
         "counts": {
           "inconclusive": 157,
           "supported": 97,
@@ -3759,7 +3759,7 @@
         },
         "suiteComplete": false,
         "probeHash": "16a690f34c0e",
-        "rawSha256": "f3b040ea70f841e56155509f78e78c38532af9a4878df08b36dd2898ab73e405",
+        "rawSha256": "acb253a5914ccefe5c5bbb120accfde2de10c115e51701e597277aa9ccb624f5",
         "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
         "note": null
       },
