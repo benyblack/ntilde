@@ -66,6 +66,61 @@ public sealed class NativeSixelAdmissionTests
         finally { rendered.EndSnapshotSession(session); }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Source_only_placement_roundtrips_without_consuming_raster_credit(bool presenter)
+    {
+        var size = new SixelCellSize(10, 20);
+        var source = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, new NativeSixelBudget(maxPlacements: 1), size);
+        var parser = new AnsiParser(source, forceConPtyFiltering: false);
+        parser.Process(Wire);
+        parser.Process(Wire);
+        var state = source.ExportState(0);
+        state.Parser = parser.ExportState();
+
+        var transferred = TerminalStateSerializer.FromBytes(TerminalStateSerializer.ToBytes(state));
+
+        Assert.Collection(transferred.Sixels ?? [],
+            first => Assert.False(first.SourceOnly),
+            second => Assert.True(second.SourceOnly));
+        var budget = new NativeSixelBudget(maxPlacements: 1);
+        var target = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, size);
+        var decoder = presenter ? new ProbeDecoder(budget, target) : null;
+        var restored = new AnsiParser(target, forceConPtyFiltering: false) { ImageDecoder = decoder };
+        TerminalStateTransfer.Restore(target, restored, transferred);
+
+        Assert.Equal((source.CursorCol, source.CursorRow), (target.CursorCol, target.CursorRow));
+        Assert.Equal(1, budget.Usage.Placements);
+        if (decoder is not null) Assert.Equal(1, decoder.Calls);
+        Assert.IsAssignableFrom<INativeSixelImage>(target.Images[0].ImageHandle);
+        var fallback = target.Images[1];
+        Assert.IsType<SixelSource>(fallback.ImageHandle);
+        Assert.Equal(source.Images[1].NativeRaster, fallback.NativeRaster);
+        Assert.Equal((0, 1, 1, 1), (fallback.CellX, fallback.CellY, fallback.CellWidth, fallback.CellHeight));
+        Assert.True(target.ExportState(0).Sixels?[1].SourceOnly);
+        target.ClearImages();
+        var retired = new List<object>();
+        target.DrainRetiredImageHandles(retired, long.MaxValue);
+        foreach (var handle in retired) ((IDisposable)handle).Dispose();
+        Assert.Equal((0, 0L), budget.Usage);
+        source.ClearImages();
+    }
+
+    [Fact]
+    public void A_source_only_flag_cannot_be_admitted_without_native_intent()
+    {
+        var legacy = new TerminalBuffer(10, 5);
+        var parser = new AnsiParser(legacy, forceConPtyFiltering: false) { RetainSixelSources = true };
+        parser.Process(Wire);
+        var state = legacy.ExportState(0);
+        Assert.NotNull(state.Sixels);
+        Assert.Single(state.Sixels).SourceOnly = true;
+
+        Assert.Throws<InvalidOperationException>(() => SixelRasterPolicy.RequireSupportedState(state));
+        Assert.Throws<InvalidOperationException>(() => new TerminalBuffer(10, 5).ImportState(state));
+    }
+
     [Fact]
     public void Retired_and_drained_handles_stay_charged_until_successful_outside_lock_disposal()
     {

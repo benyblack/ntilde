@@ -91,8 +91,11 @@ behavior is unchanged.
 Native import validates every entry and its source canvas before any resize,
 clear, source commit or host decode. It stages private placement facts and
 pre-admitted owners from the destination's existing budget; old retired/pinned
-owners retain their charges. If the complete source/work set does not fit,
-import refuses without changing the destination. Direct native buffer import
+owners retain their charges. A source-only placement keeps its encoded source
+and native layout across restore without reserving decoded raster storage.
+Other placements require admission for both their source and raster work.
+If the complete set does not fit its respective limits, import refuses before
+changing the destination. Direct native buffer import
 requires matching geometry; whole Restore stages first, then resizes.
 
 A host decoder is a synchronous precommit yield. After the last callback,

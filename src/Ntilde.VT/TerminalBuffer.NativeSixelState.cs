@@ -25,15 +25,7 @@ public partial class TerminalBuffer
             if (Committed || NativeImages is null || Owner is not { } owner) return;
             bool queued = false;
             foreach (var image in NativeImages)
-            {
-                var native = (INativeSixelImage)image.ImageHandle;
-                try { native.Dispose(); }
-                catch
-                {
-                    owner.RetireUnplacedNativeSixel(native);
-                    queued = true;
-                }
-            }
+                queued |= owner.DisposeStagedSixel(image.ImageHandle);
             NativeImages.Clear();
             if (queued)
             {
@@ -41,6 +33,23 @@ public partial class TerminalBuffer
                 catch { /* A host notification failure must not replace the original import refusal. */ }
             }
         }
+    }
+
+    private bool DisposeStagedSixel(object handle)
+    {
+        if (handle is SixelSource source)
+        {
+            source.Dispose();
+            return false;
+        }
+        var native = (INativeSixelImage)handle;
+        try { native.Dispose(); }
+        catch
+        {
+            RetireUnplacedNativeSixel(native);
+            return true;
+        }
+        return false;
     }
 
     /// <summary>Reserves all native work before resize/clear; prior owners remain charged until actual disposal.</summary>
@@ -64,6 +73,7 @@ public partial class TerminalBuffer
             ClipBottom = state.ClipBottom,
             ClipRight = state.ClipRight,
             NativeRaster = state.NativeRaster,
+            SourceOnly = state.SourceOnly,
             Order = state.Order,
         }).ToList();
         if (!SixelSources.FitsRetentionSet(states.Count, states.Sum(state => (long)state.Source.Length)))
@@ -99,8 +109,18 @@ public partial class TerminalBuffer
     private TerminalImage CreateNativeImportedPlacement(TerminalSixelImageState state, NativeSixelBudget budget, IImageDecoder? decoder)
     {
         var intent = StateTransferValidation.RequirePresent(state.NativeRaster, "native SIXEL raster");
-        var owner = CreateNativeImportOwner(state.Source, intent, budget, decoder, out var source);
-        return new(owner, state.X, state.Y, state.Width, state.Height)
+        SixelSource source;
+        object handle;
+        if (state.SourceOnly)
+        {
+            source = SixelSources.CreateProvisional(state.Source);
+            handle = source;
+        }
+        else
+        {
+            handle = CreateNativeImportOwner(state.Source, intent, budget, decoder, out source);
+        }
+        return new(handle, state.X, state.Y, state.Width, state.Height)
         {
             IsSixelImage = true,
             IsAltScreenImage = state.Alt,
@@ -175,6 +195,7 @@ public partial class TerminalBuffer
             if (state.X != image.CellX || state.Y != image.CellY || state.Width != image.CellWidth || state.Height != image.CellHeight ||
                 state.Alt != image.IsAltScreenImage || state.ClipTop != image.ClipTopRows || state.ClipBottom != image.ClipBottomRows ||
                 state.Order != stagedStates[i].Order || state.ClipRight != image.ClipRightColumns || state.NativeRaster != image.NativeRaster ||
+                state.SourceOnly != stagedStates[i].SourceOnly ||
                 !string.Equals(state.Source, image.SixelSource?.Data, StringComparison.Ordinal))
                 throw StateTransferValidation.Reject(NativeSixelImportContext, "decoder callback changed staged placement facts or source availability");
         }

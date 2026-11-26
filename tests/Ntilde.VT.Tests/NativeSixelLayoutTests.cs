@@ -434,8 +434,9 @@ public sealed class NativeSixelLayoutTests
     public void Native_retention_fit_is_checked_before_any_staged_reservation()
     {
         var budget = new NativeSixelBudget();
-        var target = TerminalBuffer.CreateNativeSixelTestBuffer(20, 8, budget, new SixelCellSize(10, 20), new SixelSourceBudget(2, 1));
-        Assert.Throws<InvalidOperationException>(() => target.ImportState(TwoNativeSources()));
+        var target = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget, new SixelCellSize(10, 20), new SixelSourceBudget(2, 1));
+        var error = Assert.Throws<InvalidOperationException>(() => target.ImportState(TwoNativeSources()));
+        Assert.Contains("source retention", error.Message, StringComparison.Ordinal);
         Assert.Equal((0, 0L), budget.Usage);
         Assert.Empty(target.Images);
         Assert.Equal(0, target.SixelSources.Count);

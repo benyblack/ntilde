@@ -169,6 +169,8 @@ namespace Ntilde.VT
             AcquireWriteLock();
             try
             {
+                // Resize also takes this lock. Recheck before the first write to the target.
+                ValidatePreparedNativeImport(snapshot, prepared);
                 links = RebuildHyperlinks(snapshot.Hyperlinks);
                 CellUnderline?[] underlines = RebuildUnderlines(snapshot.Underlines);
 
@@ -352,7 +354,8 @@ namespace Ntilde.VT
                     image.CellY -= expiredRows;
                     if (DiscardImageBeforeOrigin(image))
                     {
-                        RetireUnplacedNativeSixel((INativeSixelImage)image.ImageHandle);
+                        if (image.ImageHandle is INativeSixelImage native) RetireUnplacedNativeSixel(native);
+                        else image.SixelSource?.Dispose();
                         continue;
                     }
                 }

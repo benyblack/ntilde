@@ -20,7 +20,12 @@ public static class SixelRasterPolicy
         if (state.Sixels is null) return;
         foreach (var placement in state.Sixels)
         {
-            if (placement?.NativeRaster is not { } native) continue;
+            if (placement?.NativeRaster is not { } native)
+            {
+                if (placement?.SourceOnly == true)
+                    throw new InvalidOperationException("A source-only SIXEL placement requires native intent.");
+                continue;
+            }
             RequireSupported(native.Version);
             if (native.Version != state.RequiredSixelRasterPolicy)
                 throw new InvalidOperationException("Native placement policy does not match its state requirement.");

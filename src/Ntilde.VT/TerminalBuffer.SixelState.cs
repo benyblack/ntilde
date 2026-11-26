@@ -48,6 +48,7 @@ public partial class TerminalBuffer
             ClipRight = image.ClipRightColumns,
             Order = order,
             NativeRaster = intent,
+            SourceOnly = intent is not null && image.ImageHandle is SixelSource,
         };
     }
 
@@ -87,7 +88,7 @@ public partial class TerminalBuffer
         if (snapshot.Sixels is not { } states) return;
         // Reject required semantics even on entries a source-budget truncation would discard.
         // Never silently reinterpret native state as a legacy whole-cell placement.
-        if (states.Any(state => state?.NativeRaster is not null))
+        if (states.Any(state => state?.NativeRaster is not null || state?.SourceOnly == true))
             throw StateTransferValidation.Reject("SIXEL native raster", "native intent requires a native session");
         for (int i = Math.Max(0, states.Count - SixelSourceBudget.DefaultMaxSources); i < states.Count; i++)
         {

@@ -314,9 +314,13 @@ namespace Ntilde.VT
 
     public sealed class TerminalSixelImageState
     {
-        /// <summary>Absent legacy placements retain whole-cell sizing. Native imports remain disabled.</summary>
+        /// <summary>Absent native intent preserves legacy whole-cell sizing.</summary>
         [JsonPropertyName("native_raster"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public SixelRasterIntent? NativeRaster { get; set; }
+
+        /// <summary>Retains native layout and encoded source from a placement that owns no raster allocation.</summary>
+        [JsonPropertyName("source_only"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool SourceOnly { get; set; }
 
         [JsonPropertyName("source")] public string Source { get; set; } = string.Empty;
         [JsonPropertyName("x")] public int X { get; set; }
