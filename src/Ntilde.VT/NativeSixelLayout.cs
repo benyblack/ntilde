@@ -165,6 +165,20 @@ public partial class TerminalBuffer
         return projection.Intersects(image, top, bottomExclusive - top, left, right, ImageLineSizeNoLock(image));
     }
 
+    // A real grid anchor retains its row even if reflow would trim it as text padding.
+    private int NativeSixelViewportRowsToFlow(int historyRows, int viewportRows)
+    {
+        if (NativeSixelBudget is null) return 0;
+        int required = 0;
+        foreach (var image in _images)
+        {
+            if (image.IsAltScreenImage || image.NativeRaster is null) continue;
+            int row = image.CellY - historyRows;
+            if ((uint)row < (uint)viewportRows) required = Math.Max(required, row + 1);
+        }
+        return required;
+    }
+
     /// <summary>
     /// Crops actual history eviction before deciding retirement; a native overhang can survive its entire cell reservation.
     /// </summary>

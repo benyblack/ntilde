@@ -86,6 +86,29 @@ public sealed class NativeSixelLayoutTests
         source.ClearImages();
     }
 
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(17, 5)]
+    public void Reflow_keeps_native_anchors_on_real_rows_even_below_text(int initialColumn, int targetColumn)
+    {
+        const int policy = SixelRasterPolicy.PresenterNativeVersion;
+        var source = new TerminalBuffer(18, 9, policy);
+        var parser = new AnsiParser(source, false) { SixelCellSizeOverride = new(10, 20) };
+        parser.Process($"\x1b[8;{initialColumn}H\x1bPq~\x1b\\\x1b[H\x1b[?1049h");
+
+        source.Resize(6, 11);
+
+        var state = source.ExportState(100);
+        state.Parser = parser.ExportState();
+        var target = new TerminalBuffer(6, 11, policy);
+        TerminalStateTransfer.Restore(target, new AnsiParser(target, false), state);
+        var copy = Assert.Single(target.Images);
+        Assert.Equal((targetColumn, 7), (copy.CellX, copy.CellY));
+        Assert.Equal(new SixelSourceCrop(0, 0, 1, 6), copy.NativeRaster!.Crop);
+        target.ClearImages();
+        source.ClearImages();
+    }
+
     [Fact]
     public void Crop_uses_the_hidden_main_banks_double_width_anchor()
     {
