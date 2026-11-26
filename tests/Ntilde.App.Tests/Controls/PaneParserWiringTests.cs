@@ -510,6 +510,7 @@ public class PaneParserWiringTests
         Assert.Null(status.Snapshot().CurrentCommand);
         parser.Process("\x1b]633;C\a");
         Assert.Equal("report from E", status.Snapshot().CurrentCommand);
+        Assert.Null(pane.LastRelevantCommandTextForTest);
         Assert.Equal(Ntilde.AgentHost.AgentSessionStatusKind.Running, status.Snapshot().Kind);
         parser.Process("\x1b]633;D;0\a");
         Assert.Null(status.Snapshot().CurrentCommand);
