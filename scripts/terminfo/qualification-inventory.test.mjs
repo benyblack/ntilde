@@ -361,15 +361,15 @@ test('current effect totals preserve the separate unsupported and measured-other
         assert.equal(font.effect.verdict, 'supported');
     }
     assert.equal(row(stored, 'extensions.osc710-font-normal'), undefined);
-    assert.equal(totals.effectSupportedIds, 148);
+    assert.equal(totals.effectSupportedIds, 150);
     assert.equal(totals.pinnedSupportedIds, 97);
     assert.equal(totals.pinnedAndEffectSupportedIds, 97);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 51);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 147);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 53);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 149);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 21, effectMeasuredUnsupported: 5, effectMeasuredOther: 2, effectNotMeasured: 14, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 19, effectMeasuredUnsupported: 5, effectMeasuredOther: 2, effectNotMeasured: 12, notPinnedSupported: 72 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {

@@ -30,4 +30,8 @@ The [OSC 66 assessment](../2026-11-26-rich-osc66/report.md) rederives the histor
 
 The [Sixel report assessment](../2026-11-26-rich-sixel-reports/report.md) rederives the retained replies and compares the exact child PTY results across a controlled resize and restoration. The [native Sixel raster qualification](../2026-11-26-sixel-native-fidelity/report.md) records the fixed pixel effect and links the earlier unsupported measurement.
 
+## OSC 633 command-line and Cwd metadata
+
+The [two-case OSC 633 assessment](../2026-11-26-osc633-metadata/report.md) qualifies E for a single command cycle and P for two reported-directory updates. Both owned effects were supported and both pinned probe verdicts were inconclusive.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.

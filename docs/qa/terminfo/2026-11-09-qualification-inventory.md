@@ -9,20 +9,20 @@ Pinned collector: `terminfo.dev@4.0.0`, bundle SHA-256 `aa5f2bf9…`, probeHash 
 
 | Measure | Value |
 |---|---:|
-| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 155 |
-| Suite claims (an id covered by two suites has two claims) | 158 |
+| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | 157 |
+| Suite claims (an id covered by two suites has two claims) | 160 |
 | Ids with more than one claim | 3 (`extensions.sixel`, `sgr.bg.standard`, `sgr.fg.standard`) |
-| Effect contract supported | 148 |
+| Effect contract supported | 150 |
 | Effect contract unsupported (measured, retained, not supported) | 5 |
 | Supported by both the pinned probe and the effect contract | 97 |
-| Effect supported, pinned verdict inconclusive | 51 |
+| Effect supported, pinned verdict inconclusive | 53 |
 | Effect unsupported, pinned verdict inconclusive | 5 |
 
 The pinned and effect verdicts are different measurements and stay separate fields. Where the effect contract decides what the pinned probe cannot, the divergence is recorded, never absorbed into one grade. An id whose suites disagree is rolled up as pinned-supported when any claim's pinned probe decided supported (`pinned.best`) and keeps every per-claim verdict.
 
 An unsupported effect verdict is a measured result: the id is counted among the qualified ids and claims (its evidence was rederived), is **not** counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement, and never lowers a stock grade.
 
-Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.iterm2-images`, `extensions.kitty-graphics.animation`, `extensions.kitty-graphics.unicode-placeholders`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc1337-cellsize`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc22-pointer`, `extensions.osc3008-context`, `extensions.osc633-a`, `extensions.osc633-b`, `extensions.osc633-c`, `extensions.osc633-d`, `extensions.osc7-cwd`, `extensions.osc776-cell-size`, `extensions.osc777-notify`, `extensions.osc9-progress`, `extensions.reflow`, `extensions.semantic-prompts`, `input.button-event-mouse`, `input.modify-other-keys`, `input.pixel-mouse`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `modes.xtrestore`, `modes.xtsave`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
+Effect supported but pinned inconclusive: `device.xtgettcap`, `device.xtreportcolors`, `editing.deccara`, `editing.decrara`, `editing.decsace`, `extensions.iterm2-images`, `extensions.kitty-graphics.animation`, `extensions.kitty-graphics.unicode-placeholders`, `extensions.notifications`, `extensions.osc0-icon-title`, `extensions.osc1-icon`, `extensions.osc117-reset-highlight-bg`, `extensions.osc119-reset-highlight-fg`, `extensions.osc133-a`, `extensions.osc133-b`, `extensions.osc133-c`, `extensions.osc133-d`, `extensions.osc1337-cellsize`, `extensions.osc17-highlight-bg`, `extensions.osc19-highlight-fg`, `extensions.osc22-pointer`, `extensions.osc3008-context`, `extensions.osc633-a`, `extensions.osc633-b`, `extensions.osc633-c`, `extensions.osc633-d`, `extensions.osc633-e`, `extensions.osc633-p`, `extensions.osc7-cwd`, `extensions.osc776-cell-size`, `extensions.osc777-notify`, `extensions.osc9-progress`, `extensions.reflow`, `extensions.semantic-prompts`, `input.button-event-mouse`, `input.modify-other-keys`, `input.pixel-mouse`, `input.urxvt-mouse`, `input.x10-mouse`, `modes.altscreen-1047`, `modes.altscreen-47`, `modes.application-keypad`, `modes.left-right-margin`, `modes.utf8-mouse-1005`, `modes.xtpopcolors`, `modes.xtpopsgr`, `modes.xtpushcolors`, `modes.xtpushsgr`, `modes.xtrestore`, `modes.xtsave`, `scrollback.alt-screen`, `scrollback.decstbm-reset`, `scrollback.set-region`.
 
 Effect unsupported, pinned inconclusive (by design): `extensions.osc113-reset-pointer-fg`, `extensions.osc114-reset-pointer-bg`, `extensions.osc720-scroll-up`, `modes.deccolm`, `modes.decsclm`.
 
@@ -32,10 +32,10 @@ Baseline: stock run `02be5c606e0e7d79ab8e11f142d21ae0` (2026-11-09T11:45:25.187Z
 
 | Remaining | Count |
 |---|---:|
-| Not effect-supported, `effectUnqualified` (168 − 147) | 21 |
+| Not effect-supported, `effectUnqualified` (168 − 149) | 19 |
 | of which measured, effect unsupported | 5 |
 | of which measured, another non-supported verdict | 2 |
-| of which not measured (no qualified effect evidence) | 14 |
+| of which not measured (no qualified effect evidence) | 12 |
 | Not pinned-supported (168 − 96) | 72 |
 
 `effectUnqualified` is every stock-inconclusive id without a supported effect verdict. It splits into exactly three states that must not be conflated: *measured and unsupported* (retained evidence says the behavior is absent or diverges), *measured with another non-supported verdict*, and *not measured* (no qualified evidence at all). Only the last is "not yet qualified".
@@ -101,6 +101,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `pxm` | 1 | v1 | passed | 67 | `9972a6fc` | v61 | 4 | `82badba3` |
 | `extensions-truecolor` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 3 | `5e017718` |
 | `osc633` | 4 | v1 | passed | 69 | `9c814b13` | v62 | 4 | `8cf95ba4` |
+| `osc633-metadata` | 2 | v1 | passed | 1 | `939fab38` | v86 | 5 | `1f9f6132` |
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
 | `sixel-native-fidelity` | 1 | v1 | passed | 82 | `f9b0da19` | v80 | 8 | `965880c2` |
 | `shell-integration-aggregates` | 2 | v1 | passed | 69 | `9c814b13` | v62 | 3 | `768bef04` |
@@ -174,6 +175,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `pxm` | collected-run-id-recorded | `a3651fd7` | 161/93/1 | `cf7d8759` |
 | `extensions-truecolor` | collected-raw-digest-recorded | raw `d7da4d74` | 161/93/1 | `cf7d8759` |
 | `osc633` | collected-run-id-recorded | `cb002bb5` | 161/93/1 | `cf7d8759` |
+| `osc633-metadata` | carried-forward | n/a | carried (see note) | n/a |
 | `static-images` | collected-run-id-recorded | `620df113` | 161/93/1 | `cf7d8759` |
 | `sixel-native-fidelity` | collected-run-id-recorded | `6c7dc835` | 157/97/1 | `cf7d8759` |
 | `shell-integration-aggregates` | collected-raw-digest-recorded | raw `a554f4cf` | 161/93/1 | `cf7d8759` |
@@ -272,6 +274,8 @@ The stock collector reports `suiteComplete=false` in every run.
 | `extensions.osc633-b` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc633 | osc633: pinned-inconclusive-by-design |
 | `extensions.osc633-c` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc633 | osc633: pinned-inconclusive-by-design |
 | `extensions.osc633-d` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc633 | osc633: pinned-inconclusive-by-design |
+| `extensions.osc633-e` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc633-metadata | osc633-metadata: pinned-inconclusive-by-design |
+| `extensions.osc633-p` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc633-metadata | osc633-metadata: pinned-inconclusive-by-design |
 | `extensions.osc7-cwd` | inconclusive | inconclusive | supported | pane-metadata-and-session-status | osc78 | osc78: pinned-inconclusive-by-design |
 | `extensions.osc720-scroll-up` | inconclusive | inconclusive | unsupported | stored-state + pane-metadata-and-session-status | osc720 | osc720: pinned-inconclusive-by-design |
 | `extensions.osc776-cell-size` | inconclusive | inconclusive | supported | stored-state | cell-size | cell-size: pinned-inconclusive-effect-supported |
