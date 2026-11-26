@@ -426,7 +426,7 @@ const focusedSuite = globalThis[Symbol.for('ntilde.terminfo.focusedSuite')];
 
 function validateInvocation(args) {
     if (![4, 6].includes(args.length) || args[0] !== '--executable' || args[2] !== '--app-version'
-        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport', 'modern-osc-titles', 'modern-osc7-cwd', 'modern-child-environment', 'unicode-width', 'unicode-boundaries', 'kitty-graphics', 'osc66', 'sixel-reports'].includes(args[5])))
+        || (args.length === 6 && (args[4] !== '--scope' || !['osc633', 'static-images', 'persistent-animation', 'persistent-restore', 'persistent-compose', 'direct-compose', 'persistent-placeholders', 'direct-placeholders', 'persistent-placeholder-grid', 'direct-placeholder-grid', 'modern-blink', 'modern-viewport', 'modern-osc-titles', 'modern-osc7-cwd', 'modern-child-environment', 'unicode-width', 'unicode-boundaries', 'kitty-graphics', 'osc66', 'sixel-reports'].includes(args[5])))
         || !/^\d[\dA-Za-z.+_-]*$/.test(args[3])) throw new Error('Use --help for the required executable and version arguments.');
     if (process.platform !== 'darwin') throw new Error('The owned adapter currently supports macOS only.');
     if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Node 24+ is required.');
@@ -2261,7 +2261,7 @@ async function main() {
     const snapshot = readSourceSnapshot(sourceRepo);
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport|modern-osc-titles|modern-osc7-cwd|modern-child-environment|unicode-width|unicode-boundaries|kitty-graphics|osc66|sixel-reports]
+        console.log(`Usage: node scripts/terminfo-owned.mjs --executable /absolute/path/Ntilde --app-version VERSION [--scope osc633|static-images|persistent-animation|persistent-restore|persistent-compose|direct-compose|persistent-placeholders|direct-placeholders|persistent-placeholder-grid|direct-placeholder-grid|modern-blink|modern-viewport|modern-osc-titles|modern-osc7-cwd|modern-child-environment|unicode-width|unicode-boundaries|kitty-graphics|osc66|sixel-reports]
 
 Requires macOS, Node 24+ and an uninstalled sidecar outside .app bundles.
 Packaged apps are refused because a staged update can restart outside the fixture.
@@ -2504,7 +2504,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
-        settings.FontSize = 40 / 3; // Ten points at unity zoom, within the existing full-grid raster budget.
+        // The static-image qualification uses the original 14 DIP fixture to leave
+        // gradeable interiors in all four SIXEL color regions at 1x capture.
+        settings.FontSize = args[5] === 'static-images' ? 14 : 40 / 3;
         settings.UiScale = 1;
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
