@@ -1080,8 +1080,9 @@ namespace Ntilde.VT
                 // main-screen anchors while the alt screen is active).
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
-                LineSize lineSize = ImageLineSizeNoLock(img);
-                bool visible = IsRenderImageVisible(img, nativeProjection, absDisplayStart, absEnd, viewportCols ?? Cols, lineSize);
+                LineSize? nativeLineSize = img.NativeRaster is null ? null : ImageLineSizeNoLock(img);
+                bool visible = IsRenderImageVisible(img, nativeProjection, absDisplayStart, absEnd,
+                    viewportCols ?? Cols, nativeLineSize.GetValueOrDefault());
                 if (visible)
                 {
                     list.Add(new RenderImageSnapshot
@@ -1093,7 +1094,7 @@ namespace Ntilde.VT
                         CellY = img.CellY,
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
-                        LineSize = lineSize,
+                        LineSize = nativeLineSize ?? ImageLineSizeNoLock(img),
                         ImageHandle = img.ImageHandle,
                         PreserveAspectRatio = img.KittyImageId.HasValue || img.PreserveAspectRatio,
                         Source = img.SixelSource ?? (img.ImageHandle as IDeferredSixelImage)?.Source,

@@ -174,7 +174,7 @@ public partial class TerminalBuffer
             return image.NativeRaster is not null && DiscardImageBeforeOrigin(image);
 
         int origin = _isAltScreen ? 0 : _scrollback.Count;
-        if (withinMargins || image.NativeRaster is null)
+        if (withinMargins)
             return ClipSixelImage(image, origin + ScrollTop, origin + ScrollBottom);
         return ClipSixelImage(image, origin, origin + Rows - 1);
     }

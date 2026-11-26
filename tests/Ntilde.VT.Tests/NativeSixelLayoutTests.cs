@@ -37,15 +37,20 @@ public sealed class NativeSixelLayoutTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Scrolling_sixel_outside_vertical_margins_uses_the_page_bounds(bool alternateScreen)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, SixelRasterPolicy.PresenterNativeVersion)]
+    [InlineData(true, SixelRasterPolicy.PresenterNativeVersion)]
+    public void Scrolling_sixel_outside_vertical_margins_uses_the_page_bounds(bool alternateScreen, int policy)
     {
-        var buffer = new TerminalBuffer(10, 6, SixelRasterPolicy.PresenterNativeVersion);
-        var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20) };
+        var buffer = new TerminalBuffer(10, 6, policy);
+        var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20), RetainSixelSources = true };
         if (alternateScreen) parser.Process("\x1b[?1049h");
         parser.Process("\x1b[3;5r\x1b[1;1H\x1bPq~\x1b\\");
-        Assert.Equal(new SixelSourceCrop(0, 0, 1, 6), Assert.Single(buffer.Images).NativeRaster!.Crop);
+        var image = Assert.Single(buffer.Images);
+        Assert.Equal((0, 0, 0), (image.CellY, image.ClipTopRows, image.ClipBottomRows));
+        if (policy == 0) Assert.Null(image.NativeRaster);
+        else Assert.Equal(new SixelSourceCrop(0, 0, 1, 6), image.NativeRaster!.Crop);
         buffer.ClearImages();
     }
 
