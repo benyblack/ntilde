@@ -75,24 +75,24 @@
     }
   ],
   "measurement": {
-    "manifestSha256": "0a6a6cc2e7bd2386d2da2f663af7c5580bc13946fc1c3ae2bd3775f9c70473f1",
+    "manifestSha256": "df18fe95b651d4e86bc9f7ee1976294f9702fee6b8261819b64a128d59649e2c",
     "schemaVersion": 1,
-    "runId": "1ca42a26679cb694f20896dbf5994b7a",
+    "runId": "280c46035958c01f0e6f1317b2733c6c",
     "appRevision": "caea956de1f8b391892f61f89ba6fbf6c462cc77",
-    "scriptsRevision": "5dea0fe3817262926125fbb2f0d228e369ddc69d",
+    "scriptsRevision": "fc73fe7ae8ab701f36aff06a8f1fdd9a8907eec5",
     "appSourceArchiveSha256": "24c892fcbe3889202016f8ff15b0fc284f0935017590fb5cfd3ab93b526dd0f6",
     "dotnetSdk": "10.0.403",
     "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
     "archives": {
-      "owned-run.zip": "e1dcbb48809d090fd3f73e916473f5eccd47e4a72cf6fb41cd478ba5f4a0869c"
+      "owned-run.zip": "d4a15db38f5a5b2bfe1eb2f906b4472c1b3df6a44ea89bad4a4ecb08dd53830e"
     },
-    "startedAt": "2026-11-26T07:46:53.019Z",
-    "fixtureRemovedAt": "2026-11-26T07:46:57.741Z",
-    "leaseReleasedAt": "2026-11-26T07:46:57.743Z",
-    "sha256": "97ac13d56c4f0a343a228094830dcc574787bce2b029a6a0bb173d9db4ebb499",
+    "startedAt": "2026-11-26T08:22:47.015Z",
+    "fixtureRemovedAt": "2026-11-26T08:22:51.298Z",
+    "leaseReleasedAt": "2026-11-26T08:22:51.299Z",
+    "sha256": "ac17959b7180c86282da4aa659c726648af8849d4c746be93ca25dfd55b8d1b2",
     "source": {
       "policy": "owned-rich-x11-kitty-keyboard-v1",
-      "sha256": "f2ad6ef619576927b45c5bc4cc14d6d504ae2166a22f304dbf65d0aa081682a6"
+      "sha256": "f390480bcc7d932d53fc3f47fe76d3c707c17c5f50b5114a5b1bbed098383419"
     },
     "nodeVersion": "v24.22.2",
     "appVersion": "0.14.0",
@@ -102,9 +102,9 @@
       2,
       2
     ],
-    "appPid": 6318,
-    "childPid": 6371,
-    "paneId": "328bca84-ee2d-4600-828f-efb0b1e91e83",
+    "appPid": 30,
+    "childPid": 83,
+    "paneId": "d90c0442-4e2d-4251-894e-5a28effd1099",
     "tty": "/dev/pts/0",
     "geometry": {
       "rows": 40,

@@ -10,11 +10,11 @@ XTEST delivered X11 key presses and releases to a disposable Ntilde App on an is
 | `report-all-keys` | 9 | a | `CSI 97u` | supported |
 | `report-text` | 25 | a | `CSI 97;1;97u` | supported |
 
-The flag-off controls delivered plain a as `61` and Ctrl+I as `09`. Holding Escape produced one press, 6 X11 autorepeats, and one release. The alternate-key chord used an XKB mapping with a/A on the same physical key. The associated-text sample committed a single ASCII scalar.
+The flag-off controls delivered plain a as `61` and Ctrl+I as `09`. Holding Escape produced one press, 6 X11 autorepeats, and one release. The alternate-key chord used an XKB mapping with a/A on the same physical key. The associated-text sample committed a single ASCII scalar. An Escape hold without an observed repeat leaves the event-reporting result inconclusive.
 
 Each flag was pushed, queried, exercised, popped, and queried again. The report JSON retains the exact child bytes in hex and the mode replies. The archive also retains the raw chunks and mode-specific keyboard delimiter, native key transitions and ownership proof. The five pinned 4.0.0 probes test flag negotiation. The routed-input observations grade these separate App effects.
 
-Run `1ca42a26679cb694f20896dbf5994b7a` used Ntilde `0.14.0` on Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop), XTEST 2.2, and Node v24.22.2. The App source is `caea956de1f8b391892f61f89ba6fbf6c462cc77` and the measured collector is `5dea0fe3817262926125fbb2f0d228e369ddc69d`. The Xvfb and App processes, private socket, termios state, and lease cleanup were verified. The fixture covers an ordinary local tab and the tested keys on its Linux X11 layout.
+Run `280c46035958c01f0e6f1317b2733c6c` used Ntilde `0.14.0` on Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop), XTEST 2.2, and Node v24.22.2. The App source is `caea956de1f8b391892f61f89ba6fbf6c462cc77` and the measured collector is `fc73fe7ae8ab701f36aff06a8f1fdd9a8907eec5`. The Xvfb and App processes, private socket, termios state, and lease cleanup were verified. The fixture covers an ordinary local tab and the tested keys on its Linux X11 layout.
 
 Rederive the report with `node scripts/terminfo/rich-x11-kitty-results.mjs --check`. [Owned archive](kitty-owned-run.zip) · [Manifest](kitty-manifest.json) · [Case list and evidence map](report.md)
 
