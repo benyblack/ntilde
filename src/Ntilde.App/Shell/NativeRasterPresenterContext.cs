@@ -10,9 +10,14 @@ internal sealed record NativeRasterPresenterContext
 {
     internal double DevicePixelsPerDip { get; }
 
+    /// <summary>
+    /// Requires a finite presenter density that can express every admitted raster in Skia coordinates.
+    /// </summary>
     internal NativeRasterPresenterContext(double devicePixelsPerDip)
     {
-        if (!double.IsFinite(devicePixelsPerDip) || devicePixelsPerDip <= 0)
+        if (!double.IsFinite(devicePixelsPerDip) || devicePixelsPerDip <= 0 ||
+            !float.IsFinite((float)devicePixelsPerDip) ||
+            devicePixelsPerDip < Ntilde.VT.SixelGeometry.DefaultMaxPixelDimension / (double)float.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(devicePixelsPerDip));
         DevicePixelsPerDip = devicePixelsPerDip;
     }

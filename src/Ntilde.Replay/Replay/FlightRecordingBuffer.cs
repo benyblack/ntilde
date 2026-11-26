@@ -81,13 +81,17 @@ namespace Ntilde.Replay
         /// Monotonic millisecond clock (tests inject a fake). Defaults to
         /// <see cref="Environment.TickCount64"/>.
         /// </param>
-        public FlightRecordingBuffer(long maxTotalBytes, int initialCols, int initialRows, Func<long>? clock = null, RecordingCellMetrics? initialSixelCellSize = null)
+        private readonly int _sixelRasterPolicy;
+
+        public FlightRecordingBuffer(long maxTotalBytes, int initialCols, int initialRows, Func<long>? clock = null, RecordingCellMetrics? initialSixelCellSize = null, int sixelRasterPolicy = 0)
         {
             if (maxTotalBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maxTotalBytes), maxTotalBytes, "Retention budget must be positive.");
             if (initialCols <= 0) throw new ArgumentOutOfRangeException(nameof(initialCols), initialCols, "Columns must be positive.");
             if (initialRows <= 0) throw new ArgumentOutOfRangeException(nameof(initialRows), initialRows, "Rows must be positive.");
 
             _windowStartCellSize = RecordingCellMetrics.FromOptional(initialSixelCellSize?.WidthPx, initialSixelCellSize?.HeightPx);
+            ReplayRunner.ValidateSixelMetrics(sixelRasterPolicy, _windowStartCellSize);
+            _sixelRasterPolicy = sixelRasterPolicy;
             _currentCellSize = _windowStartCellSize;
             _maxTotalBytes = maxTotalBytes;
             _windowStartCols = initialCols;
@@ -167,17 +171,19 @@ namespace Ntilde.Replay
                 truncated = _truncatedAtStart;
             }
 
-            return filePath => WriteCapturedWindow(filePath, shell, entries, cols, rows, truncated, cellSize);
+            return filePath => WriteCapturedWindow(filePath, shell, entries, cols, rows, truncated, cellSize, _sixelRasterPolicy);
         }
 
         private static FlightExportInfo WriteCapturedWindow(string filePath, string shell, Entry[] entries,
-            int cols, int rows, bool truncated, RecordingCellMetrics? cellSize)
+            int cols, int rows, bool truncated, RecordingCellMetrics? cellSize, int sixelRasterPolicy)
         {
             ArgumentNullException.ThrowIfNull(filePath);
             using var writer = new StreamWriter(filePath, append: false);
             writer.WriteLine(JsonSerializer.Serialize(new ReplayHeader
             {
                 Type = ReplayHeader.TypeToken,
+                Version = sixelRasterPolicy == 0 ? ReplayHeader.LegacyLayoutVersion : ReplayHeader.NativeSixelLayoutVersion,
+                RequiredSixelRasterPolicy = sixelRasterPolicy,
                 Cols = cols,
                 Rows = rows,
                 Shell = shell ?? string.Empty,

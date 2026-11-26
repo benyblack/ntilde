@@ -98,7 +98,7 @@ internal sealed class MuxWindowlessSessions : IWindowlessSessionSource
         {
             try
             {
-                read = await CallAsync(op, c => session.Client.ReadScreenAsync(sessionId, rows, c)).ConfigureAwait(false);
+                read = await CallAsync(op, c => session.Client.ReadScreenAsync(sessionId, rows, session.Summary.RequiredSixelRasterPolicy, c)).ConfigureAwait(false);
                 break;
             }
             catch (MuxProtocolException ex) when (ex.Code == MuxErrorCodes.SnapshotTooLarge && rows > 0)

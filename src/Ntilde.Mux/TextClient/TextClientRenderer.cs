@@ -63,7 +63,7 @@ public sealed class TextClientRenderer
         consoleCols = Math.Max(1, consoleCols);
         consoleRows = Math.Max(1, consoleRows);
         using TerminalRenderSnapshot snap = _buffer.CaptureRenderSnapshot(
-            new RenderSnapshotRequest { ViewportRows = _buffer.Rows, ViewportCols = _buffer.Cols }, out _);
+            new RenderSnapshotRequest { ViewportRows = _buffer.Rows, ViewportCols = _buffer.Cols, OmitImages = true }, out _);
         int sessionRows = snap.ViewportRows;
         int sessionCols = snap.ViewportCols;
         string? status = BuildStatus(sessionCols, sessionRows, consoleCols, consoleRows);

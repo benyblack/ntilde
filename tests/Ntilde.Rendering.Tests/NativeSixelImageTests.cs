@@ -81,7 +81,7 @@ public sealed class NativeSixelImageTests
     public void Retired_snapshot_keeps_real_pixels_and_charge_until_it_can_be_disposed()
     {
         var budget = new NativeSixelBudget(maxPlacements: 1);
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget);
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 5, budget, new SixelCellSize(10, 20));
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = new SkiaImageDecoder() };
         parser.Process("\x1b[?80h\x1bPq#2~\x1b\\");
         var image = Assert.IsType<NativeSixelImage>(Assert.Single(buffer.Images).ImageHandle);
@@ -122,7 +122,7 @@ public sealed class NativeSixelImageTests
     public async Task Source_pruning_does_not_wait_for_native_decode_and_retries_a_failed_inflight_owner(bool hasData)
     {
         var budget = new NativeSixelBudget(maxPlacements: 1);
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelSourceBudget(100, 1));
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 8, budget, new SixelCellSize(10, 20), new SixelSourceBudget(100, 1));
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = new SkiaImageDecoder() };
         parser.Process("\x1b[?80h\x1bPq#2~\x1b\\");
         var image = Assert.IsType<NativeSixelImage>(Assert.Single(buffer.Images).ImageHandle);

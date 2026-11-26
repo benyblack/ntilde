@@ -575,6 +575,9 @@ namespace Ntilde.VT
             Invalidate(); // Notify outside lock (optional, Invalidate delegates)
         }
 
+        /// <summary>
+        /// Moves active rows and images, retaining main history and applying canonical crop only to actual regional or eviction loss.
+        /// </summary>
         private void ScrollUpInternal()
         {
             // Horizontal margins scroll only the band between them, never into scrollback.
@@ -623,7 +626,7 @@ namespace Ntilde.VT
                         int delta = newlyEvicted > int.MaxValue ? int.MaxValue : (int)newlyEvicted;
                         img.CellY -= delta;
                         // If the image's entire area is now before the new index 0, prune it.
-                        if (img.CellY + img.CellHeight <= 0)
+                        if (DiscardImageBeforeOrigin(img))
                         {
                             RetireImage(img);
                             _images.RemoveAt(i);
@@ -648,7 +651,7 @@ namespace Ntilde.VT
 
                     // If image overlaps with the scrolling region, it moves.
                     // Accurate overlap: Ends after top AND Starts before bottom.
-                    if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY <= absBottom)
+                    if (img.IsSticky && ImageOverlapsRows(img, absTop, absBottom + 1))
                     {
                         img.CellY--;
                         if (ClipSixelImage(img, absTop, absBottom))
@@ -700,6 +703,9 @@ namespace Ntilde.VT
             Invalidate();
         }
 
+        /// <summary>
+        /// Moves the active region downward; discarded native source pixels stay clipped when the stream later reverses direction.
+        /// </summary>
         private void ScrollDownInternal(TerminalCell blank)
         {
             if (HasHorizontalMargins)
@@ -724,7 +730,9 @@ namespace Ntilde.VT
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
                 // If image overlaps with the scrolling region, it moves.
-                if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY < absBottom)
+                if (img.IsSticky && (img.NativeRaster is null
+                    ? img.CellY + img.CellHeight > absTop && img.CellY < absBottom
+                    : ImageOverlapsRows(img, absTop, absBottom + 1)))
                 {
                     img.CellY++;
                     bool clipped = ClipSixelImage(img, absTop, absBottom);

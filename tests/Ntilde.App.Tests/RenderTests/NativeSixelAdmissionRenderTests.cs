@@ -12,10 +12,10 @@ namespace Ntilde.Tests.RenderTests;
 public sealed class NativeSixelAdmissionRenderTests
 {
     [Fact]
-    public void Internal_native_owner_materializes_through_the_real_offscreen_path_without_activating_native_sizing()
+    public void Internal_native_owner_materializes_through_the_real_offscreen_path_without_public_activation()
     {
         var budget = new NativeSixelBudget();
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget);
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget, new SixelCellSize(10, 20));
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false)
         {
             ImageDecoder = new SkiaImageDecoder(),
@@ -30,12 +30,12 @@ public sealed class NativeSixelAdmissionRenderTests
         Assert.Equal((1, 16L * 18 * 6 + 16384), budget.Usage);
         var metrics = new CellMetrics { CellWidth = 10, CellHeight = 20, Baseline = 15, Ascent = 15, Descent = 5 };
         using var pixels = SKBitmap.Decode(SnapshotService.CapturePng(buffer, metrics, 100, 120,
-            new SnapshotCaptureOptions { HideCursor = true }));
+            new SnapshotCaptureOptions { HideCursor = true, NativeRasterPresenter = new(1) }));
         Assert.True(owner.IsMaterialized);
         Assert.Equal((1, 16L * 18 * 4), budget.Usage);
-        Assert.Equal(SKColors.Red, pixels.GetPixel(23, 15)); // Existing whole-cell draw, not native fidelity.
-        Assert.NotEqual(SKColors.Red, pixels.GetPixel(25, 15));
-        Assert.Equal(0, SixelRasterPolicy.EnabledVersion);
+        Assert.Equal(SKColors.Red, pixels.GetPixel(19, 15)); // Internal native extent; public sessions remain legacy.
+        Assert.NotEqual(SKColors.Red, pixels.GetPixel(21, 15));
+        Assert.Equal(SixelRasterPolicy.PresenterNativeVersion, SixelRasterPolicy.EnabledVersion);
         Assert.Throws<InvalidOperationException>(() => new TerminalBuffer(10, 6, 1));
         buffer.Clear(true);
         var retired = new List<object>();
@@ -50,7 +50,7 @@ public sealed class NativeSixelAdmissionRenderTests
     public void Failed_native_disposal_is_retried_by_the_actual_view_without_releasing_credit_early()
     {
         var budget = new NativeSixelBudget();
-        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget);
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget, new SixelCellSize(10, 20));
         var allocation = Assert.IsType<NativeSixelAllocation>(budget.TryReserve(1, 6, 2));
         var source = buffer.SixelSources.Retain("q~");
         var handle = new RetryImage(source, allocation, buffer);

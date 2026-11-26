@@ -17,7 +17,7 @@ public sealed class SixelRasterFoundationTests
         var copy = TerminalStateSerializer.FromBytes(bytes);
         Assert.Equal(Intent(), Assert.Single(copy.Sixels!).NativeRaster);
         Assert.Equal(bytes, TerminalStateSerializer.ToBytes(copy));
-        Assert.Equal(0, SixelRasterPolicy.EnabledVersion);
+        Assert.Equal(SixelRasterPolicy.PresenterNativeVersion, SixelRasterPolicy.EnabledVersion);
         Assert.All(typeof(SixelRasterIntent).GetProperties(), property => Assert.False(property.CanWrite));
         Assert.All(typeof(SixelSourceCrop).GetProperties(), property => Assert.False(property.CanWrite));
     }
@@ -60,7 +60,7 @@ public sealed class SixelRasterFoundationTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void Disabled_native_state_is_rejected_before_any_buffer_parser_or_decoder_mutation(bool restore, bool outsideBudget)
+    public void Native_state_without_the_policy_is_rejected_before_any_buffer_parser_or_decoder_mutation(bool restore, bool outsideBudget)
     {
         var source = new TerminalBuffer(30, 8).ExportState(0);
         source.Sixels = [new() { Source = "q~", Width = 2, Height = 1, NativeRaster = Intent() }];

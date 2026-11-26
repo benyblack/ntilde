@@ -36,6 +36,8 @@ namespace Ntilde.Replay
         /// False declines the run without delivering events.
         /// </summary>
         public Func<CancellationToken, Task<bool>>? OnValidatedStart { get; init; }
+        /// <summary>Prepares a policy-specific host from the validated header of the active reader.</summary>
+        public Func<ReplayHeader?, CancellationToken, Task<bool>>? OnValidatedHeader { get; init; }
     }
 
     public sealed class ReplayRunResult
@@ -134,19 +136,16 @@ namespace Ntilde.Replay
 
             ReplayHeader? header = ReadHeader(line);
             bool isV2 = header is not null;
-            if (header is not null)
-            {
-                if (header.RequiredSixelRasterPolicy != SixelRasterPolicy.EnabledVersion)
-                    throw new InvalidDataException("The recording requires an unsupported SIXEL raster policy.");
-                _ = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
-            }
-            else if (startAfterLine > 0)
+            int sixelPolicy = header?.RequiredSixelRasterPolicy ?? 0;
+            if (header is null && startAfterLine > 0)
             {
                 ValidateLegacyRecordingStart(line);
             }
 
             try
             {
+                if (options?.OnValidatedHeader is { } admit && !await admit(header, ct)) return result;
+                if (ct.IsCancellationRequested) return result;
                 if (options?.OnValidatedStart is { } prepare && !await prepare(ct)) return result;
                 if (ct.IsCancellationRequested) return result;
                 if (header is not null)
@@ -207,7 +206,7 @@ namespace Ntilde.Replay
                         {
                             if (IsPastStopTime(line, options?.StopAtTimeMs)) break;
                             ProcessedLine processedLine = isV2
-                                ? await ProcessV2Line(line, onDataCallback, onResizeCallback, onMarkerCallback, onInputCallback, onSnapshotCallback, onSixelCellSizeCallback,
+                                ? await ProcessV2Line(line, onDataCallback, onResizeCallback, onMarkerCallback, onInputCallback, onSnapshotCallback, onSixelCellSizeCallback, sixelPolicy,
                                     playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed, ct)
                                 : await ProcessV1Line(line, onDataCallback, playbackMode, lastOffset, minTimeMs, fastForwardToMs, playbackSpeed, ct);
 
@@ -293,7 +292,10 @@ namespace Ntilde.Replay
                     throw new InvalidDataException("Malformed recording header.", ex);
                 return null;
             }
-            return header is not null && ReplayHeader.IsKnownType(header.Type) && header.Version == 2 ? header : null;
+            if (!recognized || header is null) return null;
+            var size = RecordingCellMetrics.FromOptional(header.SixelCellWidthPx, header.SixelCellHeightPx);
+            ValidateSixelMetrics(header.RequiredSixelRasterPolicy, size);
+            return header;
         }
 
         /// <summary>Recognizes complete root type tokens before a later JSON syntax failure, never nested/string lookalikes.</summary>
@@ -325,26 +327,35 @@ namespace Ntilde.Replay
         private static void ValidateRequiredSixelPolicy(JsonElement root)
         {
             if (!IsRecognizedRecordingHeader(root)) return;
-            bool seenVersion = false;
+            int version = 0;
             foreach (var property in root.EnumerateObject())
             {
                 if (!property.NameEquals("v")) continue;
-                if (seenVersion || property.Value.ValueKind != JsonValueKind.Number ||
-                    !property.Value.TryGetInt32(out int version) || version != 2)
+                if (version != 0 || property.Value.ValueKind != JsonValueKind.Number ||
+                    !property.Value.TryGetInt32(out version) ||
+                    version is not (ReplayHeader.LegacyLayoutVersion or ReplayHeader.NativeSixelLayoutVersion))
                     throw new InvalidDataException("The recording header has an unsupported or ambiguous version.");
-                seenVersion = true;
             }
-            if (!seenVersion)
+            if (version == 0)
                 throw new InvalidDataException("The recording header is missing its version.");
+            int required = version == ReplayHeader.NativeSixelLayoutVersion ? SixelRasterPolicy.PresenterNativeVersion : 0;
             bool seen = false;
             foreach (var property in root.EnumerateObject())
             {
                 if (!property.NameEquals("required_sixel_raster")) continue;
                 if (seen || property.Value.ValueKind != JsonValueKind.Number || !property.Value.TryGetInt32(out int policy) ||
-                    policy != SixelRasterPolicy.EnabledVersion)
+                    policy != required)
                     throw new InvalidDataException("The recording requires an unsupported or malformed SIXEL raster policy.");
                 seen = true;
             }
+            if (required != 0 && !seen) throw new InvalidDataException("The recording is missing its required SIXEL raster policy.");
+        }
+
+        internal static void ValidateSixelMetrics(int policy, RecordingCellMetrics? size)
+        {
+            SixelRasterPolicy.RequireSupported(policy);
+            if (policy != 0 && (size?.WidthPx is not >= 1 || size?.HeightPx is not >= 1))
+                throw new InvalidDataException("Native SIXEL recordings require explicit cell metrics of at least one pixel.");
         }
 
         private static bool IsRecognizedRecordingHeader(JsonElement root)
@@ -398,6 +409,7 @@ namespace Ntilde.Replay
             Func<string, Task>? onInputCallback,
             Func<ReplaySnapshot, Task>? onSnapshotCallback,
             Func<float, float, Task>? onSixelCellSizeCallback,
+            int sixelPolicy,
             ReplayPlaybackMode playbackMode,
             long lastOffset,
             long minTimeMs,
@@ -426,6 +438,7 @@ namespace Ntilde.Replay
                 case "sixelCellSize":
                     var cellSize = RecordingCellMetrics.FromOptional(ev.SixelCellWidthPx, ev.SixelCellHeightPx)
                         ?? throw new InvalidDataException("Missing recording SIXEL cell metrics.");
+                    ValidateSixelMetrics(sixelPolicy, cellSize);
                     if (onSixelCellSizeCallback is not null) await onSixelCellSizeCallback(cellSize.WidthPx, cellSize.HeightPx);
                     break;
                 case "resize":
@@ -467,6 +480,7 @@ namespace Ntilde.Replay
                     if (ev.Snapshot != null)
                     {
                         ValidateSnapshotCellLayout(ev.Snapshot);
+                        RequireSnapshotSixelPolicy(ev.Snapshot, sixelPolicy);
                         if (onSnapshotCallback != null)
                         {
                             await onSnapshotCallback(ev.Snapshot);
@@ -484,6 +498,7 @@ namespace Ntilde.Replay
         public static void ApplySnapshot(TerminalBuffer buffer, AnsiParser parser, ReplaySnapshot snapshot)
         {
             _ = RecordingCellMetrics.FromOptional(snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+            RequireSnapshotSixelPolicy(snapshot, buffer.SixelRasterPolicyVersion);
             if (snapshot.State is { Version: TerminalStateSnapshot.CurrentVersion })
             {
                 if (snapshot.State.Parser is null)
@@ -499,6 +514,13 @@ namespace Ntilde.Replay
             buffer.ApplySnapshot(snapshot);
             parser.RestoreOutputTail(default);
             ApplyCellMetrics(parser, snapshot.SixelCellWidthPx, snapshot.SixelCellHeightPx);
+        }
+
+        private static void RequireSnapshotSixelPolicy(ReplaySnapshot snapshot, int policy)
+        {
+            if ((snapshot.State?.RequiredSixelRasterPolicy ?? 0) != policy ||
+                (policy != 0 && snapshot.State?.Version != TerminalStateSnapshot.CurrentVersion))
+                throw new InvalidDataException("The recording checkpoint has a different SIXEL raster policy.");
         }
 
         private static void ApplyCellMetrics(AnsiParser parser, float? width, float? height)

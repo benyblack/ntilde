@@ -2,6 +2,9 @@ namespace Ntilde.VT;
 
 public partial class TerminalBuffer
 {
+    /// <summary>
+    /// Preserves full native intent or explicit history-cap loss; unavailable retained source refuses the whole native export.
+    /// </summary>
     private void ExportSixelState(TerminalStateSnapshot snapshot)
     {
         for (int order = 0; order < _images.Count; order++)
@@ -12,8 +15,33 @@ public partial class TerminalBuffer
             int end = image.IsAltScreenImage ? snapshot.Rows : snapshot.ScrollbackRowCount + snapshot.Rows;
             int top = Math.Max(image.ClipTopRows, Math.Max(0, -y));
             int bottom = Math.Max(image.ClipBottomRows, Math.Max(0, y + image.CellHeight - end));
-            if (top + bottom >= image.CellHeight || image.CellX >= snapshot.Cols) continue;
-            if (source.Data is not { } data) continue;
+            if (image.NativeRaster is not null)
+            {
+                top = Math.Min(top, image.CellHeight);
+                bottom = Math.Min(bottom, image.CellHeight);
+            }
+            var intent = image.NativeRaster;
+            // A full export is a reader, not a new viewport/page loss. Only an explicit
+            // scrollback cap discards additional history; metric changes must not recrop.
+            if (intent is not null && !image.IsAltScreenImage && snapshot.ScrollbackRowsDropped > 0)
+            {
+                var previousCrop = intent.Crop;
+                double upper = Math.Min(previousCrop.Bottom, Math.Max(previousCrop.Top,
+                    Math.Clamp(-(double)y * NativeSixelCellMetrics!.HeightPx, 0, intent.CanvasHeight)));
+                intent = new(intent.Version, intent.CanvasWidth, intent.CanvasHeight,
+                    new(previousCrop.Left, upper, previousCrop.Right, previousCrop.Bottom));
+            }
+            bool clearing = top + (long)bottom < image.CellHeight && image.ClipRightColumns < image.CellWidth && image.CellX < snapshot.Cols;
+            bool pixels = intent is { Crop: var crop } && crop.Right > crop.Left && crop.Bottom > crop.Top;
+            if (image.NativeRaster is null
+                ? top + (long)bottom >= image.CellHeight || image.CellX >= snapshot.Cols
+                : !clearing && !pixels) continue;
+            if (source.Data is not { } data)
+            {
+                if (image.NativeRaster is not null)
+                    throw new InvalidOperationException("Native SIXEL state export is unavailable because its retained source expired.");
+                continue;
+            }
             (snapshot.Sixels ??= []).Add(new TerminalSixelImageState
             {
                 Source = data,
@@ -26,17 +54,28 @@ public partial class TerminalBuffer
                 ClipBottom = bottom,
                 ClipRight = image.ClipRightColumns,
                 Order = order,
+                NativeRaster = intent,
             });
         }
     }
 
-    private static void ValidateSixelState(TerminalStateSnapshot snapshot)
+    /// <summary>
+    /// Checks required native semantics before retention truncation; legacy source admission retains its existing bounds.
+    /// </summary>
+    private static void ValidateSixelState(TerminalStateSnapshot snapshot, bool nativeAllowed = false)
     {
+        if (nativeAllowed)
+        {
+            ValidateNativeSixelState(snapshot);
+            return;
+        }
+        if (snapshot.NativeSixelCellMetrics is not null)
+            throw StateTransferValidation.Reject("native SIXEL metrics", "requires its native session policy");
         if (snapshot.Sixels is not { } states) return;
         // Reject required semantics even on entries a source-budget truncation would discard.
         // Never silently reinterpret native state as a legacy whole-cell placement.
         if (states.Any(state => state?.NativeRaster is not null))
-            throw StateTransferValidation.Reject("SIXEL native raster", "policy is not enabled in this build");
+            throw StateTransferValidation.Reject("SIXEL native raster", "native intent requires a native session");
         for (int i = Math.Max(0, states.Count - SixelSourceBudget.DefaultMaxSources); i < states.Count; i++)
         {
             var state = StateTransferValidation.RequirePresent(states[i], "SIXEL image");

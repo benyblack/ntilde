@@ -264,6 +264,8 @@ public sealed class MuxServer : IDisposable
         ImagePolicyAdmission.Policy.Require(p.RequiredImagePolicy, Ntilde.VT.PersistentImagePolicy.EnabledVersion);
         RequireGeometry(p.Cols, p.Rows);
         RequireInitialCellMetrics(p.CellWidthPx, p.CellHeightPx);
+        if (p.RequiredSixelRasterPolicy != 0 && (p.CellWidthPx is not >= 1 || p.CellHeightPx is not >= 1))
+            throw new MuxRequestException(MuxErrorCodes.ProtocolError, "Native SIXEL requires explicit cell metrics of at least one pixel.");
         RequireHistoryRequest(p.MaxHistory);
 
         // Chosen before the spawn so the shell can be told its own id; added to the caller's
@@ -404,6 +406,7 @@ public sealed class MuxServer : IDisposable
             DetachedByUser = s.DetachedByUser,
             Cwd = s.Cwd,
             RequiredImagePolicy = s.RequiredImagePolicy,
+            RequiredSixelRasterPolicy = s.RequiredSixelRasterPolicy,
         }).ToArray();
 
     internal void Kill(Guid id, IMuxFrameSink? by = null, string? byClientKind = null)

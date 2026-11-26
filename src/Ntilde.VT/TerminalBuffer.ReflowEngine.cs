@@ -1267,7 +1267,7 @@ namespace Ntilde.VT
                             img.CellX = placement.NewX;
 
                             // Prune if shifted out of history bounds
-                            if (img.CellY + img.CellHeight < 0)
+                            if (img.NativeRaster is null ? img.CellY + img.CellHeight < 0 : _source.DiscardImageBeforeOrigin(img))
                             {
                                 _source.RetireImage(img);
                                 _images.RemoveAt(i);

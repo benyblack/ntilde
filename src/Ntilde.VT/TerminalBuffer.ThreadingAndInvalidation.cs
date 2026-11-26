@@ -376,7 +376,8 @@ namespace Ntilde.VT
                     cursorVisible = Modes.IsCursorVisible;
                     cursorBlinkEnabled = Modes.IsCursorBlinkEnabled;
 
-                    var visibleImages = GetVisibleImagesSnapshot(absDisplayStart, viewportRows);
+                    var visibleImages = GetVisibleImagesSnapshot(absDisplayStart, viewportRows,
+                        req.NativeSixelProjection, req.OmitImages, viewportCols);
                     if (visibleImages.Count > 0)
                     {
                         imageSourceLease = PinSnapshotImageSources(visibleImages, req.SnapshotSessionId);

@@ -183,6 +183,9 @@ namespace Ntilde.Shell
             TerminalSnapshotOptions? options = null)
             => CaptureWithContext(buffer, metrics, width, height, options, false, out _);
 
+        /// <summary>
+        /// Captures one isolated draw, refusing unavailable native context/materialization instead of returning blank native success.
+        /// </summary>
         internal static SKBitmap CaptureWithContext(
             TerminalBuffer buffer, CellMetrics metrics, int width, int height,
             TerminalSnapshotOptions? options, bool includeRenderDetails, out SnapshotCaptureInfo captureInfo)
@@ -192,6 +195,13 @@ namespace Ntilde.Shell
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
             options ??= new TerminalSnapshotOptions();
+            if (buffer.SixelRasterPolicyVersion != 0)
+            {
+                if (!double.IsFinite(options.RenderScaling) || !float.IsFinite((float)options.RenderScaling) ||
+                    (float)options.RenderScaling <= 0 || width * options.RenderScaling > int.MaxValue ||
+                    height * options.RenderScaling > int.MaxValue)
+                    throw new ArgumentOutOfRangeException(nameof(options), "Native capture requires a finite representable positive scale and canvas.");
+            }
             if (options.PresentationTimeMs is { } time) ArgumentOutOfRangeException.ThrowIfNegative(time);
 
             // Snapshot the geometry/cursor values under the read lock, then let go:
@@ -306,12 +316,15 @@ namespace Ntilde.Shell
                 collectRenderDetails: includeRenderDetails,
                 selectionRelativeToViewport: options.SelectionRelativeToViewport,
                 collectImageDetails: options.IncludeImageDetails,
-                afterSnapshotForTest: options.AfterSnapshotForTest);
+                afterSnapshotForTest: options.AfterSnapshotForTest,
+                nativePresenterDevicePixelsPerDip: options.NativeRasterPresenter?.DevicePixelsPerDip);
 
             try
             {
                 options.BeforeDrawForTest?.Invoke();
                 using var snapshot = op.DrawTerminalInternal(canvas);
+                if (op.NativeRasterUnavailable || (buffer.SixelRasterPolicyVersion != 0 && snapshot is null))
+                    throw new InvalidOperationException("Native SIXEL capture is unavailable for its selected raster or presenter context.");
                 SnapshotRenderContext? renderContext = null;
                 if (includeRenderDetails && op.RenderedFrame is { } frame)
                     renderContext = SnapshotRenderContext.Create(frame, skTypeface.Typeface ?? SKTypeface.Default, fallbackChain, metrics, options, bitmap.Width, bitmap.Height);

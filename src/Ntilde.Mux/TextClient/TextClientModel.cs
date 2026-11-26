@@ -13,7 +13,7 @@ public sealed class TextClientModel : IDisposable
     {
         ArgumentNullException.ThrowIfNull(session);
         Session = session;
-        Buffer = new TerminalBuffer(80, 24);
+        Buffer = new TerminalBuffer(80, 24, session.RequiredSixelRasterPolicy);
         Parser = new AnsiParser(Buffer, session.ForceConPtyFiltering)
         {
             ImageDecoder = null,

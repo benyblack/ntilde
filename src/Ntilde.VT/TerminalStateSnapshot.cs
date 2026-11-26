@@ -47,6 +47,9 @@ namespace Ntilde.VT
         [JsonPropertyName("required_sixel_raster"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int RequiredSixelRasterPolicy { get; set; }
 
+        [JsonPropertyName("native_sixel_cells"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public SixelCellSize? NativeSixelCellMetrics { get; set; }
+
         [JsonPropertyName("v")] public int Version { get; set; } = CurrentVersion;
         [JsonPropertyName("cols")] public int Cols { get; set; }
         [JsonPropertyName("rows")] public int Rows { get; set; }

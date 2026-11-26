@@ -26,6 +26,9 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>
+        /// Reshapes/reflows the terminal and irreversibly crops native domain loss; identical geometry is not a crop operation.
+        /// </summary>
         public void Resize(int newCols, int newRows)
         {
             // Ignore degenerate dimensions. A transient 0/negative size (e.g. a window
@@ -35,9 +38,11 @@ namespace Ntilde.VT
             if (newCols <= 0 || newRows <= 0) return;
 
             AcquireWriteLock();
+            bool resized = false;
             try
             {
                 if (newCols == Cols && newRows == Rows) return;
+                resized = true;
 
                 PrepareTextSizingResize(newCols, newRows);
                 int oldCols = Cols;
@@ -132,7 +137,7 @@ namespace Ntilde.VT
 
                                     int delta = newlyEvicted > int.MaxValue ? int.MaxValue : (int)newlyEvicted;
                                     img.CellY -= delta;
-                                    if (img.CellY + img.CellHeight <= 0) { RetireImage(img); _images.RemoveAt(i); }
+                                    if (DiscardImageBeforeOrigin(img)) { RetireImage(img); _images.RemoveAt(i); }
                                 }
                             }
                         }
@@ -266,7 +271,9 @@ namespace Ntilde.VT
             }
             finally
             {
-                Lock.ExitWriteLock();
+                try { if (resized) ClipNativeSixelsAfterResize(); }
+                finally { Lock.ExitWriteLock(); }
+                DisposeRetiredHeadlessSixelSources();
             }
 
             OnInvalidate?.Invoke();
@@ -359,7 +366,7 @@ namespace Ntilde.VT
                     if (img.IsAltScreenImage) continue;
 
                     img.CellY -= (linesToPush + newlyDiscarded);
-                    if (img.CellY + img.CellHeight <= 0) { RetireImage(img); _images.RemoveAt(i); }
+                    if (DiscardImageBeforeOrigin(img)) { RetireImage(img); _images.RemoveAt(i); }
                 }
             }
 
@@ -443,6 +450,9 @@ namespace Ntilde.VT
             return true;
         }
 
+        /// <summary>
+        /// Treats canonical native overhang as occupied main-screen content so resize cannot discard its underlying rows as padding.
+        /// </summary>
         private bool MainScreenImageCoversRowNoLock(int absoluteRow)
         {
             for (int i = 0; i < _images.Count; i++)
@@ -453,7 +463,9 @@ namespace Ntilde.VT
                 // absolute row asked about here.
                 if (image.IsAltScreenImage) continue;
 
-                if (absoluteRow >= image.CellY && absoluteRow < image.CellY + image.CellHeight)
+                if (image.NativeRaster is null
+                    ? absoluteRow >= image.CellY && absoluteRow < image.CellY + image.CellHeight
+                    : ImageOverlapsRows(image, absoluteRow, absoluteRow + 1))
                 {
                     return true;
                 }

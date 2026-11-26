@@ -14,11 +14,14 @@ namespace Ntilde.VT
         public static bool IsKnownType(string? type)
             => type == TypeToken || type == LegacyTypeToken;
 
+        public const int LegacyLayoutVersion = 2;
+        public const int NativeSixelLayoutVersion = 3;
+
         [JsonPropertyName("type")]
         public string Type { get; set; } = "";
 
         [JsonPropertyName("v")]
-        public int Version { get; set; } = 2;
+        public int Version { get; set; } = LegacyLayoutVersion;
 
         /// <summary>Required semantics, not an advertisement. Zero preserves historical header bytes.</summary>
         [JsonPropertyName("required_sixel_raster"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

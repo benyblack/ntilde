@@ -34,6 +34,7 @@ namespace Ntilde.Tests.Infra
         public bool? ForceBoxDrawingPrimitives { get; init; }
         public bool? ForceBlockElementPrimitives { get; init; }
         public double RenderScaling { get; init; } = 1.0;
+        internal NativeRasterPresenterContext? NativeRasterPresenter { get; init; }
         public string TypefaceFamily { get; init; } = "Cascadia Code PL, CaskaydiaCove Nerd Font, Cascadia Code, Consolas, Monospace";
         public float FontSize { get; init; } = 14f;
 
@@ -105,6 +106,7 @@ namespace Ntilde.Tests.Infra
             EnableComplexShaping = options.EnableComplexShaping,
             MinimumContrast = options.MinimumContrast,
             RenderScaling = options.RenderScaling,
+            NativeRasterPresenter = options.NativeRasterPresenter,
             TypefaceFamily = options.TypefaceFamily,
             FontSize = options.FontSize,
             RowCache = options.RowCache,

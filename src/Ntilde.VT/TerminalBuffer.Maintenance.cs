@@ -128,6 +128,9 @@ namespace Ntilde.VT
             return id;
         }
 
+        /// <summary>
+        /// Releases protected source leases before revisiting sealed headless owners; renderer-native disposal remains host-owned.
+        /// </summary>
         public void EndSnapshotSession(int sessionId)
         {
             List<IDisposable>? leases;
@@ -137,6 +140,19 @@ namespace Ntilde.VT
                 _sixelSnapshotLeases.Remove(sessionId, out leases);
             }
             if (leases is not null) foreach (var lease in leases) lease.Dispose();
+            DisposeRetiredHeadlessSixelSources();
+            Volatile.Read(ref _retiredBufferImageDrain)?.Invoke();
+        }
+
+        private Action? _retiredBufferImageDrain;
+
+        /// <summary>Clears a buffer the host no longer uses and allows its image owner to drain after pending snapshots release.</summary>
+        public void ReleaseImagesAfterSnapshots(Action drain)
+        {
+            ArgumentNullException.ThrowIfNull(drain);
+            ClearImages();
+            Volatile.Write(ref _retiredBufferImageDrain, drain);
+            drain();
         }
 
         private long MinActiveSessionStartTick()
@@ -157,7 +173,13 @@ namespace Ntilde.VT
         /// in-flight capture of any duration blocks disposal). The queue is FIFO by retire
         /// tick, so the drain stops at the first entry that cannot yet be released.
         /// </summary>
-        public bool DrainRetiredImageHandles(List<object> into, long retiredBeforeTick)
+        public bool DrainRetiredImageHandles(List<object> into, long retiredBeforeTick) =>
+            DrainRetiredImageHandles(into, retiredBeforeTick, headlessSourcesOnly: false);
+
+        /// <summary>
+        /// Uses the same FIFO, generation and snapshot gates for every handoff; filtering never hands a renderer owner to headless cleanup.
+        /// </summary>
+        private bool DrainRetiredImageHandles(List<object> into, long retiredBeforeTick, bool headlessSourcesOnly)
         {
             if (_retiredImageHandles.IsEmpty) return false;
             lock (_imageHandleGate)
@@ -173,6 +195,7 @@ namespace Ntilde.VT
                         _retiredImageHandles.TryDequeue(out _);
                         continue;
                     }
+                    if (headlessSourcesOnly && entry.Handle is not NativeSixelSourceOwner) break;
                     if ((!entry.DisposeImmediately && entry.Tick > retiredBeforeTick) || entry.Tick >= minActiveSessionStart) break;
                     if (!_retiredImageHandles.TryDequeue(out entry)) continue;
                     if (!TryCompleteImageRetirement(entry.Handle, entry.RetirementToken)) continue;
@@ -183,6 +206,9 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>
+        /// Retires placements and retained assets from both banks; only sealed source owners may be disposed here after leaving VT locks.
+        /// </summary>
         public void ClearImages()
         {
             bool lockTaken = EnterWriteLockIfNeeded();
@@ -195,6 +221,7 @@ namespace Ntilde.VT
             {
                 ExitWriteLockIfNeeded(Lock, lockTaken);
             }
+            DisposeRetiredHeadlessSixelSources();
             Invalidate();
         }
 
@@ -226,6 +253,7 @@ namespace Ntilde.VT
                 ExitWriteLockIfNeeded(Lock, lockTaken);
             }
 
+            DisposeRetiredHeadlessSixelSources();
             Invalidate();
         }
 
@@ -274,7 +302,7 @@ namespace Ntilde.VT
                         if (img.IsAltScreenImage) continue;
 
                         img.CellY -= clearedRows;
-                        if (img.CellY + img.CellHeight <= 0)
+                        if (DiscardImageBeforeOrigin(img))
                         {
                             RetireImage(img);
                             _images.RemoveAt(i);
@@ -290,6 +318,9 @@ namespace Ntilde.VT
             Invalidate();
         }
 
+        /// <summary>
+        /// Clears active viewport content and overlapping image placements while preserving inactive banks and history-only images.
+        /// </summary>
         private void ClearScreenInternal(bool resetCursor, bool keepLineSizes = false)
         {
             EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(0), TextSizingAbsoluteRow(Rows));
@@ -334,7 +365,9 @@ namespace Ntilde.VT
                 var img = _images[i];
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
-                if (img.CellY + img.CellHeight > viewportTopAbs)
+                if (img.NativeRaster is null
+                    ? img.CellY + img.CellHeight > viewportTopAbs
+                    : ImageOverlapsRows(img, viewportTopAbs, viewportTopAbs + Rows))
                 {
                     RetireImage(img);
                     _images.RemoveAt(i);

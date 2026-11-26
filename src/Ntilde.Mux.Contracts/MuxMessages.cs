@@ -217,6 +217,9 @@ public sealed record SpawnResult
 
 public sealed record SessionSummary
 {
+    /// <summary>Raster semantics required by the existing session.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int RequiredSixelRasterPolicy { get; init; }
     public Guid SessionId { get; init; }
     public string Title { get; init; } = string.Empty;
     public string Command { get; init; } = string.Empty;

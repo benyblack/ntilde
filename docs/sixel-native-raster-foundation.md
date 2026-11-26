@@ -1,5 +1,7 @@
 # Native SIXEL raster foundation (#851)
 
+This document describes the original inactive foundation. See the [active layout and transfer contract](sixel-native-layout.md).
+
 This is an inactive compatibility foundation, not a native-pixel support claim.
 Current SIXELs still use whole-cell drawing. The confirmed fixed-metric reproduction
 in [#851](https://github.com/benyblack/ntilde/issues/851) remains a separate rendering

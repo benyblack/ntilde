@@ -770,7 +770,7 @@ namespace Ntilde.VT
                     if (img.IsAltScreenImage != _isAltScreen) continue;
 
                     // If image overlaps with or is below the deleted range
-                    if (img.IsSticky && img.CellY + img.CellHeight > absTop && img.CellY <= absBottom)
+                    if (img.IsSticky && ImageOverlapsRows(img, absTop, absBottom + 1))
                     {
                         if (img.CellY < absDeletedEnd)
                         {
@@ -1059,12 +1059,17 @@ namespace Ntilde.VT
             return containsBlink;
         }
 
-        public List<RenderImageSnapshot> GetVisibleImagesSnapshot(int absDisplayStart, int bufferRows)
+        /// <summary>
+        /// Copies only active-bank placements under the buffer lock; native pixels require explicit projection or text-only omission.
+        /// </summary>
+        public List<RenderImageSnapshot> GetVisibleImagesSnapshot(int absDisplayStart, int bufferRows,
+            NativeSixelViewProjection? nativeProjection = null, bool omitImages = false, int? viewportCols = null)
         {
             AssertLockHeld();
             // This MUST be called under the buffer read/write lock.
             var list = new List<RenderImageSnapshot>();
             int absEnd = absDisplayStart + bufferRows;
+            if (omitImages) return list;
 
             foreach (var img in _images)
             {
@@ -1075,18 +1080,24 @@ namespace Ntilde.VT
                 // main-screen anchors while the alt screen is active).
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
-                // Simple visibility check
-                if (img.CellY + img.CellHeight - img.ClipBottomRows > absDisplayStart && img.CellY + img.ClipTopRows < absEnd)
+                LineSize lineSize = ImageLineSizeNoLock(img);
+                bool visible = img.NativeRaster is { } native
+                    ? (nativeProjection ?? throw new InvalidOperationException("Native SIXEL drawing requires an explicit presenter projection."))
+                        .Intersects(native, img.CellX, img.CellY, img.CellWidth, img.CellHeight, img.ClipTopRows, img.ClipBottomRows,
+                            img.ClipRightColumns, absDisplayStart, bufferRows, viewportCols ?? Cols, lineSize == LineSize.SingleWidth ? 1 : 2)
+                    : img.CellY + img.CellHeight - img.ClipBottomRows > absDisplayStart && img.CellY + img.ClipTopRows < absEnd;
+                if (visible)
                 {
                     list.Add(new RenderImageSnapshot
                     {
                         PlacementId = img.ImageId,
                         SixelPlacement = img.SixelPlacement,
+                        NativeRaster = img.NativeRaster,
                         CellX = img.CellX,
                         CellY = img.CellY,
                         CellWidth = img.CellWidth,
                         CellHeight = img.CellHeight,
-                        LineSize = ImageLineSizeNoLock(img),
+                        LineSize = lineSize,
                         ImageHandle = img.ImageHandle,
                         PreserveAspectRatio = img.KittyImageId.HasValue || img.PreserveAspectRatio,
                         Source = img.SixelSource ?? (img.ImageHandle as IDeferredSixelImage)?.Source,

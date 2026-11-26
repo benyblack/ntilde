@@ -6,14 +6,15 @@ namespace Ntilde.VT;
 public static class SixelRasterPolicy
 {
     public const int PresenterNativeVersion = 1;
-    // Activation requires native transforms, irreversible clipping, bounded ownership and peer negotiation.
-    public const int EnabledVersion = 0;
+    public const int EnabledVersion = PresenterNativeVersion;
 
     /// <summary>Checks required semantics even when an unknown state version uses legacy replay fields.</summary>
     public static void RequireSupportedState(TerminalStateSnapshot state)
     {
         ArgumentNullException.ThrowIfNull(state);
         RequireSupported(state.RequiredSixelRasterPolicy);
+        if (state.NativeSixelCellMetrics is not null && state.RequiredSixelRasterPolicy != PresenterNativeVersion)
+            throw new InvalidOperationException("Native SIXEL metrics require their native session policy.");
         if (state.Sixels is null) return;
         foreach (var placement in state.Sixels)
         {
@@ -55,7 +56,6 @@ public sealed record SixelSourceCrop
 
 /// <summary>
 /// Versioned production intent, independent of decoder handles, font metrics and QA provenance.
-/// This build can describe it but deliberately refuses to restore it while the policy is disabled.
 /// </summary>
 public sealed record SixelRasterIntent
 {

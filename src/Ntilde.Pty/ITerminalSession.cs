@@ -69,6 +69,8 @@ namespace Ntilde.Pty
     /// <summary>Optional parser-host ownership of recording order. Install before recording starts.</summary>
     public interface ITerminalRecordingBoundary : ITerminalRecordingCellMetrics
     {
+        /// <summary>Sets stream semantics before enabling either recording writer.</summary>
+        void SetRecordingSixelRasterPolicy(int policy) { }
         void UseHostRecordingBoundary();
         void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler);
         void SubscribeTerminalOutput(Action<string, TerminalOutputChunk> handler) =>

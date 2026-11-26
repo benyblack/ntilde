@@ -442,6 +442,7 @@ namespace Ntilde.Controls
         private void WireMuxSession(MuxClientSession mux, bool previousLost)
         {
             ApplyMuxSharing(null);
+            UseMuxBufferPolicy(mux.RequiredSixelRasterPolicy);
             CreateAndWireParser(mux.ForceConPtyFiltering, muxBacked: true, mux.RequiredImagePolicy, mux.ReadTransportFile);
             float cw = TermView.Metrics.CellWidth, ch = TermView.Metrics.CellHeight;
             if (cw > 0) Parser!.CellWidth = cw;
@@ -481,6 +482,29 @@ namespace Ntilde.Controls
                 });
             };
             _ = AttachMuxAsync(mux, previousLost);
+        }
+
+        private void UseMuxBufferPolicy(int policy)
+        {
+            if (Buffer is not { } old || old.SixelRasterPolicyVersion == policy) return;
+
+            // The incoming attach snapshot replaces both banks and history. Until it arrives,
+            // keep the same display geometry and theme in the new stream generation.
+            var buffer = new TerminalBuffer(old.Cols, old.Rows, policy) { MaxHistory = old.MaxHistory };
+            var defaultTheme = buffer.Theme;
+            buffer.Theme = old.Theme;
+            buffer.UpdateThemeColors(defaultTheme);
+            old.OnScreenSwitched -= OnBufferScreenSwitched;
+            buffer.OnScreenSwitched += OnBufferScreenSwitched;
+            if (_agentOutputTracker is { } tracker)
+            {
+                old.OnInvalidate -= tracker.NotifyInvalidate;
+                buffer.OnInvalidate += tracker.NotifyInvalidate;
+            }
+            Buffer = buffer;
+            TermView.SetBuffer(buffer);
+            _agentRegistration?.SetBuffer(buffer);
+            Ntilde.Shell.TerminalView.ReleaseReplacedBufferImages(old);
         }
 
         private void ApplyMuxSixelCellSize(MuxClientSession source, float width, float height)

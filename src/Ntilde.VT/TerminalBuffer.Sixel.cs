@@ -27,6 +27,9 @@ public partial class TerminalBuffer
             {
                 IsSixelImage = true,
                 SixelPlacement = provenance,
+                NativeRaster = handle is INativeSixelImage native ? new SixelRasterIntent(
+                    SixelRasterPolicy.PresenterNativeVersion, native.Allocation.Width, native.Allocation.Height,
+                    new(0, 0, native.Allocation.Width, native.Allocation.Height)) : null,
                 SixelSource = source,
                 // In the row's own columns: a double-size row holds half as many, each two cells wide.
                 ClipRightColumns = Math.Max(0, col + widthCells - ColumnsForLineSize(_viewport[row].LineSize, Cols)),
@@ -38,7 +41,15 @@ public partial class TerminalBuffer
                 if (image is not null) image.ClipBottomRows = Math.Max(0, heightCells - Rows);
             }
             else PlaceScrollingSixelImage(image, row, heightCells);
-            if (display && image is not null) RetireCoveredSixelImages(image);
+            if (image is not null)
+            {
+                int start = _isAltScreen ? 0 : _scrollback.Count;
+                if (display) ClipNativeSixel(image, start, start + Rows, Cols);
+                else if (_isAltScreen || ScrollTop != 0 || ScrollBottom != Rows - 1)
+                    ClipNativeSixel(image, start + ScrollTop, start + ScrollBottom + 1, Cols);
+                else ClipNativeSixel(image, 0, int.MaxValue, Cols);
+                if (display) RetireCoveredSixelImages(image);
+            }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
         Invalidate();
@@ -178,6 +189,7 @@ public partial class TerminalBuffer
         {
             TerminalImage old = _images[i];
             if (!old.IsSixelImage || ReferenceEquals(old, current) || old.IsAltScreenImage != current.IsAltScreenImage) continue;
+            if (old.NativeRaster is not null && !NativePixelsCoveredByClear(old, left, right, top, bottom)) continue;
             (int oldLeft, int oldRight) = ImagePageColumnsNoLock(old);
             if (oldLeft >= left && oldRight <= right &&
                 old.CellY + old.ClipTopRows >= top && old.CellY + old.CellHeight - old.ClipBottomRows <= bottom)
@@ -193,6 +205,10 @@ public partial class TerminalBuffer
         if (!image.IsSixelImage || ReferenceEquals(image, _placingSixel)) return false;
         image.ClipTopRows = Math.Max(image.ClipTopRows, Math.Max(0, top - image.CellY));
         image.ClipBottomRows = Math.Max(image.ClipBottomRows, Math.Max(0, image.CellY + image.CellHeight - bottom - 1));
-        return image.ClipTopRows + image.ClipBottomRows >= image.CellHeight;
+        if (image.NativeRaster is null) return image.ClipTopRows + image.ClipBottomRows >= image.CellHeight;
+        image.ClipTopRows = Math.Min(image.ClipTopRows, image.CellHeight);
+        image.ClipBottomRows = Math.Min(image.ClipBottomRows, image.CellHeight);
+        ClipNativeSixel(image, top, bottom + 1, Cols);
+        return !HasNativeSixelPixels(image) && !HasSixelClearRegion(image);
     }
 }

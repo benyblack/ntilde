@@ -272,7 +272,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                     // fresh one is not what the user chose.
                     if (match is { Faulted: false })
                     {
-                        return new(Open(target, client, existing, request, match.RequiredImagePolicy, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, target.Name, null)
+                        return new(Open(target, client, existing, request, match.RequiredImagePolicy, match.RequiredSixelRasterPolicy, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, target.Name, null)
                         {
                             AlreadyExited = !match.Running,
                         };
@@ -288,7 +288,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                     // dropped. That dead connection may still hold it (a daemon without the hello's
                     // eviction keeps it attached until TCP notices), so an exclusive attach would be
                     // refused by this pane's own ghost. A session gone meanwhile falls through to PreviousLost.
-                    return new(Open(target, client, existing, request, match.RequiredImagePolicy, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, target.Name, null);
+                    return new(Open(target, client, existing, request, match.RequiredImagePolicy, match.RequiredSixelRasterPolicy, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, target.Name, null);
                 }
 
                 if (target.Remote is null && match is { Running: true, Faulted: false } && !MuxCommandMatch.SameExecutable(match.Command, request.Command))
@@ -309,12 +309,12 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                         // Exclusive by protocol: the attach itself refuses (session_attached) if another
                         // interactive client holds it, decided on the daemon's parse thread (spec §3).
                         // No client-side count check - two instances could both pass one.
-                        return new(Open(target, client, existing, request, match.RequiredImagePolicy, MuxAttachMode.IfUnattached), PersistentSessionOutcome.Reattached, target.Name, null);
+                        return new(Open(target, client, existing, request, match.RequiredImagePolicy, match.RequiredSixelRasterPolicy, MuxAttachMode.IfUnattached), PersistentSessionOutcome.Reattached, target.Name, null);
                     }
 
                     if (match.AttachedClients == 0)
                     {
-                        return new(Open(target, client, existing, request, match.RequiredImagePolicy), PersistentSessionOutcome.Reattached, target.Name, null);
+                        return new(Open(target, client, existing, request, match.RequiredImagePolicy, match.RequiredSixelRasterPolicy), PersistentSessionOutcome.Reattached, target.Name, null);
                     }
 
                     // v1: the Phase 2 check. Another client is showing it; leave it there.
@@ -352,7 +352,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     /// </remarks>
     private PersistentSessionResult SpawnFresh(Target target, MuxClient client, TerminalSessionRequest request, PersistentSessionOutcome outcome)
     {
-        if (target.Remote is null) return new(Open(target, client, Spawn(target, client, request, requestedId: null), request, client.MaxImagePolicy), outcome, target.Name, null);
+        if (target.Remote is null) return new(Open(target, client, Spawn(target, client, request, requestedId: null), request, client.MaxImagePolicy, SpawnSixelPolicy(client, request)), outcome, target.Name, null);
 
         Guid chosen = NewRemoteSessionId();
         Guid? unowned = chosen; // a session that may run on the daemon with no pane to own it
@@ -372,7 +372,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
 
             unowned = id; // the id the daemon used: one older than SpawnParams.SessionId picks its own
             answered = true;
-            return new(Open(target, client, id, request, client.MaxImagePolicy), outcome, target.Name, null);
+            return new(Open(target, client, id, request, client.MaxImagePolicy, SpawnSixelPolicy(client, request)), outcome, target.Name, null);
         }
         catch (Exception)
         {
@@ -433,15 +433,22 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     /// <paramref name="imagePolicy"/> is the session's (#838): from the session list when reattaching, the one it
     /// was spawned with otherwise. A policy this client cannot take is refused here, before any attach.
     /// </summary>
-    private static MuxClientSession Open(Target target, MuxClient client, Guid id, TerminalSessionRequest request, int imagePolicy,
+    private static MuxClientSession Open(Target target, MuxClient client, Guid id, TerminalSessionRequest request, int imagePolicy, int sixelRasterPolicy,
         MuxAttachMode mode = MuxAttachMode.Shared) =>
         target.Remote is null
-            ? client.OpenSession(id, request.Command, request.Arguments, mode, requiredImagePolicy: imagePolicy)
-            : client.OpenSession(id, string.Empty, null, mode, requiredImagePolicy: imagePolicy);
+            ? client.OpenSession(id, request.Command, request.Arguments, mode, requiredSixelRasterPolicy: sixelRasterPolicy, requiredImagePolicy: imagePolicy)
+            : client.OpenSession(id, string.Empty, null, mode, requiredSixelRasterPolicy: sixelRasterPolicy, requiredImagePolicy: imagePolicy);
 
     /// <summary>Spawns with the highest image policy both peers support (#838): images wherever the daemon carries them.</summary>
     private static Guid Spawn(Target target, MuxClient client, TerminalSessionRequest r, Guid? requestedId) =>
-        Rpc(target, ct => client.SpawnAsync(SpawnParamsFor(target, r) with { RequiredImagePolicy = client.MaxImagePolicy }, requestedId, ct));
+        Rpc(target, ct => client.SpawnAsync(SpawnParamsFor(target, r) with
+        {
+            RequiredImagePolicy = client.MaxImagePolicy,
+            RequiredSixelRasterPolicy = SpawnSixelPolicy(client, r),
+        }, requestedId, ct));
+
+    private static int SpawnSixelPolicy(MuxClient client, TerminalSessionRequest request) =>
+        request.CellWidthPx is >= 1 && request.CellHeightPx is >= 1 ? client.MaxSixelRasterPolicy : 0;
 
     /// <summary>
     /// Locally: the pane's own command line, with its shell-integration environment. On a remote daemon

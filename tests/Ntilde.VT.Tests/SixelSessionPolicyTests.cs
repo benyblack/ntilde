@@ -8,7 +8,7 @@ public sealed class SixelSessionPolicyTests
 {
     [Theory]
     [InlineData(-1)]
-    [InlineData(1)]
+    [InlineData(2)]
     [InlineData(int.MaxValue)]
     public void Unsupported_creation_policy_cannot_allocate_a_buffer(int policy)
         => Assert.Throws<InvalidOperationException>(() => new TerminalBuffer(10, 3, policy));

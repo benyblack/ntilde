@@ -32,6 +32,10 @@ namespace Ntilde.VT
         public bool Isolated { get; init; }
         /// <summary>An active image-handle session; zero makes this snapshot own its source lease.</summary>
         public int SnapshotSessionId { get; init; }
+        /// <summary>Explicit native pixel projection; required for image draws under native policy.</summary>
+        public NativeSixelViewProjection? NativeSixelProjection { get; init; }
+        /// <summary>Text consumers may deliberately omit images without claiming pixel presentation.</summary>
+        public bool OmitImages { get; init; }
     }
 
     /// <summary>A value-only mask: a render consumer cannot mutate the session's palette overrides.</summary>
@@ -206,6 +210,7 @@ namespace Ntilde.VT
     {
         public Guid PlacementId { get; init; }
         public SixelPlacementProvenance? SixelPlacement { get; init; }
+        public SixelRasterIntent? NativeRaster { get; init; }
         public int CellX;
         public int CellY;
         public int CellWidth;

@@ -505,7 +505,7 @@ public static class MuxCli
         MuxClient? client;
         try
         {
-            var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-attach", MaxImagePolicy = PersistentImagePolicy.EnabledVersion },
+            var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-attach", MaxImagePolicy = PersistentImagePolicy.EnabledVersion, MaxSixelRasterPolicy = SixelRasterPolicy.EnabledVersion },
                 killServerCommand: KillServerCommand(host));
             client = launcher.TryConnectExistingAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
@@ -524,7 +524,7 @@ public static class MuxCli
         using (client)
         {
             Guid id;
-            int imagePolicy;
+            SessionSummary summary;
             try
             {
                 IReadOnlyList<SessionSummary> sessions = client.ListSessionsAsync().GetAwaiter().GetResult();
@@ -535,7 +535,7 @@ public static class MuxCli
                 }
 
                 Guid resolved = id;
-                imagePolicy = sessions.First(s => s.SessionId == resolved).RequiredImagePolicy; // the attach must name it (#838)
+                summary = sessions.First(s => s.SessionId == resolved);
             }
             catch (Exception ex) when (IsReportableFailure(ex))
             {
@@ -570,7 +570,7 @@ public static class MuxCli
 
             using (console)
             using (var textClient = new TextClientSession(client, id, console,
-                new TextClientOptions { ReadOnly = readOnly, HandleSignals = ConsoleFactoryForTest is null, RequiredImagePolicy = imagePolicy }))
+                new TextClientOptions { ReadOnly = readOnly, HandleSignals = ConsoleFactoryForTest is null, RequiredImagePolicy = summary.RequiredImagePolicy, RequiredSixelRasterPolicy = summary.RequiredSixelRasterPolicy }))
             {
                 return textClient.Run(stderr);
             }

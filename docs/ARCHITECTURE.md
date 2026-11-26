@@ -507,7 +507,7 @@ Erasing a placement cannot retire a stored handle. Hard deletion, replacement,
 quota eviction, full clear/reset and state import retire each final owned handle
 through the existing snapshot-session gate. Weak per-handle lifetime records cancel
 obsolete retirement generations on nonnative re-admission; the same tracking covers
-preceding iTerm2/SIXEL/legacy retirement. The inactive native SIXEL owner instead
+preceding iTerm2/SIXEL/legacy retirement. The native SIXEL owner instead
 makes final retirement irreversible before handoff; its live aliases remain shareable.
 Both kinds reject a handle already handed to the disposer.
 A short private gate serializes admission and drain without waiting on the parser
@@ -617,9 +617,10 @@ Old binaries' byte-offset resume may bypass a v3 header; upgraded readers remain
 prerequisite for eventual native-policy replay.
 App carries an immutable presenter density P with the UI-published font/grid values,
 clearing it on detach. Offscreen requested scale S stays separate. This plumbing
-changes neither geometry nor the raw v1 capture schemas. The
-[staged native-raster contract](sixel-native-raster-foundation.md) records the remaining
-transform, clipping and compatibility gates before activation. The internal native
+changes no public legacy geometry or raw v1 capture schemas. The
+[native layout contract](sixel-native-layout.md) describes internal native transforms,
+canonical crop/culling and transactional state admission while public policy stays 0.
+Explicit mux/replay compatibility still gates activation. The internal native
 test path reserves fixed decoder scratch and pixel storage before decode (256
 placements, 64 MiB), keeps deferred/retired/pinned and alias charges until actual
 disposal, and uses Rendering's fixed-plane span decoder. VT owns only BCL accounting

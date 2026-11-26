@@ -2066,7 +2066,7 @@ namespace Ntilde.AgentHost
 
             try
             {
-                var buffer = new TerminalBuffer(snapshot.Cols, snapshot.Rows);
+                var buffer = new TerminalBuffer(snapshot.Cols, snapshot.Rows, snapshot.RequiredSixelRasterPolicy);
                 if (theme != null)
                 {
                     buffer.Theme = theme;

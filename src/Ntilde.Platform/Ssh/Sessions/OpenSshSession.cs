@@ -99,6 +99,7 @@ public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput, ITer
     public bool TrySendDeviceReply(string response, ReadOnlyMemory<byte> wireBytes) =>
         _inner is ITerminalDeviceReplySink replies && replies.TrySendDeviceReply(response, wireBytes);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);
+    public void SetRecordingSixelRasterPolicy(int policy) => (_inner as ITerminalRecordingBoundary)?.SetRecordingSixelRasterPolicy(policy);
     public void UseHostRecordingBoundary() => (_inner as ITerminalRecordingBoundary)?.UseHostRecordingBoundary();
     public void SubscribeRecordingOutput(Action<string, ReadOnlyMemory<byte>> handler)
     {
