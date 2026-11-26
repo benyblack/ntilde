@@ -106,9 +106,12 @@ namespace Ntilde.VT
                     _buffer.CloseCommandInputWindow();
                     string? reportedCommandLine = vsCodeDialect ? _vsCodeCommandLine : null;
                     ClearVsCodeCommandLine();
-                    string? acceptedCommand = vsCodeDialect ? null : DecodeAcceptedCommandPayload(parts);
-                    OnCommandAccepted?.Invoke(acceptedCommand);
-                    OnCommandAcceptedWithMetadata?.Invoke(acceptedCommand, reportedCommandLine);
+                    if (OnCommandAccepted is not null || OnCommandAcceptedWithMetadata is not null)
+                    {
+                        string? acceptedCommand = vsCodeDialect ? null : DecodeAcceptedCommandPayload(parts);
+                        OnCommandAccepted?.Invoke(acceptedCommand);
+                        OnCommandAcceptedWithMetadata?.Invoke(acceptedCommand, reportedCommandLine);
+                    }
                     break;
 
                 case "D":

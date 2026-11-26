@@ -69,37 +69,38 @@ namespace Ntilde.VT
             for (int i = 0; i < encoded.Length; i++)
             {
                 char c = encoded[i];
-                if (c == '\\')
+                if (c != '\\')
                 {
-                    if (++i == encoded.Length)
+                    if (c < ' ')
                     {
                         return null;
                     }
 
-                    c = encoded[i];
-                    if (c is 'x' or 'X')
-                    {
-                        if (i + 2 >= encoded.Length
-                            || !byte.TryParse(encoded.Slice(i + 1, 2), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out byte ascii)
-                            || ascii > 0x7F)
-                        {
-                            return null;
-                        }
-
-                        c = (char)ascii;
-                        i += 2;
-                    }
-                    else if (c != '\\')
-                    {
-                        return null;
-                    }
+                    decoded.Append(c);
+                    continue;
                 }
-                else if (c < ' ')
+
+                if (++i == encoded.Length)
                 {
                     return null;
                 }
 
-                decoded.Append(c);
+                char escape = encoded[i];
+                if (escape == '\\')
+                {
+                    decoded.Append(escape);
+                    continue;
+                }
+
+                if (escape is not ('x' or 'X') || i + 2 >= encoded.Length
+                    || !byte.TryParse(encoded.Slice(i + 1, 2), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out byte ascii)
+                    || ascii > 0x7F)
+                {
+                    return null;
+                }
+
+                decoded.Append((char)ascii);
+                i += 2;
             }
 
             return decoded.ToString();
