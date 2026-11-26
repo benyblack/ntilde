@@ -14,7 +14,7 @@ const sha = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
 const name = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 
 /** Validate the actual draw context; missing font fingerprints are not pixel qualifications. */
-function validateDetails(details, screen, image, timeMs) {
+function validateDetails(details, screen, image, timeMs, scale) {
     if (details?.schemaVersion !== 1 || !['macos', 'linux', 'windows'].includes(details.platform)
         || !/^(arm64|x64|x86|arm|wasm|s390x|loongarch64|ppc64le|riscv64)$/.test(details.architecture ?? '')
         || details.enableLigatures !== false || details.minimumContrast !== 1 || typeof details.enableComplexShaping !== 'boolean') fail();
@@ -26,7 +26,7 @@ function validateDetails(details, screen, image, timeMs) {
     if (!grid || grid.originXPx + screen.cols * grid.cellWidthPx > image.width || grid.originYPx + screen.rows * grid.cellHeightPx > image.height
         || grid.renderWidthPx !== image.width || grid.renderHeightPx !== image.height
         || !integer(grid.originXPx, 0, image.width) || !integer(grid.originYPx, 0, image.height)
-        || grid.cellWidthPx !== Math.max(1, Math.round(grid.cellWidthDip)) || grid.cellHeightPx !== Math.max(1, Math.round(grid.cellHeightDip))
+        || grid.cellWidthPx !== Math.max(1, Math.round(grid.cellWidthDip * scale)) || grid.cellHeightPx !== Math.max(1, Math.round(grid.cellHeightDip * scale))
         || !integer(grid.cellWidthPx, 1, 256) || !integer(grid.cellHeightPx, 1, 512)
         || !finite(grid.cellWidthDip, 1, 256) || !finite(grid.cellHeightDip, 1, 512)
         || !finite(grid.baselineDip, 0, grid.cellHeightDip)
@@ -54,7 +54,7 @@ export function validateRenderedCapture(result, screen, timeMs, scale = 1) {
     if (bytes.length !== result.byteCount || bytes.toString('base64') !== result.pngBase64) fail();
     const image = decodeCapturePng(bytes);
     if (result.width !== image.width || result.height !== image.height) fail();
-    validateDetails(result.renderDetails, screen, image, timeMs);
+    validateDetails(result.renderDetails, screen, image, timeMs, scale);
     return { bytes, image, details: structuredClone(result.renderDetails) };
 }
 
