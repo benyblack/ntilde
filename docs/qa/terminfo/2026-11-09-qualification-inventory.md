@@ -102,7 +102,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `extensions-truecolor` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 3 | `5e017718` |
 | `osc633` | 4 | v1 | passed | 69 | `9c814b13` | v62 | 4 | `8cf95ba4` |
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
-| `sixel-native-fidelity` | 1 | v1 | passed | 82 | `c7ed5b6f` | v80 | 8 | `d608a228` |
+| `sixel-native-fidelity` | 1 | v1 | passed | 82 | `921465c1` | v80 | 8 | `4ae8250a` |
 | `shell-integration-aggregates` | 2 | v1 | passed | 69 | `9c814b13` | v62 | 3 | `768bef04` |
 | `osc5` | 1 | v1 | passed | 72 | `0f5de80b` | v65 | 4 | `9b62b038` |
 | `osc720` | 1 | v1 | passed | 74 | `06ee7177` | v67 | 16 | `4ab8f61d` |
@@ -175,7 +175,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `extensions-truecolor` | collected-raw-digest-recorded | raw `d7da4d74` | 161/93/1 | `cf7d8759` |
 | `osc633` | collected-run-id-recorded | `cb002bb5` | 161/93/1 | `cf7d8759` |
 | `static-images` | collected-run-id-recorded | `620df113` | 161/93/1 | `cf7d8759` |
-| `sixel-native-fidelity` | collected-run-id-recorded | `8787fa15` | 157/97/1 | `cf7d8759` |
+| `sixel-native-fidelity` | collected-run-id-recorded | `d55a9e6b` | 157/97/1 | `cf7d8759` |
 | `shell-integration-aggregates` | collected-raw-digest-recorded | raw `a554f4cf` | 161/93/1 | `cf7d8759` |
 | `osc5` | collected-run-id-recorded | `f5aea47d` | 160/94/1 | `cf7d8759` |
 | `osc720` | collected-run-id-recorded | `14210241` | 160/94/1 | `cf7d8759` |

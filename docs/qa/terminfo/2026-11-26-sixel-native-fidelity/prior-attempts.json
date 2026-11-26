@@ -54,5 +54,14 @@
     "cleanupVerifiedAt": "2026-11-26T12:38:15.282Z",
     "error": "Invalid or changed controlled pixel capture.",
     "failureSha256": "8ac7e8767138c736c706c510f86c1b1b00792369518a417cec4d3b5855031cf3"
+  },
+  {
+    "runId": "f41b1892291389651e96bfe690993fd7",
+    "appVersion": "0.14.0+c7ed5b6f19a909f982951e1a55264e3cc381fe6f",
+    "sourceSnapshotManifestSha256": "be6821f4ec806ad46d2f47554c6204f8e5d038bafd9201d47548231675a9bd46",
+    "outcome": "superseded",
+    "detail": "This capture passed. The App and collector were rebuilt after review fixes and collected again.",
+    "rawArchive": "https://github.com/benyblack/ntilde/blob/15427969a1b4aad0b5cf049a7002337ee932cb47/docs/qa/terminfo/2026-11-26-sixel-native-fidelity/owned-run.zip",
+    "rawArchiveSha256": "59d50b3c682af6fb27547bde13d5f6e873fc6c5ca5293eaf961bc0dfc55b5d4d"
   }
 ]
