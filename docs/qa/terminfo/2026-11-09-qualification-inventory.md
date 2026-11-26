@@ -107,7 +107,7 @@ The baseline's single stock-unsupported case (`extensions.osc5522-clipboard`) is
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
 | `sixel-native-fidelity` | 1 | v1 | passed | 82 | `f9b0da19` | v80 | 8 | `965880c2` |
 | `shell-integration-aggregates` | 2 | v1 | passed | 69 | `9c814b13` | v62 | 3 | `768bef04` |
-| `osc633-vscode-reassessment` | 1 | v2 | passed | n/a | `n/a` | n/a | 3 | `d88bc141` |
+| `osc633-vscode-reassessment` | 1 | v2 | passed | n/a | `n/a` | n/a | 3 | `4b52a177` |
 | `osc5` | 1 | v1 | passed | 72 | `0f5de80b` | v65 | 4 | `9b62b038` |
 | `osc720` | 1 | v1 | passed | 74 | `06ee7177` | v67 | 16 | `4ab8f61d` |
 | `osc22` | 1 | v1 | passed | 75 | `de218cd7` | v68 | 23 | `6c7e4a8b` |

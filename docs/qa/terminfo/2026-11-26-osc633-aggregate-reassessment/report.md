@@ -15,7 +15,7 @@ The owned effect for extensions.osc-633-vscode is **supported** for A–D lifecy
 
 The A–D receipt reissues from the retained case journal and ownership evidence. The four marker effects come from the paired pane and session observations, with unmarked, OSC 133 positive, and wrong-marker controls. The E/P receipt reissues from the separate retained frames and cleanup evidence. E supplied the reported command for one submission and the next submission without E had no reported command. P updated the reported directory twice, including a literal Windows path, and malformed and unknown records preserved the second value.
 
-The E run also observed the shared A–D lifecycle on the newer App. The input window was open after A/B and closed at C as the session entered running. D returned to the prompt with no reported command. These readings connect the lifecycle and metadata criteria across two measured revisions. The aggregate combines their qualified effects. E is unverified status metadata, and P covers Cwd as shell-reported data. The aggregate covers the six listed records, with other P properties and the continuation records outside the evidence set.
+The E run also observed the shared A–D lifecycle on the newer App. The input window was open after A/B and closed at C as the session entered running. The read after D followed by A showed the prompt with no reported command. These readings connect the lifecycle and metadata criteria across two measured revisions. The aggregate combines their qualified effects. E is unverified status metadata, and P covers Cwd as shell-reported data. The aggregate covers the six listed records, with other P properties and the continuation records outside the evidence set.
 
 ## Pinned replay and stock
 
