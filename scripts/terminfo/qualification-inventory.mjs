@@ -118,6 +118,7 @@ export const benchmarkSuites = Object.freeze([
  * the inventory: the registry is explicit, and `qualification-inventory.test.mjs` refuses an unclassified test.
  */
 export const nonInventoryPublicationTests = Object.freeze({
+    'sixel-reports-publication.test.mjs': 'standalone owned DA1 and Sixel geometry replies for two stock-supported cases',
     'osc66-publication.test.mjs': 'standalone owned OSC 66 cursor and rendered ink evidence for a stock-supported case',
     'kitty-graphics-publication.test.mjs': 'standalone owned Kitty transmit and display pixels for two cases already supported by the stock baseline',
     'rich-x11-kitty-keyboard-publication.test.mjs': 'standalone owned Rich TUI keyboard effects for five stock-supported negotiation cases',
