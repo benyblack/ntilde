@@ -25,13 +25,13 @@ A disposable direct-local macOS arm64 pane used a 40×140 grid and a 1.1× offsc
 
 Blank, show, and clear all passed. The fixed one-pixel edge band left 2, 8, 3, and 12 safe color pixels and 1,340 safe background pixels. All matched. The whole-cell projection gave 55 mismatches. The paired raw fences bound each write to the captures, which retained an unchanged surrounding and verified clearing. The earlier 1× attempt painted 8×8 in its capture but had no gradeable pixels in two color regions outside the fixed edge band. Its result remains inconclusive. The attempt record lists the superseded captures and links their previously published archives. [1× run](inconclusive-owned-run.zip) · [Attempt record](prior-attempts.json)
 
-- App build `f2233a46ee2b441be3bb7a9e5284c52f65048bbd`. The version label was operator-supplied. The receipt binds the sidecar executable and assembly digests.
-- Collector `f2233a46ee2b441be3bb7a9e5284c52f65048bbd`, source graph `readonly-owned-source-graph-v80`. Owned run `4c41a0579dbe94a6900f88711eaf2797`, stock run `8c8d95b53a5ab258646e2ba447a72911`.
+- App build `2da987427973726d392bb0272110b4890be8e79f`. The version label was operator-supplied. The receipt binds the sidecar executable and assembly digests.
+- Collector `2da987427973726d392bb0272110b4890be8e79f`, source graph `readonly-owned-source-graph-v80`. Owned run `448d97d90468f073bc51e786c5931463`, stock run `e368c4357a88b1f3f5134d5be0a4f319`.
 - `--scope static-images` runs the existing OSC 633 carrier scope and requests 1.1× solely for the paired static-image captures. The collector retains the scale, original PNGs, grid, cell and image facts, raw writes and replies, and cleanup proof in the [owned archive](owned-run.zip). See the [summary](summary.json), [machine-readable verdicts](report.json), and [manifest](manifest.json).
 
 ## Production path and limits
 
-The parser keeps the existing ceiling-based reservation and retains a versioned source canvas and crop. The renderer uses the current anchor and the presenter density for raster sizing. A capture applies its own scale to that extent. State transfer, native v3 replays, and upgraded mux peers keep the intent and ordered stream metrics. Policy-zero states and streams retain whole-cell sizing. Native anchors stay with their rows as the hidden main screen redistributes history or reflows a row that holds the image. Under raster budget pressure, a retained source preserves native reservation and cursor progression. A packet above the source-retention limit still advances the cursor without adding a raster placement. An isolated capture that requires unavailable pixels reports that failure.
+The parser keeps the existing ceiling-based reservation and retains a versioned source canvas and crop. The renderer uses the current anchor and the presenter density for raster sizing. A capture applies its own scale to that extent. State transfer, native v3 replays, and upgraded mux peers keep the intent and ordered stream metrics. Policy-zero states and streams retain whole-cell sizing. Changing a pane’s stream policy preserves its local wheel and cursor defaults. Native anchors stay with their rows as the hidden main screen redistributes history or reflows a row that holds the image. Under raster budget pressure, a retained source preserves native reservation and cursor progression. A packet above the source-retention limit still advances the cursor without adding a raster placement. An isolated capture that requires unavailable pixels reports that failure.
 
 This owned result covers one square-pixel packet, one local pane, one OS and stable metrics. Font and DPI changes, clipping, replay, state transfer, and mux have regression tests. Monitor pixels, remote or cross-platform output, Pan/Pad, P2 compositing, and broader decoder extents are outside the capture scope. The stock baseline, Core, and common-harness scores are outside this measurement.
 
@@ -50,5 +50,5 @@ scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained
   -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false \
   -p:SkipCliShim=true -o /absolute/private/sidecar
 node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde \
-  --app-version 0.14.0+f2233a46ee2b441be3bb7a9e5284c52f65048bbd --scope static-images
+  --app-version 0.14.0+2da987427973726d392bb0272110b4890be8e79f --scope static-images
 ```
