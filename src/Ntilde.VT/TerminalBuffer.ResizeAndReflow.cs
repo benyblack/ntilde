@@ -38,15 +38,12 @@ namespace Ntilde.VT
             if (newCols <= 0 || newRows <= 0) return;
 
             AcquireWriteLock();
-            bool resized = false;
+            int oldCols = Cols;
+            int oldRows = Rows;
             try
             {
                 if (newCols == Cols && newRows == Rows) return;
-                resized = true;
-
                 PrepareTextSizingResize(newCols, newRows);
-                int oldCols = Cols;
-                int oldRows = Rows;
 
                 if (newCols == oldCols)
                 {
@@ -271,7 +268,7 @@ namespace Ntilde.VT
             }
             finally
             {
-                try { if (resized) ClipNativeSixelsAfterResize(); }
+                try { ClipNativeSixelsAfterResize(Cols < oldCols, Rows < oldRows); }
                 finally { Lock.ExitWriteLock(); }
                 DisposeRetiredHeadlessSixelSources();
             }

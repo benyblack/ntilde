@@ -3,6 +3,39 @@ namespace Ntilde.VT.Tests;
 public sealed class NativeSixelLayoutTests
 {
     [Fact]
+    public void Growing_after_a_metric_change_preserves_the_full_native_crop()
+    {
+        var buffer = new TerminalBuffer(10, 6, SixelRasterPolicy.PresenterNativeVersion);
+        var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20) };
+        parser.Process("\x1b[?1049h\x1b[?80h\x1bPq#2!16~-!16~-!16N\x1b\\");
+        var original = Assert.Single(buffer.Images).NativeRaster;
+        Assert.NotNull(original);
+        parser.SixelCellSizeOverride = new(1, 1);
+        buffer.Resize(11, 7);
+        Assert.Equal(original, Assert.Single(buffer.Images).NativeRaster);
+        buffer.ClearImages();
+    }
+
+    [Fact]
+    public void Repeated_headless_import_returns_retired_owner_credit()
+    {
+        var source = new TerminalBuffer(10, 6, SixelRasterPolicy.PresenterNativeVersion);
+        var parser = new AnsiParser(source) { SixelCellSizeOverride = new(10, 20) };
+        parser.Process("\x1bPq~\x1b\\");
+        var snapshot = source.ExportState(0);
+
+        var budget = new NativeSixelBudget(maxPlacements: 2);
+        var target = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget, metrics: null);
+        for (int i = 0; i < 3; ++i)
+        {
+            target.ImportState(snapshot);
+            Assert.Equal(1, budget.Usage.Placements);
+        }
+        target.ClearImages();
+        source.ClearImages();
+    }
+
+    [Fact]
     public void Headless_native_parse_retains_transferable_production_intent()
     {
         var budget = new NativeSixelBudget();

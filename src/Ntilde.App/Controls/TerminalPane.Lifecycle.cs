@@ -178,7 +178,13 @@ namespace Ntilde.Controls
                 return;
             }
 
-            new AnsiParser(Buffer).Process(text);
+            var bannerParser = new AnsiParser(Buffer);
+            if (Buffer.SixelRasterPolicyVersion != 0 && bannerParser.SixelCellSizeOverride is null)
+            {
+                // A banner can precede session startup, when no stream has published metrics.
+                bannerParser.SixelCellSizeOverride = new(10, 20);
+            }
+            bannerParser.Process(text);
         }
 
         protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

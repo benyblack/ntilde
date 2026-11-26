@@ -211,6 +211,20 @@ public class ResolvedColorReadScreenTests : IDisposable
     }
 
     [Fact]
+    public void ResolvedColors_read_text_with_a_native_sixel_placement()
+    {
+        var buffer = new TerminalBuffer(20, 3, SixelRasterPolicy.PresenterNativeVersion);
+        var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20) };
+        parser.Process("C\x1b[31mX\x1bPq~\x1b\\");
+        Assert.NotNull(Assert.Single(buffer.Images).NativeRaster);
+        Assert.True(ResolvedColorSnapshot.TryCapture(buffer, out var runs, out var binding,
+            minimumContrast: 1, expectedRows: 3, expectedCols: 20));
+        Assert.NotNull(runs);
+        Assert.NotNull(binding);
+        buffer.ClearImages();
+    }
+
+    [Fact]
     public void ResolvedColors_refuse_a_resize_between_the_two_captures()
     {
         // A caller that read one geometry must never receive resolved runs of another:

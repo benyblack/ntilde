@@ -305,6 +305,8 @@ namespace Ntilde.VT
                 Lock.ExitWriteLock();
             }
 
+            DisposeRetiredHeadlessSixelSources();
+
             // Also excluded from the payload (see TerminalStateSnapshot's remarks: the marks carry
             // a process-local scrollback generation and a 133;B re-arms them). Cleared outside the
             // write lock because it takes its own gate, and after it because a mark pointing into

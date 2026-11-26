@@ -95,18 +95,25 @@ public partial class TerminalBuffer
     /// <summary>
     /// Applies actual shape loss to both native screen banks; presentation changes alone never enter this path.
     /// </summary>
-    private void ClipNativeSixelsAfterResize()
+    private void ClipNativeSixelsAfterResize(bool lostColumns, bool lostRows)
     {
-        if (NativeSixelBudget is null) return;
+        if (NativeSixelBudget is null || (!lostColumns && !lostRows)) return;
         for (int i = _images.Count - 1; i >= 0; i--)
         {
             var image = _images[i];
             if (image.NativeRaster is null) continue;
             int end = image.IsAltScreenImage ? Rows : _scrollback.Count + Rows;
-            image.ClipTopRows = Math.Min(image.CellHeight, Math.Max(image.ClipTopRows, Math.Max(0, -image.CellY)));
-            image.ClipBottomRows = Math.Min(image.CellHeight, Math.Max(image.ClipBottomRows, Math.Max(0, image.CellY + image.CellHeight - end)));
-            image.ClipRightColumns = Math.Min(image.CellWidth, Math.Max(image.ClipRightColumns, Math.Max(0, image.CellX + image.CellWidth - Cols)));
-            ClipNativeSixel(image, 0, end, Cols);
+            if (lostRows)
+            {
+                image.ClipTopRows = Math.Min(image.CellHeight, Math.Max(image.ClipTopRows, Math.Max(0, -image.CellY)));
+                image.ClipBottomRows = Math.Min(image.CellHeight, Math.Max(image.ClipBottomRows, Math.Max(0, image.CellY + image.CellHeight - end)));
+            }
+            if (lostColumns)
+            {
+                int columns = ColumnsForLineSize(ImageLineSizeNoLock(image), Cols);
+                image.ClipRightColumns = Math.Min(image.CellWidth, Math.Max(image.ClipRightColumns, Math.Max(0, image.CellX + image.CellWidth - columns)));
+            }
+            ClipNativeSixel(image, lostRows ? 0 : int.MinValue, lostRows ? end : int.MaxValue, lostColumns ? Cols : int.MaxValue);
             if (HasNativeSixelPixels(image) || HasSixelClearRegion(image)) continue;
             RetireImage(image);
             _images.RemoveAt(i);
