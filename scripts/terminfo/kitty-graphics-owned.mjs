@@ -5,7 +5,7 @@ import { OwnedStaticImageObserver } from './static-images-capture.mjs';
 import { parseStaticKittyReply, staticImageAnchor } from './static-images-cases.mjs';
 import { staticImageEnvelope } from './static-images-oracle.mjs';
 import { journal, json, read } from './static-images-receipt.mjs';
-import { checkImages, imageRestore, imageSetup, StaticImageReport, staticImageSuite } from './static-images.mjs';
+import { checkImages, imageRestore, imageSetup, retainedImagePixel, StaticImageReport, staticImageSuite } from './static-images.mjs';
 import { pngHash } from './pixels-capture.mjs';
 
 export const scope = Object.freeze({ id: 'ntilde-owned-kitty-graphics-v1', persistence: 'Off', deadlineMs: 90000 });
@@ -103,10 +103,12 @@ class GraphicsReport extends StaticImageReport {
     }
 }
 
+const captureKind = kind => kind.replace(prefix, staticImageSuite.prefix);
 const input = { file: 'image-inputs/pinned-red.rgb', bytes: rgb, sha256: pngHash(rgb) };
 export const suite = Object.freeze({
     ...staticImageSuite, plan, prefix, action, acceptReply,
-    inputs: () => [input], captureKind: kind => kind.replace(prefix, staticImageSuite.prefix),
+    inputs: () => [input], captureKind,
+    retainPixel: (output, pixel, screen, kind) => retainedImagePixel(output, pixel, screen, captureKind(kind)),
     buildReport(frames, actions, seal, runId, output, priorChallenges) {
         checkImages(/^[a-f\d]{32}$/.test(runId) && priorChallenges.length === 0
             && frames.length === plan.length + 1 && actions.length === plan.length);
