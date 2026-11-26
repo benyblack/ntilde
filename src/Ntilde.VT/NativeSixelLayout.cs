@@ -23,15 +23,15 @@ public sealed record NativeSixelViewProjection
 
     /// <summary>Includes surviving pixels or clearing cells, independently of the integer reservation height.</summary>
     public bool Intersects(SixelRasterIntent intent, int x, int y, int width, int height,
-        int clipTop, int clipBottom, int clipRight, int top, int rows, int cols, int columnScale = 1)
+        int clipTop, int clipBottom, int clipRight, int top, int rows, int cols, int columnScale = 1, int left = 0)
     {
         double end = (double)top + rows;
         bool clearing = width > clipRight && height > (long)clipTop + clipBottom &&
-            x * (double)columnScale < cols && (x + (double)width - clipRight) * columnScale > 0 &&
+            x * (double)columnScale < cols && (x + (double)width - clipRight) * columnScale > left &&
             y + (double)height - clipBottom > top && y + (double)clipTop < end;
         var crop = intent.Crop;
         bool pixels = crop.Right > crop.Left && crop.Bottom > crop.Top &&
-            x * (double)columnScale + crop.Left / PixelsPerCellWidth < cols && x * (double)columnScale + crop.Right / PixelsPerCellWidth > 0 &&
+            x * (double)columnScale + crop.Left / PixelsPerCellWidth < cols && x * (double)columnScale + crop.Right / PixelsPerCellWidth > left &&
             y + crop.Top / PixelsPerCellHeight < end && y + crop.Bottom / PixelsPerCellHeight > top;
         return clearing || pixels;
     }
@@ -137,13 +137,18 @@ public partial class TerminalBuffer
     /// </summary>
     private bool ImageOverlapsRows(TerminalImage image, int top, int bottomExclusive)
     {
-        if (image.NativeRaster is not { } native)
-            return image.CellY + (long)image.CellHeight > top && image.CellY < bottomExclusive;
+        return image.NativeRaster is { } native
+            ? NativeSixelOverlaps(image, native, top, bottomExclusive, 0, Cols)
+            : image.CellY + (long)image.CellHeight > top && image.CellY < bottomExclusive;
+    }
+
+    private bool NativeSixelOverlaps(TerminalImage image, SixelRasterIntent native, int top, int bottomExclusive, int left, int right)
+    {
         var size = NativeSixelCellMetrics!;
         var projection = new NativeSixelViewProjection(size.WidthPx, size.HeightPx);
         return projection.Intersects(native, image.CellX, image.CellY, image.CellWidth, image.CellHeight,
-            image.ClipTopRows, image.ClipBottomRows, image.ClipRightColumns, top, bottomExclusive - top, Cols,
-            ImageLineSizeNoLock(image) == LineSize.SingleWidth ? 1 : 2);
+            image.ClipTopRows, image.ClipBottomRows, image.ClipRightColumns, top, bottomExclusive - top, right,
+            ImageLineSizeNoLock(image) == LineSize.SingleWidth ? 1 : 2, left);
     }
 
     /// <summary>

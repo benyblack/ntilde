@@ -147,10 +147,18 @@ public partial class TerminalBuffer
     /// <summary>
     /// The line attribute an image is laid out in: that of the row at its origin, whose columns its own columns are.
     /// Nothing is stored on the image, so it always agrees with the row; an image whose origin row is gone (scrolled
-    /// off the alternate screen, trimmed from history) or belongs to the screen not showing is single width.
+    /// off the alternate screen, trimmed from history) is single width. Native crop can
+    /// run on a hidden bank, so use that bank's own anchor row.
     /// </summary>
-    private LineSize ImageLineSizeNoLock(TerminalImage image) =>
-        image.IsAltScreenImage == _isAltScreen ? GetLineSizeAbsolute(image.CellY) : LineSize.SingleWidth;
+    private LineSize ImageLineSizeNoLock(TerminalImage image)
+    {
+        if (image.IsAltScreenImage == _isAltScreen) return GetLineSizeAbsolute(image.CellY);
+        if (image.NativeRaster is null || image.CellY < 0) return LineSize.SingleWidth;
+        if (!image.IsAltScreenImage && image.CellY < _scrollback.Count) return _scrollback.GetLineSize(image.CellY);
+        var bank = image.IsAltScreenImage ? _altScreen : _mainScreen;
+        int row = image.IsAltScreenImage ? image.CellY : image.CellY - _scrollback.Count;
+        return bank is not null && row < bank.Length ? bank[row].LineSize : LineSize.SingleWidth;
+    }
 
     /// <summary>An image's left and right edge in single-width columns, the unit two images on rows of different attributes share.</summary>
     private (int Left, int Right) ImagePageColumnsNoLock(TerminalImage image)

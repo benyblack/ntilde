@@ -114,8 +114,13 @@ public sealed class SixelNativePixelReproductionTests
     {
         SnapshotService.EnsureAvaloniaInitialized();
         var result = TerminalSnapshotRenderer.CaptureWithContext(buffer, CaptureMetrics, 240, 160,
-            new TerminalSnapshotOptions { HideCursor = true, FillBackground = true, RenderScaling = 1,
-                NativeRasterPresenter = new NativeRasterPresenterContext(presenterScale) }, true, out var info);
+            new TerminalSnapshotOptions
+            {
+                HideCursor = true,
+                FillBackground = true,
+                RenderScaling = 1,
+                NativeRasterPresenter = new NativeRasterPresenterContext(presenterScale)
+            }, true, out var info);
         grid = Assert.IsType<SnapshotRenderContext>(info.Context).Frame.PixelGrid;
         return result;
     }

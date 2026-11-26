@@ -45,8 +45,8 @@ function validateDetails(details, screen, image, timeMs) {
 }
 
 /** Refuse resamples, clock substitutions, malformed inline bytes, dimensions and ambiguous provenance. */
-export function validateRenderedCapture(result, screen, timeMs) {
-    if (result?.mode !== 'render' || result.scale !== 1 || result.downscaled !== false || result.inlineOmitted !== false
+export function validateRenderedCapture(result, screen, timeMs, scale = 1) {
+    if (result?.mode !== 'render' || result.scale !== scale || result.downscaled !== false || result.inlineOmitted !== false
         || result.presentationTimeMs !== timeMs || result.rows !== screen.rows || result.cols !== screen.cols
         || !integer(result.byteCount, 1, limits.bytes) || typeof result.pngBase64 !== 'string'
         || result.pngBase64.length > Math.ceil(limits.bytes / 3) * 4) fail();

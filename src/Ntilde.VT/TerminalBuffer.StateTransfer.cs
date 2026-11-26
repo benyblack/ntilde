@@ -1051,7 +1051,7 @@ namespace Ntilde.VT
             ValidateVersionAndCellLayout(snapshot);
             ValidateRequiredStructure(snapshot);
             ValidateSixelState(snapshot, nativeAllowed);
-            ValidateImageState(snapshot);            TerminalRuntimeColors.Validate(snapshot.Colors);
+            ValidateImageState(snapshot); TerminalRuntimeColors.Validate(snapshot.Colors);
             ValidateSgrStack(snapshot.SgrStack);
             ValidateSavedModes(snapshot.SavedModes);
 

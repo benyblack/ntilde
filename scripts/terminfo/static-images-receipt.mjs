@@ -53,7 +53,7 @@ export function checkStaticImageEvidence(output, binding, runId, context, proof)
     checkImages(binding.status === undefined && binding.reason === undefined);
     const input = present(join(output, 'input-observations.json')) ? json(output, 'input-observations.json') : null;
     const prior = input ? input.snapshots.filter(frame => frame.capture).map(frame => frame.capture.nonces.join(',')) : [];
-    const derived = buildStaticImageReport(frames, actions, marker.seal, runId, output, prior);
+    const derived = buildStaticImageReport(frames, actions, marker.seal, runId, output, prior, context.staticImageCaptureScale);
     checkImages(Date.parse(marker.seal.ownership.at) <= Date.parse(proof.cleanedUpAt));
     checkImages(snapshotHash(json(output, binding.file)) === snapshotHash(derived) && marker.paneId === frames[0].paneId
         && snapshotHash(marker.geometry) === snapshotHash({ rows: frames[0].screen.rows, cols: frames[0].screen.cols }));

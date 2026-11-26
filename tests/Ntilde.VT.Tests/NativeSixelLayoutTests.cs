@@ -17,6 +17,33 @@ public sealed class NativeSixelLayoutTests
     }
 
     [Fact]
+    public void Crop_uses_the_hidden_main_banks_double_width_anchor()
+    {
+        var buffer = new TerminalBuffer(12, 6, SixelRasterPolicy.PresenterNativeVersion);
+        var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20) };
+        parser.Process("\x1b[1;4H\x1b#6\x1bPq#2!40~\x1b\\");
+        Assert.Equal(40, Assert.Single(buffer.Images).NativeRaster!.Crop.Right);
+        parser.Process("\x1b[?1049h");
+        buffer.Resize(8, 6);
+        parser.Process("\x1b[?1049l");
+        buffer.Resize(12, 6);
+        Assert.Equal(20, Assert.Single(buffer.Images).NativeRaster!.Crop.Right);
+        buffer.ClearImages();
+    }
+
+    [Fact]
+    public void Margin_scroll_retires_an_image_whose_native_overhang_crosses_the_band()
+    {
+        var buffer = new TerminalBuffer(20, 8, SixelRasterPolicy.PresenterNativeVersion);
+        var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20) };
+        parser.Process("\x1bPq#2!16~-!16~-!16N\x1b\\");
+        Assert.Equal(2, Assert.Single(buffer.Images).CellWidth);
+        parser.SixelCellSizeOverride = new(1, 1);
+        parser.Process("\x1b[?69h\x1b[4;10s\x1b[S");
+        Assert.Empty(buffer.Images);
+    }
+
+    [Fact]
     public void Repeated_headless_import_returns_retired_owner_credit()
     {
         var source = new TerminalBuffer(10, 6, SixelRasterPolicy.PresenterNativeVersion);

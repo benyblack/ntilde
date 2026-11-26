@@ -102,8 +102,11 @@ function imagePrerequisite(entry, state) {
     if (entry.caseId === 'kitty.numbered-lifecycle') return state.firstId === null ? 'required allocation did not return a usable image id' : null;
     return state.ids.length === 2 && state.firstId === state.ids[0] ? null : 'number reuse requires both distinct successful allocations';
 }
-export function validateImageCapture(result, screen, kind) {
-    const value = validateColorCapture(result, screen, null), theme = value.details.theme;
+// The larger capture keeps the same fixture and one-output-pixel oracle edge band.
+export const calibratedStaticImageCaptureScale = 1.1;
+
+export function validateImageCapture(result, screen, kind, scale = 1) {
+    const value = validateColorCapture(result, screen, null, scale), theme = value.details.theme;
     const original = ['images-start', 'images-finish'].includes(kind);
     checkImages(pristineColorTheme({ ...theme, backgroundOverride: false }) && theme.backgroundOverride === !original
         && (original || theme.backgroundArgb === 0xff101010)
@@ -126,12 +129,12 @@ export function imageRawReplies(capture, used, backgroundArgb) {
     checkImages(colorRaw.toLowerCase() === imageBackgroundReply(backgroundArgb));
     return { replyBytes: Buffer.from(text.slice(0, start), 'ascii'), backgroundQuery };
 }
-export function retainedImagePixel(output, pixel, screen, kind) {
+export function retainedImagePixel(output, pixel, screen, kind, scale = 1) {
     checkImages(/^image-pixels\/frame-\d{3}-[01]\.png$/.test(pixel?.file ?? ''));
     const path = join(output, pixel.file), stat = lstatSync(path);
     checkImages(stat.isFile() && !stat.isSymbolicLink() && stat.size <= 16 * 1024 * 1024);
     const bytes = readFileSync(path); checkImages(pngHash(bytes) === pixel.sha256);
-    return validateImageCapture({ ...pixel, pngBase64: bytes.toString('base64') }, screen, kind);
+    return validateImageCapture({ ...pixel, pngBase64: bytes.toString('base64') }, screen, kind, scale);
 }
 export function validateImageOwnership(actual, original, geometry) {
     checkImages(actual && original && actual.tty === original.tty && /^\/dev\/ttys\d+$/.test(actual.tty)
@@ -165,10 +168,13 @@ export function validateEpochChange(actual, previous) {
     // The daemon is the same process, but its parent is not: the App that started it was its parent until that App went away, then it belongs to init.
     checkImages(['pid', 'uid', 'tty', 'executable'].every(key => actual.daemon[key] === previous.daemon[key]));
 }
-export function buildStaticImageReport(frames, actions, seal, runId, output, priorChallenges = []) {
+export function buildStaticImageReport(frames, actions, seal, runId, output, priorChallenges = [], scale = 1) {
+    checkImages(scale === 1 || scale === calibratedStaticImageCaptureScale);
     checkImages(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === 31 && actions?.length === 30
         && Array.isArray(priorChallenges) && priorChallenges.length <= inputPriorCaptureCap && new Set(priorChallenges).size === priorChallenges.length);
-    const builder = new StaticImageReport(frames, actions, runId, output, priorChallenges);
+    const builder = new StaticImageReport(frames, actions, runId, output, priorChallenges, {
+        ...staticImageSuite, retainPixel: (root, pixel, screen, kind) => retainedImagePixel(root, pixel, screen, kind, scale),
+    });
     frames.forEach((frame, index) => builder.processFrame(frame, index));
     builder.checkSeal(seal);
     return { schemaVersion: 1, suiteId: staticImageSuiteId, runId, policy: ownedStaticImagePolicy,

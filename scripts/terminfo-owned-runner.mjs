@@ -261,6 +261,7 @@ import { generateOwnedInput } from './terminfo/input-action.mjs';
 import { OwnedQueryObserver, rejectQueryOwnerRequest } from './terminfo/query-capture.mjs';
 import { querySuiteId, ownedQueryPolicy, queryPriorCounts } from './terminfo/queries.mjs';
 import { OwnedStaticImageObserver } from './terminfo/static-images-capture.mjs';
+import { calibratedStaticImageCaptureScale } from './terminfo/static-images.mjs';
 import { staticImageSuiteId } from './terminfo/static-images-cases.mjs';
 import { ownedStaticImagePolicy } from './terminfo/static-images.mjs';
 import { OwnedAnimationObserver, animationObserverOf } from './terminfo/kitty-animation-capture.mjs';
@@ -619,7 +620,7 @@ async function observeImageCarrierIn(environment, carrier, request, budget, owne
         const priorChallenges = carrier.priorFrames().filter(frame => frame.capture).map(frame => frame.capture.nonces.join(','));
         state = carrier.setState({ workerPid: request.workerPid, tty: request.tty, recordedFrames: 0, recordedActions: 0,
             observer: new carrier.Observer({ appData, ownerPid: app.pid, profileName, output,
-                nonce: 'NTILDE_IMG_' + runId, expectedPaneId: reference?.paneId, priorChallenges, deferReport: environment.deferReport === true }) });
+                nonce: 'NTILDE_IMG_' + runId, expectedPaneId: reference?.paneId, priorChallenges, captureScale: carrier.captureScale, deferReport: environment.deferReport === true }) });
         proofs[0][carrier.proof].actions = state.observer.actions;
     }
     if (state.unavailable || state.workerPid !== request.workerPid || state.tty !== request.tty) throw new Error(carrier.label + ' fixture ownership changed.');
@@ -2504,11 +2505,9 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         writeFileSync(command, `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(workerScript)} ${quote(configPath)} --ntilde-terminfo-worker=${runId}\n`, { flag: 'wx', mode: 0o700 });
         const profileId = randomUUID();
         const settings = ownedSettings({ profileId, profileName, command, scratch, persistence: 'Off' });
-        // At 1x capture, lower presenter zoom leaves gradeable interiors in all
-        // four SIXEL color regions. Both fixtures keep an integer point size.
-        const staticImageFixture = args[5] === 'static-images';
-        settings.FontSize = staticImageFixture ? 15 : 40 / 3;
-        settings.UiScale = staticImageFixture ? 0.8 : 1;
+        settings.FontSize = 40 / 3; // Ten points at unity zoom.
+        settings.UiScale = 1;
+        const staticImageCaptureScale = args[5] === 'static-images' ? calibratedStaticImageCaptureScale : undefined;
         writeJson(join(appData, 'settings.json'), settings);
         writeJson(join(output, 'initial-settings.json'), settings);
         writeFileSync(join(output, 'upstream-suite-receipt.json'), receiptBytes, { flag: 'wx', mode: 0o600 });
@@ -2610,6 +2609,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
             clipboard: 'armed synthetic App-private storage only; no native interchange or OSC52 read permission',
             privateClipboardSuiteId: ownedPrivateClipboardSuiteId, ownedPrivateClipboardPolicy,
             privateClipboardReferenceScope: 'selected App/VT observational reference inputs; not complete App closure or binary-source attestation',
+            staticImageCaptureScale,
             retainedOriginalCollector: 'collector-original.mjs', terminalOutput: privateClipboardOutputPolicy, querySuiteId, ownedQueryPolicy, staticImageSuiteId, ownedStaticImagePolicy, animationSuiteId, ownedAnimationPolicy, inputSuiteId, ownedInputPolicy, metadataSuiteId, ownedMetadataPolicy, savedSuiteId, ownedSavedPolicy, resizeSuiteId, ownedResizePolicy, historySuiteId, eraseSuiteId, editingSuiteId, colorSuiteId, pixelSuiteId, pixels: 'nonce-bound owned offscreen renders; fixed synthetic phases, retained PNGs and render context; no live desktop timing',
             gradingAdapterId, asciiSgrSuiteId, gradingBundleSha256, gradingContractsVersion: asciiSgrContractsVersion,
             grading: 'versioned collector extension; pinned termless criteria replayed on parent-observed cells; not stock output',
@@ -3565,6 +3565,7 @@ The collector extension and its digest are recorded; this is not stock CLI data.
         const observeImageCarrier = (carrier, request, budget, ownership) => observeImageCarrierIn(imageEnvironment, carrier, request, budget, ownership);
 
         const staticImageCarrier = { label: 'Image', prefix: 'images-', proof: 'staticImages', file: 'image', suiteId: staticImageSuiteId, Observer: OwnedStaticImageObserver,
+            captureScale: staticImageCaptureScale,
             pixelDir: 'image-pixels', inputDir: 'image-inputs', planned: { experiments: 5, stages: 23 },
             require: () => requireInputCompletion(inputState), state: () => staticImageState, setState: value => (staticImageState = value),
             priorFrames: () => inputState.observer?.frames ?? [] };

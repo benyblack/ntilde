@@ -121,7 +121,11 @@ public sealed class SixelPolicyAdmissionTests
         using var client = await host.ConnectClientAsync(new MuxClientOptions { MaxSixelRasterPolicy = policy });
         Guid id = await client.SpawnAsync(new SpawnParams
         {
-            Command = "scripted", Cols = 80, Rows = 24, CellWidthPx = 10, CellHeightPx = 20,
+            Command = "scripted",
+            Cols = 80,
+            Rows = 24,
+            CellWidthPx = 10,
+            CellHeightPx = 20,
             RequiredSixelRasterPolicy = policy,
         }, ct);
         Assert.Equal(policy, Assert.Single(await client.ListSessionsAsync(ct)).RequiredSixelRasterPolicy);

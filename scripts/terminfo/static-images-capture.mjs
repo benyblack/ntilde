@@ -10,11 +10,11 @@ import { checkImages, imageBoundScreen, staticImageSuite, validateImageOwnership
  * `suite` names its plan, kind prefix, retained directories and how replies and per-case state are read (the static-image suite by default).
  */
 export class OwnedStaticImageObserver {
-    constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, suite = staticImageSuite, deferReport = false, now = Date.now, ...options }) {
+    constructor({ output, priorChallenges = [], captureRpc = imageCaptureRequest, captureScale = 1, suite = staticImageSuite, deferReport = false, now = Date.now, ...options }) {
         checkImages(/^NTILDE_IMG_[a-f\d]{32}$/.test(options.nonce ?? '') && Array.isArray(priorChallenges) && priorChallenges.length <= suite.priorCap);
         this.suite = suite; this.now = now; this.deferReport = deferReport;
         this.output = output; this.runId = options.nonce.slice(11); this.priorChallenges = [...priorChallenges];
-        this.used = new Set(priorChallenges); this.captureRpc = captureRpc; this.frames = []; this.actions = []; this.states = new Map();
+        this.used = new Set(priorChallenges); this.captureRpc = captureRpc; this.captureScale = captureScale; this.frames = []; this.actions = []; this.states = new Map();
         this.next = 0; this.phase = 'start'; this.totalPixels = 0;
         const facts = { ...options, includeCellDetails: true, includeCursorMode: true, includeOverline: true, includeBufferState: true };
         this.before = new OwnedCellObserver(facts); this.after = new OwnedCellObserver(facts);
@@ -48,9 +48,9 @@ export class OwnedStaticImageObserver {
             ...(this.suite.recordSpan ? { pairSpan: { startMs, endMs } } : {}) };
     }
     async capturePixel(screen, endpoint, side, budget) {
-            const capture = await this.captureRpc(endpoint, this.paneId, 0, budget());
+            const capture = await this.captureRpc(endpoint, this.paneId, 0, budget(), this.captureScale);
             const kind = this.suite.prefix + (this.phase === 'start' ? 'start' : this.suite.plan[this.next].kind);
-            const { bytes, image, details, imageDetails } = validateImageCapture(capture, screen, this.suite.captureKind(kind));
+            const { bytes, image, details, imageDetails } = validateImageCapture(capture, screen, this.suite.captureKind(kind), this.captureScale);
             if (this.phase === 'start' && image.width * image.height * 62 > totalPixelLimit)
                 throw Object.assign(new Error('Image paired-capture budget unavailable.'), { code: 'imageGeometryUnavailable' });
             this.totalPixels += image.width * image.height; checkImages(this.totalPixels <= totalPixelLimit);
@@ -104,7 +104,7 @@ export class OwnedStaticImageObserver {
         checkImages(this.captureRestored);
         if (this.restored) return this.report;
         try {
-            this.report = this.suite.buildReport(this.frames, this.actions, this.seal, this.runId, this.output, this.priorChallenges);
+            this.report = this.suite.buildReport(this.frames, this.actions, this.seal, this.runId, this.output, this.priorChallenges, this.captureScale);
             this.phase = 'complete'; return this.report;
         } catch (error) { this.failed = true; this.lastAttempt.error = String(error.message ?? error); throw error; }
     }
