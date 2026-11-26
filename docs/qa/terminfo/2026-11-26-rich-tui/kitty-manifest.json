@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "runId": "1ca42a26679cb694f20896dbf5994b7a",
+  "appRevision": "caea956de1f8b391892f61f89ba6fbf6c462cc77",
+  "scriptsRevision": "5dea0fe3817262926125fbb2f0d228e369ddc69d",
+  "appSourceArchiveSha256": "24c892fcbe3889202016f8ff15b0fc284f0935017590fb5cfd3ab93b526dd0f6",
+  "dotnetSdk": "10.0.403",
+  "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
+  "archives": {
+    "owned-run.zip": "e1dcbb48809d090fd3f73e916473f5eccd47e4a72cf6fb41cd478ba5f4a0869c"
+  }
+}

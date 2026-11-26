@@ -1,0 +1,498 @@
+{
+  "schemaVersion": 1,
+  "baseline": "rich",
+  "capturedOn": "2026-11-26",
+  "upstreamPage": "https://terminfo.dev/baseline/rich",
+  "membershipSha256": "e441011a6708a0248e0073742a83a4949bed751f4f067371a696a701d0f219d2",
+  "catalogue": {
+    "path": "2026-11-15-modern-results/upstream-snapshot.zip",
+    "sha256": "1eda08a977546832b740b9b7606412e69a062f0e3915011994e18ae01ddfd5a8",
+    "omittedXtestDiagnostics": [
+      "input.xtest-click",
+      "input.xtest-key",
+      "input.xtest-wheel"
+    ]
+  },
+  "rows": [
+    {
+      "id": "sgr.underline-color-indexed",
+      "name": "Underline color, indexed (SGR 58;5)",
+      "page": "https://terminfo.dev/sgr/58-5-underline-color-indexed"
+    },
+    {
+      "id": "sgr.underline-color-rgb",
+      "name": "Underline color, truecolor (SGR 58;2)",
+      "page": "https://terminfo.dev/sgr/58-2-underline-color-rgb"
+    },
+    {
+      "id": "sgr.underline-color-reset",
+      "name": "Reset underline color (SGR 59)",
+      "page": "https://terminfo.dev/sgr/59-underline-color-reset"
+    },
+    {
+      "id": "cursor.reverse-wrap",
+      "name": "Reverse Wrap (Mode 45)",
+      "page": "https://terminfo.dev/cursor/reverse-wrap-45"
+    },
+    {
+      "id": "erase.selective",
+      "name": "Selective Erase (DECSED)",
+      "page": "https://terminfo.dev/erase/selective-decsed"
+    },
+    {
+      "id": "editing.sl",
+      "name": "SL — shift left (CSI Ps SP @)",
+      "page": "https://terminfo.dev/editing/sl-shift-left"
+    },
+    {
+      "id": "editing.sr",
+      "name": "SR — shift right (CSI Ps SP A)",
+      "page": "https://terminfo.dev/editing/sr-shift-right"
+    },
+    {
+      "id": "editing.decic",
+      "name": "DECIC — insert columns (CSI Ps ' })",
+      "page": "https://terminfo.dev/editing/decic-insert-columns"
+    },
+    {
+      "id": "editing.decdc",
+      "name": "DECDC — delete columns (CSI Ps ' ~)",
+      "page": "https://terminfo.dev/editing/decdc-delete-columns"
+    },
+    {
+      "id": "input.pixel-mouse",
+      "name": "Pixel Mouse Reporting (1016)",
+      "page": "https://terminfo.dev/input/pixel-mouse-1016"
+    },
+    {
+      "id": "input.urxvt-mouse",
+      "name": "urxvt Mouse Reporting (1015)",
+      "page": "https://terminfo.dev/input/urxvt-mouse-1015"
+    },
+    {
+      "id": "modes.left-right-margin",
+      "name": "Left/Right Margins (DECLRMM, Mode 69)",
+      "page": "https://terminfo.dev/modes/left-right-margin-69"
+    },
+    {
+      "id": "modes.utf8-mouse-1005",
+      "name": "UTF-8 mouse mode (?1005)",
+      "page": "https://terminfo.dev/modes/decset-1005-utf8-mouse"
+    },
+    {
+      "id": "extensions.kitty-keyboard",
+      "name": "Kitty keyboard protocol",
+      "page": "https://terminfo.dev/extensions/kitty-keyboard-protocol"
+    },
+    {
+      "id": "extensions.kitty-graphics",
+      "name": "Kitty graphics protocol",
+      "page": "https://terminfo.dev/extensions/kitty-graphics-protocol"
+    },
+    {
+      "id": "extensions.sixel",
+      "name": "Sixel graphics",
+      "page": "https://terminfo.dev/extensions/sixel-graphics"
+    },
+    {
+      "id": "extensions.osc8",
+      "name": "Hyperlinks (OSC 8)",
+      "page": "https://terminfo.dev/extensions/osc-8-hyperlinks"
+    },
+    {
+      "id": "extensions.reflow",
+      "name": "Text reflow on resize",
+      "page": "https://terminfo.dev/extensions/text-reflow"
+    },
+    {
+      "id": "extensions.semantic-prompts",
+      "name": "Semantic prompts (OSC 133)",
+      "page": "https://terminfo.dev/extensions/osc-133-semantic-prompts"
+    },
+    {
+      "id": "extensions.osc-633-vscode",
+      "name": "VS Code Shell Integration (OSC 633)",
+      "page": "https://terminfo.dev/extensions/osc-633-vscode"
+    },
+    {
+      "id": "extensions.osc133-a",
+      "name": "OSC 133;A prompt start (FTCS_PROMPT)",
+      "page": "https://terminfo.dev/extensions/osc133-a-prompt-start"
+    },
+    {
+      "id": "extensions.osc133-b",
+      "name": "OSC 133;B command start (FTCS_COMMAND_START)",
+      "page": "https://terminfo.dev/extensions/osc133-b-command-start"
+    },
+    {
+      "id": "extensions.osc133-c",
+      "name": "OSC 133;C command executed (FTCS_COMMAND_EXECUTED)",
+      "page": "https://terminfo.dev/extensions/osc133-c-command-executed"
+    },
+    {
+      "id": "extensions.osc133-d",
+      "name": "OSC 133;D command finished (FTCS_COMMAND_FINISHED)",
+      "page": "https://terminfo.dev/extensions/osc133-d-command-finished"
+    },
+    {
+      "id": "extensions.osc133-p",
+      "name": "OSC 133;P properties",
+      "page": "https://terminfo.dev/extensions/osc133-p-properties"
+    },
+    {
+      "id": "extensions.osc633-a",
+      "name": "OSC 633;A prompt start",
+      "page": "https://terminfo.dev/extensions/osc633-a-prompt-start"
+    },
+    {
+      "id": "extensions.osc633-b",
+      "name": "OSC 633;B prompt end",
+      "page": "https://terminfo.dev/extensions/osc633-b-prompt-end"
+    },
+    {
+      "id": "extensions.osc633-c",
+      "name": "OSC 633;C pre-execution",
+      "page": "https://terminfo.dev/extensions/osc633-c-pre-execution"
+    },
+    {
+      "id": "extensions.osc633-d",
+      "name": "OSC 633;D command finished",
+      "page": "https://terminfo.dev/extensions/osc633-d-command-finished"
+    },
+    {
+      "id": "extensions.osc633-e",
+      "name": "OSC 633;E set commandline",
+      "page": "https://terminfo.dev/extensions/osc633-e-set-commandline"
+    },
+    {
+      "id": "extensions.osc633-p",
+      "name": "OSC 633;P properties",
+      "page": "https://terminfo.dev/extensions/osc633-p-properties"
+    },
+    {
+      "id": "extensions.notifications",
+      "name": "Desktop Notifications (OSC 9/777)",
+      "page": "https://terminfo.dev/extensions/notifications-osc-9"
+    },
+    {
+      "id": "extensions.iterm2-images",
+      "name": "iTerm2 Inline Images (OSC 1337)",
+      "page": "https://terminfo.dev/extensions/iterm2-images"
+    },
+    {
+      "id": "device.tertiary-da",
+      "name": "Tertiary Device Attributes (DA3)",
+      "page": "https://terminfo.dev/device/da3-tertiary-device-attributes"
+    },
+    {
+      "id": "device.decrqss",
+      "name": "Request Setting (DECRQSS)",
+      "page": "https://terminfo.dev/device/decrqss"
+    },
+    {
+      "id": "device.xtgettcap",
+      "name": "Query Terminfo (XTGETTCAP)",
+      "page": "https://terminfo.dev/device/xtgettcap"
+    },
+    {
+      "id": "device.xtversion",
+      "name": "Terminal Version (XTVERSION)",
+      "page": "https://terminfo.dev/device/xtversion"
+    },
+    {
+      "id": "device.term-features",
+      "name": "Feature Reporting (TERM_FEATURES)",
+      "page": "https://terminfo.dev/device/term-features"
+    },
+    {
+      "id": "device.xtwinops-14",
+      "name": "Report window size in pixels (CSI 14 t)",
+      "page": "https://terminfo.dev/device/xtwinops-14-window-size-pixels"
+    },
+    {
+      "id": "device.xtwinops-16",
+      "name": "Report cell size in pixels (CSI 16 t)",
+      "page": "https://terminfo.dev/device/xtwinops-16-cell-size-pixels"
+    },
+    {
+      "id": "device.xtwinops-20",
+      "name": "Report icon label (CSI 20 t)",
+      "page": "https://terminfo.dev/device/xtwinops-20-icon-label"
+    },
+    {
+      "id": "device.xtwinops-21",
+      "name": "Report window title (CSI 21 t)",
+      "page": "https://terminfo.dev/device/xtwinops-21-window-title"
+    },
+    {
+      "id": "device.xtwinops-22",
+      "name": "Push title/icon stack (CSI 22 ; 0 t)",
+      "page": "https://terminfo.dev/device/xtwinops-22-push-title"
+    },
+    {
+      "id": "device.xtwinops-23",
+      "name": "Pop title/icon stack (CSI 23 ; 0 t)",
+      "page": "https://terminfo.dev/device/xtwinops-23-pop-title"
+    },
+    {
+      "id": "device.xtreportcolors",
+      "name": "XTREPORTCOLORS — report color capabilities (CSI # R)",
+      "page": "https://terminfo.dev/device/xtreportcolors"
+    },
+    {
+      "id": "device.xtgetxres",
+      "name": "XTGETXRES — query resource value (DCS + Q)",
+      "page": "https://terminfo.dev/device/xtgetxres"
+    },
+    {
+      "id": "device.env-lc-terminal",
+      "name": "LC_TERMINAL env variable",
+      "page": "https://terminfo.dev/device/env-lc-terminal"
+    },
+    {
+      "id": "device.env-kitty",
+      "name": "KITTY_* env variables",
+      "page": "https://terminfo.dev/device/env-kitty"
+    },
+    {
+      "id": "device.env-wezterm",
+      "name": "WEZTERM_* env variables",
+      "page": "https://terminfo.dev/device/env-wezterm"
+    },
+    {
+      "id": "device.env-wt-session",
+      "name": "WT_SESSION env variable",
+      "page": "https://terminfo.dev/device/env-wt-session"
+    },
+    {
+      "id": "extensions.osc1337-cellsize",
+      "name": "iTerm2 Cell Size Reporting (OSC 1337)",
+      "page": "https://terminfo.dev/extensions/osc1337-cellsize"
+    },
+    {
+      "id": "extensions.osc1337-capabilities",
+      "name": "iTerm2 Capability Reporting (OSC 1337)",
+      "page": "https://terminfo.dev/extensions/osc1337-capabilities"
+    },
+    {
+      "id": "extensions.sixel-da1",
+      "name": "Sixel support in DA1",
+      "page": "https://terminfo.dev/extensions/sixel-da1"
+    },
+    {
+      "id": "extensions.sixel-geometry-report",
+      "name": "Sixel geometry report (CSI ? Pi;Pa;Pv S)",
+      "page": "https://terminfo.dev/extensions/sixel-geometry-report"
+    },
+    {
+      "id": "extensions.osc9-progress",
+      "name": "OSC 9;4 progress bar",
+      "page": "https://terminfo.dev/extensions/osc9-progress-bar"
+    },
+    {
+      "id": "extensions.osc66-text-sizing",
+      "name": "OSC 66 text sizing",
+      "page": "https://terminfo.dev/extensions/osc66-text-sizing"
+    },
+    {
+      "id": "extensions.osc5522-clipboard",
+      "name": "OSC 5522 advanced clipboard",
+      "page": "https://terminfo.dev/extensions/osc5522-clipboard"
+    },
+    {
+      "id": "modes.xtpushsgr",
+      "name": "XTPUSHSGR — push SGR stack (CSI # {)",
+      "page": "https://terminfo.dev/modes/xtpushsgr-push-sgr"
+    },
+    {
+      "id": "modes.xtpopsgr",
+      "name": "XTPOPSGR — pop SGR stack (CSI # })",
+      "page": "https://terminfo.dev/modes/xtpopsgr-pop-sgr"
+    },
+    {
+      "id": "modes.xtsave",
+      "name": "XTSAVE — save DEC private modes (CSI ? Pm s)",
+      "page": "https://terminfo.dev/modes/xtsave-save-dec-modes"
+    },
+    {
+      "id": "modes.xtrestore",
+      "name": "XTRESTORE — restore DEC private modes (CSI ? Pm r)",
+      "page": "https://terminfo.dev/modes/xtrestore-restore-dec-modes"
+    },
+    {
+      "id": "modes.xtpushcolors",
+      "name": "Push color palette (CSI # P)",
+      "page": "https://terminfo.dev/modes/xtpushcolors-push-palette"
+    },
+    {
+      "id": "modes.xtpopcolors",
+      "name": "Pop color palette (CSI # Q)",
+      "page": "https://terminfo.dev/modes/xtpopcolors-pop-palette"
+    },
+    {
+      "id": "input.modify-other-keys-3",
+      "name": "modifyOtherKeys mode 3",
+      "page": "https://terminfo.dev/input/modify-other-keys-3"
+    },
+    {
+      "id": "extensions.kitty-keyboard.disambiguate",
+      "name": "Kitty keyboard: DISAMBIGUATE (flag 1)",
+      "page": "https://terminfo.dev/extensions/kitty-keyboard-disambiguate"
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-events",
+      "name": "Kitty keyboard: REPORT_EVENTS (flag 2)",
+      "page": "https://terminfo.dev/extensions/kitty-keyboard-report-events"
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-alternate",
+      "name": "Kitty keyboard: REPORT_ALTERNATE (flag 4)",
+      "page": "https://terminfo.dev/extensions/kitty-keyboard-report-alternate"
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-all-keys",
+      "name": "Kitty keyboard: REPORT_ALL_KEYS (flag 8)",
+      "page": "https://terminfo.dev/extensions/kitty-keyboard-report-all-keys"
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-text",
+      "name": "Kitty keyboard: REPORT_TEXT (flag 16)",
+      "page": "https://terminfo.dev/extensions/kitty-keyboard-report-text"
+    },
+    {
+      "id": "extensions.kitty-graphics.transmit",
+      "name": "Kitty graphics: transmit",
+      "page": "https://terminfo.dev/extensions/kitty-graphics-transmit"
+    },
+    {
+      "id": "extensions.kitty-graphics.display",
+      "name": "Kitty graphics: display",
+      "page": "https://terminfo.dev/extensions/kitty-graphics-display"
+    },
+    {
+      "id": "extensions.kitty-graphics.animation",
+      "name": "Kitty graphics: animation",
+      "page": "https://terminfo.dev/extensions/kitty-graphics-animation"
+    },
+    {
+      "id": "extensions.kitty-graphics.unicode-placeholders",
+      "name": "Kitty graphics: Unicode placeholders",
+      "page": "https://terminfo.dev/extensions/kitty-graphics-unicode-placeholders"
+    },
+    {
+      "id": "extensions.osc52-read",
+      "name": "OSC 52 clipboard read",
+      "page": "https://terminfo.dev/extensions/osc52-clipboard-read"
+    },
+    {
+      "id": "extensions.osc5-special-color",
+      "name": "Special color (OSC 5)",
+      "page": "https://terminfo.dev/extensions/osc-5-special-color"
+    },
+    {
+      "id": "extensions.osc117-reset-highlight-bg",
+      "name": "Reset highlight background (OSC 117)",
+      "page": "https://terminfo.dev/extensions/osc-117-reset-highlight-bg"
+    },
+    {
+      "id": "extensions.osc119-reset-highlight-fg",
+      "name": "Reset highlight foreground (OSC 119)",
+      "page": "https://terminfo.dev/extensions/osc-119-reset-highlight-fg"
+    },
+    {
+      "id": "extensions.osc17-highlight-bg",
+      "name": "Highlight background (OSC 17)",
+      "page": "https://terminfo.dev/extensions/osc-17-highlight-bg"
+    },
+    {
+      "id": "extensions.osc19-highlight-fg",
+      "name": "Highlight foreground (OSC 19)",
+      "page": "https://terminfo.dev/extensions/osc-19-highlight-fg"
+    },
+    {
+      "id": "extensions.osc22-pointer",
+      "name": "Pointer shape (OSC 22)",
+      "page": "https://terminfo.dev/extensions/osc-22-pointer-shape"
+    },
+    {
+      "id": "extensions.osc99-kitty-notify",
+      "name": "Desktop notifications (OSC 99)",
+      "page": "https://terminfo.dev/extensions/osc-99-kitty-notify"
+    },
+    {
+      "id": "extensions.osc777-notify",
+      "name": "Notifications (OSC 777)",
+      "page": "https://terminfo.dev/extensions/osc-777-notify"
+    },
+    {
+      "id": "extensions.osc666-termprop",
+      "name": "VTE termprop (OSC 666)",
+      "page": "https://terminfo.dev/extensions/osc-666-termprop"
+    },
+    {
+      "id": "extensions.osc3008-context",
+      "name": "Systemd context (OSC 3008)",
+      "page": "https://terminfo.dev/extensions/osc-3008-systemd-context"
+    },
+    {
+      "id": "extensions.osc113-reset-pointer-fg",
+      "name": "Reset pointer fg color (OSC 113)",
+      "page": "https://terminfo.dev/extensions/osc-113-reset-pointer-fg"
+    },
+    {
+      "id": "extensions.osc114-reset-pointer-bg",
+      "name": "Reset pointer bg color (OSC 114)",
+      "page": "https://terminfo.dev/extensions/osc-114-reset-pointer-bg"
+    },
+    {
+      "id": "extensions.osc21-kitty-color",
+      "name": "Kitty color protocol (OSC 21)",
+      "page": "https://terminfo.dev/extensions/osc-21-kitty-color"
+    },
+    {
+      "id": "extensions.osc30001-color-stack-push",
+      "name": "Kitty color stack push (OSC 30001)",
+      "page": "https://terminfo.dev/extensions/osc-30001-color-stack-push"
+    },
+    {
+      "id": "extensions.osc30101-color-stack-pop",
+      "name": "Kitty color stack pop (OSC 30101)",
+      "page": "https://terminfo.dev/extensions/osc-30101-color-stack-pop"
+    },
+    {
+      "id": "extensions.osc176-app-id",
+      "name": "Set Wayland app-id (OSC 176)",
+      "page": "https://terminfo.dev/extensions/osc-176-app-id"
+    },
+    {
+      "id": "extensions.osc555-flash",
+      "name": "Screen flash (OSC 555)",
+      "page": "https://terminfo.dev/extensions/osc-555-flash"
+    },
+    {
+      "id": "extensions.osc7770-font-size",
+      "name": "Font size query/set (OSC 7770)",
+      "page": "https://terminfo.dev/extensions/osc-7770-font-size"
+    },
+    {
+      "id": "extensions.osc7777-font-window-size",
+      "name": "Font + window size (OSC 7777)",
+      "page": "https://terminfo.dev/extensions/osc-7777-font-window-size"
+    },
+    {
+      "id": "extensions.font-ligatures",
+      "name": "Font ligatures",
+      "page": "https://terminfo.dev/extensions/font-ligatures"
+    },
+    {
+      "id": "input.kitty-click-events",
+      "name": "Kitty click events",
+      "page": "https://terminfo.dev/input/kitty-click-events"
+    },
+    {
+      "id": "device.dsr-996-color-scheme",
+      "name": "DSR ?996 — color scheme query",
+      "page": "https://terminfo.dev/device/dsr-996-color-scheme"
+    }
+  ]
+}

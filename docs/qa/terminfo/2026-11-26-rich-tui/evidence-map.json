@@ -1,0 +1,1343 @@
+{
+  "schemaVersion": 1,
+  "mainRevision": "caea956de1f8b391892f61f89ba6fbf6c462cc77",
+  "inputs": {
+    "stock": {
+      "path": "2026-11-09-stock-baseline.json",
+      "sha256": "d4418484f935ac1a534eaf0b0368d2e5bb174974ae92f2c9c9a4ff2f8905a82b"
+    },
+    "inventory": {
+      "path": "2026-11-09-qualification-inventory.json",
+      "sha256": "edf3dfe1f5784566c6b8d3678e03833a73d7c76098af97ccd03bf3266e1d6fed"
+    },
+    "core": {
+      "path": "2026-11-11-core-reverse-wide-results/report.json",
+      "sha256": "0a3c80ab9e7b4e8781418f94062e3ba0b18e8e823734c92a98cbee87a1e0ca1c"
+    },
+    "modern": {
+      "path": "2026-11-25-modern-clipboard-paste-results/report.json",
+      "sha256": "c4d49cb393a9104f9e695650a1b0bd0d91a0d40aab3b4e0c6ddbdd276402e73c"
+    },
+    "commonCore": {
+      "path": "2026-11-25-common-core-comparison/report.json",
+      "sha256": "40d564190e505527e11bd2a4b106d547740af127c78fef356d2f9eef510defb9"
+    }
+  },
+  "totals": {
+    "cases": 96,
+    "stock": {
+      "inconclusive": 68,
+      "ungraded": 7,
+      "supported": 20,
+      "unsupported": 1
+    },
+    "withOwnedInventoryClaims": 60,
+    "withFrozenCoreRows": 0,
+    "withFrozenModernRows": 0,
+    "withCommonCoreRows": 0
+  },
+  "rows": [
+    {
+      "id": "sgr.underline-color-indexed",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-08-sgr-underline-color-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "sgr.underline-color-rgb",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-08-sgr-underline-color-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "sgr.underline-color-reset",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-08-sgr-underline-color-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "cursor.reverse-wrap",
+      "stock": null,
+      "owned": [
+        {
+          "publication": "2026-11-09-cursor-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "erase.selective",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-09-selective-erase-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "editing.sl",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-10-column-editing-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "editing.sr",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-10-column-editing-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "editing.decic",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-10-column-editing-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "editing.decdc",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-10-column-editing-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "input.pixel-mouse",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-sgr-pixel-mouse-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "input.urxvt-mouse",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-mouse-extended-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "modes.left-right-margin",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-10-left-right-margins-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "modes.utf8-mouse-1005",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-mouse-extended-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.kitty-keyboard",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.kitty-graphics",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.sixel",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-static-images-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "unsupported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc8",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-11-osc7-osc8-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.reflow",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-ascii-reflow-fix-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.semantic-prompts",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-shell-integration-aggregates-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc-633-vscode",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-shell-integration-aggregates-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "inconclusive"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc133-a",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-11-osc133-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc133-b",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-11-osc133-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc133-c",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-11-osc133-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc133-d",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-11-osc133-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc133-p",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc633-a",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-osc633-implementation-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc633-b",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-osc633-implementation-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc633-c",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-osc633-implementation-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc633-d",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-osc633-implementation-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc633-e",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc633-p",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.notifications",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-13-osc9-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.iterm2-images",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-static-images-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.tertiary-da",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.decrqss",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtgettcap",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-12-xtgettcap-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtversion",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.term-features",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtwinops-14",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtwinops-16",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtwinops-20",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-device-queries-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtwinops-21",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-device-queries-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtwinops-22",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-11-title-stack-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtwinops-23",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-11-title-stack-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtreportcolors",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-device-queries-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.xtgetxres",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-device-queries-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.env-lc-terminal",
+      "stock": null,
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.env-kitty",
+      "stock": null,
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.env-wezterm",
+      "stock": null,
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.env-wt-session",
+      "stock": null,
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc1337-cellsize",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-17-osc-cell-size-integrated-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc1337-capabilities",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-17-osc1337-capabilities-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.sixel-da1",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.sixel-geometry-report",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc9-progress",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-13-osc9-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc66-text-sizing",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc5522-clipboard",
+      "stock": "unsupported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": {
+        "path": "2026-11-01-clipboard.md",
+        "scope": "historical mode recognition and implementation tests"
+      }
+    },
+    {
+      "id": "modes.xtpushsgr",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-xterm-sgr-stack-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "modes.xtpopsgr",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-xterm-sgr-stack-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "modes.xtsave",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-xterm-saved-modes-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "modes.xtrestore",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-xterm-saved-modes-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "modes.xtpushcolors",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-xterm-color-stack-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "modes.xtpopcolors",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-xterm-color-stack-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "input.modify-other-keys-3",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": {
+        "path": "2026-11-17-modify-other-keys-3-policy.md",
+        "scope": "source audit and explicit policy"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.disambiguate",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-events",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-alternate",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": {
+        "path": "2026-11-01-alternate-keys.md",
+        "scope": "historical query and implementation tests"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-all-keys",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": {
+        "path": "2026-11-01-all-keys.md",
+        "scope": "historical query and implementation tests"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-text",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": {
+        "path": "2026-11-01-associated-text.md",
+        "scope": "historical query and implementation tests"
+      }
+    },
+    {
+      "id": "extensions.kitty-graphics.transmit",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.kitty-graphics.display",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.kitty-graphics.animation",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-16-kitty-animation-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.kitty-graphics.unicode-placeholders",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-19-kitty-placeholders-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc52-read",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": {
+        "path": "2026-11-25-modern-osc52-clipboard-results/report.md",
+        "scope": "related exact OSC 52 denial observation in the Modern round trip"
+      }
+    },
+    {
+      "id": "extensions.osc5-special-color",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-17-osc5-special-colors-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc117-reset-highlight-bg",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-12-selection-colors-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc119-reset-highlight-fg",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-12-selection-colors-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc17-highlight-bg",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-12-selection-colors-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc19-highlight-fg",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-12-selection-colors-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc22-pointer",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-17-osc22-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc99-kitty-notify",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-14-notify-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc777-notify",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-14-notify-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc666-termprop",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc3008-context",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-17-osc3008-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc113-reset-pointer-fg",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-20-pointer-color-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "unsupported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc114-reset-pointer-bg",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-20-pointer-color-qualification.md",
+          "status": "qualified",
+          "pinned": "inconclusive",
+          "effect": "unsupported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc21-kitty-color",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-15-kitty-color-control-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc30001-color-stack-push",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc30101-color-stack-pop",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc176-app-id",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc555-flash",
+      "stock": "inconclusive",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc7770-font-size",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-18-osc-font-queries-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.osc7777-font-window-size",
+      "stock": "inconclusive",
+      "owned": [
+        {
+          "publication": "2026-11-18-osc-font-queries-qualification.md",
+          "status": "qualified",
+          "pinned": "supported",
+          "effect": "supported"
+        }
+      ],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "extensions.font-ligatures",
+      "stock": null,
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "input.kitty-click-events",
+      "stock": null,
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    },
+    {
+      "id": "device.dsr-996-color-scheme",
+      "stock": "supported",
+      "owned": [],
+      "core": null,
+      "modern": null,
+      "commonCore": null,
+      "additionalEvidence": null
+    }
+  ]
+}

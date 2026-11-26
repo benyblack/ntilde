@@ -1,0 +1,396 @@
+{
+  "schemaVersion": 1,
+  "source": "https://terminfo.dev/baseline/rich",
+  "capturedOn": "2026-11-26",
+  "sourcePageSha256": "8632a2d08460bceabc8223864b7657c02fbc2d2125710f1fe2f2b34d3df6b283",
+  "identicalTables": [
+    "Terminal Applications",
+    "Headless Backends"
+  ],
+  "rows": [
+    {
+      "name": "Underline color, indexed (SGR 58;5)",
+      "path": "/sgr/58-5-underline-color-indexed"
+    },
+    {
+      "name": "Underline color, truecolor (SGR 58;2)",
+      "path": "/sgr/58-2-underline-color-rgb"
+    },
+    {
+      "name": "Reset underline color (SGR 59)",
+      "path": "/sgr/59-underline-color-reset"
+    },
+    {
+      "name": "Reverse Wrap (Mode 45)",
+      "path": "/cursor/reverse-wrap-45"
+    },
+    {
+      "name": "Selective Erase (DECSED)",
+      "path": "/erase/selective-decsed"
+    },
+    {
+      "name": "SL — shift left (CSI Ps SP @)",
+      "path": "/editing/sl-shift-left"
+    },
+    {
+      "name": "SR — shift right (CSI Ps SP A)",
+      "path": "/editing/sr-shift-right"
+    },
+    {
+      "name": "DECIC — insert columns (CSI Ps ' })",
+      "path": "/editing/decic-insert-columns"
+    },
+    {
+      "name": "DECDC — delete columns (CSI Ps ' ~)",
+      "path": "/editing/decdc-delete-columns"
+    },
+    {
+      "name": "Pixel Mouse Reporting (1016)",
+      "path": "/input/pixel-mouse-1016"
+    },
+    {
+      "name": "urxvt Mouse Reporting (1015)",
+      "path": "/input/urxvt-mouse-1015"
+    },
+    {
+      "name": "Left/Right Margins (DECLRMM, Mode 69)",
+      "path": "/modes/left-right-margin-69"
+    },
+    {
+      "name": "UTF-8 mouse mode (?1005)",
+      "path": "/modes/decset-1005-utf8-mouse"
+    },
+    {
+      "name": "Kitty keyboard protocol",
+      "path": "/extensions/kitty-keyboard-protocol"
+    },
+    {
+      "name": "Kitty graphics protocol",
+      "path": "/extensions/kitty-graphics-protocol"
+    },
+    {
+      "name": "Sixel graphics",
+      "path": "/extensions/sixel-graphics"
+    },
+    {
+      "name": "Hyperlinks (OSC 8)",
+      "path": "/extensions/osc-8-hyperlinks"
+    },
+    {
+      "name": "Text reflow on resize",
+      "path": "/extensions/text-reflow"
+    },
+    {
+      "name": "Semantic prompts (OSC 133)",
+      "path": "/extensions/osc-133-semantic-prompts"
+    },
+    {
+      "name": "VS Code Shell Integration (OSC 633)",
+      "path": "/extensions/osc-633-vscode"
+    },
+    {
+      "name": "OSC 133;A prompt start (FTCS_PROMPT)",
+      "path": "/extensions/osc133-a-prompt-start"
+    },
+    {
+      "name": "OSC 133;B command start (FTCS_COMMAND_START)",
+      "path": "/extensions/osc133-b-command-start"
+    },
+    {
+      "name": "OSC 133;C command executed (FTCS_COMMAND_EXECUTED)",
+      "path": "/extensions/osc133-c-command-executed"
+    },
+    {
+      "name": "OSC 133;D command finished (FTCS_COMMAND_FINISHED)",
+      "path": "/extensions/osc133-d-command-finished"
+    },
+    {
+      "name": "OSC 133;P properties",
+      "path": "/extensions/osc133-p-properties"
+    },
+    {
+      "name": "OSC 633;A prompt start",
+      "path": "/extensions/osc633-a-prompt-start"
+    },
+    {
+      "name": "OSC 633;B prompt end",
+      "path": "/extensions/osc633-b-prompt-end"
+    },
+    {
+      "name": "OSC 633;C pre-execution",
+      "path": "/extensions/osc633-c-pre-execution"
+    },
+    {
+      "name": "OSC 633;D command finished",
+      "path": "/extensions/osc633-d-command-finished"
+    },
+    {
+      "name": "OSC 633;E set commandline",
+      "path": "/extensions/osc633-e-set-commandline"
+    },
+    {
+      "name": "OSC 633;P properties",
+      "path": "/extensions/osc633-p-properties"
+    },
+    {
+      "name": "Desktop Notifications (OSC 9/777)",
+      "path": "/extensions/notifications-osc-9"
+    },
+    {
+      "name": "iTerm2 Inline Images (OSC 1337)",
+      "path": "/extensions/iterm2-images"
+    },
+    {
+      "name": "Tertiary Device Attributes (DA3)",
+      "path": "/device/da3-tertiary-device-attributes"
+    },
+    {
+      "name": "Request Setting (DECRQSS)",
+      "path": "/device/decrqss"
+    },
+    {
+      "name": "Query Terminfo (XTGETTCAP)",
+      "path": "/device/xtgettcap"
+    },
+    {
+      "name": "Terminal Version (XTVERSION)",
+      "path": "/device/xtversion"
+    },
+    {
+      "name": "Feature Reporting (TERM_FEATURES)",
+      "path": "/device/term-features"
+    },
+    {
+      "name": "Report window size in pixels (CSI 14 t)",
+      "path": "/device/xtwinops-14-window-size-pixels"
+    },
+    {
+      "name": "Report cell size in pixels (CSI 16 t)",
+      "path": "/device/xtwinops-16-cell-size-pixels"
+    },
+    {
+      "name": "Report icon label (CSI 20 t)",
+      "path": "/device/xtwinops-20-icon-label"
+    },
+    {
+      "name": "Report window title (CSI 21 t)",
+      "path": "/device/xtwinops-21-window-title"
+    },
+    {
+      "name": "Push title/icon stack (CSI 22 ; 0 t)",
+      "path": "/device/xtwinops-22-push-title"
+    },
+    {
+      "name": "Pop title/icon stack (CSI 23 ; 0 t)",
+      "path": "/device/xtwinops-23-pop-title"
+    },
+    {
+      "name": "XTREPORTCOLORS — report color capabilities (CSI # R)",
+      "path": "/device/xtreportcolors"
+    },
+    {
+      "name": "XTGETXRES — query resource value (DCS + Q)",
+      "path": "/device/xtgetxres"
+    },
+    {
+      "name": "LC_TERMINAL env variable",
+      "path": "/device/env-lc-terminal"
+    },
+    {
+      "name": "KITTY_* env variables",
+      "path": "/device/env-kitty"
+    },
+    {
+      "name": "WEZTERM_* env variables",
+      "path": "/device/env-wezterm"
+    },
+    {
+      "name": "WT_SESSION env variable",
+      "path": "/device/env-wt-session"
+    },
+    {
+      "name": "iTerm2 Cell Size Reporting (OSC 1337)",
+      "path": "/extensions/osc1337-cellsize"
+    },
+    {
+      "name": "iTerm2 Capability Reporting (OSC 1337)",
+      "path": "/extensions/osc1337-capabilities"
+    },
+    {
+      "name": "Sixel support in DA1",
+      "path": "/extensions/sixel-da1"
+    },
+    {
+      "name": "Sixel geometry report (CSI ? Pi;Pa;Pv S)",
+      "path": "/extensions/sixel-geometry-report"
+    },
+    {
+      "name": "OSC 9;4 progress bar",
+      "path": "/extensions/osc9-progress-bar"
+    },
+    {
+      "name": "OSC 66 text sizing",
+      "path": "/extensions/osc66-text-sizing"
+    },
+    {
+      "name": "OSC 5522 advanced clipboard",
+      "path": "/extensions/osc5522-clipboard"
+    },
+    {
+      "name": "XTPUSHSGR — push SGR stack (CSI # {)",
+      "path": "/modes/xtpushsgr-push-sgr"
+    },
+    {
+      "name": "XTPOPSGR — pop SGR stack (CSI # })",
+      "path": "/modes/xtpopsgr-pop-sgr"
+    },
+    {
+      "name": "XTSAVE — save DEC private modes (CSI ? Pm s)",
+      "path": "/modes/xtsave-save-dec-modes"
+    },
+    {
+      "name": "XTRESTORE — restore DEC private modes (CSI ? Pm r)",
+      "path": "/modes/xtrestore-restore-dec-modes"
+    },
+    {
+      "name": "Push color palette (CSI # P)",
+      "path": "/modes/xtpushcolors-push-palette"
+    },
+    {
+      "name": "Pop color palette (CSI # Q)",
+      "path": "/modes/xtpopcolors-pop-palette"
+    },
+    {
+      "name": "modifyOtherKeys mode 3",
+      "path": "/input/modify-other-keys-3"
+    },
+    {
+      "name": "Kitty keyboard: DISAMBIGUATE (flag 1)",
+      "path": "/extensions/kitty-keyboard-disambiguate"
+    },
+    {
+      "name": "Kitty keyboard: REPORT_EVENTS (flag 2)",
+      "path": "/extensions/kitty-keyboard-report-events"
+    },
+    {
+      "name": "Kitty keyboard: REPORT_ALTERNATE (flag 4)",
+      "path": "/extensions/kitty-keyboard-report-alternate"
+    },
+    {
+      "name": "Kitty keyboard: REPORT_ALL_KEYS (flag 8)",
+      "path": "/extensions/kitty-keyboard-report-all-keys"
+    },
+    {
+      "name": "Kitty keyboard: REPORT_TEXT (flag 16)",
+      "path": "/extensions/kitty-keyboard-report-text"
+    },
+    {
+      "name": "Kitty graphics: transmit",
+      "path": "/extensions/kitty-graphics-transmit"
+    },
+    {
+      "name": "Kitty graphics: display",
+      "path": "/extensions/kitty-graphics-display"
+    },
+    {
+      "name": "Kitty graphics: animation",
+      "path": "/extensions/kitty-graphics-animation"
+    },
+    {
+      "name": "Kitty graphics: Unicode placeholders",
+      "path": "/extensions/kitty-graphics-unicode-placeholders"
+    },
+    {
+      "name": "OSC 52 clipboard read",
+      "path": "/extensions/osc52-clipboard-read"
+    },
+    {
+      "name": "Special color (OSC 5)",
+      "path": "/extensions/osc-5-special-color"
+    },
+    {
+      "name": "Reset highlight background (OSC 117)",
+      "path": "/extensions/osc-117-reset-highlight-bg"
+    },
+    {
+      "name": "Reset highlight foreground (OSC 119)",
+      "path": "/extensions/osc-119-reset-highlight-fg"
+    },
+    {
+      "name": "Highlight background (OSC 17)",
+      "path": "/extensions/osc-17-highlight-bg"
+    },
+    {
+      "name": "Highlight foreground (OSC 19)",
+      "path": "/extensions/osc-19-highlight-fg"
+    },
+    {
+      "name": "Pointer shape (OSC 22)",
+      "path": "/extensions/osc-22-pointer-shape"
+    },
+    {
+      "name": "Desktop notifications (OSC 99)",
+      "path": "/extensions/osc-99-kitty-notify"
+    },
+    {
+      "name": "Notifications (OSC 777)",
+      "path": "/extensions/osc-777-notify"
+    },
+    {
+      "name": "VTE termprop (OSC 666)",
+      "path": "/extensions/osc-666-termprop"
+    },
+    {
+      "name": "Systemd context (OSC 3008)",
+      "path": "/extensions/osc-3008-systemd-context"
+    },
+    {
+      "name": "Reset pointer fg color (OSC 113)",
+      "path": "/extensions/osc-113-reset-pointer-fg"
+    },
+    {
+      "name": "Reset pointer bg color (OSC 114)",
+      "path": "/extensions/osc-114-reset-pointer-bg"
+    },
+    {
+      "name": "Kitty color protocol (OSC 21)",
+      "path": "/extensions/osc-21-kitty-color"
+    },
+    {
+      "name": "Kitty color stack push (OSC 30001)",
+      "path": "/extensions/osc-30001-color-stack-push"
+    },
+    {
+      "name": "Kitty color stack pop (OSC 30101)",
+      "path": "/extensions/osc-30101-color-stack-pop"
+    },
+    {
+      "name": "Set Wayland app-id (OSC 176)",
+      "path": "/extensions/osc-176-app-id"
+    },
+    {
+      "name": "Screen flash (OSC 555)",
+      "path": "/extensions/osc-555-flash"
+    },
+    {
+      "name": "Font size query/set (OSC 7770)",
+      "path": "/extensions/osc-7770-font-size"
+    },
+    {
+      "name": "Font + window size (OSC 7777)",
+      "path": "/extensions/osc-7777-font-window-size"
+    },
+    {
+      "name": "Font ligatures",
+      "path": "/extensions/font-ligatures"
+    },
+    {
+      "name": "Kitty click events",
+      "path": "/input/kitty-click-events"
+    },
+    {
+      "name": "DSR ?996 — color scheme query",
+      "path": "/device/dsr-996-color-scheme"
+    }
+  ]
+}

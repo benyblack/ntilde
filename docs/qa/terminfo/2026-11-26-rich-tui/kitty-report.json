@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "controls": [
+    {
+      "name": "plain-a",
+      "expected": "61",
+      "childHex": "61"
+    },
+    {
+      "name": "legacy-ctrl-i",
+      "expected": "09",
+      "childHex": "09"
+    }
+  ],
+  "rows": [
+    {
+      "id": "extensions.kitty-keyboard.disambiguate",
+      "mask": 1,
+      "chord": "ctrl+i",
+      "childHex": "1b5b3130353b3575",
+      "effect": "supported",
+      "repeats": null,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f31751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-events",
+      "mask": 3,
+      "chord": "escape-hold",
+      "childHex": "1b5b3237751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a3375",
+      "effect": "supported",
+      "repeats": 6,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f33751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-alternate",
+      "mask": 5,
+      "chord": "ctrl+shift+a",
+      "childHex": "1b5b39373a36353b3675",
+      "effect": "supported",
+      "repeats": null,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f35751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-all-keys",
+      "mask": 9,
+      "chord": "a",
+      "childHex": "1b5b393775",
+      "effect": "supported",
+      "repeats": null,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f39751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    },
+    {
+      "id": "extensions.kitty-keyboard.report-text",
+      "mask": 25,
+      "chord": "a",
+      "childHex": "1b5b39373b313b393775",
+      "effect": "supported",
+      "repeats": null,
+      "negotiation": {
+        "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f3235751b5b3e343b306d",
+        "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+      }
+    }
+  ],
+  "measurement": {
+    "manifestSha256": "0a6a6cc2e7bd2386d2da2f663af7c5580bc13946fc1c3ae2bd3775f9c70473f1",
+    "schemaVersion": 1,
+    "runId": "1ca42a26679cb694f20896dbf5994b7a",
+    "appRevision": "caea956de1f8b391892f61f89ba6fbf6c462cc77",
+    "scriptsRevision": "5dea0fe3817262926125fbb2f0d228e369ddc69d",
+    "appSourceArchiveSha256": "24c892fcbe3889202016f8ff15b0fc284f0935017590fb5cfd3ab93b526dd0f6",
+    "dotnetSdk": "10.0.403",
+    "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
+    "archives": {
+      "owned-run.zip": "e1dcbb48809d090fd3f73e916473f5eccd47e4a72cf6fb41cd478ba5f4a0869c"
+    },
+    "startedAt": "2026-11-26T07:46:53.019Z",
+    "fixtureRemovedAt": "2026-11-26T07:46:57.741Z",
+    "leaseReleasedAt": "2026-11-26T07:46:57.743Z",
+    "sha256": "97ac13d56c4f0a343a228094830dcc574787bce2b029a6a0bb173d9db4ebb499",
+    "source": {
+      "policy": "owned-rich-x11-kitty-keyboard-v1",
+      "sha256": "f2ad6ef619576927b45c5bc4cc14d6d504ae2166a22f304dbf65d0aa081682a6"
+    },
+    "nodeVersion": "v24.22.2",
+    "appVersion": "0.14.0",
+    "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
+    "assemblySha256": "5e983d054f59990ed2d5aeaabcebb7e085e25f144c333ed55863250321259a5c",
+    "xtest": [
+      2,
+      2
+    ],
+    "appPid": 6318,
+    "childPid": 6371,
+    "paneId": "328bca84-ee2d-4600-828f-efb0b1e91e83",
+    "tty": "/dev/pts/0",
+    "geometry": {
+      "rows": 40,
+      "columns": 149
+    }
+  }
+}
