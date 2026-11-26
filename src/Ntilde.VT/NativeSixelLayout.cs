@@ -77,22 +77,26 @@ public partial class TerminalBuffer
     private void ClipNativeSixel(TerminalImage image, int top, int bottomExclusive, int rightExclusive)
     {
         if (image.NativeRaster is not { } native) return;
-        image.NativeRaster = IntersectNativeRaster(native, ImagePageColumnsNoLock(image).Left, image.CellY,
-            top, bottomExclusive, rightExclusive, GetNativeSixelCellMetrics());
+        // Vertical-only pruning may run while reflow is still rebuilding its rows.
+        int columnsAvailable = rightExclusive == int.MaxValue
+            ? int.MaxValue
+            : rightExclusive - ImagePageColumnsNoLock(image).Left;
+        image.NativeRaster = IntersectNativeRaster(native, image.CellY,
+            top, bottomExclusive, columnsAvailable, GetNativeSixelCellMetrics());
     }
 
     /// <summary>
     /// Returns a monotonic source-pixel intersection for declared domain loss, retaining fractional and empty bounds.
     /// </summary>
-    private static SixelRasterIntent IntersectNativeRaster(SixelRasterIntent native, int x, int y,
-        int top, int bottomExclusive, int rightExclusive, SixelCellSize metrics)
+    private static SixelRasterIntent IntersectNativeRaster(SixelRasterIntent native, int y,
+        int top, int bottomExclusive, int columnsAvailable, SixelCellSize metrics)
     {
         var previous = native.Crop;
         double left = previous.Left;
         double upper = Math.Min(previous.Bottom, Math.Max(previous.Top,
             Math.Clamp(((double)top - y) * metrics.HeightPx, 0, native.CanvasHeight)));
         double right = Math.Min(previous.Right,
-            Math.Clamp(((double)rightExclusive - x) * metrics.WidthPx, 0, native.CanvasWidth));
+            Math.Clamp((double)columnsAvailable * metrics.WidthPx, 0, native.CanvasWidth));
         double bottom = Math.Min(previous.Bottom,
             Math.Clamp(((double)bottomExclusive - y) * metrics.HeightPx, 0, native.CanvasHeight));
         return new(native.Version, native.CanvasWidth, native.CanvasHeight,

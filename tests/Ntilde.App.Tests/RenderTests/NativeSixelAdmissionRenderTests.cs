@@ -1,6 +1,8 @@
+using Ntilde.Controls;
 using Ntilde.Platform;
 using Ntilde.Rendering;
 using Ntilde.Shell;
+using Ntilde.Tests.Controls;
 using Ntilde.Tests.Infra;
 using Ntilde.VT;
 using SkiaSharp;
@@ -72,6 +74,50 @@ public sealed class NativeSixelAdmissionRenderTests
         Assert.Equal((0, 0L), budget.Usage);
         view.DisposeRetiredImageBitmaps(long.MaxValue);
         Assert.Equal(2, handle.Attempts);
+    }
+
+    [Fact]
+    public void Replaced_buffer_retries_native_disposal_after_its_last_snapshot()
+    {
+        var budget = new NativeSixelBudget();
+        var buffer = TerminalBuffer.CreateNativeSixelTestBuffer(10, 6, budget, new SixelCellSize(10, 20));
+        var allocation = Assert.IsType<NativeSixelAllocation>(budget.TryReserve(1, 6, 2));
+        var handle = new RetryImage(buffer.SixelSources.Retain("q~"), allocation, buffer);
+        buffer.AddImage(new TerminalImage(handle, 0, 0, 1, 1));
+        int snapshot = buffer.BeginSnapshotSession();
+        TerminalView.ReleaseReplacedBufferImages(buffer);
+        Assert.Equal(0, handle.Attempts);
+        Assert.Equal(1, budget.Usage.Placements);
+
+        buffer.EndSnapshotSession(snapshot);
+
+        Assert.Equal(2, handle.Attempts);
+        Assert.True(handle.Gone);
+        Assert.Equal((0, 0L), budget.Usage);
+    }
+
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public void A_direct_session_replaces_a_retained_legacy_mux_buffer_before_output()
+    {
+        using var pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(pane);
+        var session = new FakeTerminalSession();
+        pane.SessionFactory = new RecordingSessionFactory(session);
+        Assert.True(pane.UseBufferSixelPolicy(0));
+        var legacy = pane.Buffer;
+        pane.CreateAndWireParser(muxBacked: true);
+        var oldParser = pane.Parser;
+
+        pane.InitializeSessionCore("fake-shell", string.Empty, profile: null, cols: 80, rows: 24);
+
+        Assert.Same(session, pane.Session);
+        Assert.NotSame(legacy, pane.Buffer);
+        Assert.NotSame(oldParser, pane.Parser);
+        Assert.Equal(SixelRasterPolicy.PresenterNativeVersion, pane.Buffer!.SixelRasterPolicyVersion);
+        var metrics = Assert.IsType<SixelCellSize>(pane.Parser!.SixelCellSizeOverride);
+        Assert.True(metrics.WidthPx >= 1 && metrics.HeightPx >= 1);
+        session.EmitOutput("\x1bPq~\x1b\\");
+        Assert.NotNull(Assert.Single(pane.Buffer.Images).NativeRaster);
     }
 
     private sealed class RetryImage(SixelSource source, NativeSixelAllocation allocation, TerminalBuffer buffer) : INativeSixelImage

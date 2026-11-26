@@ -126,6 +126,7 @@ public sealed class SixelRasterPolicyReplayTests
             if (flight)
             {
                 var ring = new FlightRecordingBuffer(4096, 20, 8, initialSixelCellSize: initial, sixelRasterPolicy: policy);
+                Assert.Throws<InvalidDataException>(() => ring.RecordSixelCellSize(0.5f, 20));
                 ring.RecordSixelCellSize(8, 20);
                 ring.RecordChunk(data, data.Length);
                 ring.ExportTo(path, "");
@@ -133,6 +134,7 @@ public sealed class SixelRasterPolicyReplayTests
             else
             {
                 using var writer = new ReplayWriter(path, 20, 8, sixelCellSize: initial, sixelRasterPolicy: policy);
+                Assert.Throws<InvalidDataException>(() => writer.RecordSixelCellSizeAt(0, 0.5f, 20));
                 writer.RecordSixelCellSize(8, 20);
                 writer.RecordChunk(data, data.Length);
             }

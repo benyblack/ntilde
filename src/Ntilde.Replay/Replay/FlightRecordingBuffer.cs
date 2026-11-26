@@ -121,6 +121,7 @@ namespace Ntilde.Replay
 
         public void RecordSixelCellSize(RecordingCellMetrics size)
         {
+            ReplayRunner.ValidateSixelMetrics(_sixelRasterPolicy, size);
             lock (_gate)
             {
                 if (_currentCellSize == size) return;
@@ -146,7 +147,7 @@ namespace Ntilde.Replay
 
         /// <summary>
         /// Writes the retained window to <paramref name="filePath"/> as a standard
-        /// replay v2 file. Event timestamps are rebased
+        /// replay file. Event timestamps are rebased
         /// so the first retained event is at t=0. Concurrent writers keep recording;
         /// the export is a consistent point-in-time snapshot of the ring.
         /// Throws (IOException, UnauthorizedAccessException, …) when the target path

@@ -19,6 +19,23 @@ public sealed class NativeSixelLayoutTests
         buffer.ClearImages();
     }
 
+    [Fact]
+    public void Reflow_can_restore_an_image_beyond_the_old_viewport_height()
+    {
+        var buffer = new TerminalBuffer(10, 4, SixelRasterPolicy.PresenterNativeVersion);
+        var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20) };
+        parser.Process("one\r\ntwo\r\nthree\r\nfour\r\nfive\r\nsix\r\n\x1bPq~\x1b\\");
+        var image = Assert.Single(buffer.Images);
+        Assert.True(image.CellY >= buffer.Rows);
+
+        buffer.Resize(11, 12);
+
+        Assert.Same(image, Assert.Single(buffer.Images));
+        Assert.Equal(new SixelSourceCrop(0, 0, 1, 6), image.NativeRaster!.Crop);
+        Assert.Equal('f', buffer.ViewportRows[0].Cells[0].Character);
+        buffer.ClearImages();
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

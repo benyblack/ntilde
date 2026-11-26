@@ -161,19 +161,22 @@ public partial class TerminalBuffer
 
         if (image is null) return;
         ClipNativeSixel(image, int.MinValue, int.MaxValue, Cols);
+        if (ClipPlacedScrollingSixel(image, withinMargins))
+        {
+            RetireImage(image);
+            _images.Remove(image);
+        }
+    }
+
+    private bool ClipPlacedScrollingSixel(TerminalImage image, bool withinMargins)
+    {
         if (!_isAltScreen && ScrollTop == 0 && ScrollBottom == Rows - 1)
-        {
-            if (image.NativeRaster is null || !DiscardImageBeforeOrigin(image)) return;
-        }
-        else
-        {
-            int baseRow = _isAltScreen ? 0 : _scrollback.Count;
-            bool clipToMargins = withinMargins || image.NativeRaster is null;
-            if (!ClipSixelImage(image, baseRow + (clipToMargins ? ScrollTop : 0), baseRow + (clipToMargins ? ScrollBottom : Rows - 1)))
-                return;
-        }
-        RetireImage(image);
-        _images.Remove(image);
+            return image.NativeRaster is not null && DiscardImageBeforeOrigin(image);
+
+        int origin = _isAltScreen ? 0 : _scrollback.Count;
+        if (withinMargins || image.NativeRaster is null)
+            return ClipSixelImage(image, origin + ScrollTop, origin + ScrollBottom);
+        return ClipSixelImage(image, origin, origin + Rows - 1);
     }
 
     private void RetireCoveredSixelImages(TerminalImage current)

@@ -746,21 +746,21 @@ namespace Ntilde.VT
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
                 // If image overlaps with the scrolling region, it moves.
-                if (img.IsSticky && (img.NativeRaster is null
-                    ? img.CellY + img.CellHeight > absTop && img.CellY < absBottom
-                    : ImageOverlapsRows(img, absTop, absBottom + 1)))
+                if (!img.IsSticky || !ImageOverlapsDownScrollRegion(img, absTop, absBottom)) continue;
+                img.CellY++;
+                bool clipped = ClipSixelImage(img, absTop, absBottom);
+                if (clipped || img.CellY > absBottom)
                 {
-                    img.CellY++;
-                    bool clipped = ClipSixelImage(img, absTop, absBottom);
-                    // If the image moves below the region, remove it
-                    if (clipped || img.CellY > absBottom)
-                    {
-                        RetireImage(img);
-                        _images.RemoveAt(i);
-                    }
+                    RetireImage(img);
+                    _images.RemoveAt(i);
                 }
             }
         }
+
+        private bool ImageOverlapsDownScrollRegion(TerminalImage image, int top, int bottom) =>
+            image.NativeRaster is null
+                ? image.CellY + image.CellHeight > top && image.CellY < bottom
+                : ImageOverlapsRows(image, top, bottom + 1);
 
         public void InsertCharacters(int count)
         {

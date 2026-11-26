@@ -737,6 +737,8 @@ namespace Ntilde.Controls
         /// </summary>
         private void WireSessionLifecycle(ITerminalSession session, TerminalProfile? profile)
         {
+            if (session is not MuxClientSession && UseBufferSixelPolicy(SixelRasterPolicy.PresenterNativeVersion))
+                CreateAndWireParser();
             TermView.SetSession(session);
             SyncLocalSixelCellSize();
             session.OnExit += code =>

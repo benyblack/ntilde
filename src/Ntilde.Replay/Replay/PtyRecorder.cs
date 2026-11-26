@@ -171,6 +171,7 @@ namespace Ntilde.Replay
         {
             ArgumentOutOfRangeException.ThrowIfNegative(timeOffsetMs);
             var cellSize = RecordingCellMetrics.FromOptional(width, height);
+            ReplayRunner.ValidateSixelMetrics(_header.RequiredSixelRasterPolicy, cellSize);
             Volatile.Write(ref _sixelCellSize, cellSize);
             if (!IsAccepting) return;
             TryEnqueue(new ReplayEvent { Type = "sixelCellSize", TimeOffsetMs = timeOffsetMs, SixelCellWidthPx = width, SixelCellHeightPx = height });

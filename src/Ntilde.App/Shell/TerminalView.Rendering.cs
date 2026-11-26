@@ -73,13 +73,25 @@ namespace Ntilde.Shell
             void Drain()
             {
                 var retired = new List<object>();
-                buffer.DrainRetiredImageHandles(retired, long.MaxValue);
+                // A replaced buffer has no upcoming frame to retry a transient disposal failure.
+                if (DisposePass(retired))
+                {
+                    retired.Clear();
+                    DisposePass(retired);
+                }
+            }
+
+            bool DisposePass(List<object> retired)
+            {
+                if (!buffer.DrainRetiredImageHandles(retired, long.MaxValue)) return false;
+                bool retry = false;
                 foreach (var handle in retired)
                 {
                     if (handle is not IDisposable disposable) continue;
                     try { disposable.Dispose(); }
-                    catch { buffer.RetryRetiredImageDisposal(handle); }
+                    catch { retry |= buffer.RetryRetiredImageDisposal(handle); }
                 }
+                return retry;
             }
         }
 
