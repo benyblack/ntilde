@@ -52,7 +52,7 @@ export async function replaySixelReport(probe, exchange) {
 }
 
 function retainedTrace(raw, probe) {
-    const [observation] = raw.observations.filter(row => row.featureId === probe.id);
+    const observation = raw.observations.find(row => row.featureId === probe.id);
     assert.equal(observation.rawReplyRef, probe.id);
     const trace = JSON.parse(raw.rawReplies[probe.id]);
     assert.deepEqual(trace.writes, []);

@@ -11,7 +11,7 @@ export const queryWrites = Object.freeze([da, geometryQuery + da, paneQuery]);
 export const nonce = runId => 'NTILDE_SIXEL_' + runId;
 export const limit = 2000;
 export const leave = '\x1b[?1049l';
-const daFrame = /\x1b\[\?([0-9]+(?:;[0-9]+)*);?c/;
+const daFrame = /\x1b\[\?(\d+(?:;\d+)*);?c/;
 const geometryFrame = /\x1b\[\?2;[0-9;]*S/;
 const paneFrame = /^\x1b\[4;([1-9]\d{0,4});([1-9]\d{0,4})t$/;
 

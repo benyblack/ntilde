@@ -35,8 +35,8 @@ async function collect(runId, request) {
     } catch (error) {
         capture.dispose();
         const failures = [error];
-        await send('abort').catch(failure => failures.push(failure));
-        await write(process.stdout, leave).catch(failure => failures.push(failure));
+        await send('abort').catch(error_ => failures.push(error_));
+        await write(process.stdout, leave).catch(error_ => failures.push(error_));
         if (failures.length > 1) throw new AggregateError(failures, 'Sixel report measurement and restoration failed.');
         throw error;
     } finally { capture.dispose(); }
