@@ -1,0 +1,371 @@
+{
+  "schemaVersion": 1,
+  "suite": "ntilde-owned-kitty-graphics-v1",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "cases": [
+    {
+      "id": "extensions.kitty-graphics.transmit",
+      "stock": "supported",
+      "pinnedReplies": {
+        "termless": {
+          "pass": true,
+          "response": "\u001b_Gi=1,I=394287356;OK\u001b\\",
+          "note": "RGB image transmission acknowledged; display was not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "RGB image transmission acknowledged; display was not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "A fresh image ID and I=394287356;OK acknowledge the transmitted RGB pixel",
+              "observed": "\u001b_Gi=1,I=394287356;OK\u001b\\"
+            }
+          ]
+        },
+        "terminal": {
+          "pass": true,
+          "response": "\u001b_Gi=1,I=394287356;OK\u001b\\",
+          "note": "RGB image transmission acknowledged; display was not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "RGB image transmission acknowledged; display was not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "A fresh image ID and I=394287356;OK acknowledge the transmitted RGB pixel",
+              "observed": "\u001b_Gi=1,I=394287356;OK\u001b\\"
+            }
+          ]
+        },
+        "stages": [
+          {
+            "stage": "upload",
+            "requestHex": "1b5f47613d742c663d32342c733d312c763d312c743d642c493d3339343238373335363b2f7741411b5c",
+            "replyHex": "1b5f47693d312c493d3339343238373335363b4f4b1b5c"
+          },
+          {
+            "stage": "delete",
+            "requestHex": "1b5f47613d642c643d492c693d312c713d321b5c",
+            "replyHex": ""
+          }
+        ]
+      },
+      "ownedPixels": [
+        {
+          "stage": "upload",
+          "snapshot": 2,
+          "verdict": "passed",
+          "measurement": {
+            "envelope": {
+              "x": 31,
+              "y": 76,
+              "width": 18,
+              "height": 19
+            },
+            "bounds": null,
+            "changed": 0,
+            "outside": 0,
+            "otherColor": 0,
+            "background": true,
+            "redSquare": false
+          },
+          "placement": null
+        },
+        {
+          "stage": "delete",
+          "snapshot": 3,
+          "verdict": "passed",
+          "measurement": {
+            "envelope": {
+              "x": 31,
+              "y": 76,
+              "width": 18,
+              "height": 19
+            },
+            "bounds": null,
+            "changed": 0,
+            "outside": 0,
+            "otherColor": 0,
+            "background": true,
+            "redSquare": false
+          },
+          "placement": null
+        }
+      ]
+    },
+    {
+      "id": "extensions.kitty-graphics.display",
+      "stock": "supported",
+      "pinnedReplies": {
+        "termless": {
+          "pass": true,
+          "response": "\u001b_Gi=2;OK\u001b\\",
+          "note": "Image placement acknowledged; visible pixels were not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Image placement acknowledged; visible pixels were not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Graphics reply i=2;OK",
+              "observed": "\u001b_Gi=2;OK\u001b\\"
+            }
+          ]
+        },
+        "terminal": {
+          "pass": true,
+          "response": "\u001b_Gi=2;OK\u001b\\",
+          "note": "Image placement acknowledged; visible pixels were not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Image placement acknowledged; visible pixels were not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Graphics reply i=2;OK",
+              "observed": "\u001b_Gi=2;OK\u001b\\"
+            }
+          ]
+        },
+        "stages": [
+          {
+            "stage": "upload",
+            "requestHex": "1b5f47613d742c663d32342c733d312c763d312c743d642c493d313830313537383236383b2f7741411b5c",
+            "replyHex": "1b5f47693d322c493d313830313537383236383b4f4b1b5c"
+          },
+          {
+            "stage": "place",
+            "requestHex": "1b5f47613d702c693d322c633d322c723d312c433d311b5c",
+            "replyHex": "1b5f47693d323b4f4b1b5c"
+          },
+          {
+            "stage": "delete",
+            "requestHex": "1b5f47613d642c643d492c693d322c713d321b5c",
+            "replyHex": ""
+          }
+        ]
+      },
+      "ownedPixels": [
+        {
+          "stage": "upload",
+          "snapshot": 4,
+          "verdict": "passed",
+          "measurement": {
+            "envelope": {
+              "x": 31,
+              "y": 76,
+              "width": 18,
+              "height": 19
+            },
+            "bounds": null,
+            "changed": 0,
+            "outside": 0,
+            "otherColor": 0,
+            "background": true,
+            "redSquare": false
+          },
+          "placement": null
+        },
+        {
+          "stage": "place",
+          "snapshot": 5,
+          "verdict": "passed",
+          "measurement": {
+            "envelope": {
+              "x": 31,
+              "y": 76,
+              "width": 18,
+              "height": 19
+            },
+            "bounds": {
+              "x": 31,
+              "y": 76,
+              "width": 18,
+              "height": 18
+            },
+            "changed": 324,
+            "outside": 0,
+            "otherColor": 0,
+            "background": true,
+            "redSquare": true
+          },
+          "placement": {
+            "index": 0,
+            "placementId": "48732024-3c02-4dba-8349-81144079a831",
+            "col": 3,
+            "viewportRow": 4,
+            "widthCells": 2,
+            "heightCells": 1,
+            "clipTopRows": 0,
+            "clipBottomRows": 0,
+            "clipRightColumns": 0,
+            "preserveAspectRatio": true,
+            "bitmapWidthPx": 1,
+            "bitmapHeightPx": 1,
+            "sixelPlacement": null
+          }
+        },
+        {
+          "stage": "delete",
+          "snapshot": 6,
+          "verdict": "passed",
+          "measurement": {
+            "envelope": {
+              "x": 31,
+              "y": 76,
+              "width": 18,
+              "height": 19
+            },
+            "bounds": null,
+            "changed": 0,
+            "outside": 0,
+            "otherColor": 0,
+            "background": true,
+            "redSquare": false
+          },
+          "placement": null
+        }
+      ]
+    }
+  ],
+  "pixelFrames": [
+    {
+      "snapshot": 0,
+      "stage": "kgraphics-start",
+      "pngs": [
+        "image-pixels/frame-000-0.png",
+        "image-pixels/frame-000-1.png"
+      ]
+    },
+    {
+      "snapshot": 1,
+      "stage": "kgraphics-bind",
+      "pngs": [
+        "image-pixels/frame-001-0.png",
+        "image-pixels/frame-001-1.png"
+      ]
+    },
+    {
+      "snapshot": 2,
+      "stage": "upload",
+      "pngs": [
+        "image-pixels/frame-002-0.png",
+        "image-pixels/frame-002-1.png"
+      ]
+    },
+    {
+      "snapshot": 3,
+      "stage": "delete",
+      "pngs": [
+        "image-pixels/frame-003-0.png",
+        "image-pixels/frame-003-1.png"
+      ]
+    },
+    {
+      "snapshot": 4,
+      "stage": "upload",
+      "pngs": [
+        "image-pixels/frame-004-0.png",
+        "image-pixels/frame-004-1.png"
+      ]
+    },
+    {
+      "snapshot": 5,
+      "stage": "place",
+      "pngs": [
+        "image-pixels/frame-005-0.png",
+        "image-pixels/frame-005-1.png"
+      ]
+    },
+    {
+      "snapshot": 6,
+      "stage": "delete",
+      "pngs": [
+        "image-pixels/frame-006-0.png",
+        "image-pixels/frame-006-1.png"
+      ]
+    },
+    {
+      "snapshot": 7,
+      "stage": "kgraphics-finish",
+      "pngs": [
+        "image-pixels/frame-007-0.png",
+        "image-pixels/frame-007-1.png"
+      ]
+    }
+  ],
+  "retainedLifecycle": {
+    "runId": "569294d0402a900696bef00b68490d9d",
+    "cases": [
+      {
+        "caseId": "kitty.numbered-lifecycle",
+        "result": "passed",
+        "stages": [
+          "kitty.numbered-lifecycle.blank",
+          "kitty.numbered-lifecycle.store",
+          "kitty.numbered-lifecycle.place",
+          "kitty.numbered-lifecycle.soft-delete",
+          "kitty.numbered-lifecycle.redisplay",
+          "kitty.numbered-lifecycle.hard-delete",
+          "kitty.numbered-lifecycle.missing-place"
+        ]
+      },
+      {
+        "caseId": "kitty.number-reuse",
+        "result": "passed",
+        "stages": [
+          "kitty.number-reuse.blank",
+          "kitty.number-reuse.store-first",
+          "kitty.number-reuse.store-second",
+          "kitty.number-reuse.place-newest",
+          "kitty.number-reuse.delete-newest",
+          "kitty.number-reuse.place-old-id",
+          "kitty.number-reuse.delete-old-id"
+        ]
+      }
+    ]
+  },
+  "measurement": {
+    "runId": "a83ff5f0a70531e98b66522d26e2e72e",
+    "appRevision": "eb0abcdae2da73b55a6a2905be11acd316d66121",
+    "scriptsRevision": "dae4f1f1763a7a324eac00f8d891cdd4d2b6c199",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-v83",
+    "receiptSchema": 1,
+    "version": "0.14.0+eb0abcdae2da73b55a6a2905be11acd316d66121",
+    "nodeVersion": "v24.22.2",
+    "startedAt": "2026-11-26T08:56:58.048Z",
+    "releasedAt": "2026-11-26T08:57:00.933Z",
+    "geometry": {
+      "rows": 41,
+      "cols": 140
+    },
+    "grid": {
+      "renderWidthPx": 1264,
+      "renderHeightPx": 779,
+      "cellWidthDip": 8.5,
+      "cellHeightDip": 18.5,
+      "baselineDip": 14.5,
+      "originXPx": 4,
+      "originYPx": 0,
+      "cellWidthPx": 9,
+      "cellHeightPx": 19,
+      "baselineOffsetPx": 15,
+      "underlineOffsetPx": 16,
+      "strikeOffsetPx": 10
+    },
+    "scale": 1,
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "4051a95e2c6714bb3a054b495b6f2dbf4a4c576cc067312ef64fee329c7d63a5",
+    "sourceSnapshotManifestSha256": "4e5f3a080ad1973f6798592dfbca0519bc74f691f0a3637405e83c827f19fdc6",
+    "archiveSha256": "ef1e00cc5ee8eab8c219dad406d2fe48d454b79141d9f2e11280e1399b71aa2e"
+  }
+}

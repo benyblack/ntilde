@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDeepStrictEqual as same } from 'node:util';
@@ -14,6 +15,7 @@ export const workerFile = 'kitty-graphics-worker.mjs';
 export const imageOwnership = true;
 export const caseIds = Object.freeze(['extensions.kitty-graphics.transmit', 'extensions.kitty-graphics.display']);
 const [transmit, display] = caseIds;
+export const maximumPinnedNumber = 0xfffffffe;
 const rgb = Buffer.from([255, 0, 0]);
 const apc = body => '\x1b_G' + body + '\x1b\\';
 const commands = {
@@ -107,6 +109,16 @@ const captureKind = kind => kind.replace(prefix, staticImageSuite.prefix);
 const input = { file: 'image-inputs/pinned-red.rgb', bytes: rgb, sha256: pngHash(rgb) };
 export const suite = Object.freeze({
     ...staticImageSuite, plan, prefix, action, acceptReply,
+    newState(states) {
+        const used = new Set([...states.values()].map(state => state.number));
+        let number;
+        do { number = randomInt(1, maximumPinnedNumber + 1); } while (used.has(number));
+        return { number, firstId: null };
+    },
+    registerState(actionFacts, states) {
+        checkImages(actionFacts.number <= maximumPinnedNumber);
+        return staticImageSuite.registerState(actionFacts, states);
+    },
     inputs: () => [input], captureKind,
     retainPixel: (output, pixel, screen, kind) => retainedImagePixel(output, pixel, screen, captureKind(kind)),
     buildReport(frames, actions, seal, runId, output, priorChallenges) {

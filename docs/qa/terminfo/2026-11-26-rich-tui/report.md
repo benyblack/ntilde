@@ -18,4 +18,8 @@ The stock categories partition the 96 cases. An inventory claim can also have a 
 
 The [Kitty keyboard assessment](kitty-report.md) records the bytes the child received for disambiguation, event reporting, alternate keys, all-key reporting and associated text. All five tested App effects were supported on the isolated Linux X11 run. Its separately retained query exchanges measure flag negotiation alongside the routed-input tests.
 
+## Kitty graphics transmit and display
+
+The [Kitty graphics assessment](../2026-11-26-rich-kitty-graphics/report.md) records the pinned transmit and display replies and the paired pixel captures of the 1 × 1 RGB fixture. It also rederives the historical numbered lifecycle and number-reuse cases.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.
