@@ -54,6 +54,38 @@ public sealed class NativeSixelLayoutTests
         buffer.ClearImages();
     }
 
+    [Theory]
+    [InlineData(0, 4)]
+    [InlineData(2, 2)]
+    [InlineData(5, 0)]
+    public void Reshaping_the_hidden_main_bank_preserves_the_native_anchor_and_transfer(int historyRows, int newPadding)
+    {
+        const int policy = SixelRasterPolicy.PresenterNativeVersion;
+        var source = new TerminalBuffer(10, 4, policy);
+        var parser = new AnsiParser(source, false) { SixelCellSizeOverride = new(10, 20) };
+        for (int i = 0; i < historyRows; i++) parser.Process("\x1b[S");
+        Assert.Equal(historyRows, source.TotalLines - source.Rows);
+        parser.Process("\x1b[3;1H\x1bPq~\x1b\\");
+        var image = Assert.Single(source.Images);
+        int initialAnchor = image.CellY;
+        var intent = image.NativeRaster;
+        parser.Process("\x1b[?1049h");
+
+        source.Resize(10, 8);
+
+        var state = source.ExportState(100);
+        state.Parser = parser.ExportState();
+        var target = new TerminalBuffer(10, 8, policy);
+        TerminalStateTransfer.Restore(target, new AnsiParser(target, false), state);
+        var copied = Assert.Single(target.Images);
+        Assert.Equal((initialAnchor + newPadding, intent), (copied.CellY, copied.NativeRaster));
+        source.Resize(10, 4);
+        Assert.Equal((copied.CellY, copied.NativeRaster),
+            (Assert.Single(source.Images).CellY, image.NativeRaster));
+        target.ClearImages();
+        source.ClearImages();
+    }
+
     [Fact]
     public void Crop_uses_the_hidden_main_banks_double_width_anchor()
     {
