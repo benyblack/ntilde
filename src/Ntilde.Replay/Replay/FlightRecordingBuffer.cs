@@ -171,19 +171,19 @@ namespace Ntilde.Replay
                 truncated = _truncatedAtStart;
             }
 
-            return filePath => WriteCapturedWindow(filePath, shell, entries, cols, rows, truncated, cellSize, _sixelRasterPolicy);
+            return filePath => WriteCapturedWindow(filePath, shell, entries, cols, rows, truncated, cellSize);
         }
 
-        private static FlightExportInfo WriteCapturedWindow(string filePath, string shell, Entry[] entries,
-            int cols, int rows, bool truncated, RecordingCellMetrics? cellSize, int sixelRasterPolicy)
+        private FlightExportInfo WriteCapturedWindow(string filePath, string shell, Entry[] entries,
+            int cols, int rows, bool truncated, RecordingCellMetrics? cellSize)
         {
             ArgumentNullException.ThrowIfNull(filePath);
             using var writer = new StreamWriter(filePath, append: false);
             writer.WriteLine(JsonSerializer.Serialize(new ReplayHeader
             {
                 Type = ReplayHeader.TypeToken,
-                Version = sixelRasterPolicy == 0 ? ReplayHeader.LegacyLayoutVersion : ReplayHeader.NativeSixelLayoutVersion,
-                RequiredSixelRasterPolicy = sixelRasterPolicy,
+                Version = _sixelRasterPolicy == 0 ? ReplayHeader.LegacyLayoutVersion : ReplayHeader.NativeSixelLayoutVersion,
+                RequiredSixelRasterPolicy = _sixelRasterPolicy,
                 Cols = cols,
                 Rows = rows,
                 Shell = shell ?? string.Empty,

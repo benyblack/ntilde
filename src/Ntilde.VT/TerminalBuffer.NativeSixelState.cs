@@ -2,6 +2,9 @@ namespace Ntilde.VT;
 
 public partial class TerminalBuffer
 {
+    private const string NativeSixelImportContext = "native SIXEL import";
+    private const string NativeSixelStateContext = "native SIXEL state";
+
     /// <summary>Owns pre-admitted native wrappers until the atomic import cut; rollback disposal is outside VT locks.</summary>
     internal sealed class PreparedStateImport : IDisposable
     {
@@ -19,7 +22,7 @@ public partial class TerminalBuffer
         {
             if (Disposed) return;
             Disposed = true;
-            if (Committed || NativeImages is null) return;
+            if (Committed || NativeImages is null || Owner is not { } owner) return;
             bool queued = false;
             foreach (var image in NativeImages)
             {
@@ -27,14 +30,14 @@ public partial class TerminalBuffer
                 try { native.Dispose(); }
                 catch
                 {
-                    Owner!.RetireUnplacedNativeSixel(native);
+                    owner.RetireUnplacedNativeSixel(native);
                     queued = true;
                 }
             }
             NativeImages.Clear();
             if (queued)
             {
-                try { Owner!.Invalidate(); }
+                try { owner.Invalidate(); }
                 catch { /* A host notification failure must not replace the original import refusal. */ }
             }
         }
@@ -43,7 +46,7 @@ public partial class TerminalBuffer
     /// <summary>Reserves all native work before resize/clear; prior owners remain charged until actual disposal.</summary>
     internal PreparedStateImport PrepareStateImport(TerminalStateSnapshot snapshot, IImageDecoder? decoder, AnsiParser? parser = null)
     {
-        if (Lock.IsReadLockHeld || Lock.IsWriteLockHeld)
+        if (CurrentThreadHoldsBufferLock)
             throw new InvalidOperationException("State import must stage outside VT locks.");
         var validated = ValidateStateForImport(snapshot);
         if (NativeSixelBudget is not { } budget) return new() { Validated = validated };
@@ -64,7 +67,7 @@ public partial class TerminalBuffer
             Order = state.Order,
         }).ToList();
         if (!SixelSources.FitsRetentionSet(states.Count, states.Sum(state => (long)state.Source.Length)))
-            throw StateTransferValidation.Reject("native SIXEL import", "source retention cannot preserve the complete placement set");
+            throw StateTransferValidation.Reject(NativeSixelImportContext, "source retention cannot preserve the complete placement set");
         var images = new List<TerminalImage>(states.Count);
         var prepared = new PreparedStateImport
         {
@@ -82,7 +85,7 @@ public partial class TerminalBuffer
             // remains outside this DTO's existing ownership contract.
             prepared.Validated = ValidateStateForImport(snapshot);
             if (parser is not null) ValidateParserForImport(parser, snapshot);
-            RequireUnchangedStagedNativeFacts(snapshot, prepared, states);
+            RequireUnchangedStagedNativeFacts(snapshot, prepared.NativeMetrics, images, states);
             return prepared;
         }
         catch
@@ -95,7 +98,7 @@ public partial class TerminalBuffer
     /// <summary>Builds an unpublished placement from private facts and a bounded owner; it commits no retained source.</summary>
     private TerminalImage CreateNativeImportedPlacement(TerminalSixelImageState state, NativeSixelBudget budget, IImageDecoder? decoder)
     {
-        var intent = state.NativeRaster!;
+        var intent = StateTransferValidation.RequirePresent(state.NativeRaster, "native SIXEL raster");
         var owner = CreateNativeImportOwner(state.Source, intent, budget, decoder, out var source);
         return new(owner, state.X, state.Y, state.Width, state.Height)
         {
@@ -114,14 +117,14 @@ public partial class TerminalBuffer
         IImageDecoder? decoder, out SixelSource source)
     {
         var allocation = budget.TryReserve(intent.CanvasWidth, intent.CanvasHeight, data.Length)
-            ?? throw StateTransferValidation.Reject("native SIXEL import", "outstanding owners leave insufficient admission credit");
+            ?? throw StateTransferValidation.Reject(NativeSixelImportContext, "outstanding owners leave insufficient admission credit");
         source = SixelSources.CreateProvisional(data);
         if (decoder is null) return new NativeSixelSourceOwner(source, allocation);
         if (decoder is not INativeSixelDecoder native)
         {
             source.Dispose();
             budget.CompleteDisposal(allocation);
-            throw StateTransferValidation.Reject("native SIXEL import", "decoder does not honor bounded ownership");
+            throw StateTransferValidation.Reject(NativeSixelImportContext, "decoder does not honor bounded ownership");
         }
         INativeSixelImage? owner;
         try { owner = native.DecodeNativeSixel(source, allocation); }
@@ -134,12 +137,12 @@ public partial class TerminalBuffer
         {
             source.Dispose();
             budget.CompleteDisposal(allocation);
-            throw StateTransferValidation.Reject("native SIXEL import", "decoder refused the admitted source");
+            throw StateTransferValidation.Reject(NativeSixelImportContext, "decoder refused the admitted source");
         }
         if (!ReferenceEquals(owner.Allocation, allocation) || !ReferenceEquals(owner.Source, source))
         {
             source.Dispose();
-            throw StateTransferValidation.Reject("native SIXEL import", "decoder ownership contract failed");
+            throw StateTransferValidation.Reject(NativeSixelImportContext, "decoder ownership contract failed");
         }
         return owner;
     }
@@ -153,39 +156,42 @@ public partial class TerminalBuffer
         if (snapshot.Parser is not { } state) return;
         parser.ValidateParserState(state);
         if (NativeSixelBudget is not null && snapshot.NativeSixelCellMetrics is { } metrics &&
-            (state.SixelCellWidthPx != metrics.WidthPx || state.SixelCellHeightPx != metrics.HeightPx))
-            throw StateTransferValidation.Reject("native SIXEL state", "parser and buffer canonical metrics disagree");
+            ParserCellMetrics(state) != metrics)
+            throw StateTransferValidation.Reject(NativeSixelStateContext, "parser and buffer canonical metrics disagree");
     }
 
     /// <summary>
     /// Rejects changed source, placement, crop or metric facts after the synchronous host callback before any state effect.
     /// </summary>
-    private static void RequireUnchangedStagedNativeFacts(TerminalStateSnapshot snapshot, PreparedStateImport prepared, List<TerminalSixelImageState> stagedStates)
+    private static void RequireUnchangedStagedNativeFacts(TerminalStateSnapshot snapshot, SixelCellSize? metrics, List<TerminalImage> images, List<TerminalSixelImageState> stagedStates)
     {
         var states = snapshot.Sixels ?? [];
-        if (snapshot.NativeSixelCellMetrics != prepared.NativeMetrics || states.Count != prepared.NativeImages!.Count)
-            throw StateTransferValidation.Reject("native SIXEL import", "decoder callback changed staged metrics or placement count");
+        if (snapshot.NativeSixelCellMetrics != metrics || states.Count != images.Count)
+            throw StateTransferValidation.Reject(NativeSixelImportContext, "decoder callback changed staged metrics or placement count");
         for (int i = 0; i < states.Count; i++)
         {
             var state = states[i];
-            var image = prepared.NativeImages[i];
+            var image = images[i];
             if (state.X != image.CellX || state.Y != image.CellY || state.Width != image.CellWidth || state.Height != image.CellHeight ||
                 state.Alt != image.IsAltScreenImage || state.ClipTop != image.ClipTopRows || state.ClipBottom != image.ClipBottomRows ||
                 state.Order != stagedStates[i].Order || state.ClipRight != image.ClipRightColumns || state.NativeRaster != image.NativeRaster ||
                 !string.Equals(state.Source, image.SixelSource?.Data, StringComparison.Ordinal))
-                throw StateTransferValidation.Reject("native SIXEL import", "decoder callback changed staged placement facts or source availability");
+                throw StateTransferValidation.Reject(NativeSixelImportContext, "decoder callback changed staged placement facts or source availability");
         }
     }
+
+    private static SixelCellSize? ParserCellMetrics(AnsiParserState state) =>
+        state.SixelCellWidthPx is float width && state.SixelCellHeightPx is float height ? new(width, height) : null;
 
     /// <summary>Rejects native geometry and semantics before any target state, source or decoder effect.</summary>
     private static void ValidateNativeSixelState(TerminalStateSnapshot snapshot)
     {
         if (snapshot.RequiredSixelRasterPolicy != SixelRasterPolicy.PresenterNativeVersion)
-            throw StateTransferValidation.Reject("native SIXEL state", "policy does not match the admitted native generation");
+            throw StateTransferValidation.Reject(NativeSixelStateContext, "policy does not match the admitted native generation");
         RequireNativeSixelMetrics(snapshot.NativeSixelCellMetrics);
         if (snapshot.Sixels is not { } states) return;
         if (states.Count > SixelSourceBudget.DefaultMaxSources)
-            throw StateTransferValidation.Reject("native SIXEL state", "placement source count exceeds its bound");
+            throw StateTransferValidation.Reject(NativeSixelStateContext, "placement source count exceeds its bound");
         long chars = 0;
         foreach (var entry in states)
         {
@@ -196,7 +202,7 @@ public partial class TerminalBuffer
             if (source.Length == 0 || chars > SixelSourceBudget.DefaultMaxChars || !AnsiParser.IsSixel(source) ||
                 intent.Version != SixelRasterPolicy.PresenterNativeVersion ||
                 SixelGeometry.Measure(source) != (intent.CanvasWidth, intent.CanvasHeight))
-                throw StateTransferValidation.Reject("native SIXEL state", "source canvas or policy is invalid");
+                throw StateTransferValidation.Reject(NativeSixelStateContext, "source canvas or policy is invalid");
             if (state.X < 0 || state.X >= snapshot.Cols || state.Y < -SixelGeometry.DefaultMaxPixelDimension ||
                 state.Y >= (state.Alt ? snapshot.Rows : (long)snapshot.Rows + snapshot.ScrollbackRowCount) ||
                 state.Width is < 1 or > SixelGeometry.DefaultMaxPixelDimension ||

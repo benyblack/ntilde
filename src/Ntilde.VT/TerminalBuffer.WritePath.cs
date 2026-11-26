@@ -719,6 +719,22 @@ namespace Ntilde.VT
             EraseTextSizingAcrossBoundary(sizedTop);
             EraseTextSizingAcrossBoundary(sizedBottom);
             EraseTextSizingRange(0, Cols, sizedBottom - 1, sizedBottom);
+            ScrollImagesDownNoLock();
+
+            // Shift rows down within the region
+            for (int i = ScrollBottom; i > ScrollTop; i--)
+            {
+                _viewport[i] = _viewport[i - 1];
+            }
+
+            // Create new blank line at the top of the region
+            _viewport[ScrollTop] = new TerminalRow(Cols, blank);
+
+            // Moved rows keep their revisions, as in ScrollUpInternal (#657).
+        }
+
+        private void ScrollImagesDownNoLock()
+        {
             // Update images: Shift images in the region DOWN (CellY++)
             int absTop = _isAltScreen ? ScrollTop : (_scrollback.Count + ScrollTop);
             int absBottom = _isAltScreen ? ScrollBottom : (_scrollback.Count + ScrollBottom);
@@ -744,17 +760,6 @@ namespace Ntilde.VT
                     }
                 }
             }
-
-            // Shift rows down within the region
-            for (int i = ScrollBottom; i > ScrollTop; i--)
-            {
-                _viewport[i] = _viewport[i - 1];
-            }
-
-            // Create new blank line at the top of the region
-            _viewport[ScrollTop] = new TerminalRow(Cols, blank);
-
-            // Moved rows keep their revisions, as in ScrollUpInternal (#657).
         }
 
         public void InsertCharacters(int count)

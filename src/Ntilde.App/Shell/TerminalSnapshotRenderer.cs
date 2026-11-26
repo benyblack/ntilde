@@ -195,13 +195,11 @@ namespace Ntilde.Shell
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
             options ??= new TerminalSnapshotOptions();
-            if (buffer.SixelRasterPolicyVersion != 0)
-            {
-                if (!double.IsFinite(options.RenderScaling) || !float.IsFinite((float)options.RenderScaling) ||
+            if (buffer.SixelRasterPolicyVersion != 0 &&
+                (!double.IsFinite(options.RenderScaling) || !float.IsFinite((float)options.RenderScaling) ||
                     (float)options.RenderScaling <= 0 || width * options.RenderScaling > int.MaxValue ||
-                    height * options.RenderScaling > int.MaxValue)
-                    throw new ArgumentOutOfRangeException(nameof(options), "Native capture requires a finite representable positive scale and canvas.");
-            }
+                    height * options.RenderScaling > int.MaxValue))
+                throw new ArgumentOutOfRangeException(nameof(options), "Native capture requires a finite representable positive scale and canvas.");
             if (options.PresentationTimeMs is { } time) ArgumentOutOfRangeException.ThrowIfNegative(time);
 
             // Snapshot the geometry/cursor values under the read lock, then let go:

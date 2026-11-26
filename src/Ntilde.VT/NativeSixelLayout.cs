@@ -22,16 +22,20 @@ public sealed record NativeSixelViewProjection
     }
 
     /// <summary>Includes surviving pixels or clearing cells, independently of the integer reservation height.</summary>
-    public bool Intersects(SixelRasterIntent intent, int x, int y, int width, int height,
-        int clipTop, int clipBottom, int clipRight, int top, int rows, int cols, int columnScale = 1, int left = 0)
+    internal bool Intersects(TerminalImage image, int top, int rows, int left, int right, LineSize lineSize)
     {
+        if (image.NativeRaster is not { } intent) return false;
+        double scale = lineSize == LineSize.SingleWidth ? 1 : 2;
+        double x = image.CellX * scale;
+        int y = image.CellY;
         double end = (double)top + rows;
-        bool clearing = width > clipRight && height > (long)clipTop + clipBottom &&
-            x * (double)columnScale < cols && (x + (double)width - clipRight) * columnScale > left &&
-            y + (double)height - clipBottom > top && y + (double)clipTop < end;
+        bool clearing = image.CellWidth > image.ClipRightColumns &&
+            image.CellHeight > (long)image.ClipTopRows + image.ClipBottomRows &&
+            x < right && x + (image.CellWidth - image.ClipRightColumns) * scale > left &&
+            y + (double)image.CellHeight - image.ClipBottomRows > top && y + (double)image.ClipTopRows < end;
         var crop = intent.Crop;
         bool pixels = crop.Right > crop.Left && crop.Bottom > crop.Top &&
-            x * (double)columnScale + crop.Left / PixelsPerCellWidth < cols && x * (double)columnScale + crop.Right / PixelsPerCellWidth > left &&
+            x + crop.Left / PixelsPerCellWidth < right && x + crop.Right / PixelsPerCellWidth > left &&
             y + crop.Top / PixelsPerCellHeight < end && y + crop.Bottom / PixelsPerCellHeight > top;
         return clearing || pixels;
     }
@@ -43,6 +47,9 @@ public partial class TerminalBuffer
 
     /// <summary>Canonical ordered stream metrics, independent of any render/capture request.</summary>
     internal SixelCellSize? NativeSixelCellMetrics => System.Threading.Volatile.Read(ref _nativeSixelCellMetrics);
+
+    private SixelCellSize GetNativeSixelCellMetrics() => NativeSixelCellMetrics
+        ?? throw new InvalidOperationException("A native SIXEL placement requires canonical cell metrics.");
 
     /// <summary>
     /// Publishes one validated canonical pair under the native buffer write cut without recropping existing images.
@@ -71,7 +78,7 @@ public partial class TerminalBuffer
     {
         if (image.NativeRaster is not { } native) return;
         image.NativeRaster = IntersectNativeRaster(native, ImagePageColumnsNoLock(image).Left, image.CellY,
-            top, bottomExclusive, rightExclusive, NativeSixelCellMetrics!);
+            top, bottomExclusive, rightExclusive, GetNativeSixelCellMetrics());
     }
 
     /// <summary>
@@ -102,22 +109,27 @@ public partial class TerminalBuffer
         {
             var image = _images[i];
             if (image.NativeRaster is null) continue;
-            int end = image.IsAltScreenImage ? Rows : _scrollback.Count + Rows;
-            if (lostRows)
-            {
-                image.ClipTopRows = Math.Min(image.CellHeight, Math.Max(image.ClipTopRows, Math.Max(0, -image.CellY)));
-                image.ClipBottomRows = Math.Min(image.CellHeight, Math.Max(image.ClipBottomRows, Math.Max(0, image.CellY + image.CellHeight - end)));
-            }
-            if (lostColumns)
-            {
-                int columns = ColumnsForLineSize(ImageLineSizeNoLock(image), Cols);
-                image.ClipRightColumns = Math.Min(image.CellWidth, Math.Max(image.ClipRightColumns, Math.Max(0, image.CellX + image.CellWidth - columns)));
-            }
-            ClipNativeSixel(image, lostRows ? 0 : int.MinValue, lostRows ? end : int.MaxValue, lostColumns ? Cols : int.MaxValue);
+            CropNativeSixelForResize(image, lostColumns, lostRows);
             if (HasNativeSixelPixels(image) || HasSixelClearRegion(image)) continue;
             RetireImage(image);
             _images.RemoveAt(i);
         }
+    }
+
+    private void CropNativeSixelForResize(TerminalImage image, bool lostColumns, bool lostRows)
+    {
+        int end = image.IsAltScreenImage ? Rows : _scrollback.Count + Rows;
+        if (lostRows)
+        {
+            image.ClipTopRows = Math.Min(image.CellHeight, Math.Max(image.ClipTopRows, Math.Max(0, -image.CellY)));
+            image.ClipBottomRows = Math.Min(image.CellHeight, Math.Max(image.ClipBottomRows, Math.Max(0, image.CellY + image.CellHeight - end)));
+        }
+        if (lostColumns)
+        {
+            int columns = ColumnsForLineSize(ImageLineSizeNoLock(image), Cols);
+            image.ClipRightColumns = Math.Min(image.CellWidth, Math.Max(image.ClipRightColumns, Math.Max(0, image.CellX + image.CellWidth - columns)));
+        }
+        ClipNativeSixel(image, lostRows ? 0 : int.MinValue, lostRows ? end : int.MaxValue, lostColumns ? Cols : int.MaxValue);
     }
 
     /// <summary>
@@ -137,18 +149,16 @@ public partial class TerminalBuffer
     /// </summary>
     private bool ImageOverlapsRows(TerminalImage image, int top, int bottomExclusive)
     {
-        return image.NativeRaster is { } native
-            ? NativeSixelOverlaps(image, native, top, bottomExclusive, 0, Cols)
+        return image.NativeRaster is not null
+            ? NativeSixelOverlaps(image, top, bottomExclusive, 0, Cols)
             : image.CellY + (long)image.CellHeight > top && image.CellY < bottomExclusive;
     }
 
-    private bool NativeSixelOverlaps(TerminalImage image, SixelRasterIntent native, int top, int bottomExclusive, int left, int right)
+    private bool NativeSixelOverlaps(TerminalImage image, int top, int bottomExclusive, int left, int right)
     {
-        var size = NativeSixelCellMetrics!;
+        var size = GetNativeSixelCellMetrics();
         var projection = new NativeSixelViewProjection(size.WidthPx, size.HeightPx);
-        return projection.Intersects(native, image.CellX, image.CellY, image.CellWidth, image.CellHeight,
-            image.ClipTopRows, image.ClipBottomRows, image.ClipRightColumns, top, bottomExclusive - top, right,
-            ImageLineSizeNoLock(image) == LineSize.SingleWidth ? 1 : 2, left);
+        return projection.Intersects(image, top, bottomExclusive - top, left, right, ImageLineSizeNoLock(image));
     }
 
     /// <summary>
@@ -157,7 +167,10 @@ public partial class TerminalBuffer
     private bool DiscardImageBeforeOrigin(TerminalImage image)
     {
         if (image.NativeRaster is null) return image.CellY + (long)image.CellHeight <= 0;
-        return ClipSixelImage(image, 0, int.MaxValue - 1);
+        if (ReferenceEquals(image, _placingSixel)) return false;
+        image.ClipTopRows = Math.Min(image.CellHeight, Math.Max(image.ClipTopRows, Math.Max(0, -image.CellY)));
+        ClipNativeSixel(image, 0, int.MaxValue, int.MaxValue);
+        return !HasNativeSixelPixels(image) && !HasSixelClearRegion(image);
     }
 
     /// <summary>
@@ -167,7 +180,7 @@ public partial class TerminalBuffer
     {
         if (image.NativeRaster is not { Crop: var crop }) return false;
         if (crop.Right <= crop.Left || crop.Bottom <= crop.Top) return true;
-        var metrics = NativeSixelCellMetrics!;
+        var metrics = GetNativeSixelCellMetrics();
         int anchorColumn = ImagePageColumnsNoLock(image).Left;
         return (double)anchorColumn * metrics.WidthPx + crop.Left >= (double)left * metrics.WidthPx &&
             (double)anchorColumn * metrics.WidthPx + crop.Right <= (double)right * metrics.WidthPx &&

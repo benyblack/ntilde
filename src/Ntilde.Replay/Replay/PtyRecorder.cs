@@ -187,6 +187,10 @@ namespace Ntilde.Replay
             snapshot.RowWrapColumns[index] = width;
         }
 
+        private bool CanRecordSnapshot(TerminalBuffer buffer, AnsiParser? parser) =>
+            IsAccepting && _header.RequiredSixelRasterPolicy == buffer.SixelRasterPolicyVersion &&
+            (_header.RequiredSixelRasterPolicy == 0 || parser is not null);
+
         /// <summary>
         /// Captures viewport fields and, when a parser is supplied, a complete terminal/parser cut.
         /// Buffer-only snapshots preserve the replay parser's existing continuation; callers
@@ -201,8 +205,7 @@ namespace Ntilde.Replay
             {
                 lock (_producerGate)
                 {
-                    if (!IsAccepting || _header.RequiredSixelRasterPolicy != buffer.SixelRasterPolicyVersion ||
-                        (_header.RequiredSixelRasterPolicy != 0 && parser is null)) return;
+                    if (!CanRecordSnapshot(buffer, parser)) return;
                     var cellSize = SnapshotCellMetrics(parser);
                     ReplaySnapshot snapshot;
                     var rows = buffer.ViewportRows;

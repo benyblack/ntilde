@@ -157,11 +157,7 @@ namespace Ntilde.VT
         /// </summary>
         internal IReadOnlyList<Hyperlink> ImportPreparedState(TerminalStateSnapshot snapshot, PreparedStateImport prepared)
         {
-            if (prepared.NativeImages is not null &&
-                (!ReferenceEquals(prepared.Owner, this) || prepared.Committed || prepared.Disposed))
-                throw StateTransferValidation.Reject("native SIXEL import", "staged state belongs to one target and one commit");
-            if (prepared.NativeImages is not null && (snapshot.Cols != Cols || snapshot.Rows != Rows))
-                throw StateTransferValidation.Reject("native SIXEL import", "target geometry must match its declared state");
+            ValidatePreparedNativeImport(snapshot, prepared);
             ValidatedBufferState validated = prepared.Validated;
             byte[]? mainCells = validated.MainCells;
             byte[]? altCells = validated.AltCells;
@@ -260,38 +256,7 @@ namespace Ntilde.VT
                 _lastCharRow = snapshot.Grapheme.LastCharRow;
                 _isAfterZwj = snapshot.Grapheme.IsAfterZwj;
 
-                // Replace old decoder handles through the snapshot-session retirement gate.
-                // Retained SIXEL, Kitty and iTerm2 sources are restored at their transferred
-                // positions below, undecoded; TerminalStateTransfer.Restore decodes them.
-                ClearImagePlacements();
-                ClearRetainedKittyImages();
-                var placementOrder = new Dictionary<TerminalImage, int>();
-                // History rows this buffer's scrollback budget could not keep are gone, so main-screen
-                // placements move up by as many rows, the way scrollback eviction moves live ones.
-                int expiredRows = Math.Max(0, snapshot.ScrollbackRowCount - _scrollback.Count);
-                if (prepared.NativeImages is not null)
-                {
-                    SetNativeSixelCellMetrics(prepared.NativeMetrics);
-                    for (int i = 0; i < prepared.NativeImages.Count; i++)
-                    {
-                        var image = prepared.NativeImages[i];
-                        if (!image.IsAltScreenImage && expiredRows > 0)
-                        {
-                            image.CellY -= expiredRows;
-                            if (DiscardImageBeforeOrigin(image))
-                            {
-                                RetireUnplacedNativeSixel((INativeSixelImage)image.ImageHandle);
-                                continue;
-                            }
-                        }
-                        if (snapshot.Sixels![i].Order is int order) placementOrder.Add(image, order);
-                        if (!TryAddSixelPlacement(image)) throw new InvalidOperationException("Staged native placement lost its admission.");
-                    }
-                    prepared.Committed = true;
-                }
-                else ImportSixelState(snapshot, placementOrder, expiredRows);
-                ImportImageState(snapshot, placementOrder, expiredRows);
-                RestorePlacementOrder(placementOrder);
+                ImportPlacementsNoLock(snapshot, prepared);
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields
                 // above on the next write, and the render-diff cache stays cold so the first
@@ -343,6 +308,57 @@ namespace Ntilde.VT
             }
 
             return links;
+        }
+
+        private void ValidatePreparedNativeImport(TerminalStateSnapshot snapshot, PreparedStateImport prepared)
+        {
+            if (prepared.NativeImages is not null &&
+                (!ReferenceEquals(prepared.Owner, this) || prepared.Committed || prepared.Disposed))
+                throw StateTransferValidation.Reject(NativeSixelImportContext, "staged state belongs to one target and one commit");
+            if (prepared.NativeImages is not null && (snapshot.Cols != Cols || snapshot.Rows != Rows))
+                throw StateTransferValidation.Reject(NativeSixelImportContext, "target geometry must match its declared state");
+        }
+
+        private void ImportPlacementsNoLock(TerminalStateSnapshot snapshot, PreparedStateImport prepared)
+        {
+            // Replace old decoder handles through the snapshot-session retirement gate.
+            // Retained SIXEL, Kitty and iTerm2 sources are restored at their transferred
+            // positions below, undecoded; TerminalStateTransfer.Restore decodes them.
+            ClearImagePlacements();
+            ClearRetainedKittyImages();
+            var placementOrder = new Dictionary<TerminalImage, int>();
+            // History rows this buffer's scrollback budget could not keep are gone, so main-screen
+            // placements move up by as many rows, the way scrollback eviction moves live ones.
+            int expiredRows = Math.Max(0, snapshot.ScrollbackRowCount - _scrollback.Count);
+            if (prepared.NativeImages is { } nativeImages)
+            {
+                SetNativeSixelCellMetrics(prepared.NativeMetrics);
+                ImportNativeSixelPlacementsNoLock(snapshot.Sixels ?? [], nativeImages, placementOrder, expiredRows);
+                prepared.Committed = true;
+            }
+            else ImportSixelState(snapshot, placementOrder, expiredRows);
+            ImportImageState(snapshot, placementOrder, expiredRows);
+            RestorePlacementOrder(placementOrder);
+        }
+
+        private void ImportNativeSixelPlacementsNoLock(List<TerminalSixelImageState> states, List<TerminalImage> images,
+            Dictionary<TerminalImage, int> placementOrder, int expiredRows)
+        {
+            for (int i = 0; i < images.Count; i++)
+            {
+                var image = images[i];
+                if (!image.IsAltScreenImage && expiredRows > 0)
+                {
+                    image.CellY -= expiredRows;
+                    if (DiscardImageBeforeOrigin(image))
+                    {
+                        RetireUnplacedNativeSixel((INativeSixelImage)image.ImageHandle);
+                        continue;
+                    }
+                }
+                if (states[i].Order is int order) placementOrder.Add(image, order);
+                if (!TryAddSixelPlacement(image)) throw new InvalidOperationException("Staged native placement lost its admission.");
+            }
         }
 
         // ── screens ──────────────────────────────────────────────────────────────

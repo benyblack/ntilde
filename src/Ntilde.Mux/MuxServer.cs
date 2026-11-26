@@ -245,12 +245,14 @@ public sealed class MuxServer : IDisposable
         }
     }
 
-    private static void RequireInitialCellMetrics(float? width, float? height)
+    private static void RequireInitialCellMetrics(float? width, float? height, int sixelRasterPolicy)
     {
         if (width.HasValue != height.HasValue ||
             (width is float w && (!float.IsFinite(w) || w <= 0)) ||
             (height is float h && (!float.IsFinite(h) || h <= 0)))
             throw new MuxRequestException(MuxErrorCodes.ProtocolError, "Initial cell metrics must be an absent pair or two finite positive values.");
+        if (sixelRasterPolicy != 0 && (width is not >= 1 || height is not >= 1))
+            throw new MuxRequestException(MuxErrorCodes.ProtocolError, "Native SIXEL requires explicit cell metrics of at least one pixel.");
     }
 
     internal static void RequireHistoryRequest(int? rows)
@@ -263,9 +265,7 @@ public sealed class MuxServer : IDisposable
         SixelPolicyAdmission.Require(p.RequiredSixelRasterPolicy, Ntilde.VT.SixelRasterPolicy.EnabledVersion);
         ImagePolicyAdmission.Policy.Require(p.RequiredImagePolicy, Ntilde.VT.PersistentImagePolicy.EnabledVersion);
         RequireGeometry(p.Cols, p.Rows);
-        RequireInitialCellMetrics(p.CellWidthPx, p.CellHeightPx);
-        if (p.RequiredSixelRasterPolicy != 0 && (p.CellWidthPx is not >= 1 || p.CellHeightPx is not >= 1))
-            throw new MuxRequestException(MuxErrorCodes.ProtocolError, "Native SIXEL requires explicit cell metrics of at least one pixel.");
+        RequireInitialCellMetrics(p.CellWidthPx, p.CellHeightPx, p.RequiredSixelRasterPolicy);
         RequireHistoryRequest(p.MaxHistory);
 
         // Chosen before the spawn so the shell can be told its own id; added to the caller's

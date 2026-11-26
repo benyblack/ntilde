@@ -12,7 +12,7 @@ public partial class TerminalBuffer
 
     /// <summary>Applies SIXEL geometry even on headless hosts. Never writes placeholder text or wraps an image horizontally.</summary>
     internal bool PlaceSixelImage(object? handle, int widthCells, int heightCells, SixelSource? source = null,
-        SixelPlacementProvenance? provenance = null)
+        SixelPlacementProvenance? provenance = null, SixelRasterIntent? nativeRaster = null)
     {
         bool lockTaken = EnterWriteLockIfNeeded();
         try
@@ -22,33 +22,27 @@ public partial class TerminalBuffer
             SnapCursorToLineSizeNoLock();
             int row = display ? 0 : _cursorRow;
             int col = display ? 0 : _cursorCol;
-            int absoluteRow = _isAltScreen ? row : _scrollback.Count + row;
-            TerminalImage? image = handle is null ? null : new TerminalImage(handle, col, absoluteRow, widthCells, heightCells)
+            int screenOrigin = _isAltScreen ? 0 : _scrollback.Count;
+            TerminalImage? image = handle is null ? null : new TerminalImage(handle, col, screenOrigin + row, widthCells, heightCells)
             {
                 IsSixelImage = true,
                 SixelPlacement = provenance,
-                NativeRaster = handle is INativeSixelImage native ? new SixelRasterIntent(
-                    SixelRasterPolicy.PresenterNativeVersion, native.Allocation.Width, native.Allocation.Height,
-                    new(0, 0, native.Allocation.Width, native.Allocation.Height)) : null,
+                NativeRaster = nativeRaster,
                 SixelSource = source,
                 // In the row's own columns: a double-size row holds half as many, each two cells wide.
                 ClipRightColumns = Math.Max(0, col + widthCells - ColumnsForLineSize(_viewport[row].LineSize, Cols)),
                 IsAltScreenImage = _isAltScreen,
             };
             if (!TryAddSixelPlacement(image)) return false;
-            if (display)
+            if (!display)
             {
-                if (image is not null) image.ClipBottomRows = Math.Max(0, heightCells - Rows);
+                PlaceScrollingSixelImage(image, row, heightCells);
             }
-            else PlaceScrollingSixelImage(image, row, heightCells);
-            if (image is not null)
+            else if (image is not null)
             {
-                int start = _isAltScreen ? 0 : _scrollback.Count;
-                if (display) ClipNativeSixel(image, start, start + Rows, Cols);
-                else if (_isAltScreen || ScrollTop != 0 || ScrollBottom != Rows - 1)
-                    ClipNativeSixel(image, start + ScrollTop, start + ScrollBottom + 1, Cols);
-                else ClipNativeSixel(image, 0, int.MaxValue, Cols);
-                if (display) RetireCoveredSixelImages(image);
+                image.ClipBottomRows = Math.Max(0, heightCells - Rows);
+                ClipNativeSixel(image, screenOrigin, screenOrigin + Rows, Cols);
+                RetireCoveredSixelImages(image);
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
@@ -165,15 +159,21 @@ public partial class TerminalBuffer
         }
         finally { _placingSixel = null; }
 
-        if (image is not null && (_isAltScreen || ScrollTop != 0 || ScrollBottom != Rows - 1))
+        if (image is null) return;
+        ClipNativeSixel(image, int.MinValue, int.MaxValue, Cols);
+        if (!_isAltScreen && ScrollTop == 0 && ScrollBottom == Rows - 1)
+        {
+            if (image.NativeRaster is null || !DiscardImageBeforeOrigin(image)) return;
+        }
+        else
         {
             int baseRow = _isAltScreen ? 0 : _scrollback.Count;
-            if (ClipSixelImage(image, baseRow + (withinMargins ? ScrollTop : 0), baseRow + (withinMargins ? ScrollBottom : Rows - 1)))
-            {
-                RetireImage(image);
-                _images.Remove(image);
-            }
+            bool clipToMargins = withinMargins || image.NativeRaster is null;
+            if (!ClipSixelImage(image, baseRow + (clipToMargins ? ScrollTop : 0), baseRow + (clipToMargins ? ScrollBottom : Rows - 1)))
+                return;
         }
+        RetireImage(image);
+        _images.Remove(image);
     }
 
     private void RetireCoveredSixelImages(TerminalImage current)
@@ -208,7 +208,7 @@ public partial class TerminalBuffer
         if (image.NativeRaster is null) return image.ClipTopRows + image.ClipBottomRows >= image.CellHeight;
         image.ClipTopRows = Math.Min(image.ClipTopRows, image.CellHeight);
         image.ClipBottomRows = Math.Min(image.ClipBottomRows, image.CellHeight);
-        ClipNativeSixel(image, top, bottom + 1, Cols);
+        ClipNativeSixel(image, top, bottom + 1, int.MaxValue);
         return !HasNativeSixelPixels(image) && !HasSixelClearRegion(image);
     }
 }

@@ -214,14 +214,14 @@ namespace Ntilde.UI.Replay
                 int policy = header?.RequiredSixelRasterPolicy ?? 0;
                 if (current.SixelRasterPolicyVersion != policy)
                 {
-                    if (_acceptedReplayPolicy) return;
+                    if (_acceptedReplayPolicy || header is null) return;
                     var buffer = new TerminalBuffer(current.Cols, current.Rows, policy);
                     var defaultTheme = buffer.Theme;
                     buffer.Theme = current.Theme;
                     buffer.UpdateThemeColors(defaultTheme);
                     buffer.KittyAnimationPaused = true;
                     var parser = new AnsiParser(buffer) { ImageDecoder = new Ntilde.Rendering.SkiaImageDecoder() };
-                    ReplayRunner.ApplyHeaderMetrics(parser, header!);
+                    ReplayRunner.ApplyHeaderMetrics(parser, header);
                     _initialReplayState = buffer.ExportState(maxScrollbackRows: 0);
                     _initialReplayState.Parser = parser.ExportState();
                     _buffer = buffer;

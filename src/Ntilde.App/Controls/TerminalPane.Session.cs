@@ -812,7 +812,7 @@ namespace Ntilde.Controls
 
             if (session is ITerminalRecordingBoundary boundary)
             {
-                boundary.SetRecordingSixelRasterPolicy(Buffer!.SixelRasterPolicyVersion);
+                boundary.SetRecordingSixelRasterPolicy(Buffer?.SixelRasterPolicyVersion ?? 0);
                 boundary.SubscribeTerminalOutput((text, chunk) => ApplyOutput(text, chunk, chunk.Bytes.Span));
             }
             else if (session is MuxClientSession mux)

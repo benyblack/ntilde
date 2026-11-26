@@ -241,18 +241,17 @@ public partial class TerminalBuffer
         {
             var img = _images[i];
             if (img.IsAltScreenImage != _isAltScreen || !img.IsSticky) continue;
-            if (img.NativeRaster is { } native)
-            {
-                if (!NativeSixelOverlaps(img, native, absTop, absBottom + 1, left, right + 1)) continue;
-            }
-            else
-            {
-                if (img.CellY + img.CellHeight <= absTop || img.CellY > absBottom) continue;
-                (int imageLeft, int imageRight) = ImagePageColumnsNoLock(img);
-                if (imageRight <= left || imageLeft > right) continue;
-            }
+            if (!ImageIntersectsMarginBand(img, absTop, absBottom, left, right)) continue;
             RetireImage(img);
             _images.RemoveAt(i);
         }
+    }
+
+    private bool ImageIntersectsMarginBand(TerminalImage image, int top, int bottom, int left, int right)
+    {
+        if (image.NativeRaster is not null) return NativeSixelOverlaps(image, top, bottom + 1, left, right + 1);
+        if (image.CellY + image.CellHeight <= top || image.CellY > bottom) return false;
+        (int imageLeft, int imageRight) = ImagePageColumnsNoLock(image);
+        return imageRight > left && imageLeft <= right;
     }
 }

@@ -169,7 +169,7 @@ export function validateEpochChange(actual, previous) {
     checkImages(['pid', 'uid', 'tty', 'executable'].every(key => actual.daemon[key] === previous.daemon[key]));
 }
 export function buildStaticImageReport(frames, actions, seal, runId, output, priorChallenges = [], scale = 1) {
-    checkImages(scale === 1 || scale === calibratedStaticImageCaptureScale);
+    checkImages([1, calibratedStaticImageCaptureScale].includes(scale));
     checkImages(/^[a-f\d]{32}$/.test(runId ?? '') && frames?.length === 31 && actions?.length === 30
         && Array.isArray(priorChallenges) && priorChallenges.length <= inputPriorCaptureCap && new Set(priorChallenges).size === priorChallenges.length);
     const builder = new StaticImageReport(frames, actions, runId, output, priorChallenges, {

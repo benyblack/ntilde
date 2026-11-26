@@ -2,10 +2,12 @@ namespace Ntilde.VT;
 
 public partial class TerminalBuffer
 {
+    private bool CurrentThreadHoldsBufferLock => Lock.IsReadLockHeld || Lock.IsWriteLockHeld;
+
     /// <summary>Headless sources have no native callbacks; dispose only those owned handles after leaving all VT locks.</summary>
     internal void DisposeRetiredHeadlessSixelSources()
     {
-        if (NativeSixelBudget is null || _retiredImageHandles.IsEmpty || Lock.IsReadLockHeld || Lock.IsWriteLockHeld) return;
+        if (NativeSixelBudget is null || _retiredImageHandles.IsEmpty || CurrentThreadHoldsBufferLock) return;
         var retired = new List<object>();
         DrainRetiredImageHandles(retired, long.MaxValue, headlessSourcesOnly: true);
         foreach (var handle in retired)

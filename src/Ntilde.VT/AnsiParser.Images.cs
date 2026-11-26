@@ -164,7 +164,7 @@ namespace Ntilde.VT
         private bool PersistentFrames => RetainImageSources && RetainedAnimation;
 
         /// <summary>
-        /// Routes internal native sessions through bounded admission; public legacy sessions retain their decoder path.
+        /// Routes native sessions through bounded admission; policy-zero sessions use the legacy decoder path.
         /// </summary>
         private void HandleSixel(string dcs)
         {
@@ -218,59 +218,54 @@ namespace Ntilde.VT
                 _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
         }
 
-        /// <summary>
-        /// Reserves fixed decoder work before new source retention, decoding or cursor changes.
-        /// Unknown decoder contract failures retain credit rather than claiming disposal of resources they may own.
-        /// </summary>
+        /// <summary>Uses stream geometry even when the host cannot admit more decoded pixels.</summary>
         private void HandleBoundedSixel(string dcs, NativeSixelBudget budget)
         {
-            // Cleanup existing failed owners first; no new decode, input retention or cursor effect precedes reservation.
-            var decoder = ImageDecoder as INativeSixelDecoder;
-            if (ImageDecoder is not null && decoder is null) return;
             _buffer.PruneBeforeNativeSixelAdmission();
             var (width, height) = SixelGeometry.Measure(dcs);
-            NativeSixelAllocation? allocation = budget.TryReserve(width, height, dcs.Length);
-            if (allocation is null) return;
+            if (width <= 0 || height <= 0) return;
+
             SixelSource source = _buffer.SixelSources.CreateProvisional(dcs);
             if (source.DecodeData is null)
             {
                 source.Dispose();
-                budget.CompleteDisposal(allocation);
                 return;
             }
-            INativeSixelImage? image;
-            try { image = decoder is null ? new NativeSixelSourceOwner(source, allocation) : decoder.DecodeNativeSixel(source, allocation); }
+
+            var image = TryCreateNativeSixelOwner(source, budget, width, height, dcs.Length);
+            var intent = new SixelRasterIntent(SixelRasterPolicy.PresenterNativeVersion, width, height, new(0, 0, width, height));
+            var (cw, ch) = ImageCellPixels();
+            var provenance = new SixelPlacementProvenance(width, height, SixelReservationDimensionOrigin.SixelGeometry,
+                cw, ch, SixelReservationMetricOrigin.SixelOverride, SixelReservationMetricOrigin.SixelOverride);
+            if (_buffer.PlaceSixelImage((object?)image ?? source, (int)Math.Ceiling(width / cw), (int)Math.Ceiling(height / ch),
+                source, provenance, intent))
+                _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
+            else if (image is not null) _buffer.RetireUnplacedNativeSixel(image);
+        }
+
+        /// <summary>Reserves decoder work without making stream layout depend on the host budget or decoder.</summary>
+        private INativeSixelImage? TryCreateNativeSixelOwner(SixelSource source, NativeSixelBudget budget, int width, int height, int length)
+        {
+            var decoder = ImageDecoder as INativeSixelDecoder;
+            if (ImageDecoder is not null && decoder is null) return null;
+            var allocation = budget.TryReserve(width, height, length);
+            if (allocation is null) return null;
+            try
+            {
+                var image = decoder is null ? new NativeSixelSourceOwner(source, allocation) : decoder.DecodeNativeSixel(source, allocation);
+                if (image is null)
+                {
+                    budget.CompleteDisposal(allocation);
+                    return null;
+                }
+                return ReferenceEquals(image.Allocation, allocation) && ReferenceEquals(image.Source, source) ? image : null;
+            }
             catch (Exception ex)
             {
-                // An unknown host decoder may have allocated before throwing. Fail closed:
-                // do not credit resources whose actual disposal cannot be established.
+                // A failed decoder may still own storage. Retain the charge until actual disposal can be established.
                 TerminalLogger.Debug($"[SIXEL] Native decoder contract failed: {ex.Message}");
-                source.Dispose();
-                return;
+                return null;
             }
-            if (image is null)
-            {
-                source.Dispose();
-                budget.CompleteDisposal(allocation);
-                return;
-            }
-            if (!ReferenceEquals(image.Allocation, allocation) || !ReferenceEquals(image.Source, source))
-            {
-                // Never dispose a possibly borrowed host handle to repair a contract violation.
-                source.Dispose();
-                return;
-            }
-            SixelCellSize? size = SixelCellSizeOverride;
-            float widthMetric = size?.WidthPx ?? CellWidth;
-            float heightMetric = size?.HeightPx ?? CellHeight;
-            float cw = float.IsFinite(widthMetric) && widthMetric > 0 ? Math.Max(1, widthMetric) : 10;
-            float ch = float.IsFinite(heightMetric) && heightMetric > 0 ? Math.Max(1, heightMetric) : 20;
-            var provenance = new SixelPlacementProvenance(width, height, SixelReservationDimensionOrigin.SixelGeometry,
-                cw, ch, SixelPlacementProvenance.MetricOrigin(widthMetric, size is not null),
-                SixelPlacementProvenance.MetricOrigin(heightMetric, size is not null));
-            if (_buffer.PlaceSixelImage(image, (int)Math.Ceiling(width / cw), (int)Math.Ceiling(height / ch), source, provenance))
-                _swallowNextNewline = !_buffer.Modes.IsSixelDisplayMode;
-            else _buffer.RetireUnplacedNativeSixel(image);
         }
 
         // APC: kitty graphics after a "Kitty:" or "K:" prefix, Sixel otherwise.

@@ -324,9 +324,8 @@ namespace Ntilde.Replay
             return false;
         }
 
-        private static void ValidateRequiredSixelPolicy(JsonElement root)
+        private static int ReadRecordingVersion(JsonElement root)
         {
-            if (!IsRecognizedRecordingHeader(root)) return;
             int version = 0;
             foreach (var property in root.EnumerateObject())
             {
@@ -338,7 +337,13 @@ namespace Ntilde.Replay
             }
             if (version == 0)
                 throw new InvalidDataException("The recording header is missing its version.");
-            int required = version == ReplayHeader.NativeSixelLayoutVersion ? SixelRasterPolicy.PresenterNativeVersion : 0;
+            return version;
+        }
+
+        private static void ValidateRequiredSixelPolicy(JsonElement root)
+        {
+            if (!IsRecognizedRecordingHeader(root)) return;
+            int required = ReadRecordingVersion(root) == ReplayHeader.NativeSixelLayoutVersion ? SixelRasterPolicy.PresenterNativeVersion : 0;
             bool seen = false;
             foreach (var property in root.EnumerateObject())
             {
@@ -354,7 +359,7 @@ namespace Ntilde.Replay
         internal static void ValidateSixelMetrics(int policy, RecordingCellMetrics? size)
         {
             SixelRasterPolicy.RequireSupported(policy);
-            if (policy != 0 && (size?.WidthPx is not >= 1 || size?.HeightPx is not >= 1))
+            if (policy != 0 && size is not { WidthPx: >= 1, HeightPx: >= 1 })
                 throw new InvalidDataException("Native SIXEL recordings require explicit cell metrics of at least one pixel.");
         }
 

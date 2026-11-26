@@ -2,17 +2,33 @@ namespace Ntilde.VT.Tests;
 
 public sealed class NativeSixelLayoutTests
 {
-    [Fact]
-    public void Growing_after_a_metric_change_preserves_the_full_native_crop()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Growing_after_a_metric_change_preserves_the_full_native_crop(bool alternateScreen)
     {
         var buffer = new TerminalBuffer(10, 6, SixelRasterPolicy.PresenterNativeVersion);
         var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20) };
-        parser.Process("\x1b[?1049h\x1b[?80h\x1bPq#2!16~-!16~-!16N\x1b\\");
+        if (alternateScreen) parser.Process("\x1b[?1049h");
+        parser.Process("\x1b[?80h\x1bPq#2!16~-!16~-!16N\x1b\\");
         var original = Assert.Single(buffer.Images).NativeRaster;
         Assert.NotNull(original);
         parser.SixelCellSizeOverride = new(1, 1);
         buffer.Resize(11, 7);
         Assert.Equal(original, Assert.Single(buffer.Images).NativeRaster);
+        buffer.ClearImages();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Scrolling_sixel_outside_vertical_margins_uses_the_page_bounds(bool alternateScreen)
+    {
+        var buffer = new TerminalBuffer(10, 6, SixelRasterPolicy.PresenterNativeVersion);
+        var parser = new AnsiParser(buffer) { SixelCellSizeOverride = new(10, 20) };
+        if (alternateScreen) parser.Process("\x1b[?1049h");
+        parser.Process("\x1b[3;5r\x1b[1;1H\x1bPq~\x1b\\");
+        Assert.Equal(new SixelSourceCrop(0, 0, 1, 6), Assert.Single(buffer.Images).NativeRaster!.Crop);
         buffer.ClearImages();
     }
 

@@ -847,7 +847,7 @@ namespace Ntilde.Shell
                         int visualY = img.CellY - absDisplayStart;
                         if (img.NativeRaster is not null)
                         {
-                            var nativeBitmap = DrawNativeSixel(canvas, img, visualY, colEdges, rowEdges, paddingLeft, paddingTop,
+                            var nativeBitmap = DrawNativeSixel(canvas, img, visualY,
                                 imagePaint, imageBgPaint, ref remainingImageDecodes, ref pendingImageDecode);
                             if (nativeBitmap is not null && imageFacts is { Complete: true })
                                 imageFacts.Placements[imageIndex] = imageFacts.Placements[imageIndex] with

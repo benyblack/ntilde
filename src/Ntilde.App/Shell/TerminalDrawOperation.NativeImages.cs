@@ -8,12 +8,12 @@ public sealed partial class TerminalDrawOperation
 {
     /// <summary>Paints source pixels at presenter-native extent; capture scaling never substitutes for presenter scale.</summary>
     private SKBitmap? DrawNativeSixel(SKCanvas canvas, RenderImageSnapshot image, int visualY,
-        float[] colEdges, float[] rowEdges, float paddingLeft, float paddingTop,
         SKPaint imagePaint, SKPaint background, ref int remainingDecodes, ref bool pendingDecode)
     {
-        var intent = image.NativeRaster!;
-        float x = LineSizeX(GetColEdge(colEdges, image.CellX, paddingLeft), image.LineSize);
-        float y = GetRowEdge(rowEdges, visualY, paddingTop);
+        var intent = image.NativeRaster ?? throw new InvalidOperationException("Expected a native SIXEL placement.");
+        float paddingLeft = FromDevicePx(_pixelGrid.OriginXPx);
+        float x = LineSizeX(FromDevicePx(_pixelGrid.XForCol(image.CellX)), image.LineSize);
+        float y = FromDevicePx(_pixelGrid.YForRowTop(visualY));
         canvas.Save();
         try
         {
@@ -22,9 +22,9 @@ public sealed partial class TerminalDrawOperation
             if (image.CellWidth > image.ClipRightColumns && image.CellHeight > (long)image.ClipTopRows + image.ClipBottomRows)
             {
                 canvas.DrawRect(new SKRect(x,
-                    GetRowEdge(rowEdges, visualY + image.ClipTopRows, paddingTop),
-                    LineSizeX(GetColEdge(colEdges, image.CellX + image.CellWidth - image.ClipRightColumns, paddingLeft), image.LineSize),
-                    GetRowEdge(rowEdges, visualY + image.CellHeight - image.ClipBottomRows, paddingTop)), background);
+                    FromDevicePx(_pixelGrid.YForRowTop(visualY + image.ClipTopRows)),
+                    LineSizeX(FromDevicePx(_pixelGrid.XForCol(image.CellX + image.CellWidth - image.ClipRightColumns)), image.LineSize),
+                    FromDevicePx(_pixelGrid.YForRowTop(visualY + image.CellHeight - image.ClipBottomRows))), background);
                 IncrementRectDrawCall();
             }
             var crop = intent.Crop;

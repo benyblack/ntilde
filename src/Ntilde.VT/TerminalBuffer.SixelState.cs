@@ -11,52 +11,65 @@ public partial class TerminalBuffer
         {
             TerminalImage image = _images[order];
             if (!image.IsSixelImage || image.SixelSource is not { } source) continue;
-            int y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
-            int end = image.IsAltScreenImage ? snapshot.Rows : snapshot.ScrollbackRowCount + snapshot.Rows;
-            int top = Math.Max(image.ClipTopRows, Math.Max(0, -y));
-            int bottom = Math.Max(image.ClipBottomRows, Math.Max(0, y + image.CellHeight - end));
-            if (image.NativeRaster is not null)
-            {
-                top = Math.Min(top, image.CellHeight);
-                bottom = Math.Min(bottom, image.CellHeight);
-            }
-            var intent = image.NativeRaster;
-            // A full export is a reader, not a new viewport/page loss. Only an explicit
-            // scrollback cap discards additional history; metric changes must not recrop.
-            if (intent is not null && !image.IsAltScreenImage && snapshot.ScrollbackRowsDropped > 0)
-            {
-                var previousCrop = intent.Crop;
-                double upper = Math.Min(previousCrop.Bottom, Math.Max(previousCrop.Top,
-                    Math.Clamp(-(double)y * NativeSixelCellMetrics!.HeightPx, 0, intent.CanvasHeight)));
-                intent = new(intent.Version, intent.CanvasWidth, intent.CanvasHeight,
-                    new(previousCrop.Left, upper, previousCrop.Right, previousCrop.Bottom));
-            }
-            bool clearing = top + (long)bottom < image.CellHeight && image.ClipRightColumns < image.CellWidth && image.CellX < snapshot.Cols;
-            bool pixels = intent is { Crop: var crop } && crop.Right > crop.Left && crop.Bottom > crop.Top;
-            if (image.NativeRaster is null
-                ? top + (long)bottom >= image.CellHeight || image.CellX >= snapshot.Cols
-                : !clearing && !pixels) continue;
-            if (source.Data is not { } data)
-            {
-                if (image.NativeRaster is not null)
-                    throw new InvalidOperationException("Native SIXEL state export is unavailable because its retained source expired.");
-                continue;
-            }
-            (snapshot.Sixels ??= []).Add(new TerminalSixelImageState
-            {
-                Source = data,
-                X = image.CellX,
-                Y = y,
-                Width = image.CellWidth,
-                Height = image.CellHeight,
-                Alt = image.IsAltScreenImage,
-                ClipTop = top,
-                ClipBottom = bottom,
-                ClipRight = image.ClipRightColumns,
-                Order = order,
-                NativeRaster = intent,
-            });
+            if (ExportSixelPlacement(snapshot, image, source, order) is { } state)
+                (snapshot.Sixels ??= []).Add(state);
         }
+    }
+
+    private TerminalSixelImageState? ExportSixelPlacement(TerminalStateSnapshot snapshot, TerminalImage image, SixelSource source, int order)
+    {
+        int y = image.IsAltScreenImage ? image.CellY : image.CellY - snapshot.ScrollbackRowsDropped;
+        int end = image.IsAltScreenImage ? snapshot.Rows : snapshot.ScrollbackRowCount + snapshot.Rows;
+        int top = Math.Max(image.ClipTopRows, Math.Max(0, -y));
+        int bottom = Math.Max(image.ClipBottomRows, Math.Max(0, y + image.CellHeight - end));
+        var intent = ExportNativeSixelRaster(snapshot, image, y);
+        if (intent is not null)
+        {
+            top = Math.Min(top, image.CellHeight);
+            bottom = Math.Min(bottom, image.CellHeight);
+        }
+        if (!ShouldExportSixelPlacement(snapshot.Cols, image, top, bottom, intent)) return null;
+        if (source.Data is not { } data)
+        {
+            if (intent is not null)
+                throw new InvalidOperationException("Native SIXEL state export is unavailable because its retained source expired.");
+            return null;
+        }
+        return new TerminalSixelImageState
+        {
+            Source = data,
+            X = image.CellX,
+            Y = y,
+            Width = image.CellWidth,
+            Height = image.CellHeight,
+            Alt = image.IsAltScreenImage,
+            ClipTop = top,
+            ClipBottom = bottom,
+            ClipRight = image.ClipRightColumns,
+            Order = order,
+            NativeRaster = intent,
+        };
+    }
+
+    private static bool ShouldExportSixelPlacement(int cols, TerminalImage image, int top, int bottom, SixelRasterIntent? intent)
+    {
+        bool visibleReservation = top + (long)bottom < image.CellHeight && image.CellX < cols;
+        if (intent is null) return visibleReservation;
+        bool clearing = visibleReservation && image.ClipRightColumns < image.CellWidth;
+        var crop = intent.Crop;
+        return clearing || (crop.Right > crop.Left && crop.Bottom > crop.Top);
+    }
+
+    private SixelRasterIntent? ExportNativeSixelRaster(TerminalStateSnapshot snapshot, TerminalImage image, int y)
+    {
+        var intent = image.NativeRaster;
+        // Only the explicit scrollback cap discards history at export time.
+        if (intent is null || image.IsAltScreenImage || snapshot.ScrollbackRowsDropped <= 0) return intent;
+        var crop = intent.Crop;
+        double upper = Math.Min(crop.Bottom, Math.Max(crop.Top,
+            Math.Clamp(-(double)y * GetNativeSixelCellMetrics().HeightPx, 0, intent.CanvasHeight)));
+        return new(intent.Version, intent.CanvasWidth, intent.CanvasHeight,
+            new(crop.Left, upper, crop.Right, crop.Bottom));
     }
 
     /// <summary>

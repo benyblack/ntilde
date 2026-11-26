@@ -1081,11 +1081,7 @@ namespace Ntilde.VT
                 if (img.IsAltScreenImage != _isAltScreen) continue;
 
                 LineSize lineSize = ImageLineSizeNoLock(img);
-                bool visible = img.NativeRaster is { } native
-                    ? (nativeProjection ?? throw new InvalidOperationException("Native SIXEL drawing requires an explicit presenter projection."))
-                        .Intersects(native, img.CellX, img.CellY, img.CellWidth, img.CellHeight, img.ClipTopRows, img.ClipBottomRows,
-                            img.ClipRightColumns, absDisplayStart, bufferRows, viewportCols ?? Cols, lineSize == LineSize.SingleWidth ? 1 : 2)
-                    : img.CellY + img.CellHeight - img.ClipBottomRows > absDisplayStart && img.CellY + img.ClipTopRows < absEnd;
+                bool visible = IsRenderImageVisible(img, nativeProjection, absDisplayStart, absEnd, viewportCols ?? Cols, lineSize);
                 if (visible)
                 {
                     list.Add(new RenderImageSnapshot
@@ -1117,6 +1113,15 @@ namespace Ntilde.VT
                 if (lineSize != LineSize.SingleWidth) list[i] = list[i] with { LineSize = lineSize };
             }
             return list;
+        }
+
+        private static bool IsRenderImageVisible(TerminalImage image, NativeSixelViewProjection? projection,
+            int start, int end, int cols, LineSize lineSize)
+        {
+            if (image.NativeRaster is null)
+                return image.CellY + image.CellHeight - image.ClipBottomRows > start && image.CellY + image.ClipTopRows < end;
+            return (projection ?? throw new InvalidOperationException("Native SIXEL drawing requires an explicit presenter projection."))
+                .Intersects(image, start, end - start, 0, cols, lineSize);
         }
 
         /// <summary>Rejects malformed disk payloads before resize or snapshot application mutates state.</summary>
