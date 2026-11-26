@@ -77,13 +77,14 @@ test('multi-suite ids keep their separate claims and different ids keep differen
     assert.equal(new Set(stored.benchmark.map(item => item.id)).size, stored.benchmark.length);
 });
 
-test('the five effect-only ids keep a recorded pinned/effect divergence instead of one merged grade', () => {
+test('supported effect claims keep a recorded divergence from the inconclusive pinned verdict', () => {
     const stored = committed();
     for (const id of stored.totals.effectSupportedPinnedInconclusiveIds) {
         const item = row(stored, id);
         assert.equal(item.pinned.best, 'inconclusive', id);
         assert.equal(item.effect.verdict, 'supported', id);
-        assert.ok(item.claims.every(claim => claim.divergence?.recordedInReport === true), id);
+        const supportedClaims = item.claims.filter(claim => claim.effect.verdict === 'supported');
+        assert.ok(supportedClaims.length > 0 && supportedClaims.every(claim => claim.divergence?.recordedInReport === true), id);
     }
     // Saved-state suite preserves the pinned verdict as the reported conclusion; the scrollback suite reports the combined one. Both are visible.
     assert.equal(row(stored, 'modes.altscreen-47').claims[0].reportedConclusion.outcome, 'inconclusive');
@@ -176,7 +177,7 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock?.basis === 'carried-forward');
-    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata']);
+    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment']);
     for (const suite of carried) assert.match(suite.stock.note, /carried, not re-measured|carried forward from/, suite.suite);
     const runIds = stored.suites.map(suite => suite.stock?.runId).filter(Boolean);
     assert.equal(new Set(runIds).size, runIds.length, 'two suites must not claim the same stock run as freshly collected');
@@ -349,7 +350,7 @@ test('current effect totals preserve the separate unsupported and measured-other
     // Sixel retains the old unsupported result and the fixed supported result, so its effect roll-up is mixed.
     assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc113-reset-pointer-fg', 'extensions.osc114-reset-pointer-bg', 'extensions.osc720-scroll-up', 'modes.deccolm', 'modes.decsclm']);
     assert.equal(totals.effectUnsupportedIds, 5);
-    assert.equal(totals.effectOtherIds, 2);
+    assert.equal(totals.effectOtherIds, 1);
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.reflow'));
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.iterm2-images'));
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
@@ -361,15 +362,15 @@ test('current effect totals preserve the separate unsupported and measured-other
         assert.equal(font.effect.verdict, 'supported');
     }
     assert.equal(row(stored, 'extensions.osc710-font-normal'), undefined);
-    assert.equal(totals.effectSupportedIds, 150);
+    assert.equal(totals.effectSupportedIds, 151);
     assert.equal(totals.pinnedSupportedIds, 97);
     assert.equal(totals.pinnedAndEffectSupportedIds, 97);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 53);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 149);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 54);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 150);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 19, effectMeasuredUnsupported: 5, effectMeasuredOther: 2, effectNotMeasured: 12, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 18, effectMeasuredUnsupported: 5, effectMeasuredOther: 1, effectNotMeasured: 12, notPinnedSupported: 72 });
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -574,12 +575,13 @@ test('the OSC 633 implementation publication is the active claim while the histo
     const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'osc633' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
     assert.equal(row(failing, ids[0]).claims[0].status, 'declared-not-rederived');
     assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 5);
-    assert.equal(failing.totals.effectSupportedIds, stored.totals.effectSupportedIds - 4);
+    assert.equal(failing.totals.effectSupportedIds, stored.totals.effectSupportedIds - 5);
     assert.equal(row(failing, 'extensions.osc-633-vscode').claims[0].status, 'declared-not-rederived');
     assert.deepEqual(row(failing, 'extensions.osc-633-vscode').claims[0].carrierSuites, ['osc633']);
+    assert.equal(row(failing, 'extensions.osc-633-vscode').claims[1].status, 'declared-not-rederived');
     assert.equal(row(failing, 'extensions.semantic-prompts').claims[0].status, 'qualified');
     assert.deepEqual(row(failing, 'extensions.semantic-prompts').claims[0].carrierSuites, ['osc133']);
-    assert.equal(failing.totals.effectOtherIds, stored.totals.effectOtherIds - 1);
+    assert.equal(failing.totals.effectOtherIds, stored.totals.effectOtherIds);
 });
 
 test('an aggregate case naming a carrier no registered suite owns is refused, not silently unvalidated', () => {
@@ -595,7 +597,7 @@ test('an aggregate case naming a carrier no registered suite owns is refused, no
     assert.equal(resolveCarriers({ carrierSuites: undefined }, { caseId: 'x' }, recordBySuite, statusBySuite), null);
 });
 
-test('the aggregate projection qualifies the two aggregate ids over one claim each while keeping their outcomes distinct', async () => {
+test('the original aggregate projection remains attributable after the OSC 633 reassessment', async () => {
     const stored = committed();
     const suite = stored.suites.find(entry => entry.suite === 'shell-integration-aggregates');
     assert.equal(suite.suiteId, 'ntilde-owned-shell-integration-aggregates-projection-v1');
@@ -619,9 +621,9 @@ test('the aggregate projection qualifies the two aggregate ids over one claim ea
         const item = row(stored, id);
         assert.equal(item.stockOutcome, 'inconclusive', id);
         assert.equal(baseline().outcomes[id], 'inconclusive', `${id}: the retained stock grade is untouched`);
-        assert.deepEqual(item.claims.map(claim => claim.suite), ['shell-integration-aggregates'], id);
+        assert.equal(item.claims[0].suite, 'shell-integration-aggregates', id);
         assert.equal(item.claims[0].status, 'qualified', id);
-        assert.deepEqual([item.pinned.best, item.effect.verdict], ['inconclusive', effect], id);
+        assert.deepEqual([item.pinned.best, item.claims[0].effect.verdict], ['inconclusive', effect], id);
         if (divergent) {
             assert.deepEqual(item.claims[0].divergence, { recordedInReport: true, kind: 'pinned-inconclusive-by-design', pinned: 'inconclusive', effect, reason: item.claims[0].divergence.reason }, id);
         } else {
@@ -631,16 +633,20 @@ test('the aggregate projection qualifies the two aggregate ids over one claim ea
         assert.equal(item.claims[0].reportedConclusion.outcome, 'inconclusive', id);
         assert.equal(item.claims[0].reportedConclusion.grading, 'aggregate-pinned-replay-preserved-by-design', id);
     }
-    assert.equal(stored.totals.remainingAgainstStockInconclusive.effectMeasuredOther, 2);
-    assert.equal(row(stored, 'extensions.osc-633-vscode').effect.verdict, 'inconclusive');
+    assert.equal(stored.totals.remainingAgainstStockInconclusive.effectMeasuredOther, 1);
+    const reassessed = row(stored, 'extensions.osc-633-vscode');
+    assert.deepEqual(reassessed.claims.map(claim => claim.effect.verdict), ['inconclusive', 'supported']);
+    assert.equal(reassessed.effect.verdict, 'supported');
+    assert.equal(reassessed.claims[1].supersedesInconclusive, 'shell-integration-aggregates');
+    assert.deepEqual(reassessed.claims[1].carrierSuites, ['osc633', 'osc633-metadata']);
     assert.ok(totalsOf(stored.benchmark, baseline()).effectSupportedPinnedInconclusiveIds.includes('extensions.semantic-prompts'));
-    // A failed rederivation of the projection refuses to count either claim; neither id silently reverts to another suite.
+    // The reassessment has independently verified OSC 633 carriers. A simulated failure of the original projection drops its claims alone.
     const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'shell-integration-aggregates' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
     for (const id of suite.caseIds) assert.equal(row(failing, id).claims[0].status, 'declared-not-rederived', id);
-    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 2);
+    assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 1);
     assert.equal(failing.totals.effectSupportedIds, stored.totals.effectSupportedIds - 1);
-    assert.equal(failing.totals.effectOtherIds, stored.totals.effectOtherIds - 1);
-    assert.equal(failing.totals.remainingAgainstStockInconclusive.effectNotMeasured, stored.totals.remainingAgainstStockInconclusive.effectNotMeasured + 2);
+    assert.equal(failing.totals.effectOtherIds, stored.totals.effectOtherIds);
+    assert.equal(failing.totals.remainingAgainstStockInconclusive.effectNotMeasured, stored.totals.remainingAgainstStockInconclusive.effectNotMeasured + 1);
     // A failed carrier lends its verdict to nothing built on top of it: an OSC 133 carrier failure drops the four
     // OSC 133 ids and the semantic-prompts aggregate, while the OSC 633 aggregate keeps its qualified status.
     const osc133Failed = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'osc133' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
@@ -648,6 +654,19 @@ test('the aggregate projection qualifies the two aggregate ids over one claim ea
     assert.equal(row(osc133Failed, 'extensions.osc-633-vscode').claims[0].status, 'qualified');
     assert.equal(osc133Failed.totals.effectSupportedIds, stored.totals.effectSupportedIds - 5);
     assert.equal(osc133Failed.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 5);
+});
+
+test('the latest OSC 633 aggregate requires both carriers and falls back to the historical inconclusive claim', async () => {
+    for (const missing of ['osc633-vscode-reassessment', 'osc633-metadata']) {
+        const failed = await buildInventory({ rederivation: suite => ({
+            status: suite.suite === missing ? 'failed' : 'passed', command: 'x', testSha256: testDigest(suite),
+        }) });
+        const item = row(failed, 'extensions.osc-633-vscode');
+        assert.equal(item.claims[0].status, 'qualified');
+        assert.equal(item.claims[1].status, 'declared-not-rederived');
+        assert.equal(item.effect.verdict, 'inconclusive');
+        assert.equal(failed.totals.effectOtherIds, committed().totals.effectOtherIds + 1);
+    }
 });
 
 test('the two SIXEL raster measurements retain their revision-specific verdicts alongside the original iTerm2 claim', async () => {

@@ -1,0 +1,240 @@
+{
+  "suiteId": "ntilde-owned-osc633-aggregate-projection-v2",
+  "contractsVersion": 2,
+  "scope": "Retrospective direct-local macOS OSC 633 aggregate over independently receipted A–D lifecycle and E/P metadata observations from two App revisions. P covers Cwd.",
+  "probeHash": "16a690f34c0e",
+  "carriers": [
+    {
+      "suiteId": "ntilde-owned-osc633-graded-v1",
+      "contractsVersion": 1,
+      "publication": "2026-11-16-osc633-implementation",
+      "manifestSha256": "fa1f63e5209c05dc534dc9f6f092c4bf16535c574df6fb6037403464626446ce",
+      "archiveSha256": "009129be83a1560af7bb11870399cc19e643f486900bae4886a57231aa7c6217",
+      "reportSha256": "527228c0523b2d6da1af10608aece5c92bfac5e121668d67d456f8eb521bded0",
+      "summarySha256": "6c09c3888342e0a43fb8aa0a506491b25229714c430ee045e4ae017e26fda236",
+      "runId": "323882a7d7b0e3c86ce4152fa54e6aa3",
+      "appRevision": "9c814b13215b6abf9186b0c4c784e7702b3e1828",
+      "scriptsRevision": "9c814b13215b6abf9186b0c4c784e7702b3e1828",
+      "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "assemblySha256": "a2e858f08cfcf5370311885931a2b9c5b3e051ac6bf070179388bc03f1914fa4",
+      "sourcePolicy": "readonly-owned-source-graph-v62",
+      "sourceManifestSha256": "bd58ab31fded213d8e10c7a38b199030f26cd3d4edbc32aec95b38af920e0bfc",
+      "receiptSchema": 69
+    },
+    {
+      "suiteId": "ntilde-owned-osc633-metadata-v1",
+      "contractsVersion": 1,
+      "publication": "2026-11-26-osc633-metadata",
+      "manifestSha256": "6f7f3b92100d5d5e378ab1b2f0a2731171d36358f818f8c58a3310fe5d825dfe",
+      "archiveSha256": "7864c99e5f79c08932051f917fb93b076237b6e48402e0d9e57a8e3ec9bec13b",
+      "reportSha256": "3edc65b008391481c8fd2f7fd2638af42507c1cf9ee8d64684c66245faf96b66",
+      "summarySha256": "f68d966afcd38b60a57bc1d365a863bc18ba00d1262d8e1adf7e2fed37740f2c",
+      "runId": "b106bfc4e964bcdbd07506fcc63efcdb",
+      "appRevision": "a3319b62029f434b3420ed24fad646d76e163aaa",
+      "scriptsRevision": "a3319b62029f434b3420ed24fad646d76e163aaa",
+      "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "assemblySha256": "22aaadfa967138df83bfdea1495e035f63e0e23f3c8c6be7eb192411c3806810",
+      "sourcePolicy": "readonly-owned-source-graph-v86",
+      "sourceManifestSha256": "ce2bed90e16fb302b965cbe1b83f6ba83e5191ceceaf70a85eebaf60e89930a7",
+      "receiptSchema": 1
+    }
+  ],
+  "cases": [
+    {
+      "caseId": "extensions.osc-633-vscode",
+      "pinned": {
+        "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration",
+        "fixtureBytes": false,
+        "bundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+        "registrationSha256": "d8205e6e992759cfe820b96b1d63300cefb938c21415fc6c42d56af4f4108a5c",
+        "termless": {
+          "pass": false,
+          "response": "{\"declared\":false}",
+          "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No VS Code shell integration metadata or behavior readback for OSC 633",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No VS Code shell integration metadata or behavior readback for OSC 633"
+          }
+        },
+        "replay": [
+          {
+            "declared": false,
+            "termless": {
+              "pass": false,
+              "response": "{\"declared\":false}",
+              "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration",
+              "observation": {
+                "outcome": "inconclusive",
+                "reason": "insufficient-evidence",
+                "evidence": "legacy",
+                "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration"
+              }
+            },
+            "terminal": {
+              "pass": false,
+              "note": "No VS Code shell integration metadata or behavior readback for OSC 633",
+              "observation": {
+                "outcome": "inconclusive",
+                "reason": "insufficient-evidence",
+                "evidence": "none",
+                "note": "No VS Code shell integration metadata or behavior readback for OSC 633"
+              }
+            }
+          },
+          {
+            "declared": true,
+            "termless": {
+              "pass": false,
+              "response": "{\"declared\":true}",
+              "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration",
+              "observation": {
+                "outcome": "inconclusive",
+                "reason": "insufficient-evidence",
+                "evidence": "legacy",
+                "note": "Declared semantic-prompt capability does not establish VS Code OSC 633 shell integration"
+              }
+            },
+            "terminal": {
+              "pass": false,
+              "note": "No VS Code shell integration metadata or behavior readback for OSC 633",
+              "observation": {
+                "outcome": "inconclusive",
+                "reason": "insufficient-evidence",
+                "evidence": "none",
+                "note": "No VS Code shell integration metadata or behavior readback for OSC 633"
+              }
+            }
+          }
+        ]
+      },
+      "historical": {
+        "publication": "2026-11-16-shell-integration-aggregates",
+        "reportSha256": "f16e6a3ad2a08d696cd8b2494225b83210cf995aefd5769983d663ee5f1f796c",
+        "contractId": "ntilde-osc633-vscode-aggregate-effect-v1",
+        "outcome": "inconclusive"
+      },
+      "evidenceContract": {
+        "id": "ntilde-osc633-vscode-aggregate-effect-v2",
+        "version": 2,
+        "required": [
+          {
+            "caseId": "extensions.osc633-a",
+            "carrierSuiteId": "ntilde-owned-osc633-graded-v1",
+            "effectContractId": "ntilde-osc633-shell-lifecycle-effect-v1",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-b",
+            "carrierSuiteId": "ntilde-owned-osc633-graded-v1",
+            "effectContractId": "ntilde-osc633-shell-lifecycle-effect-v1",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-c",
+            "carrierSuiteId": "ntilde-owned-osc633-graded-v1",
+            "effectContractId": "ntilde-osc633-shell-lifecycle-effect-v1",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-d",
+            "carrierSuiteId": "ntilde-owned-osc633-graded-v1",
+            "effectContractId": "ntilde-osc633-shell-lifecycle-effect-v1",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-e",
+            "carrierSuiteId": "ntilde-owned-osc633-metadata-v1",
+            "effectContractId": "ntilde-osc633-e-cycle-metadata-v1",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          },
+          {
+            "caseId": "extensions.osc633-p",
+            "carrierSuiteId": "ntilde-owned-osc633-metadata-v1",
+            "effectContractId": "ntilde-osc633-p-cwd-metadata-v1",
+            "requiredOutcome": "supported",
+            "admittedOutcome": "supported"
+          }
+        ],
+        "pending": [],
+        "excluded": [
+          {
+            "scope": "OSC 633 F-I continuation-prompt records",
+            "reason": "terminfo.dev registers no atomic case for them; recorded as an observation-only boundary of the authoritative contract, not evidence"
+          },
+          {
+            "scope": "P properties other than Cwd",
+            "reason": "The admitted property carrier measures only reported-directory metadata."
+          }
+        ]
+      },
+      "sharedLifecycleReadback": [
+        {
+          "phase": "e-input",
+          "status": "awaitingInput",
+          "accepting": true,
+          "command": null
+        },
+        {
+          "phase": "e-running",
+          "status": "running",
+          "accepting": false,
+          "command": "echo reported;\\part"
+        },
+        {
+          "phase": "e-finished",
+          "status": "awaitingInput",
+          "accepting": false,
+          "command": null
+        },
+        {
+          "phase": "e-no-report",
+          "status": "running",
+          "accepting": false,
+          "command": null
+        },
+        {
+          "phase": "e-no-report-finished",
+          "status": "awaitingInput",
+          "accepting": false,
+          "command": null
+        }
+      ],
+      "contractResult": {
+        "outcome": "supported",
+        "attribution": "Retrospective direct-local macOS OSC 633 aggregate over independently receipted A–D lifecycle and E/P metadata observations from two App revisions. P covers Cwd."
+      },
+      "stock": {
+        "outcome": "inconclusive",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "rerun": false
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "aggregate-pinned-replay-preserved-by-design",
+        "evidence": "admitted-stored-cells-and-pane-metadata-lifecycle-publications"
+      }
+    }
+  ]
+}

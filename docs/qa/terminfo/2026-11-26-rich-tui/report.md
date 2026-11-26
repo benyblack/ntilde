@@ -34,4 +34,6 @@ The [Sixel report assessment](../2026-11-26-rich-sixel-reports/report.md) rederi
 
 The [two-case OSC 633 assessment](../2026-11-26-osc633-metadata/report.md) qualifies E for a single command cycle and P for two reported-directory updates. Both owned effects were supported and both pinned probe verdicts were inconclusive.
 
+The [aggregate reassessment](../2026-11-26-osc633-aggregate-reassessment/report.md) combines rederived A–D and E/P evidence from two App revisions. The bounded owned aggregate is supported, and the exact aggregate probe remains inconclusive.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.
