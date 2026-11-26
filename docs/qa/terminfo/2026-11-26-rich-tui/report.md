@@ -22,4 +22,8 @@ The [Kitty keyboard assessment](kitty-report.md) records the bytes the child rec
 
 The [Kitty graphics assessment](../2026-11-26-rich-kitty-graphics/report.md) records the pinned transmit and display replies and the paired pixel captures of the 1 × 1 RGB fixture. It also rederives the historical numbered lifecycle and number-reuse cases.
 
+## OSC 66 text sizing
+
+The [OSC 66 assessment](../2026-11-26-rich-osc66/report.md) rederives the historical cursor grades, records the pinned width and scale replies on current main, and compares rendered ink against ordinary glyphs in a separate fixture.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.

@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "featureId": "extensions.osc66-text-sizing",
+  "suite": "ntilde-owned-osc66-v1",
+  "stock": "supported",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "historical": {
+    "comparisonSha256": "93aa59de71c37635fbc07caa1bb7787b3c2e96339809812e284e13a75bb90d24",
+    "before": {
+      "sourceCommit": "52ed24cd4bb2eb8d69d747c6ba6ee063d372709e",
+      "outcome": "unsupported",
+      "replies": [
+        "\u001b[1;1R",
+        "\u001b[1;1R",
+        "\u001b[1;1R"
+      ]
+    },
+    "after": {
+      "sourceCommit": "836c81429517ce5dd124d200953e742fa79c7b21",
+      "outcome": "supported",
+      "replies": [
+        "\u001b[1;1R",
+        "\u001b[1;3R",
+        "\u001b[1;5R"
+      ]
+    }
+  },
+  "pinnedReplies": {
+    "terminal": {
+      "pass": true,
+      "note": "Cursor advance: width verified; scale verified. Glyph appearance needs a visual check.",
+      "response": "{\"before\":{\"row\":1,\"col\":1},\"width\":{\"row\":1,\"col\":3},\"scale\":{\"row\":1,\"col\":5}}",
+      "observation": {
+        "outcome": "supported",
+        "evidence": "behavior",
+        "note": "Cursor advance: width verified; scale verified. Glyph appearance needs a visual check."
+      },
+      "assertions": [
+        {
+          "kind": "positive",
+          "expected": "Each OSC 66 width/scale sequence advances two columns without changing row",
+          "observed": "{\"before\":{\"row\":1,\"col\":1},\"width\":{\"row\":1,\"col\":3},\"scale\":{\"row\":1,\"col\":5}}"
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "stage": "home",
+        "write": "\u001b[1;1H\u001b[2K\r",
+        "query": "\u001b[6n",
+        "raw": "\u001b[1;1R",
+        "barrier": "\u001b[?62;4;22c",
+        "physical": {
+          "row": 1,
+          "col": 1
+        }
+      },
+      {
+        "stage": "width-cpr",
+        "write": "\u001b]66;w=2; \u0007",
+        "query": "\u001b[6n",
+        "raw": "\u001b[1;3R",
+        "barrier": "\u001b[?62;4;22c",
+        "physical": {
+          "row": 1,
+          "col": 3
+        }
+      },
+      {
+        "stage": "scale-cpr",
+        "write": "\u001b]66;s=2; \u0007",
+        "query": "\u001b[6n",
+        "raw": "\u001b[1;5R",
+        "barrier": "\u001b[?62;4;22c",
+        "physical": {
+          "row": 1,
+          "col": 5
+        }
+      }
+    ]
+  },
+  "ownedPixels": {
+    "width": {
+      "outcome": "supported",
+      "measurement": {
+        "envelope": {
+          "x": 40,
+          "y": 76,
+          "width": 18,
+          "height": 19
+        },
+        "count": 182,
+        "outside": 0,
+        "blank": true,
+        "bounds": {
+          "x": 40,
+          "y": 80,
+          "width": 18,
+          "height": 11
+        }
+      },
+      "ordinary": {
+        "envelope": {
+          "x": 40,
+          "y": 76,
+          "width": 36,
+          "height": 19
+        },
+        "count": 292,
+        "outside": 0,
+        "blank": true,
+        "bounds": {
+          "x": 40,
+          "y": 80,
+          "width": 35,
+          "height": 11
+        }
+      }
+    },
+    "scale": {
+      "outcome": "supported",
+      "measurement": {
+        "envelope": {
+          "x": 40,
+          "y": 76,
+          "width": 18,
+          "height": 38
+        },
+        "count": 210,
+        "outside": 0,
+        "blank": true,
+        "bounds": {
+          "x": 41,
+          "y": 85,
+          "width": 14,
+          "height": 21
+        }
+      },
+      "ordinary": {
+        "envelope": {
+          "x": 40,
+          "y": 76,
+          "width": 9,
+          "height": 19
+        },
+        "count": 73,
+        "outside": 0,
+        "blank": true,
+        "bounds": {
+          "x": 40,
+          "y": 80,
+          "width": 8,
+          "height": 11
+        }
+      }
+    },
+    "grid": {
+      "renderWidthPx": 1264,
+      "renderHeightPx": 779,
+      "cellWidthDip": 8.5,
+      "cellHeightDip": 18.5,
+      "baselineDip": 14.5,
+      "originXPx": 4,
+      "originYPx": 0,
+      "cellWidthPx": 9,
+      "cellHeightPx": 19,
+      "baselineOffsetPx": 15,
+      "underlineOffsetPx": 16,
+      "strikeOffsetPx": 10
+    },
+    "font": {
+      "configuredFamily": "JetBrains Mono NL",
+      "primaryFamily": "JetBrains Mono NL",
+      "primarySha256": "fb3b2575d7b0657359707993288f12a7360344d39387bb26050e276d61f6bd2a",
+      "collectionIndex": 0,
+      "weight": 400,
+      "width": 5,
+      "slant": "Upright",
+      "fallbackFamilies": [
+        "Apple Color Emoji",
+        "Symbols Nerd Font Mono",
+        "JetBrains Mono NL",
+        "Cascadia Mono PL",
+        "Courier New"
+      ],
+      "sizeDip": 14
+    },
+    "platform": "macos",
+    "architecture": "arm64",
+    "restoredMain": true,
+    "restoredFixture": true,
+    "frames": [
+      {
+        "stage": "start",
+        "pngs": [
+          "osc66-pixels/frame-000.png",
+          "osc66-pixels/frame-001.png"
+        ]
+      },
+      {
+        "stage": "blank",
+        "pngs": [
+          "osc66-pixels/frame-010.png",
+          "osc66-pixels/frame-011.png"
+        ]
+      },
+      {
+        "stage": "ordinary-wide",
+        "pngs": [
+          "osc66-pixels/frame-012.png",
+          "osc66-pixels/frame-013.png"
+        ]
+      },
+      {
+        "stage": "width-ink",
+        "pngs": [
+          "osc66-pixels/frame-014.png",
+          "osc66-pixels/frame-015.png"
+        ]
+      },
+      {
+        "stage": "ordinary",
+        "pngs": [
+          "osc66-pixels/frame-016.png",
+          "osc66-pixels/frame-017.png"
+        ]
+      },
+      {
+        "stage": "scale-ink",
+        "pngs": [
+          "osc66-pixels/frame-018.png",
+          "osc66-pixels/frame-019.png"
+        ]
+      },
+      {
+        "stage": "cleared",
+        "pngs": [
+          "osc66-pixels/frame-020.png",
+          "osc66-pixels/frame-021.png"
+        ]
+      },
+      {
+        "stage": "finish",
+        "pngs": [
+          "osc66-pixels/frame-022.png",
+          "osc66-pixels/frame-023.png"
+        ]
+      }
+    ]
+  },
+  "measurement": {
+    "runId": "b9fd02ef8d3c007da280ba83a0eac01d",
+    "appRevision": "ad81a4495bab53dc48903bc71bc972d9d71b1542",
+    "scriptsRevision": "515c874eb3d3ff4ed9c9ae4066d7f05f95d2c71b",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-v84",
+    "receiptSchema": 1,
+    "version": "0.14.0+ad81a4495bab53dc48903bc71bc972d9d71b1542",
+    "nodeVersion": "v24.22.2",
+    "startedAt": "2026-11-26T10:02:16.808Z",
+    "releasedAt": "2026-11-26T10:02:20.751Z",
+    "geometry": {
+      "rows": 41,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "17dd5a53554192adc43ef412b5583a83527e597e348ac191e4f19a6daec5c8e7",
+    "sourceSnapshotManifestSha256": "ec77d128d3ea9a1da2434797d1a1a976d56a17a87718d559fedfc54008f725b7",
+    "archiveSha256": "36c99badf51fac613bd18f78c4ae467241a3769b16a7e2cc8c768e8d4630cd71"
+  }
+}
