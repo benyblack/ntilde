@@ -149,6 +149,14 @@ const sixelReportsSources = {
     sixelReportsOwnedSourceSha256: 'sixel-reports-owned.mjs',
     sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
 };
+const xtwinopsPixelsSources = {
+    ...sixelReportsSources,
+    modernBlinkWindowSourceSha256: 'modern-blink-window.jxa',
+    xtwinopsPixelsContractsSourceSha256: 'xtwinops-pixels-contracts.mjs',
+    xtwinopsPixelsFontSourceSha256: 'xtwinops-pixels-font.jxa',
+    xtwinopsPixelsOwnedSourceSha256: 'xtwinops-pixels-owned.mjs',
+    xtwinopsPixelsWorkerSourceSha256: 'xtwinops-pixels-worker.mjs',
+};
 const mok3Sources = {
     mok3ContractsSourceSha256: 'modify-other-keys-3-contracts.mjs',
     mok3OwnedSourceSha256: 'modify-other-keys-3-owned.mjs',
@@ -189,6 +197,8 @@ const scopes = {
     'font-ligatures': { policy: 'readonly-owned-source-graph-font-ligatures-v1', sources: fontLigatureSources, entry: fontLigatureSources.fontLigaturesOwnedSourceSha256 },
     'prompt-parts': { policy: 'readonly-owned-source-graph-prompt-parts-v1', sources: promptPartsSources, entry: promptPartsSources.promptPartsOwnedSourceSha256 },
     'osc633-metadata': { policy: 'readonly-owned-source-graph-v86', sources: osc633MetadataSources, entry: osc633MetadataSources.osc633MetadataOwnedSourceSha256 },
+    'xtwinops-pixels': { policy: 'readonly-owned-source-graph-xtwinops-pixels-v1',
+        sources: xtwinopsPixelsSources, entry: xtwinopsPixelsSources.xtwinopsPixelsOwnedSourceSha256 },
     'sixel-reports': { policy: 'readonly-owned-source-graph-v85', sources: sixelReportsSources, entry: sixelReportsSources.sixelReportsOwnedSourceSha256 },
     'osc66': { policy: 'readonly-owned-source-graph-v84', sources: osc66Sources, entry: osc66Sources.osc66OwnedSourceSha256 },
     'kitty-graphics': { policy: 'readonly-owned-source-graph-v83', sources: kittyGraphicsSources, entry: kittyGraphicsSources.kittyGraphicsOwnedSourceSha256 },
@@ -255,7 +265,7 @@ async function capture(root) {
     for (const [key, file] of Object.entries(inventory)) {
         if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file)
             && file !== blinkSources.modernBlinkWindowSourceSha256 && file !== oscCwdSources.modernOscCwdNativeSourceSha256
-            && !Object.hasOwn(oscCwdReferencePaths, file)
+            && file !== xtwinopsPixelsSources.xtwinopsPixelsFontSourceSha256 && !Object.hasOwn(oscCwdReferencePaths, file)
             && !Object.hasOwn(coreGapsReferencePaths, file) && !Object.hasOwn(oscTitleReferencePaths, file) && !Object.hasOwn(insertReplaceReferencePaths, file) && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file) && !Object.hasOwn(cellSizeReferencePaths, file))) throw new Error('Invalid source inventory entry.');
         const source = pathFor(repo, file), info = lstatSync(source);
         if (!info.isFile() || info.isSymbolicLink()) throw new Error('Expected a regular source file.');

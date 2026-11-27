@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { assertPrivateFile, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { withOwnedOutput } from './terminal-output.mjs';
 import { rawInputCapture } from './input-bytes.mjs';
@@ -8,7 +9,7 @@ import { leave, planFor, prefix, queryWrites, requireSixel } from './sixel-repor
 async function measure(step, capture, send) {
     if (step.sample) {
         const samples = [];
-        for (const requestBytes of queryWrites) {
+        for (const requestBytes of step.queries ?? queryWrites) {
             const sample = await capture.capture(() => write(process.stdout, requestBytes)); // NOSONAR: serial PTY exchanges.
             samples.push({ requestBytes, sample });
         }
@@ -21,12 +22,12 @@ async function measure(step, capture, send) {
     }
 }
 
-async function collect(runId, request) {
-    const send = (stage, value) => request(prefix + stage, value);
+async function collect(runId, request, plan, stagePrefix) {
+    const send = (stage, value) => request(stagePrefix + stage, value);
     await send('start');
     const capture = rawInputCapture(process.stdin, process.stdout);
     try {
-        for (const step of planFor(runId).slice(1, -1)) {
+        for (const step of plan(runId).slice(1, -1)) {
             await measure(step, capture, send); // NOSONAR: owner verifies each stage before the next.
         }
         requireSixel(!capture.failed, 'raw reply capture failed after the final fence');
@@ -42,13 +43,13 @@ async function collect(runId, request) {
     } finally { capture.dispose(); }
 }
 
-async function run(config) {
+async function run(config, plan, stagePrefix) {
     const { tabTty: tty, originalTerminalState: original } = await verifyNtildeOutput(config, process.stdout);
     const request = (kind, details) => requestOwner(config, kind, { ...details, tty });
     try {
         await withOwnedOutput({ tty, original, restoreInput: () => {} }, async () => {
             await request('raw-output');
-            await collect(config.runId, request);
+            await collect(config.runId, request, plan, stagePrefix);
         });
         await request('done');
     } catch (error) {
@@ -58,10 +59,14 @@ async function run(config) {
     }
 }
 
-try {
-    assertPrivateFile(process.argv[2]);
-    await run(JSON.parse(readFileSync(process.argv[2], 'utf8')));
-} catch (error) {
-    console.error(error.message);
-    process.exitCode = 1;
+export async function runReportWorker(plan, stagePrefix) {
+    try {
+        assertPrivateFile(process.argv[2]);
+        await run(JSON.parse(readFileSync(process.argv[2], 'utf8')), plan, stagePrefix);
+    } catch (error) {
+        console.error(error.message);
+        process.exitCode = 1;
+    }
 }
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) await runReportWorker(planFor, prefix);

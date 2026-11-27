@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "measurement": {
+    "runId": "6ef5b839b27c220ef603cd2843e93c25",
+    "appRevision": "8ce13633b18218121a24948672fb9987afc26914",
+    "scriptsRevision": "4cc1e37877a0310c4fa289e8906cefe38bfd713b",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-xtwinops-pixels-v1",
+    "receiptSchema": 1
+  },
+  "archives": {
+    "owned-run.zip": "3254a2169d9b47537302595feeafbf09f3a4162aa80a436c4d2922ab290e4638"
+  },
+  "failedAttempts": [
+    {
+      "archive": "pre-fix-metadata-attempt.zip",
+      "sha256": "0501deab45256c0bbe276f9d1b04316c77a831a02a43220c57e3fb73a75420b0",
+      "runId": "0f03fca1bfa4b9b4eb418895a289c3b4",
+      "appRevision": "070e06f3ab8a73cadac9ab821b53cc32210ad351",
+      "scriptsRevision": "a90ff38ee43364726b68a35d218fb1c12115cc05",
+      "reason": "Invalid or incomplete owned pane metadata."
+    },
+    {
+      "archive": "pre-fix-grid-attempt.zip",
+      "sha256": "25407a94ab460ae5bbd79f0780921a03454f5dcf6d20f0adf7213896bb724a55",
+      "runId": "5971cc49358758b78201f00a40c819c5",
+      "appRevision": "070e06f3ab8a73cadac9ab821b53cc32210ad351",
+      "scriptsRevision": "8738380bad835436ac81352d51f06432464d317c",
+      "reason": "Cell snapshot budget exhausted."
+    }
+  ]
+}

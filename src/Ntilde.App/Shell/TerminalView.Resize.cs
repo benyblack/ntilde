@@ -353,14 +353,8 @@ namespace Ntilde.Shell
         /// </remarks>
         private void ReconcileDispatchedGrid()
         {
-            // Only ever a repair for a dispatch that was actually cancelled. Reconciling on
-            // every restore would make this a second resize path with a different opinion:
-            // the font branch of ApplySettings derives its grid as Bounds.Width / CellWidth
-            // while TryComputeGrid subtracts the padding the draw operation reserves, so the
-            // two disagree by a column at some widths - and an ungated reconcile would turn
-            // that standing disagreement into a reflow and a SIGWINCH every time someone
-            // collapsed and reopened a pane. Repairing a cancellation is this method's job;
-            // arbitrating between two grid calculations is not.
+            // Only repair a dispatch that was actually cancelled. Ordinary show/hide
+            // must not cause a second resize or SIGWINCH for an already settled grid.
             if (!_resizeDispatchCancelled) return;
             if (!_isUiRenderable) return;
             if (_buffer == null || !_isReady) return;

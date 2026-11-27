@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -98,6 +100,46 @@ public class TerminalViewResizeTrackingTests
             // Whatever it dispatched, the record names it - so it still describes the grid the
             // buffer is genuinely on.
             Assert.Equal((buffer.Cols, buffer.Rows), view.LastDispatchedGridForTest);
+        }
+        finally
+        {
+            window.Close();
+            Dispatcher.UIThread.RunJobs();
+        }
+    }
+
+    [AvaloniaFact]
+    [Trait("Category", "Regression")]
+    public void AFontChangeDispatchesOnlyTheColumnsThatFitAfterPadding()
+    {
+        var small = new TerminalSettings { FontSize = 14 };
+        var large = new TerminalSettings { FontSize = 28 };
+        var buffer = new TerminalBuffer(80, 24);
+        var view = new TerminalView();
+        view.SetBuffer(buffer);
+        view.ApplySettings(large);
+        var window = new Window { Content = view, Width = 800, Height = 400 };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            // At the larger font, the unpadded width fits 32 cells, with less than
+            // the 4 DIP needed by the left padding.
+            double cellWidth = view.Metrics.CellWidth;
+            window.Width = Math.Ceiling(32 * cellWidth) + 1;
+            view.ApplySettings(small);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(buffer.Cols > 32);
+
+            var requests = new List<(int Cols, int Rows)>();
+            view.OnResize += (cols, rows) => requests.Add((cols, rows));
+            view.ApplySettings(large);
+
+            Assert.Equal(32, (int)(view.Bounds.Width / view.Metrics.CellWidth));
+            Assert.Equal(31, view.Cols);
+            Assert.Equal((31, view.Rows), Assert.Single(requests));
+            Assert.Equal((31, view.Rows), (buffer.Cols, buffer.Rows));
         }
         finally
         {

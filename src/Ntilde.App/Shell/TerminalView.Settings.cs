@@ -113,16 +113,13 @@ namespace Ntilde.Shell
 
                     // Trigger resize based on new font metrics and current bounds
                     // BUT only if dimensions actually changed (to avoid overwriting theme-updated cells)
-                    if (_buffer != null && _metrics.CellWidth > 0 && _metrics.CellHeight > 0)
+                    if (_buffer != null && TryComputeGrid(Bounds.Size, _metrics.CellWidth, _metrics.CellHeight, out int cols, out int rows))
                     {
-                        int cols = (int)(Bounds.Width / _metrics.CellWidth);
-                        int rows = (int)(Bounds.Height / _metrics.CellHeight);
-
                         bool fontGridChanged = DefersBufferResizeToSession
                             ? GridDiffersFromLastSent(cols, rows)
                             : (cols != _buffer.Cols || rows != _buffer.Rows);
 
-                        if (cols > 0 && rows > 0 && fontGridChanged)
+                        if (fontGridChanged)
                         {
                             LastCompletedResizeDispatch = default;
                             if (!DefersBufferResizeToSession) _buffer.Resize(cols, rows);
@@ -135,13 +132,6 @@ namespace Ntilde.Shell
                             // new metrics, bypassing the throttle entirely. Leaving it
                             // unrecorded would make the field describe a grid that had since
                             // been superseded, which is the same defect this change is about.
-                            //
-                            // Note this path derives its own grid rather than using
-                            // TryComputeGrid, so it does not subtract the padding the draw
-                            // operation reserves and can land a column wider than the layout
-                            // path would. That predates this change and is left alone here;
-                            // recording what it actually dispatched is what keeps the field
-                            // honest either way.
                             RecordGridSent(cols, rows);
                             CompleteResizeDispatch(cols, rows, resizeTarget);
                         }

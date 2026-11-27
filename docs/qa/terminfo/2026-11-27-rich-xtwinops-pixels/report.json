@@ -1,0 +1,744 @@
+{
+  "schemaVersion": 1,
+  "suite": "ntilde-owned-xtwinops-pixels-v1",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "stock": {
+    "device.xtwinops-14": "supported",
+    "device.xtwinops-16": "supported"
+  },
+  "attempts": [
+    {
+      "archive": "pre-fix-metadata-attempt.zip",
+      "sha256": "0501deab45256c0bbe276f9d1b04316c77a831a02a43220c57e3fb73a75420b0",
+      "runId": "0f03fca1bfa4b9b4eb418895a289c3b4",
+      "appRevision": "070e06f3ab8a73cadac9ab821b53cc32210ad351",
+      "scriptsRevision": "a90ff38ee43364726b68a35d218fb1c12115cc05",
+      "reason": "Invalid or incomplete owned pane metadata.",
+      "releasedAt": "2026-11-27T17:04:52.024Z"
+    },
+    {
+      "archive": "pre-fix-grid-attempt.zip",
+      "sha256": "25407a94ab460ae5bbd79f0780921a03454f5dcf6d20f0adf7213896bb724a55",
+      "runId": "5971cc49358758b78201f00a40c819c5",
+      "appRevision": "070e06f3ab8a73cadac9ab821b53cc32210ad351",
+      "scriptsRevision": "8738380bad835436ac81352d51f06432464d317c",
+      "reason": "Cell snapshot budget exhausted.",
+      "releasedAt": "2026-11-27T17:05:44.803Z",
+      "view": {
+        "rows": 24,
+        "cols": 79
+      },
+      "bufferAndKernel": {
+        "rows": 24,
+        "cols": 80
+      }
+    }
+  ],
+  "pinnedReplies": [
+    {
+      "stage": "initial",
+      "cases": [
+        {
+          "id": "device.xtwinops-14",
+          "raw": "\u001b[4;1480;2380t\u001b[?62;4;22c",
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[4;1480;2380t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;1480;2380t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[4;1480;2380t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;1480;2380t"
+              }
+            ]
+          }
+        },
+        {
+          "id": "device.xtwinops-16",
+          "raw": "\u001b[6;37;17t\u001b[?62;4;22c",
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[6;37;17t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stage": "resized",
+      "cases": [
+        {
+          "id": "device.xtwinops-14",
+          "raw": "\u001b[4;962;1428t\u001b[?62;4;22c",
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[4;962;1428t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;962;1428t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[4;962;1428t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;962;1428t"
+              }
+            ]
+          }
+        },
+        {
+          "id": "device.xtwinops-16",
+          "raw": "\u001b[6;37;17t\u001b[?62;4;22c",
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[6;37;17t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stage": "font-changed",
+      "cases": [
+        {
+          "id": "device.xtwinops-14",
+          "raw": "\u001b[4;960;1422t\u001b[?62;4;22c",
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[4;960;1422t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;960;1422t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[4;960;1422t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;960;1422t"
+              }
+            ]
+          }
+        },
+        {
+          "id": "device.xtwinops-16",
+          "raw": "\u001b[6;40;18t\u001b[?62;4;22c",
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[6;40;18t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;40;18t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[6;40;18t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;40;18t"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stage": "restored",
+      "cases": [
+        {
+          "id": "device.xtwinops-14",
+          "raw": "\u001b[4;1480;2380t\u001b[?62;4;22c",
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[4;1480;2380t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;1480;2380t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[4;1480;2380t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;1480;2380t"
+              }
+            ]
+          }
+        },
+        {
+          "id": "device.xtwinops-16",
+          "raw": "\u001b[6;37;17t\u001b[?62;4;22c",
+          "terminal": {
+            "pass": true,
+            "response": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[6;37;17t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "ownedGeometry": {
+    "stages": [
+      {
+        "stage": "initial",
+        "grid": {
+          "rows": 40,
+          "cols": 140
+        },
+        "cell": {
+          "viewRows": 40,
+          "viewCols": 140,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "fontAscentDip": 14.280059814453125,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "font": {
+          "fontSizeDip": 14,
+          "windowWidthDip": 1200,
+          "windowHeightDip": 800
+        },
+        "replies": [
+          {
+            "id": "device.xtwinops-14",
+            "request": "\u001b[14t\u001b[c",
+            "raw": "\u001b[4;1480;2380t\u001b[?62;4;22c",
+            "reply": "\u001b[4;1480;2380t",
+            "expected": {
+              "width": 2380,
+              "height": 1480
+            },
+            "observed": {
+              "width": 2380,
+              "height": 1480
+            },
+            "outcome": "passed"
+          },
+          {
+            "id": "device.xtwinops-16",
+            "request": "\u001b[16t\u001b[c",
+            "raw": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "reply": "\u001b[6;37;17t",
+            "expected": {
+              "width": 17,
+              "height": 37
+            },
+            "observed": {
+              "width": 17,
+              "height": 37
+            },
+            "outcome": "passed"
+          },
+          {
+            "request": "\u001b[?2;1;0S\u001b[c",
+            "raw": "\u001b[?2;0;2000;1480S\u001b[?62;4;22c",
+            "reply": "\u001b[?2;0;2000;1480S",
+            "expected": {
+              "width": 2000,
+              "height": 1480
+            },
+            "observed": {
+              "width": 2000,
+              "height": 1480
+            },
+            "outcome": "passed"
+          }
+        ],
+        "expected": {
+          "area": {
+            "width": 2380,
+            "height": 1480
+          },
+          "cell": {
+            "width": 17,
+            "height": 37
+          },
+          "cappedArea": {
+            "width": 2000,
+            "height": 1480
+          },
+          "outerWindow": {
+            "width": 2400,
+            "height": 1600
+          }
+        }
+      },
+      {
+        "stage": "resized",
+        "grid": {
+          "rows": 26,
+          "cols": 84
+        },
+        "cell": {
+          "viewRows": 26,
+          "viewCols": 84,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "fontAscentDip": 14.280059814453125,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "font": {
+          "fontSizeDip": 14,
+          "windowWidthDip": 723,
+          "windowHeightDip": 549
+        },
+        "replies": [
+          {
+            "id": "device.xtwinops-14",
+            "request": "\u001b[14t\u001b[c",
+            "raw": "\u001b[4;962;1428t\u001b[?62;4;22c",
+            "reply": "\u001b[4;962;1428t",
+            "expected": {
+              "width": 1428,
+              "height": 962
+            },
+            "observed": {
+              "width": 1428,
+              "height": 962
+            },
+            "outcome": "passed"
+          },
+          {
+            "id": "device.xtwinops-16",
+            "request": "\u001b[16t\u001b[c",
+            "raw": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "reply": "\u001b[6;37;17t",
+            "expected": {
+              "width": 17,
+              "height": 37
+            },
+            "observed": {
+              "width": 17,
+              "height": 37
+            },
+            "outcome": "passed"
+          },
+          {
+            "request": "\u001b[?2;1;0S\u001b[c",
+            "raw": "\u001b[?2;0;1428;962S\u001b[?62;4;22c",
+            "reply": "\u001b[?2;0;1428;962S",
+            "expected": {
+              "width": 1428,
+              "height": 962
+            },
+            "observed": {
+              "width": 1428,
+              "height": 962
+            },
+            "outcome": "passed"
+          }
+        ],
+        "expected": {
+          "area": {
+            "width": 1428,
+            "height": 962
+          },
+          "cell": {
+            "width": 17,
+            "height": 37
+          },
+          "cappedArea": {
+            "width": 1428,
+            "height": 962
+          },
+          "outerWindow": {
+            "width": 1446,
+            "height": 1098
+          }
+        }
+      },
+      {
+        "stage": "font-changed",
+        "grid": {
+          "rows": 24,
+          "cols": 79
+        },
+        "cell": {
+          "viewRows": 24,
+          "viewCols": 79,
+          "cellWidthDip": 9,
+          "cellHeightDip": 20,
+          "fontAscentDip": 15.300064086914062,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "font": {
+          "fontSizeDip": 15,
+          "windowWidthDip": 723,
+          "windowHeightDip": 549
+        },
+        "replies": [
+          {
+            "id": "device.xtwinops-14",
+            "request": "\u001b[14t\u001b[c",
+            "raw": "\u001b[4;960;1422t\u001b[?62;4;22c",
+            "reply": "\u001b[4;960;1422t",
+            "expected": {
+              "width": 1422,
+              "height": 960
+            },
+            "observed": {
+              "width": 1422,
+              "height": 960
+            },
+            "outcome": "passed"
+          },
+          {
+            "id": "device.xtwinops-16",
+            "request": "\u001b[16t\u001b[c",
+            "raw": "\u001b[6;40;18t\u001b[?62;4;22c",
+            "reply": "\u001b[6;40;18t",
+            "expected": {
+              "width": 18,
+              "height": 40
+            },
+            "observed": {
+              "width": 18,
+              "height": 40
+            },
+            "outcome": "passed"
+          },
+          {
+            "request": "\u001b[?2;1;0S\u001b[c",
+            "raw": "\u001b[?2;0;1422;960S\u001b[?62;4;22c",
+            "reply": "\u001b[?2;0;1422;960S",
+            "expected": {
+              "width": 1422,
+              "height": 960
+            },
+            "observed": {
+              "width": 1422,
+              "height": 960
+            },
+            "outcome": "passed"
+          }
+        ],
+        "expected": {
+          "area": {
+            "width": 1422,
+            "height": 960
+          },
+          "cell": {
+            "width": 18,
+            "height": 40
+          },
+          "cappedArea": {
+            "width": 1422,
+            "height": 960
+          },
+          "outerWindow": {
+            "width": 1446,
+            "height": 1098
+          }
+        }
+      },
+      {
+        "stage": "restored",
+        "grid": {
+          "rows": 40,
+          "cols": 140
+        },
+        "cell": {
+          "viewRows": 40,
+          "viewCols": 140,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "fontAscentDip": 14.280059814453125,
+          "renderScaling": 2,
+          "backingScale": 2
+        },
+        "font": {
+          "fontSizeDip": 14,
+          "windowWidthDip": 1199,
+          "windowHeightDip": 808
+        },
+        "replies": [
+          {
+            "id": "device.xtwinops-14",
+            "request": "\u001b[14t\u001b[c",
+            "raw": "\u001b[4;1480;2380t\u001b[?62;4;22c",
+            "reply": "\u001b[4;1480;2380t",
+            "expected": {
+              "width": 2380,
+              "height": 1480
+            },
+            "observed": {
+              "width": 2380,
+              "height": 1480
+            },
+            "outcome": "passed"
+          },
+          {
+            "id": "device.xtwinops-16",
+            "request": "\u001b[16t\u001b[c",
+            "raw": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "reply": "\u001b[6;37;17t",
+            "expected": {
+              "width": 17,
+              "height": 37
+            },
+            "observed": {
+              "width": 17,
+              "height": 37
+            },
+            "outcome": "passed"
+          },
+          {
+            "request": "\u001b[?2;1;0S\u001b[c",
+            "raw": "\u001b[?2;0;2000;1480S\u001b[?62;4;22c",
+            "reply": "\u001b[?2;0;2000;1480S",
+            "expected": {
+              "width": 2000,
+              "height": 1480
+            },
+            "observed": {
+              "width": 2000,
+              "height": 1480
+            },
+            "outcome": "passed"
+          }
+        ],
+        "expected": {
+          "area": {
+            "width": 2380,
+            "height": 1480
+          },
+          "cell": {
+            "width": 17,
+            "height": 37
+          },
+          "cappedArea": {
+            "width": 2000,
+            "height": 1480
+          },
+          "outerWindow": {
+            "width": 2398,
+            "height": 1616
+          }
+        }
+      }
+    ],
+    "actions": [
+      {
+        "stage": "resize",
+        "target": {
+          "rows": 26,
+          "cols": 84
+        },
+        "observed": {
+          "paneId": "0958351e-cfca-46d2-b88f-d090129f0509",
+          "runId": "6ef5b839b27c220ef603cd2843e93c25",
+          "observedAt": "2026-11-27T17:24:21.534Z",
+          "app": {
+            "rows": 26,
+            "cols": 84,
+            "layoutSettled": true,
+            "exact": true
+          },
+          "terminalOutput": {
+            "tool": "/bin/stty",
+            "outputProcessing": false,
+            "description": "speed 9600 baud; 26 rows; 84 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+          }
+        }
+      },
+      {
+        "stage": "restore",
+        "target": {
+          "rows": 40,
+          "cols": 140
+        },
+        "observed": {
+          "paneId": "0958351e-cfca-46d2-b88f-d090129f0509",
+          "runId": "6ef5b839b27c220ef603cd2843e93c25",
+          "observedAt": "2026-11-27T17:24:22.762Z",
+          "app": {
+            "rows": 40,
+            "cols": 140,
+            "layoutSettled": true,
+            "exact": true
+          },
+          "terminalOutput": {
+            "tool": "/bin/stty",
+            "outputProcessing": false,
+            "description": "speed 9600 baud; 40 rows; 140 columns;\nlflags: -icanon -isig -iexten -echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip -icrnl -inlcr -igncr -ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk -brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;"
+          }
+        }
+      }
+    ],
+    "restored": true
+  },
+  "measurement": {
+    "runId": "6ef5b839b27c220ef603cd2843e93c25",
+    "appRevision": "8ce13633b18218121a24948672fb9987afc26914",
+    "scriptsRevision": "4cc1e37877a0310c4fa289e8906cefe38bfd713b",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-xtwinops-pixels-v1",
+    "receiptSchema": 1,
+    "version": "0.14.0+8ce13633b18218121a24948672fb9987afc26914",
+    "nodeVersion": "v24.22.2",
+    "startedAt": "2026-11-27T17:24:18.932Z",
+    "releasedAt": "2026-11-27T17:24:23.449Z",
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "417b7420170e6570018cd62df5c18629f37cac4d8cd1184a0ecbc3b320f0a2a4",
+    "sourceSnapshotManifestSha256": "95d10c09cd8ae60884fdf02f0ac992aa21f37617e4bfd5a8da3515b913e84a72",
+    "archiveSha256": "3254a2169d9b47537302595feeafbf09f3a4162aa80a436c4d2922ab290e4638"
+  }
+}
