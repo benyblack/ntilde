@@ -40,18 +40,18 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 157,
-    "suiteClaims": 161,
+    "uniqueBenchmarkIds": 158,
+    "suiteClaims": 162,
     "idsWithMultipleClaims": [
       "extensions.osc-633-vscode",
       "extensions.sixel",
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 151,
+    "effectSupportedIds": 152,
     "effectUnsupportedIds": 5,
     "effectOtherIds": 1,
-    "pinnedAndEffectSupportedIds": 97,
+    "pinnedAndEffectSupportedIds": 98,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
       "device.xtreportcolors",
@@ -118,10 +118,13 @@
     "effectSupportedOfStockInconclusive": 150,
     "effectUnsupportedOfStockInconclusive": 5,
     "pinnedSupportedOfStockInconclusive": 96,
+    "reassessedStockUnsupportedIds": [
+      "extensions.osc5522-clipboard"
+    ],
     "ungradedStockIdsWithEvidence": [
       "cursor.reverse-wrap"
     ],
-    "pinnedSupportedIds": 97,
+    "pinnedSupportedIds": 98,
     "baseline": {
       "description": "stock terminfo.dev@4.0.0 collector run, graded cases only",
       "allCases": 255,
@@ -4767,6 +4770,54 @@
         "command": "node --test scripts/terminfo/dsl-publication.test.mjs",
         "testSha256": "11727421f848cf2632863b3229eaadfd44f4559b17f8f75ee25dad82d8a5a8ee"
       }
+    },
+    {
+      "suite": "osc5522-clipboard",
+      "suiteId": "ntilde-owned-x11-osc5522-clipboard-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-27-osc5522-clipboard/",
+      "doc": "2026-11-27-osc5522-clipboard/report.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc5522-clipboard"
+      ],
+      "evidence": {
+        "files": 9,
+        "bytes": 388979,
+        "sha256": "9273286e9b5b7fa22dfa2cbe7cf233bb5f9f47563e22df5b109b9de0ecd4e6fc"
+      },
+      "receipt": null,
+      "run": {
+        "ownedRunId": "415a1d98e8bb910104d7133427793f86",
+        "measuredAt": "2026-11-27T08:24:39.063Z",
+        "appRevision": "db411becbe33922691e29d78b0ab7dc443d26b14",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator-recorded source archive and publish command",
+        "executableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
+        "scriptsRevision": "490f882b272bfe7a6349e7bc96174b9ba365327e",
+        "collectorAdapterId": "ntilde-owned-x11-osc5522-clipboard-v1",
+        "collectorAdapterBundleSha256": null,
+        "gradingAdapterId": null,
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "owned-modern-x11-osc5522-clipboard-v1",
+        "sourceSnapshotManifestSha256": "26e6d0192a2b641ad15d7663f72c590e609a3fe2572a1b3893de4c92ba5f0b62"
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "counts": null,
+        "suiteComplete": null,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": null,
+        "sourceRevision": null,
+        "note": "Historical stock grade carried forward from the frozen baseline."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc5522-clipboard-publication.test.mjs",
+        "testSha256": "2f07f7078debf20a5cc9007eb99a9a18a7ef0923f065d3968900f5a1e151865c"
+      }
     }
   ],
   "benchmark": [
@@ -8270,6 +8321,52 @@
             "stored-state"
           ],
           "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc5522-clipboard",
+      "kind": "benchmark",
+      "stockOutcome": "unsupported",
+      "pinned": {
+        "best": "supported",
+        "byClaim": [
+          {
+            "suite": "osc5522-clipboard",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc5522-clipboard",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc5522-clipboard",
+          "suite": "osc5522-clipboard",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "supported",
+            "note": "Protocol recognized; clipboard access permissions not tested"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "supported",
+            "grading": "ntilde-owned-x11-osc5522-clipboard-v1"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "generated-input-child-bytes"
         }
       ]
     },

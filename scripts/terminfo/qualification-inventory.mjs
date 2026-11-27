@@ -115,6 +115,9 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('dcl', '2026-11-23-deccolm', '2026-11-23-deccolm-qualification.md'), module: 'dcl-inventory.mjs', exports: ['dclSuiteId', 'dclContractsVersion', 'dclCaseIds'], test: 'dcl-publication.test.mjs' },
     // DECSCLM (#1001): the pinned termless probe is inconclusive by construction and the terminal probe is inconclusive while mode 4 is not recognized; the effect contract grades mode 4 ignored (a forty-line scroll burst identical and inside a timing bound that smooth scrolling could not meet), a recorded divergence.
     { ...directory('dsl', '2026-11-25-decsclm', '2026-11-25-decsclm-qualification.md'), module: 'dsl-inventory.mjs', exports: ['dslSuiteId', 'dslContractsVersion', 'dslCaseIds'], test: 'dsl-publication.test.mjs' },
+    { ...directory('osc5522-clipboard', '2026-11-27-osc5522-clipboard', '2026-11-27-osc5522-clipboard/report.md'),
+        module: 'osc5522-clipboard-results.mjs', exports: ['suiteId', 'contractsVersion', 'caseIds'],
+        stockUnsupportedCase: 'extensions.osc5522-clipboard', test: 'osc5522-clipboard-publication.test.mjs' },
 ]);
 
 /**
@@ -473,6 +476,7 @@ export function totalsOf(rows, baseline) {
         effectSupportedOfStockInconclusive: ofStockInconclusive(effectSupported),
         effectUnsupportedOfStockInconclusive: ofStockInconclusive(effectUnsupported),
         pinnedSupportedOfStockInconclusive: ofStockInconclusive(pinnedSupported),
+        reassessedStockUnsupportedIds: qualified.filter(row => baseline.outcomes[row.id] === 'unsupported').map(row => row.id),
         ungradedStockIdsWithEvidence: qualified.filter(row => !(row.id in baseline.outcomes)).map(row => row.id),
         pinnedSupportedIds: pinnedSupported.length,
         baseline: {
@@ -602,7 +606,9 @@ function rowProblems(inventory, row, baseline, suiteNames, seenClaims) {
     if (!ungraded && row.stockStatus !== undefined) problems.push(`${row.id}: only an ungraded stock diagnostic carries a stock status.`);
     if (/^(?:finding|ntilde)\./.test(row.id)) problems.push(`${row.id}: an Ntilde-specific id cannot be a benchmark id.`);
     if (row.stockOutcome !== (baseline.outcomes[row.id] ?? null)) problems.push(`${row.id}: stock outcome differs from the baseline.`);
-    if (row.stockOutcome !== 'inconclusive' && !ungraded) problems.push(`${row.id}: qualification evidence can only cover stock-inconclusive cases (stock: ${row.stockOutcome}).`);
+    const reassessment = row.stockOutcome === 'unsupported' && row.claims.every(claim =>
+        benchmarkSuites.some(suite => suite.suite === claim.suite && suite.stockUnsupportedCase === row.id));
+    if (row.stockOutcome !== 'inconclusive' && !ungraded && !reassessment) problems.push(`${row.id}: qualification evidence can only cover stock-inconclusive cases (stock: ${row.stockOutcome}).`);
     for (const claim of row.claims) problems.push(...claimProblems(inventory, row, claim, suiteNames, seenClaims));
     const derived = rollup(row.claims);
     if (JSON.stringify(derived.pinned) !== JSON.stringify(row.pinned) || JSON.stringify(derived.effect) !== JSON.stringify(row.effect)) problems.push(`${row.id}: the pinned/effect roll-up differs from its claims.`);
@@ -659,9 +665,8 @@ function totalsSection(inventory) {
     const allBaseline = totals.baseline;
     const multi = `${totals.idsWithMultipleClaims.length} (${codeList(totals.idsWithMultipleClaims)})`;
     const freshness = stockBaseline.freshness.split(';')[0];
-    const baselineLine = `Baseline: stock run ${code(stockBaseline.stockCollectorRunId)} (${stockBaseline.measuredAt}, ${freshness}), ${allBaseline.allCases} graded cases: ${allBaseline.stockSupported} supported, ${allBaseline.stockUnsupported} unsupported, ${allBaseline.stockInconclusive} inconclusive. Every qualified id that has a stock outcome is a stock-inconclusive case (an ungraded diagnostic has none), so the remaining counts are taken against the ${allBaseline.stockInconclusive} inconclusive ones.`;
-    const outside = allBaseline.stockUnsupported + remaining.notPinnedSupported;
-    const unsupportedLine = `The baseline's single stock-unsupported case (${codeList(stockBaseline.stockUnsupported)}) is graded and separate from both remaining counts. The ${allBaseline.stockUnsupported} unsupported plus the ${remaining.notPinnedSupported} not-pinned-supported inconclusive cases are the ${outside} cases outside the ${allBaseline.stockSupported} stock-supported plus ${totals.pinnedSupportedOfStockInconclusive} pinned-supported ones.`;
+    const baselineLine = `Baseline: stock run ${code(stockBaseline.stockCollectorRunId)} (${stockBaseline.measuredAt}, ${freshness}), ${allBaseline.allCases} graded cases: ${allBaseline.stockSupported} supported, ${allBaseline.stockUnsupported} unsupported, ${allBaseline.stockInconclusive} inconclusive. The remaining counts use the ${allBaseline.stockInconclusive} stock-inconclusive cases.`;
+    const unsupportedLine = `Stock-unsupported cases with qualified reassessments: ${codeList(totals.reassessedStockUnsupportedIds)}. The frozen stock collector recorded ${codeList(stockBaseline.stockUnsupported)} as unsupported. The reassessments count toward owned evidence totals, and the stock totals and stock-inconclusive remaining counts keep their original basis.`;
     const unsupportedIds = totals.effectUnsupportedPinnedInconclusiveIds;
     return ['## Totals', '', '| Measure | Value |', '|---|---:|',
         `| Unique benchmark ids with qualified retained effect evidence (any decided verdict) | ${totals.uniqueBenchmarkIds} |`,

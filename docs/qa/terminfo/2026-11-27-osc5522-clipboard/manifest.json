@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "runId": "415a1d98e8bb910104d7133427793f86",
+  "appRevision": "db411becbe33922691e29d78b0ab7dc443d26b14",
+  "scriptsRevision": "490f882b272bfe7a6349e7bc96174b9ba365327e",
+  "runtime": "linux-arm64",
+  "dotnetSdk": "10.0.403",
+  "platform": "Ubuntu 24.04 LTS arm64 (Docker Desktop)",
+  "archives": {
+    "owned-run.zip": "663217006a3ed5df596ea77cadacec8ae7c1cda280bc5c0b9e7c25c57b2032c4",
+    "attempt-1.zip": "6200a759acb46419cfe228f5921a75c4bc4eaa56408e3de162a63f771c16f912",
+    "attempt-2.zip": "dcbf17637a888c72f85d2161e2a9da5791989aa279cbdc7de571171e8b562d90",
+    "attempt-3.zip": "bd60982d09c207a8a4912e86ee92d2a580d884624934613f998b010be66f6758",
+    "attempt-4.zip": "87efd4fe2a5c5f78053ef686d3f62ae44ba14000d521c17aa6e7f82895ea8301"
+  },
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "796553d53da0d7c5c79ff39dda75389b",
+      "scriptsRevision": "74230d5e417fd8dd659fbec322df7ae1dc7e1e56",
+      "reason": "The first verifier assumed the seal repeated the arm timestamp. The worker records that timestamp on the arm receipt. The initial query returned reset and cleanup completed."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "7a013ea3deec6477b1812c4c7a5b45da",
+      "scriptsRevision": "32849ff4178f401e5f8d9f993a17ce94539f1e83",
+      "reason": "Token reuse opened the real consent dialog and returned EPERM. The collector had incorrectly expected EACCES."
+    },
+    {
+      "archive": "attempt-3.zip",
+      "runId": "1744c1f400db01d224fc9451b9de2fb5",
+      "scriptsRevision": "7b1392459c8eca190ecadba714c8cd0a831b1da3",
+      "reason": "The collector overwrote the retained mode-restoration exchange with the synthetic baseline values before replay."
+    },
+    {
+      "archive": "attempt-4.zip",
+      "runId": "10b9dc2c0417978e0382d6c94c681a34",
+      "scriptsRevision": "feb81bd580edf71f8a0dc47a54a9d77ede89e828",
+      "reason": "This completed run verified both effects and restored the fixture. The final collector tightened frame termination to reject any trailing ordinary paste bytes."
+    }
+  ]
+}

@@ -59,7 +59,10 @@ test('the totals are identities over the rows, not independent numbers', () => {
     assert.equal(remaining.effectMeasuredUnsupported, totals.effectUnsupportedOfStockInconclusive);
     assert.equal(remaining.effectNotMeasured, inconclusive - stored.benchmark.filter(item => item.stockOutcome === 'inconclusive').length);
     assert.equal(totals.remainingAgainstStockInconclusive.notPinnedSupported, inconclusive - totals.pinnedSupportedOfStockInconclusive);
-    assert.equal(totals.effectSupportedIds - totals.effectSupportedOfStockInconclusive, totals.ungradedStockIdsWithEvidence.length, 'only ungraded stock ids can be effect-supported without being stock-inconclusive');
+    assert.equal(totals.effectSupportedIds - totals.effectSupportedOfStockInconclusive,
+        [...totals.ungradedStockIdsWithEvidence, ...totals.reassessedStockUnsupportedIds].filter(id => row(stored, id).effect.verdict === 'supported').length);
+    assert.deepEqual(totals.reassessedStockUnsupportedIds, ['extensions.osc5522-clipboard']);
+    assert.equal(row(stored, 'extensions.osc5522-clipboard').stockOutcome, 'unsupported');
     assert.equal(totals.baseline.allCases, totals.baseline.stockSupported + totals.baseline.stockUnsupported + inconclusive);
     assert.deepEqual(totalsOf(stored.benchmark, baseline()), totals);
 });
