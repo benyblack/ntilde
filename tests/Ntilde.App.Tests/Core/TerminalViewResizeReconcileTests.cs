@@ -91,19 +91,9 @@ public class TerminalViewResizeReconcileTests
     [Trait("Category", "Regression")]
     public void HidingAndRestoringAPane_WithNothingCancelled_SendsNoResize()
     {
-        // The reconcile repairs a cancellation and does nothing else, and the difference
-        // matters because the buffer can legitimately be on a grid that TryComputeGrid would
-        // not have chosen. The real instance is the font branch of ApplySettings, which
-        // derives its grid as Bounds.Width / CellWidth while TryComputeGrid subtracts the
-        // padding the draw operation reserves, so the two disagree by a column at some widths.
-        // An ungated reconcile would read that standing disagreement as work to do and reflow
-        // the buffer, sending SIGWINCH, every time a pane was collapsed and reopened.
-        //
-        // The disagreement is created here by moving the measured cell size rather than by
-        // reproducing the font path at a width where its arithmetic happens to diverge: the
-        // gate is about whether a cancellation occurred, not about which calculation is right,
-        // so any source of disagreement exercises it and one that is guaranteed to exist
-        // exercises it every run.
+        // Deliberately disagree with the last dispatch by changing the measured cell
+        // size directly. Even then, an ordinary hide and restore must send no resize
+        // unless it cancelled a pending dispatch.
         var buffer = new TerminalBuffer(80, 24);
         var view = new TerminalView();
         view.SetBuffer(buffer);

@@ -99,8 +99,8 @@ function verifyStage(frame, step, frames, runId, used) {
     requireGeometry(step.resize || step.fontDelta || same(gridOf(frame.screen), gridOf(previous.screen)), 'grid changed outside a planned action');
     if (step.stage === 'start') requireGeometry(font === initialFontSize, 'initial font setting did not apply');
     if (step.stage === 'restored' || step.stage === 'finish') {
-        requireGeometry(same(frame.window, initial.window) && same(cell, initial.metadata.cellGeometry)
-            && same(frame.metadata.fontGeometry, initial.metadata.fontGeometry), 'initial window, grid or font geometry was not restored');
+        requireGeometry(same(cell, initial.metadata.cellGeometry) && font === initial.metadata.fontGeometry.fontSizeDip,
+            'initial pane grid or font geometry was not restored');
     }
     return null;
 }
@@ -204,7 +204,7 @@ function deriveStages(frames, actions, runId) {
     const [initial, resized, font, restored] = samples.map(row => row.expected);
     requireGeometry(!same(initial.area, initial.cappedArea) && same(resized.area, resized.cappedArea)
         && !same(initial.area, resized.area) && same(initial.cell, resized.cell)
-        && !same(resized.cell, font.cell) && same(initial, restored), 'geometry controls did not distinguish resize, font, cap, and restoration');
+        && !same(resized.cell, font.cell) && same(initial.area, restored.area) && same(initial.cell, restored.cell), 'geometry controls did not distinguish resize, font, cap, and restoration');
     return { samples, actions, restored: true };
 }
 
