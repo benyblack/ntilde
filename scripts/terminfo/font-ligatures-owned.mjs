@@ -48,6 +48,7 @@ function verifyFrame(frame, step, first, runId) {
 }
 
 function verifyCapture(result, frame, selected, enabled) {
+    check(typeof enabled === 'boolean', 'missing effective setting');
     const view = validateRenderedCapture(result, frame.screen, 0, 1, enabled);
     const { font, syntheticSelection } = view.details;
     check(font.primaryFamily === family && font.configuredFamily === family && font.primarySha256 === fontSha256
@@ -81,7 +82,6 @@ export class Collection {
         this.after = new OwnedCellObserver(options);
         this.run = run;
         this.frames = [];
-        this.enabled = json(run.output, 'initial-settings.json').EnableLigatures;
         this.pixelTotal = 0;
         mkdirSync(join(run.output, pixelDir), { mode: 0o700 });
     }
@@ -89,7 +89,17 @@ export class Collection {
     async capture(frame, index, selected, i, budget) {
         const endpoint = observerEndpoint(this.run.appData, this.run.app.pid);
         const result = await colorCaptureRequest(endpoint, frame.paneId, selected, budget());
-        const view = verifyCapture(result, frame, selected, this.enabled);
+        this.enabled ??= result?.renderDetails?.enableLigatures;
+        let view;
+        try {
+            view = verifyCapture(result, frame, selected, this.enabled);
+        } catch (error) {
+            const { pngBase64, ...metadata } = result;
+            writeFileSync(join(this.run.output, 'capture-refusal.json'), JSON.stringify({
+                stage: frame.stage, selected, screen: frame.screen, metadata, error: error.message,
+            }, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
+            throw error;
+        }
         this.pixelTotal += view.image.width * view.image.height;
         check(this.pixelTotal <= totalPixelLimit, 'pixel budget exhausted');
         const { pngBase64, ...description } = result;
@@ -136,7 +146,7 @@ export function deriveRun(output) {
     const settingsValid = settings.FontFamily === family && settings.FontSize === fontSize
         && typeof settings.EnableLigatures === 'boolean' && settings.SessionPersistence === 'Off'
         && settings.AllowOsc52ClipboardWrite === false && settings.AgentAccessActEnabled === false;
-    check(settingsValid && !['failure.json', 'cleanup-failure.json'].some(file => existsSync(join(output, file)))
+    check(settingsValid && !['failure.json', 'cleanup-failure.json', 'capture-refusal.json'].some(file => existsSync(join(output, file)))
         && same(context.collectionScope, scope) && same(proof.collectionScope, scope) && proof.proofs?.length === 1
         && proof.completed === true && !proof.cleanupError && !proof.persistentDaemon
         && proof.sourceSnapshot?.policy === context.sourceSnapshotPolicy && sources.policy === proof.sourceSnapshot.policy
@@ -148,10 +158,11 @@ export function deriveRun(output) {
     const plan = planFor(context.runId, first.screen.cursorVisible);
     check(plan.length === frames.length, 'incomplete frame plan');
     const views = {};
+    const enabled = first.pixels[0]?.renderDetails?.enableLigatures;
     for (const [i, frame] of frames.entries()) {
         verifyFrame(frame, plan[i], first, context.runId);
         views[frame.stage] = verifyCaptures(frame, plan[i], i, (pixel, selected) =>
-            verifyCapture(retainedCapture(output, { pixel }, pixelDir), frame, selected, settings.EnableLigatures));
+            verifyCapture(retainedCapture(output, { pixel }, pixelDir), frame, selected, enabled));
         fields.push(...frame.pixels.map(pixel => pixel.file));
     }
     check(views.start[0].bytes.equals(views.finish[0].bytes), 'main pixels did not restore');
@@ -159,7 +170,7 @@ export function deriveRun(output) {
     const files = Object.fromEntries(fields.map(file => [file, pngHash(read(output, file))]));
     check(files['source-snapshot.json'] === context.sourceSnapshotManifestSha256 && files['initial-settings.json'] === context.initialSettingsSha256,
         'source or settings digest changed');
-    const report = { runId: context.runId, suite: scope.id, enabled: settings.EnableLigatures, restored: true,
+    const report = { runId: context.runId, suite: scope.id, configured: settings.EnableLigatures, enabled, restored: true,
         captures: frames.flatMap(frame => frame.pixels), cursors: frames.filter(frame => frame.reply !== null).map(frame => ({
             stage: frame.stage, raw: frame.reply.raw, row: frame.screen.cursorRow, col: frame.screen.cursorCol,
         })) };
