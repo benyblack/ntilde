@@ -280,10 +280,10 @@ namespace Ntilde.VT
                 }
                 else
                 {
+                    int? cursorOnFinalRow = isCursorRow && isLastRow ? cursorTextCol : null;
                     endCol = wrapped
                         ? SoftWrappedRowEnd(buffer, row, cols)
-                        : ContentRowEnd(buffer, row, firstCol, cols,
-                            isCursorRow && isLastRow ? cursorTextCol : (int?)null, ref rightPromptTrimmed);
+                        : ContentRowEnd(buffer, row, firstCol, cols, cursorOnFinalRow, ref rightPromptTrimmed);
                 }
 
                 for (int col = firstCol; col < endCol; col++)

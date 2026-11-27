@@ -94,6 +94,7 @@ export function deriveEffects(id, frames) {
         && controlStages.every(stage => same(o[stage].commandStart, a) && o[stage].outputStart === null
             && o[stage].accepting && o[stage].command === null && o[stage].status === o.input.status && o[stage].cwd === base + '/control')
         && ['p-termless', 'p-terminal'].every(stage => o[stage].cwd === base);
-    return [{ caseId: caseIds[0], contractId: 'ntilde-osc133-active-prompt-part-v1', controls,
-        outcome: controls ? (matched ? 'supported' : 'unsupported') : 'inconclusive', observations }];
+    let outcome = 'inconclusive';
+    if (controls) outcome = matched ? 'supported' : 'unsupported';
+    return [{ caseId: caseIds[0], contractId: 'ntilde-osc133-active-prompt-part-v1', controls, outcome, observations }];
 }
