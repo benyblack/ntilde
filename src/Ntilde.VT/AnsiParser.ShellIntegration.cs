@@ -19,9 +19,8 @@ namespace Ntilde.VT
         //                    DecodeAcceptedCommandPayload)
         //   OSC 133;D;N[;M] -> command finished with exit code N and optional duration M
         //
-        // Any parameters after the marker letter are tolerated and ignored (FinalTerm
-        // allows key=value attributes on these marks, e.g. "133;B;aid=7"), so a payload
-        // we don't understand still produces the mark rather than being dropped.
+        // Unrecognized parameters are tolerated (FinalTerm allows key=value attributes,
+        // e.g. "133;B;aid=7"). Kitty's prompt options are handled on A.
         private void HandleShellIntegrationMark(string data) => DispatchShellIntegrationMark(data, vsCodeDialect: false);
 
         // OSC 633: VS Code's shell-integration dialect, documented at
@@ -66,6 +65,22 @@ namespace Ntilde.VT
             }
         }
 
+        private static PromptClickMode ParsePromptClickMode(string[] parts)
+        {
+            var mode = PromptClickMode.Disabled;
+            foreach (string part in parts.AsSpan(1))
+            {
+                mode = part switch
+                {
+                    "click_events=1" => PromptClickMode.Absolute,
+                    "click_events=2" => PromptClickMode.Relative,
+                    _ => mode
+                };
+            }
+
+            return mode;
+        }
+
         private void DispatchShellIntegrationMark(string data, bool vsCodeDialect)
         {
             if (string.IsNullOrWhiteSpace(data)) return;
@@ -74,6 +89,16 @@ namespace Ntilde.VT
             switch (parts[0])
             {
                 case "A":
+                    if (!vsCodeDialect && parts.AsSpan(1).Contains("k=s"))
+                    {
+                        _buffer.MarkSecondaryClickPrompt(CaptureCursorMark());
+                        break;
+                    }
+
+                    if (vsCodeDialect)
+                        _buffer.ClearClickPrompt();
+                    else
+                        _buffer.BeginClickPrompt(CaptureCursorMark(), ParsePromptClickMode(parts));
                     ClearVsCodeCommandLine();
                     // We're back at a shell prompt: clear any mouse/focus reporting a TUI
                     // left enabled after an unclean exit, so pointer moves don't flood the

@@ -11,10 +11,14 @@ namespace Ntilde.Shell
     /// </summary>
     public partial class TerminalView
     {
+        private bool _promptClicksEnabled;
+        private (IPointer Pointer, int Column, int Row, ulong Version)? _pendingPromptClick;
+
         protected override void OnPointerPressed(PointerPressedEventArgs e)
         {
             if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnPointerPressed(e);
+            _pendingPromptClick = null;
 
             var point = e.GetCurrentPoint(this);
             bool leftPressed = point.Properties.IsLeftButtonPressed;
@@ -64,6 +68,12 @@ namespace Ntilde.Shell
                     _selection.End = (row, col);
                     _selection.IsActive = true;
                     _isSelecting = true;
+                    if (_promptClicksEnabled && e.Pointer.Type == PointerType.Mouse && e.KeyModifiers == KeyModifiers.None
+                        && point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed)
+                    {
+                        if (ResolvePromptClick(point.Position) is { } click)
+                            _pendingPromptClick = (e.Pointer, click.Column, click.Row, click.Version);
+                    }
                 }
 
                 InvalidateVisual();
@@ -83,6 +93,7 @@ namespace Ntilde.Shell
                 // The motion is the program's now, so the hover never updates: a link hovered before would keep its
                 // underline and its tip (CodeRabbit on #634).
                 ClearHoveredLink();
+                _pendingPromptClick = null;
                 var point = e.GetCurrentPoint(this);
                 TerminalMouseButton button = GetPressedMouseButton(point.Properties);
                 HandleMouseMoveAt(point.Position, button, e.KeyModifiers);
@@ -103,6 +114,10 @@ namespace Ntilde.Shell
 
                 // Update selection end
                 _selection.End = (absRow, col);
+                if (_selection.Start != _selection.End)
+                {
+                    _pendingPromptClick = null;
+                }
 
                 // Auto-scroll detection
                 double zoneSize = _metrics.CellHeight * 2; // Drag within top/bottom 2 lines
@@ -129,6 +144,8 @@ namespace Ntilde.Shell
         {
             if (!CanApplyGeneratedInput) { e.Handled = true; return; }
             base.OnPointerReleased(e);
+            var pending = _pendingPromptClick;
+            _pendingPromptClick = null;
 
             // Forward release events if mouse reporting is active
             bool reporting = _buffer != null && _buffer.IsMouseReportingActive();
@@ -158,15 +175,46 @@ namespace Ntilde.Shell
                 // If start == end, clear selection (was just a click)
                 if (_selection.Start == _selection.End)
                 {
+                    var start = _selection.Start;
                     _selection.Clear();
                     InvalidateVisual();
+                    if (pending is { } click && ReferenceEquals(click.Pointer, e.Pointer)
+                        && e.KeyModifiers == KeyModifiers.None && GetReleasedMouseButton(e) == TerminalMouseButton.Left)
+                    {
+                        var position = e.GetPosition(this);
+                        if (start == ScreenToTerminal(position) && ResolvePromptClick(position) == (click.Column, click.Row, click.Version))
+                        {
+                            e.Handled = SendEncodedMouseReport(FormattableString.Invariant($"\x1b[<0;{click.Column};{click.Row}M"), legacyBytes: false);
+                        }
+                    }
                 }
             }
+        }
+
+        private (int Column, int Row, ulong Version)? ResolvePromptClick(Point position)
+        {
+            var buffer = _buffer;
+            if (buffer == null || _scrollOffset != 0 || _metrics.CellWidth <= 0 || _metrics.CellHeight <= 0
+                || position.X < 0 || position.Y < 0 || position.X >= buffer.Cols * _metrics.CellWidth
+                || position.Y >= buffer.Rows * _metrics.CellHeight)
+            {
+                return null;
+            }
+
+            var (column, row) = ToMouseReportCell(position);
+            return buffer.TryGetPromptClickRow(row - 1, out int wireRow, out ulong version) ? (column, wireRow, version) : null;
+        }
+
+        protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+        {
+            base.OnPointerCaptureLost(e);
+            _pendingPromptClick = null;
         }
 
         protected override void OnPointerExited(Avalonia.Input.PointerEventArgs e)
         {
             base.OnPointerExited(e);
+            _pendingPromptClick = null;
             _hoverScanRow = -1;
             ClearHoveredLink();
 

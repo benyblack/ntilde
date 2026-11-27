@@ -281,6 +281,7 @@ namespace Ntilde.Shell
             if (changed)
             {
                 LastCompletedResizeDispatch = default;
+                _pendingPromptClick = null;
                 ClearHoveredLink();
             }
             _buffer = buffer;
@@ -361,14 +362,18 @@ namespace Ntilde.Shell
         /// keys then go unhandled, so Enter bubbles to the pane's reconnect handler (a pane whose
         /// multiplexer session is no longer attached uses this).
         /// </summary>
-        public void SetSession(ITerminalSession? session)
+        public void SetSession(ITerminalSession? session) => SetSession(session, session is RustPtySession);
+
+        internal void SetSession(ITerminalSession? session, bool enablePromptClicks)
         {
-            if (!ReferenceEquals(_session, session))
+            if (!ReferenceEquals(_session, session) || _promptClicksEnabled != enablePromptClicks)
             {
+                _pendingPromptClick = null;
                 ResetKittyKeyTracking();
                 LastCompletedResizeDispatch = default; // A previous session cannot prove this target received a resize.
             }
             _session = session;
+            _promptClicksEnabled = enablePromptClicks;
         }
 
         internal ITerminalSession? SessionForTest => _session;

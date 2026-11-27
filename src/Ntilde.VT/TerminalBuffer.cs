@@ -299,6 +299,7 @@ namespace Ntilde.VT
             lock (_trackedMarkGate)
             {
                 _isAcceptingCommandInput = false;
+                ClearClickPromptLocked();
             }
         }
 
@@ -311,6 +312,7 @@ namespace Ntilde.VT
                 _commandStartMark = null;
                 _commandOutputStartMark = null;
                 _isAcceptingCommandInput = false;
+                ClearClickPromptLocked();
             }
         }
 

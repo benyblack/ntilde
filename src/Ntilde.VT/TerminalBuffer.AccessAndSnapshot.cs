@@ -864,10 +864,7 @@ namespace Ntilde.VT
                 // more, so the command-input window closes on the way in. It does NOT reopen on the
                 // way out: the shell repaints its prompt when the alt screen is torn down and that
                 // repaint re-emits B, so the gate reopens on evidence rather than on assumption.
-                lock (_trackedMarkGate)
-                {
-                    _isAcceptingCommandInput = false;
-                }
+                CloseCommandInputWindow();
 
                 _viewport = _altScreen;    // Switch to alt screen
 

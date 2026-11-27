@@ -485,6 +485,7 @@ namespace Ntilde.VT
                 ResetCursorPresentationNoLock();
 
                 // Reset Mouse Modes
+                ClearClickPrompt();
                 Modes.MouseModeX10PressOnly = false;
                 Modes.MouseModeX10 = false;
                 Modes.MouseModeButtonEvent = false;
