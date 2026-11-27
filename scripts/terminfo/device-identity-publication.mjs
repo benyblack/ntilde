@@ -12,7 +12,7 @@ import { da } from './sixel-reports-contracts.mjs';
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(qa, '2026-11-27-rich-device-identity');
-const manifestHash = 'b769149eee6600f504b06bc85c2d0704527dbf0cac84b0132c1daf60b7a069a3';
+const manifestHash = '5d59771c08964cebb96432dfd2ddbeb1754414ac13583419e816de69014b5fdd';
 const registration = id => '    deviceQuery({\n      id: "' + id + '",';
 
 function span(source, start, end) {
@@ -83,18 +83,19 @@ export function withIdentityArchive(callback) {
 }
 
 export async function buildPublication() {
-    const { owned, measurement } = withIdentityArchive((directory, manifest) => {
+    const { owned, measurement, superseded } = withIdentityArchive((directory, manifest) => {
         const { context, frames, report, receipt } = deriveRun(directory);
         assert.deepEqual(report, readJson(directory, 'identity-report.json'));
         assert.deepEqual(receipt, readJson(directory, 'identity-receipt.json'));
         verifySources(directory, context);
-        return { owned: report, measurement: focusedMeasurement(directory, manifest, context, receipt, frames[0].screen) };
+        return { owned: report, measurement: focusedMeasurement(directory, manifest, context, receipt, frames[0].screen),
+            superseded: manifest.superseded };
     });
     const map = readJson(join(qa, '2026-11-26-rich-tui'), 'evidence-map.json');
     const stock = Object.fromEntries(caseIds.map(id => [id, map.rows.find(row => row.id === id)?.stock]));
     assert.deepEqual(Object.values(stock), ['supported', 'supported']);
     const pinned = await Promise.all(Array.from(readPinnedProbes(), probe => replay(probe, owned.exchanges.find(row => row.id === probe.id))));
-    return { schemaVersion: 1, suite: owned.suite, pinnedBundleSha256: pinnedBundle, stock, pinned, owned, measurement };
+    return { schemaVersion: 1, suite: owned.suite, pinnedBundleSha256: pinnedBundle, stock, pinned, owned, measurement, superseded };
 }
 
 const code = value => '\x60' + value + '\x60';
@@ -119,6 +120,7 @@ export function renderReport(report) {
         'The App observer saw red underlined marker cells, a displaced cursor, and the prepared alternate-screen, origin and wrap state. The deliberate DECSCUSR change from steady block to steady beam changed the stored cursor style alone. The query stages retained the same cell details, cursor position, visibility, style, and buffer state. Separate fenced DECRPM reads confirmed application cursor keys, origin, wrap, alternate screen, bracketed paste and focus reporting before and after the identity queries. The initial pane snapshot and exact kernel PTY mode were restored. The runner removed the disposable fixture and verified the desktop lease release.', '',
         '## Reproduce', '',
         'Run ' + code(m.runId) + ' used ' + m.platform + ', App revision ' + code(m.appRevision) + ' and collector revision ' + code(m.scriptsRevision) + '. The [owned archive](owned-run.zip) retains the original requests, reply and fence bytes, app and worker identity, snapshots, VT assembly, and cleanup records. The [machine-readable report](report.json) records both verdicts.', '',
+        ...report.superseded.map(row => 'The first run also passed. The collector was remeasured after it switched to a fixed path for the .NET host. [Superseded run ' + row.runId + '](' + row.archive + ')'), '',
         'Build the recorded App revision with the repository .NET SDK. Run the collector from the recorded collector revision with Node 24+ and the macOS .NET host at /usr/local/share/dotnet/dotnet.', '',
         '~~~sh',
         'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',

@@ -21,9 +21,11 @@ The App observer saw red underlined marker cells, a displaced cursor, and the pr
 
 ## Reproduce
 
-Run `8265cdb79436de29751b860abf0b266c` used macOS 27.0.1 (26A434), arm64, App revision `b267b01a054fc9bae4b6b4153f28fcec7a822a34` and collector revision `6ff8c1d9e6d4e90ed4b09053c7583c8fec3f6891`. The [owned archive](owned-run.zip) retains the original requests, reply and fence bytes, app and worker identity, snapshots, VT assembly, and cleanup records. The [machine-readable report](report.json) records both verdicts.
+Run `ac613503d891f9fbd4b6c532d262f1b0` used macOS 27.0.1 (26A434), arm64, App revision `b267b01a054fc9bae4b6b4153f28fcec7a822a34` and collector revision `b8cc58f4e94e752012cb5fbe9bb575f1b67dad00`. The [owned archive](owned-run.zip) retains the original requests, reply and fence bytes, app and worker identity, snapshots, VT assembly, and cleanup records. The [machine-readable report](report.json) records both verdicts.
 
-Build the recorded App revision with the repository .NET SDK. Run the collector from the recorded collector revision with Node 24+ and that SDK on PATH.
+The first run also passed. The collector was remeasured after it switched to a fixed path for the .NET host. [Superseded run 8265cdb79436de29751b860abf0b266c](https://github.com/benyblack/ntilde/blob/15a1308f57c313fe8ba59500782211ed0fdfbfdf/docs/qa/terminfo/2026-11-27-rich-device-identity/owned-run.zip)
+
+Build the recorded App revision with the repository .NET SDK. Run the collector from the recorded collector revision with Node 24+ and the macOS .NET host at /usr/local/share/dotnet/dotnet.
 
 ~~~sh
 scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar
