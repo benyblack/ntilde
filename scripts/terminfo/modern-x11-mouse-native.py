@@ -86,6 +86,8 @@ class XDisplay:
         self.set_focus = bind(x11, "XSetInputFocus", INT, PTR, XID, INT, XID)
         self.query_pointer = bind(x11, "XQueryPointer", INT, PTR, XID, XIDP, XIDP, INTP, INTP, INTP, INTP, UINTP)
         self.sync = bind(x11, "XSync", INT, PTR, INT)
+        self.grab_server = bind(x11, "XGrabServer", INT, PTR)
+        self.ungrab_server = bind(x11, "XUngrabServer", INT, PTR)
         self.move = bind(xtst, "XTestFakeMotionEvent", INT, PTR, INT, INT, INT, XID)
         self.button = bind(xtst, "XTestFakeButtonEvent", INT, PTR, UINT, INT, XID)
         self.key = bind(xtst, "XTestFakeKeyEvent", INT, PTR, UINT, INT, XID)
@@ -125,6 +127,16 @@ class XDisplay:
                 self.destroy_ids(count.value, ids)
 
     def mapped_windows(self):
+        # The modal can disappear between XQueryTree and XGetWindowAttributes.
+        # Snapshot the private server tree under one short, bounded X11 grab.
+        self.grab_server(self.display)
+        try:
+            return self.read_mapped_windows()
+        finally:
+            self.ungrab_server(self.display)
+            self.sync(self.display, 0)
+
+    def read_mapped_windows(self):
         root, parent, children, count = XID(), XID(), XIDP(), UINT()
         demand(self.query_tree(self.display, self.root, ct.byref(root), ct.byref(parent),
                                ct.byref(children), ct.byref(count)), "cannot enumerate owned display root")
