@@ -43,6 +43,8 @@ async function runContainer(name, output, image, sources, sidecar, lease) {
         need(info.Id === id && info.Config.Labels['ntilde.qa.run'] === lease.leaseId && info.Image === image
             && info.HostConfig.NetworkMode === 'none' && info.Config.User === '1000:1000'
             && info.Mounts.length === 2 && info.Mounts.every(mount => !mount.RW), 'wrong container isolation');
+        state.isolation = { network: info.HostConfig.NetworkMode, user: info.Config.User,
+            mounts: info.Mounts.map(({ Destination, RW }) => ({ destination: Destination, writable: RW })) };
         state.startedAt = new Date().toISOString();
         await docker(['start', '-a', id], 115000);
         const [after] = JSON.parse(await docker(['inspect', id]));

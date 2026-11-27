@@ -194,6 +194,10 @@ class Run:
         subprocess.run(["tar", "-xf", "/inputs/sidecar.tar", "-C", sidecar], timeout=20, check=True)
         exe = sidecar / "Ntilde"
         self.record["app"]["files"] = self.app_hashes(sidecar)
+        versions = set(re.findall(rb"(?<![0-9.])[0-9]+\.[0-9]+\.[0-9]+\+[a-f0-9]{40}(?![a-f0-9])",
+                                  (sidecar / "Ntilde.dll").read_bytes()))
+        need(len(versions) == 1, "missing unique App informational version")
+        self.record["app"]["version"] = versions.pop().decode()
         data = self.root / "appdata"
         data.mkdir()
         args = self.child_args("app", path)
