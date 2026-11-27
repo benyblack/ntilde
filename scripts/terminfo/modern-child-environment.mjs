@@ -13,29 +13,35 @@ export function requireEnvironment(condition, reason) {
     if (!condition) throw new Error('Modern child environment: ' + reason);
 }
 
-export function snapshotEnvironment(env) {
-    return Object.fromEntries(names.map(name => {
-        if (env[name] === undefined) return [name, { state: 'absent', value: null }];
-        return [name, { state: env[name] === '' ? 'empty' : 'present', value: env[name] }];
-    }));
+export function environmentProjection(names, requireEnvironment) {
+    function snapshotEnvironment(env) {
+        return Object.fromEntries(names.map(name => {
+            if (env[name] === undefined) return [name, { state: 'absent', value: null }];
+            return [name, { state: env[name] === '' ? 'empty' : 'present', value: env[name] }];
+        }));
+    }
+
+    function parseChildOutput(raw) {
+        requireEnvironment(typeof raw === 'string' && raw.length <= 4096, 'invalid raw child output');
+        const values = JSON.parse(raw);
+        requireEnvironment(values && JSON.stringify(Object.keys(values)) === JSON.stringify(names), 'unexpected environment names');
+        for (const { state, value } of Object.values(values)) {
+            requireEnvironment((state === 'absent' && value === null) || (state === 'empty' && value === '')
+                || (state === 'present' && typeof value === 'string' && value.length > 0 && !value.includes('\0')), 'invalid child value state');
+        }
+        const projected = snapshotEnvironment(Object.fromEntries(names.map(name => [name, values[name].value ?? undefined])));
+        requireEnvironment(JSON.stringify(projected) + '\n' === raw, 'unexpected fields or framing in child output');
+        return values;
+    }
+
+    return { snapshotEnvironment, parseChildOutput };
 }
+
+export const { snapshotEnvironment, parseChildOutput } = environmentProjection(names, requireEnvironment);
 
 export function parentValues(control) {
     requireEnvironment(controls.includes(control), 'select a clean or inherited launch');
     return snapshotEnvironment(control === 'inherited' ? inherited : {});
-}
-
-export function parseChildOutput(raw) {
-    requireEnvironment(typeof raw === 'string' && raw.length <= 4096, 'invalid raw child output');
-    const values = JSON.parse(raw);
-    requireEnvironment(values && JSON.stringify(Object.keys(values)) === JSON.stringify(names), 'unexpected environment names');
-    for (const { state, value } of Object.values(values)) {
-        requireEnvironment((state === 'absent' && value === null) || (state === 'empty' && value === '')
-            || (state === 'present' && typeof value === 'string' && value.length > 0 && !value.includes('\0')), 'invalid child value state');
-    }
-    const projected = snapshotEnvironment(Object.fromEntries(names.map(name => [name, values[name].value ?? undefined])));
-    requireEnvironment(JSON.stringify(projected) + '\n' === raw, 'unexpected fields or framing in child output');
-    return values;
 }
 
 export function gradeEnvironment(clean, inheritedRun) {

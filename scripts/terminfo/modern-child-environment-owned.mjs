@@ -7,8 +7,7 @@ import { names, parentValues, parseChildOutput, requireEnvironment, scope, snaps
 import { assertRetainedSourceClosure, capturedChildEnvironmentSourceFiles, capturedChildEnvironmentSourcePolicy } from './owned-sources.mjs';
 
 export { scope };
-export const workerFile = 'modern-child-environment-worker.mjs';
-export const prefix = 'mce-';
+const modernWorker = 'modern-child-environment-worker.mjs';
 const launchFile = 'launch-inputs.json';
 const outputFile = 'child-environment.json';
 const paneFile = 'child-pane.json';
@@ -29,30 +28,33 @@ export function workerProfile({ node, workerScript, configPath, runId }) {
     return { Command: node, Arguments: `"${workerScript}" "${configPath}" --ntilde-terminfo-worker=${runId}` };
 }
 
-export function prepareLaunchEnvironment(run, env) {
-    const control = process.env.NTILDE_TERMINFO_ENVIRONMENT_CONTROL;
+function prepareLaunch(run, env, { names, parentValues, snapshotEnvironment, controlVariable, hostMetadata }) {
+    const control = process.env[controlVariable];
     const values = parentValues(control);
     const launchEnv = { ...env };
-    for (const name of [...names, 'NODE_OPTIONS', 'NODE_PATH', 'NTILDE_TERMINFO_ENVIRONMENT_CONTROL']) delete launchEnv[name];
+    for (const name of [...names, 'NODE_OPTIONS', 'NODE_PATH', controlVariable]) delete launchEnv[name];
     for (const name of names) {
         if (values[name].state === 'present') launchEnv[name] = values[name].value;
     }
     const { runId, output, executable, appData } = run;
     const profile = json(output, 'initial-settings.json').Profiles[0];
-    writeJson(output, launchFile, { runId, control, appData, executable, inputs: snapshotEnvironment(launchEnv),
+    const host = hostMetadata?.();
+    writeJson(output, launchFile, { runId, control, appData, executable, inputs: snapshotEnvironment(launchEnv), ...(host && { host }),
         nodePreloads: { optionsAbsent: !Object.hasOwn(launchEnv, 'NODE_OPTIONS'), pathAbsent: !Object.hasOwn(launchEnv, 'NODE_PATH') },
         appBinaries: appBinaries(executable), executableSha256: hash(readFileSync(executable)), nodeSha256: hash(readFileSync(profile.Command)) });
     return launchEnv;
 }
 
-export class Collection {
-    constructor(run) {
+class ChildEnvironmentCollection {
+    constructor(run, contract) {
         this.run = run;
+        this.contract = contract;
         this.restored = false;
     }
 
     async observe(request, budget) {
         const { runId, app, appData, executable, output, profileName, proofs } = this.run;
+        const { prefix, parseChildOutput } = this.contract;
         requireEnvironment(request.kind === prefix + 'environment' && !this.restored, 'unexpected or duplicate child output');
         parseChildOutput(request.raw);
         write(output, outputFile, request.raw);
@@ -68,20 +70,20 @@ export class Collection {
     }
 }
 
-function verifySources(output, context) {
+function verifySources(output, context, { sourceFiles, sourcePolicy }) {
     const raw = read(output, 'source-snapshot.json'), manifest = JSON.parse(raw);
-    const directory = join(output, 'sources'), files = Object.entries(capturedChildEnvironmentSourceFiles);
-    requireEnvironment(manifest.schemaVersion === 1 && manifest.policy === capturedChildEnvironmentSourcePolicy
+    const directory = join(output, 'sources'), files = Object.entries(sourceFiles);
+    requireEnvironment(manifest.schemaVersion === 1 && manifest.policy === sourcePolicy
         && context.sourceSnapshotPolicy === manifest.policy && context.sourceSnapshotManifestSha256 === hash(raw)
         && Object.keys(manifest.hashes).length === files.length && readdirSync(directory).length === files.length
-        && same(json(directory, 'owned-source-inventory.json'), capturedChildEnvironmentSourceFiles), 'incomplete captured source graph');
+        && same(json(directory, 'owned-source-inventory.json'), sourceFiles), 'incomplete captured source graph');
     for (const [field, name] of files) {
         requireEnvironment(context[field] === manifest.hashes[field] && context[field] === hash(read(directory, name)), 'changed source ' + name);
     }
-    assertRetainedSourceClosure(directory, capturedChildEnvironmentSourceFiles);
+    assertRetainedSourceClosure(directory, sourceFiles);
 }
 
-function verifyProfile(context, settings, launch, pane, proof) {
+function verifyProfile(context, settings, launch, pane, proof, workerFile) {
     const profile = settings.Profiles?.[0];
     requireEnvironment(settings.Profiles?.length === 1 && isGuid(profile.Id) && settings.DefaultProfileId === profile.Id
         && profile.Name === 'terminfo disposable worker ' + context.runId && pane.profileName === profile.Name
@@ -96,7 +98,7 @@ function verifyProfile(context, settings, launch, pane, proof) {
         'profile did not execute the retained worker without a shell');
 }
 
-function verifyOwnership(context, ownership, pane) {
+function verifyOwnership(context, ownership, pane, scope) {
     const [proof] = ownership.proofs;
     const terminal = proof?.privateClipboard;
     const times = [context.startedAt, proof?.at, proof?.terminalOutput?.verifiedAt, pane.at, terminal?.restoredAt,
@@ -116,7 +118,8 @@ function verifyOwnership(context, ownership, pane) {
     return proof;
 }
 
-function derive(output) {
+function derive(output, contract) {
+    const { parseChildOutput, parentValues, scope, workerFile } = contract;
     requireEnvironment(!['failure.json', 'cleanup-failure.json'].some(file => existsSync(join(output, file))), 'capture or cleanup failed');
     const inputs = ['context.json', 'ownership-proof.json', 'initial-settings.json', launchFile, outputFile, paneFile]
         .map(file => [file, read(output, file)]);
@@ -130,23 +133,39 @@ function derive(output) {
         && same(Object.keys(launch.appBinaries), files) && files.every(file => isDigest(launch.appBinaries[file]))
         && context.assemblySha256 === launch.appBinaries['Ntilde.dll'], 'invalid App or Node identity');
     requireEnvironment(hash(inputs[2][1]) === context.initialSettingsSha256, 'changed settings bytes');
-    const proof = verifyOwnership(context, ownership, pane);
-    verifyProfile(context, settings, launch, pane, proof);
-    verifySources(output, context);
+    const proof = verifyOwnership(context, ownership, pane, scope);
+    verifyProfile(context, settings, launch, pane, proof, workerFile);
+    verifySources(output, context, contract);
     return { child, context, ownership, launch, pane,
         receipt: { schemaVersion: 1, runId: context.runId, fixtureRemoved: true, verdict: 'collected',
             sha256: Object.fromEntries(inputs.map(([name, bytes]) => [name, hash(bytes)])) } };
 }
 
-export function completeReceipt(output, scratch) {
-    requireEnvironment(!existsSync(scratch), 'disposable fixture remains');
-    const { receipt } = derive(output);
-    writeJson(output, receiptFile, receipt);
-    return receipt;
+export function createChildEnvironmentCollector(contract) {
+    const { scope, workerFile, prefix } = contract;
+    return {
+        scope, workerFile, prefix, workerProfile,
+        prepareLaunchEnvironment: (run, env) => prepareLaunch(run, env, contract),
+        Collection: class extends ChildEnvironmentCollection {
+            constructor(run) { super(run, contract); }
+        },
+        completeReceipt(output, scratch) {
+            requireEnvironment(!existsSync(scratch), 'disposable fixture remains');
+            const { receipt } = derive(output, contract);
+            writeJson(output, receiptFile, receipt);
+            return receipt;
+        },
+        verifyChildEnvironmentRun(output) {
+            const derived = derive(output, contract);
+            requireEnvironment(same(json(output, receiptFile), derived.receipt), 'environment receipt does not rederive');
+            return derived;
+        },
+    };
 }
 
-export function verifyChildEnvironmentRun(output) {
-    const derived = derive(output);
-    requireEnvironment(same(json(output, receiptFile), derived.receipt), 'environment receipt does not rederive');
-    return derived;
-}
+export const { workerFile, prefix, prepareLaunchEnvironment, Collection, completeReceipt, verifyChildEnvironmentRun } =
+    createChildEnvironmentCollector({
+        scope, workerFile: modernWorker, prefix: 'mce-', names, parentValues, parseChildOutput, snapshotEnvironment,
+        controlVariable: 'NTILDE_TERMINFO_ENVIRONMENT_CONTROL',
+        sourceFiles: capturedChildEnvironmentSourceFiles, sourcePolicy: capturedChildEnvironmentSourcePolicy,
+    });
