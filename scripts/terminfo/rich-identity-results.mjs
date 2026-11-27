@@ -12,7 +12,7 @@ import { pinned176, pinned666 } from './rich-identity/pinned-callbacks.mjs';
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 const publication = join(qa, '2026-11-27-rich-identity');
-const manifestSha = 'c674dc11c1f5de869271dae7360c7a7726514736a4fdc593a6e56272768dd189';
+const manifestSha = '76004951e94cb43b9d0366789e909fca6e05d5e6afefdef80eeaebe9be5682f5';
 const bundle = join(qa, '2026-11-16-shell-integration-aggregates', 'terminfo-dev-4.0.0.bundle.mjs.gz');
 const baselineSha = 'd4418484f935ac1a534eaf0b0368d2e5bb174974ae92f2c9c9a4ff2f8905a82b';
 const richSha = '483c7e141c43ac483e8698afe608473680a4ac77c1e4921ea8416ddef2d0caa0';

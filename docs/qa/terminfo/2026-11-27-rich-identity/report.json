@@ -37,7 +37,7 @@
     }
   },
   "measured": {
-    "runId": "6cecd231003c9cecdf5b6a472c607525",
+    "runId": "8b7c4613f7de6e633aa8321f3f68cb6b",
     "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
     "appVersion": "0.14.0+7824244ebd715d9f14ade754ce3fbb352ec7643d",
     "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
@@ -54,11 +54,11 @@
     "appSourceRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
     "appSourceArchiveSha256": "2f27642f518c0748cdac8b67a23b5da72713c8de77c2b2aba30f040439d2bc78",
     "sidecarSha256": "ce9c4bbbb1cf9338b562c2490d5f29b4f5ab10a0345f4fa1b91901e09684e480",
-    "scriptsRevision": "d666d23aaee81971a91634ef31133aa0a6a81f9f",
+    "scriptsRevision": "d166e8afd2e546c15aeffeae3c292b30d517e1b5",
     "files": {
-      "terminfo-rich-identity-owned.mjs": "526f8d424f48a1e2d1238365d5ca892882e63bc12caa210aa80ece108dc8cc69",
+      "terminfo-rich-identity-owned.mjs": "b7790d76cfa6fc7c3ff448ab754d23e8ea26ddd5d044ba903ca64eab62e43745",
       "desktop-lock.mjs": "96076ef3a4afb7cc5c1bef8c6ac6f22ee86745270637e40b4792d58ce34dd9cf",
-      "collect.py": "75b94619c34a65e86902b0715890a70811988469e8a6a3cf57ad764eaea2e436",
+      "collect.py": "c69f0ae52fde69d5c5db5008a87ee0d98dbf660de73a19c2ef339210990f3431",
       "pty_child.py": "b0774393600e9b82cc86aa8298a4584b1d3630f73ff5bac85fdc3456b62d6efe",
       "vte_reference.py": "06802615d3b1bb7b58075caa3ea00da423614f4acf8237ee2bc0ac299236e246",
       "plan.json": "08e3e134969669dd69529abef4e75c30cafa90c0781bb2afdce3455dbfbe6fda",
@@ -66,9 +66,9 @@
     },
     "container": {
       "image": "sha256:1d990cca0cbe0a4cdcc970050077b9f7227c89de734556629be0dde9fc0b6762",
-      "name": "ntilde-identity-6cecd231003c9cecdf5b6a472c607525",
-      "runId": "6cecd231003c9cecdf5b6a472c607525",
-      "id": "20f73956858ce09833e11beb23fd178d93e595257dd7f357158ae64dac132707",
+      "name": "ntilde-identity-8b7c4613f7de6e633aa8321f3f68cb6b",
+      "runId": "8b7c4613f7de6e633aa8321f3f68cb6b",
+      "id": "d7d22be4f1da54f30114c8a354927523cac56467d6b8fabfc83ef99d4779ec4c",
       "isolation": {
         "network": "none",
         "user": "1000:1000",
@@ -83,39 +83,39 @@
           }
         ]
       },
-      "startedAt": "2026-11-27T13:05:06.094Z",
+      "startedAt": "2026-11-27T13:36:35.244Z",
       "status": "exited",
       "exitCode": 0,
-      "removedAt": "2026-11-27T13:05:12.855Z"
+      "removedAt": "2026-11-27T13:36:41.968Z"
     },
     "lease": [
       {
-        "at": "2026-11-27T13:05:05.949Z",
-        "pid": 8703,
+        "at": "2026-11-27T13:36:35.011Z",
+        "pid": 25636,
         "event": "acquired",
-        "lease": "6cecd231003c9cecdf5b6a472c607525",
+        "lease": "8b7c4613f7de6e633aa8321f3f68cb6b",
         "entrypoint": "terminfo-rich-identity-owned.mjs",
-        "waitedMs": 8
+        "waitedMs": 3
       },
       {
-        "at": "2026-11-27T13:05:05.975Z",
-        "pid": 8703,
+        "at": "2026-11-27T13:36:35.138Z",
+        "pid": 25636,
         "event": "launch-attempt",
-        "lease": "6cecd231003c9cecdf5b6a472c607525",
+        "lease": "8b7c4613f7de6e633aa8321f3f68cb6b",
         "entrypoint": "terminfo-rich-identity-owned.mjs"
       },
       {
-        "at": "2026-11-27T13:05:12.856Z",
-        "pid": 8703,
+        "at": "2026-11-27T13:36:41.968Z",
+        "pid": 25636,
         "event": "cleanup-verified",
-        "lease": "6cecd231003c9cecdf5b6a472c607525",
+        "lease": "8b7c4613f7de6e633aa8321f3f68cb6b",
         "by": "owned-container-removed"
       },
       {
-        "at": "2026-11-27T13:05:12.914Z",
-        "pid": 8703,
+        "at": "2026-11-27T13:36:42.025Z",
+        "pid": 25636,
         "event": "released",
-        "lease": "6cecd231003c9cecdf5b6a472c607525",
+        "lease": "8b7c4613f7de6e633aa8321f3f68cb6b",
         "entrypoint": "terminfo-rich-identity-owned.mjs",
         "launch": "attempted"
       }
@@ -149,7 +149,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5b313b31521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": null,
             "tabText": "OSC identity QA",
             "width": 1280,
@@ -166,7 +166,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5b313b31521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": null,
             "tabText": "OSC identity QA",
             "width": 1280,
@@ -183,7 +183,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
             "width": 1280,
@@ -200,7 +200,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
             "width": 1280,
@@ -217,7 +217,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
             "width": 1280,
@@ -234,7 +234,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
             "width": 1280,
@@ -251,7 +251,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
             "width": 1280,
@@ -268,7 +268,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
             "width": 1280,
@@ -285,7 +285,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a363536352f343334332f323132311b5c1b5b343b37521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": "identity-control",
             "tabText": "identity-control",
             "width": 1280,
@@ -302,7 +302,7 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "74122a7c-7d89-467c-ab4c-ec3f4c1dcc16",
+            "paneId": "d0ae1aa9-e8f8-4cb9-b6a9-0714bba6d070",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
             "width": 1280,
