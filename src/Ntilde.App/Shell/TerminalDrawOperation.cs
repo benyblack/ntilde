@@ -1678,11 +1678,9 @@ namespace Ntilde.Shell
                         appliedItalicTransform = true;
                     }
 
-                    if (runIsAscii && DrawAsciiLigatures(canvas, runText, c, baselineYDip, font, fgPaint, primaryTf))
-                    {
-                        cellsRendered += totalRunWidth;
-                    }
-                    else if (runNeedsComplexShaping)
+                    bool hasLigatureClip = runIsAscii && DrawAsciiLigatures(canvas, runText, c, rowTopYDip,
+                        snappedCellHeight, baselineYDip, font, fgPaint, primaryTf);
+                    if (runNeedsComplexShaping)
                     {
                         FlushBatches(canvas);
                         int fallbackChar = FindFirstMissingGlyphCodePoint(runText, primaryTf);
@@ -1714,7 +1712,7 @@ namespace Ntilde.Shell
                         {
                             // The shortcut skips the decorations below, so a run of blanks carrying a styled or colored
                             // underline (#270) or strikethrough takes the per-glyph path so its decoration is painted.
-                            if (runUnderline is null && !runIsStrikethrough && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
+                            if (!hasLigatureClip && runUnderline is null && !runIsStrikethrough && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
                             {
                                 FlushBatches(canvas);
                                 canvas.DrawText(runText, rx, baselineYDip, font, fgPaint);
@@ -1934,6 +1932,12 @@ namespace Ntilde.Shell
                             IncrementDirectDrawTextCall();
                         }
                         cellsRendered += totalRunWidth;
+                    }
+
+                    if (hasLigatureClip)
+                    {
+                        FlushBatches(canvas);
+                        canvas.Restore();
                     }
 
                     if (appliedItalicTransform)

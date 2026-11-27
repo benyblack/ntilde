@@ -1,12 +1,13 @@
 using HarfBuzzSharp;
 using SkiaSharp;
+using SkiaSharp.HarfBuzz;
 
 namespace Ntilde.Shell;
 
 public sealed partial class TerminalDrawOperation
 {
-    /// <summary>Shapes an ASCII run on the primary face and positions clusters on the terminal grid.</summary>
-    private bool DrawAsciiLigatures(SKCanvas canvas, string text, int startCol, float baseline,
+    /// <summary>Draws substituted clusters and clips the following ordinary draw to the other cells.</summary>
+    private bool DrawAsciiLigatures(SKCanvas canvas, string text, int startCol, float rowTop, float rowHeight, float baseline,
         SKFont font, SKPaint paint, SKTypeface primary)
     {
         if (!primary.IsFixedPitch || !HasAdjacentInk(text))
@@ -17,8 +18,11 @@ public sealed partial class TerminalDrawOperation
         buffer.Direction = Direction.LeftToRight;
         buffer.Script = Script.Latin;
         var shaped = GetOrCreateShapingResources(primary).Shaper.Shape(buffer, font);
-        if (shaped.Codepoints.Length == 0 || System.Array.IndexOf(shaped.Codepoints, 0u) >= 0
-            || !HasSubstitutedGlyph(text, font, shaped.Codepoints, shaped.Clusters))
+        if (shaped.Codepoints.Length == 0 || System.Array.IndexOf(shaped.Codepoints, 0u) >= 0)
+            return false;
+
+        using var substitutions = SubstitutedCells(shaped, text, font, startCol, rowTop, rowHeight);
+        if (substitutions.IsEmpty)
             return false;
 
         // Glyph positions within a cluster come from the font. Each cluster starts at its
@@ -47,22 +51,41 @@ public sealed partial class TerminalDrawOperation
 
         FlushBatches(canvas);
         using var blob = builder.Build();
+        canvas.Save();
+        canvas.ClipPath(substitutions);
         canvas.DrawText(blob, 0, baseline, paint);
+        canvas.Restore();
+
+        // Preserve the existing raster path for neighboring cells, including its
+        // antialiasing and hinting. The caller restores this clip after flushing.
+        canvas.Save();
+        canvas.ClipPath(substitutions, SKClipOperation.Difference);
         IncrementShapedTextRun();
         IncrementTextDrawCall();
         return true;
     }
 
-    private static bool HasSubstitutedGlyph(string text, SKFont font, uint[] glyphs, uint[] clusters)
+    private SKPath SubstitutedCells(SKShaper.Result shaped, string text, SKFont font, int startCol, float rowTop, float rowHeight)
     {
-        if (glyphs.Length != text.Length)
-            return true;
-        for (int i = 0; i < glyphs.Length; i++)
+        var substitutions = new SKPath();
+        for (int i = 0; i < shaped.Clusters.Length;)
         {
-            if (clusters[i] != (uint)i || glyphs[i] != font.GetGlyph(text[i]))
-                return true;
+            int start = (int)shaped.Clusters[i];
+            int next = i + 1;
+            while (next < shaped.Clusters.Length && shaped.Clusters[next] == shaped.Clusters[i])
+                next++;
+
+            int end = next < shaped.Clusters.Length ? (int)shaped.Clusters[next] : text.Length;
+            if (end != start + 1 || next != i + 1 || shaped.Codepoints[i] != font.GetGlyph(text[start]))
+            {
+                float left = FromDevicePx(_pixelGrid.XForCol(startCol + start));
+                float right = FromDevicePx(_pixelGrid.XForCol(startCol + end));
+                substitutions.AddRect(new SKRect(left, rowTop, right, rowTop + rowHeight));
+            }
+
+            i = next;
         }
-        return false;
+        return substitutions;
     }
 
     private static bool HasAdjacentInk(string text)
