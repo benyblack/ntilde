@@ -69,10 +69,10 @@ namespace Ntilde.Shell
                     _selection.IsActive = true;
                     _isSelecting = true;
                     if (_promptClicksEnabled && e.Pointer.Type == PointerType.Mouse && e.KeyModifiers == KeyModifiers.None
-                        && point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed)
+                        && point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed
+                        && ResolvePromptClick(point.Position) is { } click)
                     {
-                        if (ResolvePromptClick(point.Position) is { } click)
-                            _pendingPromptClick = (e.Pointer, click.Column, click.Row, click.Version);
+                        _pendingPromptClick = (e.Pointer, click.Column, click.Row, click.Version);
                     }
                 }
 
@@ -114,7 +114,8 @@ namespace Ntilde.Shell
 
                 // Update selection end
                 _selection.End = (absRow, col);
-                if (_selection.Start != _selection.End)
+                // Avalonia routes additional button transitions through PointerMoved.
+                if (_selection.Start != _selection.End || point.Properties.PointerUpdateKind != PointerUpdateKind.Other)
                 {
                     _pendingPromptClick = null;
                 }
@@ -178,11 +179,12 @@ namespace Ntilde.Shell
                     var start = _selection.Start;
                     _selection.Clear();
                     InvalidateVisual();
-                    if (pending is { } click && ReferenceEquals(click.Pointer, e.Pointer)
-                        && e.KeyModifiers == KeyModifiers.None && GetReleasedMouseButton(e) == TerminalMouseButton.Left)
+                    if (pending is { } click && ReferenceEquals(click.Pointer, e.Pointer) && e.KeyModifiers == KeyModifiers.None)
                     {
-                        var position = e.GetPosition(this);
-                        if (start == ScreenToTerminal(position) && ResolvePromptClick(position) == (click.Column, click.Row, click.Version))
+                        var point = e.GetCurrentPoint(this);
+                        if (point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonReleased
+                            && start == ScreenToTerminal(point.Position)
+                            && ResolvePromptClick(point.Position) == (click.Column, click.Row, click.Version))
                         {
                             e.Handled = SendEncodedMouseReport(FormattableString.Invariant($"\x1b[<0;{click.Column};{click.Row}M"), legacyBytes: false);
                         }

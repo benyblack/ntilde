@@ -1,8 +1,38 @@
+using System;
 using System.Collections.Generic;
 
 namespace Ntilde.VT;
 
-internal readonly record struct PromptTextSpan(int Start, int End);
+internal readonly record struct PromptTextSpan(int Start, int End)
+{
+    public static PromptTextSpan[] Clip(PromptTextSpan[] spans, int columns)
+    {
+        int keep = Array.FindLastIndex(spans, span => span.Start < columns) + 1;
+        if (keep == 0) return [];
+        var clipped = spans[..keep];
+        clipped[^1] = clipped[^1] with { End = Math.Min(clipped[^1].End, columns) };
+        return clipped;
+    }
+
+    public static PromptTextSpan[]? Merge(PromptTextSpan[] spans, int start, int end, int writtenColumns)
+    {
+        if (end <= start) return spans;
+        foreach (var span in spans)
+            if (span.Start <= start && span.End >= end) return spans;
+
+        var merged = new List<PromptTextSpan>(spans.Length + 1);
+        int index = 0;
+        while (index < spans.Length && spans[index].End < start) merged.Add(spans[index++]);
+        while (index < spans.Length && spans[index].Start <= end)
+        {
+            start = Math.Min(start, spans[index].Start);
+            end = Math.Max(end, spans[index++].End);
+        }
+        merged.Add(new(start, end));
+        while (index < spans.Length) merged.Add(spans[index++]);
+        return merged.Count == 1 && start == 0 && end == writtenColumns ? null : merged.ToArray();
+    }
+}
 
 public partial class TerminalRow
 {
@@ -11,9 +41,14 @@ public partial class TerminalRow
     // without changing what reflow keeps on screen or in a snapshot.
     internal PromptTextSpan[]? PromptTextSpans { get; set; }
 
-    internal int PromptTextColumns => PromptTextSpans is { } spans
-        ? (spans.Length > 0 ? spans[^1].End : 0)
-        : WrittenColumns;
+    internal int PromptTextColumns
+    {
+        get
+        {
+            if (PromptTextSpans is not { } spans) return WrittenColumns;
+            return spans.Length > 0 ? spans[^1].End : 0;
+        }
+    }
 
     internal void NoteLineErasure(int from, int to, bool trackPromptText)
     {
@@ -53,26 +88,8 @@ public partial class TerminalRow
     internal void NoteGlyphWritten(int start, int end)
     {
         NoteColumnsWritten(end);
-        if (PromptTextSpans is { } spans) MergePromptText(spans, start, System.Math.Min(end, Cells.Length));
-    }
-
-    private void MergePromptText(PromptTextSpan[] spans, int start, int end)
-    {
-        if (end <= start) return;
-        foreach (var span in spans)
-            if (span.Start <= start && span.End >= end) return;
-
-        var merged = new List<PromptTextSpan>(spans.Length + 1);
-        int index = 0;
-        while (index < spans.Length && spans[index].End < start) merged.Add(spans[index++]);
-        while (index < spans.Length && spans[index].Start <= end)
-        {
-            start = System.Math.Min(start, spans[index].Start);
-            end = System.Math.Max(end, spans[index++].End);
-        }
-        merged.Add(new(start, end));
-        while (index < spans.Length) merged.Add(spans[index++]);
-        PromptTextSpans = merged.Count == 1 && start == 0 && end == WrittenColumns ? null : merged.ToArray();
+        if (PromptTextSpans is { } spans)
+            PromptTextSpans = PromptTextSpan.Merge(spans, start, Math.Min(end, Cells.Length), WrittenColumns);
     }
 }
 

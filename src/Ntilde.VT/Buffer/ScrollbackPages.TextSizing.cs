@@ -56,7 +56,7 @@ public sealed partial class ScrollbackPages
         page.SetHyperlinkFromMap(row, SizingMetadata(page.GetHyperlinkMap(row), col, style.Hyperlink));
         page.SetUnderlineFromMap(row, SizingMetadata(page.GetUnderlineMap(row), col, style.Underline));
         SetTextSizingCell(logicalRow, col, piece);
-        page.SetWrittenColumns(row, Math.Max(page.GetWrittenColumns(row), col + 1));
+        page.NoteGlyphWritten(row, col, col + 1);
         if (page.IsRowWrapped(row) && page.GetWrappedColumns(row) is int width && width < col + 1)
             page.SetRowWrapped(row, true, col + 1);
     }

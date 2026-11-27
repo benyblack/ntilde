@@ -204,7 +204,8 @@ namespace Ntilde.VT.Storage
         internal void SetWrittenColumns(int rowIndex, int columns)
         {
             if (columns < 0 || columns > Cols) throw new ArgumentOutOfRangeException(nameof(columns));
-            if (_promptTextSpans != null) _promptTextSpans[rowIndex] = null;
+            if (GetPromptTextSpans(rowIndex) is { Length: > 0 } spans && spans[^1].End > columns)
+                SetPromptTextSpans(rowIndex, PromptTextSpan.Clip(spans, columns));
             if (columns == Cols && _writtenColumns == null) return;
             if (_writtenColumns == null)
             {
@@ -218,9 +219,17 @@ namespace Ntilde.VT.Storage
 
         internal void SetPromptTextSpans(int rowIndex, PromptTextSpan[]? spans)
         {
-            if (spans is null) return;
+            if (spans is null && _promptTextSpans is null) return;
             _promptTextSpans ??= new PromptTextSpan[]?[RowsInPage];
             _promptTextSpans[rowIndex] = spans;
+        }
+
+        internal void NoteGlyphWritten(int rowIndex, int start, int end)
+        {
+            int columns = Math.Max(GetWrittenColumns(rowIndex), end);
+            SetWrittenColumns(rowIndex, columns);
+            if (GetPromptTextSpans(rowIndex) is { } spans)
+                SetPromptTextSpans(rowIndex, PromptTextSpan.Merge(spans, start, end, columns));
         }
 
         // ── Extended Text Metadata ───────────────────────────────────────────────
@@ -300,6 +309,7 @@ namespace Ntilde.VT.Storage
             SetRowWrapped(rowIndex, false);
             SetLineSize(rowIndex, LineSize.SingleWidth);
             SetWrittenColumns(rowIndex, Cols);
+            SetPromptTextSpans(rowIndex, null);
             if (_extendedText != null) _extendedText[rowIndex] = null;
             if (_hyperlinks != null) _hyperlinks[rowIndex] = null;
             if (_underlines != null) _underlines[rowIndex] = null;

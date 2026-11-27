@@ -47,6 +47,30 @@ public class TerminalViewPromptClickTests
         Assert.Empty(fixture.Sent);
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void MouseButtonChordDoesNotSubmitAPromptClick(bool releaseLeftLast)
+    {
+        using var fixture = new PointerFixture(2);
+        fixture.Press(4, 4);
+        fixture.Move(4, 4, RawInputModifiers.LeftMouseButton | RawInputModifiers.RightMouseButton,
+            PointerUpdateKind.RightButtonPressed);
+        fixture.Move(4, 4, releaseLeftLast ? RawInputModifiers.LeftMouseButton : RawInputModifiers.RightMouseButton,
+            releaseLeftLast ? PointerUpdateKind.RightButtonReleased : PointerUpdateKind.LeftButtonReleased);
+        fixture.Release(4, 4, kind: releaseLeftLast ? PointerUpdateKind.LeftButtonReleased : PointerUpdateKind.RightButtonReleased);
+        Assert.Empty(fixture.Sent);
+    }
+
+    [AvaloniaFact]
+    public void ActualReleaseButtonMustBeLeft()
+    {
+        using var fixture = new PointerFixture(2);
+        fixture.Press(4, 4);
+        fixture.Release(4, 4, kind: PointerUpdateKind.RightButtonReleased);
+        Assert.Empty(fixture.Sent);
+    }
+
     [AvaloniaFact]
     public void ClickCannotCrossIntoTheNextPrompt()
     {
@@ -109,13 +133,15 @@ public class TerminalViewPromptClickTests
             => View.RaiseEvent(new PointerPressedEventArgs(View, _pointer, _window, At(row, column), 0,
                 new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), modifiers));
 
-        public void Move(int row, int column)
+        public void Move(int row, int column, RawInputModifiers flags = RawInputModifiers.LeftMouseButton,
+            PointerUpdateKind kind = PointerUpdateKind.Other)
             => View.RaiseEvent(new PointerEventArgs(InputElement.PointerMovedEvent, View, _pointer, _window, At(row, column), 0,
-                new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.Other), KeyModifiers.None));
+                new PointerPointProperties(flags, kind), KeyModifiers.None));
 
-        public void Release(int row, int column, KeyModifiers modifiers = KeyModifiers.None)
+        public void Release(int row, int column, KeyModifiers modifiers = KeyModifiers.None,
+            PointerUpdateKind kind = PointerUpdateKind.LeftButtonReleased)
             => View.RaiseEvent(new PointerReleasedEventArgs(View, _pointer, _window, At(row, column), 0,
-                new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), modifiers, MouseButton.Left));
+                new PointerPointProperties(RawInputModifiers.None, kind), modifiers, MouseButton.Left));
 
         public void Dispose()
         {

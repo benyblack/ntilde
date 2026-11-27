@@ -1,4 +1,5 @@
 using Ntilde.VT;
+using Ntilde.VT.Storage;
 using Xunit;
 
 namespace Ntilde.VT.Tests;
@@ -306,6 +307,31 @@ public class PromptClickTests
         Assert.False(buffer.TryGetPromptClickRow(2, out _, out _));
     }
 
+    [Fact]
+    public void ScrollbackSpanCoverageSurvivesLayoutExtentEdits()
+    {
+        var page = new TerminalPage(1, 20);
+        try
+        {
+            page.SetWrittenColumns(0, 12);
+            page.SetPromptTextSpans(0, [new(0, 2), new(10, 12)]);
+            page.SetWrittenColumns(0, 13);
+            Assert.Equal(new PromptTextSpan[] { new(0, 2), new(10, 12) }, page.GetPromptTextSpans(0));
+            page.NoteGlyphWritten(0, 12, 13);
+            Assert.Equal(new PromptTextSpan[] { new(0, 2), new(10, 13) }, page.GetPromptTextSpans(0));
+
+            page.SetWrittenColumns(0, 11);
+            Assert.Equal(new PromptTextSpan[] { new(0, 2), new(10, 11) }, page.GetPromptTextSpans(0));
+
+            page.ClearRowMetadata(0);
+            Assert.Null(page.GetPromptTextSpans(0));
+        }
+        finally
+        {
+            page.ReturnToPool();
+        }
+    }
+
     [Theory]
     [InlineData("K")]
     [InlineData("J")]
@@ -369,9 +395,11 @@ public class PromptClickTests
     public void RowEditsThatIntersectThePromptRequireFreshAnchors(string edit)
     {
         _parser.Process("\x1b]133;A;click_events=2\aPS1>\x1b[5;1H\x1b]133;A;k=s\aPS2>");
+        Assert.Equal(1, WireRow(0));
         Assert.Equal(1, WireRow(4));
 
         _parser.Process(edit);
+        Assert.False(_buffer.TryGetPromptClickRow(0, out _, out _));
         Assert.False(_buffer.TryGetPromptClickRow(2, out _, out _));
         _parser.Process("\x1b[4;1H\x1b]133;A;click_events=2\aPS1>");
         Assert.Equal(1, WireRow(3));
