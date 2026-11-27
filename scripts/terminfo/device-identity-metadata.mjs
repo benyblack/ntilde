@@ -10,7 +10,7 @@ export const metadataFile = 'vt-metadata.json';
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
 export function readAssembly(file) {
-    const result = execFileSync('dotnet', ['run', '--disable-build-servers', '--file', reader, '--', file], {
+    const result = execFileSync('/usr/local/share/dotnet/dotnet', ['run', '--disable-build-servers', '--file', reader, '--', file], {
         encoding: 'utf8', env: { ...process.env, DOTNET_CLI_USE_MSBUILD_SERVER: '0' }, timeout: 30000, maxBuffer: 16384,
     });
     const [hash, offset, blob] = result.trimEnd().split('\n');
