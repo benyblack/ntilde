@@ -5,6 +5,19 @@ namespace Ntilde.VT;
 
 internal readonly record struct PromptTextSpan(int Start, int End)
 {
+    public static PromptTextSpan[] Remove(PromptTextSpan[]? spans, int columns, int from, int to)
+    {
+        var retained = new List<PromptTextSpan>();
+        foreach (var span in spans ?? [new(0, columns)])
+        {
+            int left = Math.Min(from, span.End);
+            int right = Math.Max(to, span.Start);
+            if (span.Start < left) retained.Add(new(span.Start, left));
+            if (right < span.End) retained.Add(new(right, span.End));
+        }
+        return retained.ToArray();
+    }
+
     public static PromptTextSpan[] Clip(PromptTextSpan[] spans, int columns)
     {
         int keep = Array.FindLastIndex(spans, span => span.Start < columns) + 1;
@@ -53,19 +66,15 @@ public partial class TerminalRow
     internal void NoteCellsErased(int from, int to, bool trackPromptText, bool noteLayout = true)
     {
         if (trackPromptText || PromptTextSpans != null)
-        {
-            var retained = new List<PromptTextSpan>();
-            var spans = PromptTextSpans ?? [new(0, WrittenColumns)];
-            foreach (var span in spans)
-            {
-                int left = System.Math.Min(from, span.End);
-                int right = System.Math.Max(to, span.Start);
-                if (span.Start < left) retained.Add(new(span.Start, left));
-                if (right < span.End) retained.Add(new(right, span.End));
-            }
-            PromptTextSpans = retained.ToArray();
-        }
+            PromptTextSpans = PromptTextSpan.Remove(PromptTextSpans, WrittenColumns, from, to);
         if (noteLayout) NoteColumnsWritten(to);
+    }
+
+    internal void TrimWrittenColumns(int columns)
+    {
+        _writtenColumns = Math.Min(_writtenColumns, columns);
+        if (PromptTextSpans is { Length: > 0 } spans && spans[^1].End > _writtenColumns)
+            PromptTextSpans = PromptTextSpan.Clip(spans, _writtenColumns);
     }
 
     internal void NoteColumnShift(int start, int edge, int delta, bool trackPromptText)

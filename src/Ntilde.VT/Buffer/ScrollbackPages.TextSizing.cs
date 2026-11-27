@@ -75,11 +75,14 @@ public sealed partial class ScrollbackPages
             row.WrappedColumns, row.WrittenColumns);
 
     /// <summary>Editing any visible piece can erase a block whose anchor is in retained history.</summary>
-    internal void ClearTextSizingCell(int logicalRow, int col, TerminalCell replacement, TextSizingBlock block)
+    internal void ClearTextSizingCell(int logicalRow, int col, TerminalCell replacement, TextSizingBlock block, bool trackPrompt)
     {
         var (page, row) = FindPage(logicalRow);
         var map = page.GetTextSizingMap(row);
         if (map?.TryGet(col, out CellTextSizing? piece) != true || piece == null || !ReferenceEquals(piece.Block, block)) return;
+        var spans = page.GetPromptTextSpans(row);
+        if (trackPrompt || spans != null)
+            page.SetPromptTextSpans(row, PromptTextSpan.Remove(spans, page.GetWrittenColumns(row), col, col + 1));
         page.GetRowSpan(row)[col] = replacement;
         page.GetExtendedTextMap(row)?.Remove(col);
         page.GetHyperlinkMap(row)?.Remove(col);

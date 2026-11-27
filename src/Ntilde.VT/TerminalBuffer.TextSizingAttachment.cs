@@ -101,6 +101,8 @@ public partial class TerminalBuffer
         EraseTextSizingRange(x, x + replacement.Width, y, y + replacement.Height);
         EraseOrdinaryWideSizingBoundaries(x, y, replacement.Width, replacement.Height);
         StoreAttachedTextSizing(replacement, x, y, style);
+        int bottom = y - TextSizingAbsoluteRow(0) + replacement.Height - 1;
+        if (bottom >= 0) ExtendClickPromptToEnd(bottom, x + replacement.Width);
         if (followsEnd)
         {
             _cursorCol = x;

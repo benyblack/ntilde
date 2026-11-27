@@ -219,6 +219,32 @@ public class PromptClickTests
         Assert.False(_buffer.TryGetPromptClickRow(scale + 1, out _, out _));
     }
 
+    [Fact]
+    public void AppendedVariationSelectorTracksTheRelocatedSizedBlock()
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A;click_events=2\aPS1>\x1b[1;19H\x1b]66;s=2;\u2764\a");
+        Assert.False(buffer.TryGetPromptClickRow(2, out _, out _));
+
+        parser.Process("\ufe0f\x1b[H");
+        Assert.True(buffer.TryGetPromptClickRow(2, out int row, out _));
+        Assert.Equal(3, row);
+        Assert.False(buffer.TryGetPromptClickRow(3, out _, out _));
+    }
+
+    [Fact]
+    public void ErasingTheAnchorRetiresTheWholeSizedBlockFromPromptCoverage()
+    {
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n\x1b]66;s=2;lower\a\x1b[H");
+        Assert.Equal(3, WireRow(2));
+
+        _parser.Process("\x1b[2;1H\x1b[2K\x1b[H");
+        Assert.Equal(1, WireRow(0));
+        Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
+        Assert.False(_buffer.TryGetPromptClickRow(2, out _, out _));
+    }
+
     [Theory]
     [InlineData("z")]
     [InlineData("{")]
