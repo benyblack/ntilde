@@ -74,6 +74,24 @@ public class PromptClickTests
         Assert.Equal(1, WireRow(4));
     }
 
+    [Theory]
+    [InlineData("\x1b[K", false, false)]
+    [InlineData("\x1b[2K", true, false)]
+    [InlineData("\x1b[5X", false, true)]
+    [InlineData("\x1b[J", false, false)]
+    public void ClearingBeforeWritingSecondaryPromptKeepsItsAnchor(string erase, bool oldText, bool reflow)
+    {
+        if (oldText) _parser.Process("\x1b[2;1Hold\x1b[H");
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n\x1b]133;A;k=s\a");
+        if (reflow) _buffer.Resize(40, 24);
+
+        _parser.Process(erase + "PS2>");
+        Assert.Equal(1, WireRow(1));
+
+        _parser.Process("\x1b[2;1H\x1b[2K\x1b[H");
+        Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
+    }
+
     [Fact]
     public void ExplicitSecondaryOptOutDisablesReports()
     {

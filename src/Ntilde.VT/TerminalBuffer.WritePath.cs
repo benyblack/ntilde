@@ -189,6 +189,8 @@ namespace Ntilde.VT
         private void WriteContentCore(string text)
         {
             FlushGrapheme(); // Ensure any single char buffered by WriteChar is handled
+            long firstPromptRow = _promptClickMode != PromptClickMode.Disabled
+                ? CaptureClickPosition(_cursorRow, 0).AbsoluteRow : -1;
 
             // Every printable character of all output comes through here, so the segmentation used
             // to dominate allocation: StringInfo.GetTextElementEnumerator boxes an enumerator and
@@ -205,7 +207,8 @@ namespace Ntilde.VT
                 WriteGraphemeInternal(remaining.Slice(0, length));
                 remaining = remaining.Slice(length);
             }
-            if (_promptClickMode != PromptClickMode.Disabled) ExtendClickPromptThroughText();
+            if (firstPromptRow >= 0 && _lastCharCol >= 0)
+                ExtendClickPromptThroughRows(firstPromptRow, _lastCharRow, _lastCharCol + 1);
         }
 
         /// <summary>

@@ -147,7 +147,8 @@ public partial class TerminalBuffer
             _cursorRow = top + dy;
             StoreTextSizingRow(block, dy);
         }
-        ExtendClickPromptToEnd(_cursorRow, _cursorCol + width);
+        if (_promptClickMode != PromptClickMode.Disabled)
+            ExtendClickPromptThroughRows(CaptureClickPosition(top, 0).AbsoluteRow, _cursorRow, _cursorCol + width);
         FinishTextSizingWrite(top, width, text);
     }
 

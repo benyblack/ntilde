@@ -28,10 +28,11 @@ namespace Ntilde.VT
             return (previousCellRow, offset - rowStarts[previousCellRow]);
         }
 
-        private sealed class ReflowPromptAnchor(ShellIntegrationMark mark, bool isEnd = false)
+        private sealed class ReflowPromptAnchor(ShellIntegrationMark mark, bool isEnd = false, bool hasWrittenText = false)
         {
             public ShellIntegrationMark Mark { get; } = mark;
             public bool IsEnd { get; } = isEnd;
+            public bool HasWrittenText { get; } = hasWrittenText;
             public (int Row, int Column) Placement { get; set; } = (-1, -1);
         }
 
@@ -84,7 +85,7 @@ namespace Ntilde.VT
             private readonly ReflowPromptAnchor[]? _promptAnchors;
             private ShellIntegrationMark? _reflowedPrimaryPrompt;
             private ShellIntegrationMark? _reflowedPromptEnd;
-            private List<ShellIntegrationMark>? _reflowedSecondaryPrompts;
+            private List<SecondaryClickPrompt>? _reflowedSecondaryPrompts;
 
             public ReflowEngineContext(TerminalBuffer source)
             {
@@ -96,7 +97,7 @@ namespace Ntilde.VT
                 if (source.CaptureClickPromptForReflow() is { } prompt)
                 {
                     _promptVersion = prompt.Version;
-                    _promptAnchors = prompt.Secondary.Select(mark => new ReflowPromptAnchor(mark))
+                    _promptAnchors = prompt.Secondary.Select(anchor => new ReflowPromptAnchor(anchor.Mark, hasWrittenText: anchor.HasWrittenText))
                         .Prepend(new ReflowPromptAnchor(prompt.End, isEnd: true))
                         .Prepend(new ReflowPromptAnchor(prompt.Primary)).ToArray();
                 }
@@ -1326,13 +1327,13 @@ namespace Ntilde.VT
                             RebuildTrackedMark(anchor.Mark, anchor.Placement.Row, anchor.Placement.Column, discardedRows, newCols, anchor.IsEnd);
                         _reflowedPrimaryPrompt = RebuildPrompt(_promptAnchors[0]);
                         _reflowedPromptEnd = RebuildPrompt(_promptAnchors[1]);
-                        _reflowedSecondaryPrompts = new List<ShellIntegrationMark>();
+                        _reflowedSecondaryPrompts = new List<SecondaryClickPrompt>();
                         for (int index = 2; index < _promptAnchors.Length; index++)
                         {
                             if (RebuildPrompt(_promptAnchors[index]) is { } secondary)
-                                _reflowedSecondaryPrompts.Add(secondary);
+                                _reflowedSecondaryPrompts.Add(new(secondary, _promptAnchors[index].HasWrittenText));
                         }
-                        _reflowedSecondaryPrompts.Sort(static (left, right) => left.AbsoluteRow.CompareTo(right.AbsoluteRow));
+                        _reflowedSecondaryPrompts.Sort(static (left, right) => left.Mark.AbsoluteRow.CompareTo(right.Mark.AbsoluteRow));
                     }
 
                     // Fill viewport

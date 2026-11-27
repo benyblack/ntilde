@@ -9,11 +9,13 @@ internal enum PromptClickMode
 
 public partial class TerminalBuffer
 {
+    private readonly record struct SecondaryClickPrompt(ShellIntegrationMark Mark, bool HasWrittenText = false);
+
     private ShellIntegrationMark? _clickPrompt;
     private ShellIntegrationMark _clickPromptEnd;
     private PromptClickMode _promptClickMode;
     private ulong _clickPromptVersion;
-    private readonly List<ShellIntegrationMark> _secondaryClickPrompts = new();
+    private readonly List<SecondaryClickPrompt> _secondaryClickPrompts = new();
 
     internal void BeginClickPrompt(ShellIntegrationMark mark, PromptClickMode mode)
     {
@@ -45,9 +47,9 @@ public partial class TerminalBuffer
                 }
 
                 // A line editor can redraw the continuation prompts from an earlier row.
-                int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow < mark.AbsoluteRow) + 1;
+                int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.Mark.AbsoluteRow < mark.AbsoluteRow) + 1;
                 _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
-                _secondaryClickPrompts.Add(mark);
+                _secondaryClickPrompts.Add(new(mark));
                 if (mode is { } requested)
                 {
                     if (requested == PromptClickMode.Disabled || _promptClickMode == PromptClickMode.Disabled)
@@ -65,18 +67,24 @@ public partial class TerminalBuffer
         }
     }
 
-    // Called at the end of a printable run with the grid write lock held.
-    private void ExtendClickPromptThroughText()
-    {
-        if (_lastCharCol >= 0) ExtendClickPromptToEnd(_lastCharRow, _lastCharCol + 1);
-    }
-
-    private void ExtendClickPromptToEnd(int row, int column)
+    // Called after writing text, with the grid write lock held.
+    private void ExtendClickPromptThroughRows(long firstRow, int row, int column)
     {
         if (_promptClickMode == PromptClickMode.Disabled || _isAltScreen) return;
         lock (_trackedMarkGate)
         {
-            ExtendClickPromptLocked(CaptureClickPosition(row, column));
+            var end = CaptureClickPosition(row, column);
+            if (end.Generation != _clickPromptEnd.Generation) return;
+            ExtendClickPromptLocked(end);
+
+            long firstWritten = Math.Min(firstRow, end.AbsoluteRow);
+            for (int index = _secondaryClickPrompts.Count - 1; index >= 0; index--)
+            {
+                var anchor = _secondaryClickPrompts[index];
+                if (anchor.Mark.AbsoluteRow < firstWritten) break;
+                if (!anchor.HasWrittenText && anchor.Mark.AbsoluteRow <= end.AbsoluteRow)
+                    _secondaryClickPrompts[index] = anchor with { HasWrittenText = true };
+            }
         }
     }
 
@@ -114,8 +122,10 @@ public partial class TerminalBuffer
 
             int columns = _viewport[row].PromptTextColumns;
             var edited = CaptureClickPosition(row, columns);
+            // Editors can mark a continuation before clearing old cells and then
+            // drawing it. Only retire the mark after its own text has been erased.
             if (columns == 0)
-                _secondaryClickPrompts.RemoveAll(anchor => anchor.AbsoluteRow == edited.AbsoluteRow);
+                _secondaryClickPrompts.RemoveAll(anchor => anchor.HasWrittenText && anchor.Mark.AbsoluteRow == edited.AbsoluteRow);
             if (row != endRow) return;
             if (columns == 0)
                 RestoreClickPromptEndBeforeRow(primary, primaryRow, endRow);
@@ -142,7 +152,7 @@ public partial class TerminalBuffer
 
         // Marked empty continuation rows are also part of the editable extent.
         if (_secondaryClickPrompts.Count > 0)
-            ExtendClickPromptLocked(_secondaryClickPrompts[^1]);
+            ExtendClickPromptLocked(_secondaryClickPrompts[^1].Mark);
     }
 
     internal void EraseClickPromptTail(ShellIntegrationMark cursor)
@@ -159,8 +169,9 @@ public partial class TerminalBuffer
                 return;
             }
 
-            int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow < cursor.AbsoluteRow
-                || (anchor.AbsoluteRow == cursor.AbsoluteRow && anchor.Column < cursor.Column)) + 1;
+            int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.Mark.AbsoluteRow < cursor.AbsoluteRow
+                || (anchor.Mark.AbsoluteRow == cursor.AbsoluteRow
+                    && (!anchor.HasWrittenText || anchor.Mark.Column < cursor.Column))) + 1;
             _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
 
             if (cursor.Column == 0 && cursor.AbsoluteRow <= _clickPromptEnd.AbsoluteRow)
@@ -209,7 +220,7 @@ public partial class TerminalBuffer
 
             long lastRow = CaptureClickPosition(Rows - 1, 0).AbsoluteRow;
             if (_clickPromptEnd.AbsoluteRow <= lastRow) return;
-            int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow <= lastRow) + 1;
+            int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.Mark.AbsoluteRow <= lastRow) + 1;
             _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
             RestoreClickPromptEndBeforeRow(primary, primaryRow, Rows);
             _clickPromptVersion++;
@@ -230,7 +241,7 @@ public partial class TerminalBuffer
         _secondaryClickPrompts.Clear();
     }
 
-    private (ulong Version, ShellIntegrationMark Primary, ShellIntegrationMark End, ShellIntegrationMark[] Secondary)? CaptureClickPromptForReflow()
+    private (ulong Version, ShellIntegrationMark Primary, ShellIntegrationMark End, SecondaryClickPrompt[] Secondary)? CaptureClickPromptForReflow()
     {
         lock (_trackedMarkGate)
         {
@@ -241,7 +252,7 @@ public partial class TerminalBuffer
     }
 
     private void RestoreClickPromptAfterReflow(ulong version, ShellIntegrationMark? primary,
-        ShellIntegrationMark? end, List<ShellIntegrationMark> secondary)
+        ShellIntegrationMark? end, List<SecondaryClickPrompt> secondary)
     {
         lock (_trackedMarkGate)
         {
@@ -259,9 +270,9 @@ public partial class TerminalBuffer
             _secondaryClickPrompts.Clear();
             foreach (var anchor in secondary)
             {
-                if (anchor.AbsoluteRow < start.AbsoluteRow) continue;
+                if (anchor.Mark.AbsoluteRow < start.AbsoluteRow) continue;
                 _secondaryClickPrompts.Add(anchor);
-                ExtendClickPromptLocked(anchor);
+                ExtendClickPromptLocked(anchor.Mark);
             }
         }
     }
@@ -296,7 +307,7 @@ public partial class TerminalBuffer
 
                 foreach (var secondary in _secondaryClickPrompts)
                 {
-                    if (!ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, secondary, out int secondaryRow)
+                    if (!ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, secondary.Mark, out int secondaryRow)
                         || secondaryRow > row)
                     {
                         break;

@@ -82,7 +82,7 @@ function fixtures(marker, cells) {
         // Visible output outside the edit region precedes the primary marker.
         return clear + marker + background + lines.filter(inPrompt).map(([row, line]) => {
             const mark = mode === null ? '' : row === primary ? osc('A;click_events=' + mode)
-                : row === secondary ? osc('A;k=s') : '';
+                : row === secondary ? osc('A;k=s') + csi + 'K' : '';
             return cup(row) + mark + line;
         }).join('') + cup(cursor);
     }
