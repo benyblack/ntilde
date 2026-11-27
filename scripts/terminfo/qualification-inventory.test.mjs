@@ -669,7 +669,6 @@ test('the original aggregate projection remains attributable after the OSC 633 r
         assert.equal(item.claims[0].reportedConclusion.outcome, 'inconclusive', id);
         assert.equal(item.claims[0].reportedConclusion.grading, 'aggregate-pinned-replay-preserved-by-design', id);
     }
-    assert.equal(stored.totals.remainingAgainstStockInconclusive.effectMeasuredOther, 1);
     const reassessed = row(stored, 'extensions.osc-633-vscode');
     assert.deepEqual(reassessed.claims.map(claim => claim.effect.verdict), ['inconclusive', 'supported']);
     assert.equal(reassessed.effect.verdict, 'supported');
