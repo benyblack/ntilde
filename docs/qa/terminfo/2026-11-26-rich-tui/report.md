@@ -18,6 +18,10 @@ The stock categories partition the 96 cases. An inventory claim can also have a 
 
 The [Kitty keyboard assessment](kitty-report.md) records the bytes the child received for disambiguation, event reporting, alternate keys, all-key reporting and associated text. All five tested App effects were supported on the isolated Linux X11 run. Its separately retained query exchanges measure flag negotiation alongside the routed-input tests.
 
+## modifyOtherKeys level 3
+
+The [level-3 assessment](../2026-11-27-modify-other-keys-3/report.md) compares the exact child bytes for the same four ordinary keys at levels 2 and 3. The fixed App delivered one report per paired key and text event. Both pinned probe paths remain inconclusive.
+
 ## Kitty graphics transmit and display
 
 The [Kitty graphics assessment](../2026-11-26-rich-kitty-graphics/report.md) records the pinned transmit and display replies and the paired pixel captures of the 1 × 1 RGB fixture. It also rederives the historical numbered lifecycle and number-reuse cases.

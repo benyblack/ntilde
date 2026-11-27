@@ -15,9 +15,7 @@ Levels 1 and 2 are subcases of the single benchmark id. Level 3 (`input.modify-o
 dead keys, non-US layouts, AltGr and Meta/Super behavior beyond the labeled policy controls, SSH, mux, Windows/Linux
 desktop qualification and any general keyboard-API redesign are out of scope and never claimed.
 
-The [level-3 policy audit](2026-11-17-modify-other-keys-3-policy.md) records its separate pinned paths,
-the authoritative all-ordinary-keys semantics and the explicit unsupported/deferred implementation policy.
-It adds no graded suite or support claim.
+The [level-3 follow-up](2026-11-27-modify-other-keys-3/report.md) implements and separately qualifies the level deferred in the [#1002 audit](2026-11-17-modify-other-keys-3-policy.md). The negotiations and results below describe the original levels-1/2 measurement.
 
 ## What the pinned probe actually is
 

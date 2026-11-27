@@ -76,7 +76,7 @@ public sealed class HeadlessModifyOtherKeysTests
         await host.SettleAsync(id, client);
         await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the XTQMODKEYS reply reached the child");
         Assert.Equal("\u001b[>4;2m", Assert.Single(host.Fake(id).SentInput));
-        Assert.Equal(2, await host.Mux(id).InvokeAsync(() => host.Mux(id).Buffer.Modes.ModifyOtherKeys.Level));
+        Assert.Equal(2, pane.Buffer.Modes.ModifyOtherKeys.Level);
     }
 
     [Fact]

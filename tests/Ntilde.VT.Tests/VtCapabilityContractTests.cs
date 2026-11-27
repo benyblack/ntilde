@@ -204,7 +204,7 @@ public sealed class VtCapabilityContractTests
             ["mime-clipboard-paste"] = "\x1b[?5522h\x1b[?5522$p",
             ["sgr-overline-on"] = "\x1b[53mA",
             ["sgr-overline-off"] = "\x1b[53mA\x1b[55mB",
-            ["modify-other-keys-query"] = "\x1b[>4;2m\x1b[?4mA",
+            ["modify-other-keys-query"] = "\x1b[>4;3m\x1b[?4mA",
             ["iterm2-cell-size"] = "\x1b]1337;ReportCellSize\aA",
             ["urxvt-cell-size"] = "\x1b]776;?\x1b\\A",
             ["iterm2-capabilities"] = "\x1b]1337;RequestCapabilities\aA",
@@ -589,9 +589,9 @@ public sealed class VtCapabilityContractTests
         var buffer = new TerminalBuffer(40, 6);
         var parser = new AnsiParser(buffer) { OnResponse = responses.Add };
         parser.Process("\x1b[?4m");
-        parser.Process("\x1b[>4;2m\x1b[?4m");
+        parser.Process("\x1b[>4;3m\x1b[?4m");
         parser.Process("\x1b[?1049h\x1b[?4m\x1b[?1;2m");
-        Assert.Equal(new[] { "\x1b[>4;0m", "\x1b[>4;2m", "\x1b[>4;0m" }, responses);
+        Assert.Equal(new[] { "\x1b[>4;0m", "\x1b[>4;3m", "\x1b[>4;0m" }, responses);
         Assert.False(buffer.IsUnderline);
     }
 
