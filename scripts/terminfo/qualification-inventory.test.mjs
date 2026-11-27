@@ -183,7 +183,7 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock?.basis === 'carried-forward');
-    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard']);
+    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard', 'osc52-read']);
     for (const suite of carried) assert.match(suite.stock.note, /carried, not re-measured|carried forward from/, suite.suite);
     const runIds = stored.suites.filter(suite => suite.stock?.basis !== 'carried-forward').map(suite => suite.stock?.runId).filter(Boolean);
     assert.equal(new Set(runIds).size, runIds.length, 'two suites must not claim the same stock run as freshly collected');
