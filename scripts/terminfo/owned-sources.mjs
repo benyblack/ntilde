@@ -1144,6 +1144,7 @@ export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
     const expected = {
+        [capturedPromptPartsSourcePolicy]: capturedPromptPartsSourceFiles,
         [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
         [capturedSixelReportsSourcePolicy]: capturedSixelReportsSourceFiles,
         [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,
