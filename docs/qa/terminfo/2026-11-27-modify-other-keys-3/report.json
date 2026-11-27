@@ -1,0 +1,606 @@
+{
+  "suiteId": "ntilde-owned-modify-other-keys-3-v1",
+  "contractsVersion": 1,
+  "scope": "Generated Avalonia events and fenced child stdin in one disposable macOS direct-local pane per run.",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "probeHash": "16a690f34c0e",
+  "measurement": {
+    "runId": "002d8e45d50164fd2f2583e29f859ecb",
+    "appRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+    "scriptsRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+    "platform": "macOS 27.0.1, arm64",
+    "sourcePolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
+    "receiptSchema": 1,
+    "version": "0.14.0+1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+    "nodeVersion": "v24.22.3",
+    "startedAt": "2026-11-27T16:23:32.981Z",
+    "releasedAt": "2026-11-27T16:23:43.810Z",
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "0b8ebf880c97e7337a5eaab1166dc3bc3f95edd61269b61e63c83c3c912bd871",
+    "sourceSnapshotManifestSha256": "f7576efda8d6b5e96b6567b92eabc25824e84894e3cc97c339533a678dcbb1ce",
+    "archiveSha256": "6cbc4e06572fc7e95effb3bc610d835341dd1620d3f418eafbc03360367b0b1b"
+  },
+  "baseline": {
+    "measurement": {
+      "runId": "f3106ab6a428a316b68f8ce0b0f38cd7",
+      "appRevision": "6d16bd84bdac25cd8b51a0fa7a4554d74702401d",
+      "scriptsRevision": "d33840549b1684e1d9278f60df670f9daf67de6d",
+      "platform": "macOS 27.0.1, arm64",
+      "sourcePolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
+      "receiptSchema": 1,
+      "version": "0.14.0+6d16bd84bdac25cd8b51a0fa7a4554d74702401d",
+      "nodeVersion": "v24.22.3",
+      "startedAt": "2026-11-27T14:11:09.339Z",
+      "releasedAt": "2026-11-27T14:11:11.617Z",
+      "geometry": {
+        "rows": 40,
+        "cols": 140
+      },
+      "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "assemblySha256": "251e2085a2a585e884fe1b3ff00c2e3488a1c0fc9eebe14375b4a61c93a4d15e",
+      "sourceSnapshotManifestSha256": "629d51d820e51edfafc63835ea9b1d7335df05af55589d7541e0aa1b35b3fc53",
+      "archiveSha256": "fb64a15650ad39753400c1bb50fc7cc552e8046b2d43cda13f41d2d325559022"
+    },
+    "observations": [
+      {
+        "id": "level2-text",
+        "role": "control",
+        "event": {
+          "modifiers": 0,
+          "kind": "keyDown",
+          "key": "a",
+          "text": "a"
+        },
+        "level": 2,
+        "expectedHex": "61",
+        "actualHex": "61",
+        "handled": false,
+        "textHandled": true,
+        "matches": true
+      },
+      {
+        "id": "request3-over2",
+        "role": "control",
+        "event": {
+          "modifiers": 0,
+          "kind": "keyDown",
+          "key": "a",
+          "text": "a"
+        },
+        "level": 2,
+        "expectedHex": "61",
+        "actualHex": "61",
+        "handled": false,
+        "textHandled": true,
+        "matches": true
+      },
+      {
+        "id": "request3-over2-ctrl",
+        "role": "control",
+        "event": {
+          "modifiers": 2,
+          "kind": "keyDown",
+          "key": "a"
+        },
+        "level": 2,
+        "expectedHex": "1b5b32373b353b39377e",
+        "actualHex": "1b5b32373b353b39377e",
+        "handled": true,
+        "textHandled": null,
+        "matches": true
+      },
+      {
+        "id": "reset-to-text",
+        "role": "control",
+        "event": {
+          "modifiers": 0,
+          "kind": "keyDown",
+          "key": "a",
+          "text": "a"
+        },
+        "level": 0,
+        "expectedHex": "61",
+        "actualHex": "61",
+        "handled": false,
+        "textHandled": true,
+        "matches": true
+      }
+    ]
+  },
+  "inconclusiveAttempt": {
+    "measurement": {
+      "runId": "15485a9e1e4705051c31eab287ca58df",
+      "appRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+      "scriptsRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+      "platform": "macOS 27.0.1, arm64",
+      "sourcePolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
+      "receiptSchema": 1,
+      "version": "0.14.0+1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+      "nodeVersion": "v24.22.3",
+      "startedAt": "2026-11-27T16:22:51.166Z",
+      "releasedAt": "2026-11-27T16:22:54.842Z",
+      "geometry": {
+        "rows": 40,
+        "cols": 140
+      },
+      "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "assemblySha256": "0b8ebf880c97e7337a5eaab1166dc3bc3f95edd61269b61e63c83c3c912bd871",
+      "sourceSnapshotManifestSha256": "f7576efda8d6b5e96b6567b92eabc25824e84894e3cc97c339533a678dcbb1ce",
+      "archiveSha256": "7af0355f4086650ce6cf4696b008f2a6f8b98b6555c7b953d9670e89f2c1998f"
+    },
+    "receipt": {
+      "schemaVersion": 1,
+      "suiteId": "ntilde-owned-modify-other-keys-3-v1",
+      "runId": "15485a9e1e4705051c31eab287ca58df",
+      "fixtureRemoved": true,
+      "files": {
+        "mok3-journal.json": "d90cf2f21d740ec66d3439e097e4ab42a8445b5ee003619087f95b7b298daaf5",
+        "context.json": "b5479b2076dc778c68f2f0d9dd5c97f25199ba1a065e2ad1b9117e82e0ffcd04",
+        "ownership-proof.json": "c44b367eb5f2db3884ada0efe43e509b5b75aa6bb99ecb5fa2ddbca7a4b01fe9",
+        "initial-settings.json": "3d4ce90966568d59f24d048008cabecd968b98720ccabfb8385b5266e0af282f",
+        "source-snapshot.json": "f7576efda8d6b5e96b6567b92eabc25824e84894e3cc97c339533a678dcbb1ce"
+      },
+      "verdict": "inconclusive"
+    },
+    "mismatches": [
+      {
+        "id": "level2-a",
+        "role": "control",
+        "event": {
+          "modifiers": 0,
+          "kind": "keyDown",
+          "key": "a",
+          "text": "a",
+          "keySymbol": "a"
+        },
+        "level": 2,
+        "expectedHex": "61",
+        "actualHex": "7f61",
+        "handled": false,
+        "textHandled": true,
+        "matches": false
+      }
+    ]
+  },
+  "cases": [
+    {
+      "caseId": "input.modify-other-keys-3",
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "response": "{\"declaredModifyOtherKeys\":false}",
+          "note": "No generated input event and encoded report were validated",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "No generated input event and encoded report were validated"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "No generated input event and encoded report were validated",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "none",
+            "note": "No generated input event and encoded report were validated"
+          }
+        },
+        "declaration": {
+          "declaredModifyOtherKeys": false,
+          "source": "child-xtgettcap-modifyOtherKeys"
+        }
+      },
+      "contractResult": {
+        "contract": "ntilde-modify-other-keys-3-effect-v1",
+        "outcome": "supported",
+        "observations": [
+          {
+            "id": "declaration",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyUp",
+              "key": "a"
+            },
+            "level": 0,
+            "expectedHex": "",
+            "actualHex": "",
+            "handled": false,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level0-ctrl-a",
+            "role": "control",
+            "event": {
+              "modifiers": 2,
+              "kind": "keyDown",
+              "key": "a"
+            },
+            "level": 0,
+            "expectedHex": "01",
+            "actualHex": "01",
+            "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level1-ctrl-a",
+            "role": "control",
+            "event": {
+              "modifiers": 2,
+              "kind": "keyDown",
+              "key": "a"
+            },
+            "level": 1,
+            "expectedHex": "01",
+            "actualHex": "01",
+            "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level2-a",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a",
+              "text": "a",
+              "keySymbol": "a"
+            },
+            "level": 2,
+            "expectedHex": "61",
+            "actualHex": "61",
+            "handled": false,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level2-digit2",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "digit2",
+              "text": "2",
+              "keySymbol": "2"
+            },
+            "level": 2,
+            "expectedHex": "32",
+            "actualHex": "32",
+            "handled": false,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level2-semicolon",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "semicolon",
+              "text": ";",
+              "keySymbol": ";"
+            },
+            "level": 2,
+            "expectedHex": "3b",
+            "actualHex": "3b",
+            "handled": false,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level2-space",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "space",
+              "text": " ",
+              "keySymbol": " "
+            },
+            "level": 2,
+            "expectedHex": "20",
+            "actualHex": "20",
+            "handled": false,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level3-a",
+            "role": "required",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a",
+              "text": "a",
+              "keySymbol": "a"
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b313b39377e",
+            "actualHex": "1b5b32373b313b39377e",
+            "handled": true,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level3-digit2",
+            "role": "required",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "digit2",
+              "text": "2",
+              "keySymbol": "2"
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b313b35307e",
+            "actualHex": "1b5b32373b313b35307e",
+            "handled": true,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level3-semicolon",
+            "role": "required",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "semicolon",
+              "text": ";",
+              "keySymbol": ";"
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b313b35397e",
+            "actualHex": "1b5b32373b313b35397e",
+            "handled": true,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level3-space",
+            "role": "required",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "space",
+              "text": " ",
+              "keySymbol": " "
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b313b33327e",
+            "actualHex": "1b5b32373b313b33327e",
+            "handled": true,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level3-key-only",
+            "role": "required",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a",
+              "keySymbol": "a"
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b313b39377e",
+            "actualHex": "1b5b32373b313b39377e",
+            "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-shift-a",
+            "role": "required",
+            "event": {
+              "modifiers": 1,
+              "kind": "keyDown",
+              "key": "a",
+              "text": "A",
+              "keySymbol": "A"
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b323b36357e",
+            "actualHex": "1b5b32373b323b36357e",
+            "handled": true,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level3-ctrl-a",
+            "role": "required",
+            "event": {
+              "modifiers": 2,
+              "kind": "keyDown",
+              "key": "a"
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b353b39377e",
+            "actualHex": "1b5b32373b353b39377e",
+            "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-alt-a",
+            "role": "required",
+            "event": {
+              "modifiers": 4,
+              "kind": "keyDown",
+              "key": "a"
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b333b39377e",
+            "actualHex": "1b5b32373b333b39377e",
+            "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-missing-symbol-text",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a",
+              "text": "a"
+            },
+            "level": 3,
+            "expectedHex": "61",
+            "actualHex": "61",
+            "handled": false,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level3-missing-symbol-key-only",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a"
+            },
+            "level": 3,
+            "expectedHex": "",
+            "actualHex": "",
+            "handled": false,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-standalone-text",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "text",
+              "text": "7"
+            },
+            "level": 3,
+            "expectedHex": "37",
+            "actualHex": "37",
+            "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-key-up",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyUp",
+              "key": "a"
+            },
+            "level": 3,
+            "expectedHex": "",
+            "actualHex": "",
+            "handled": false,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-return",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "return"
+            },
+            "level": 3,
+            "expectedHex": "0d",
+            "actualHex": "0d",
+            "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-kitty-ctrl-a",
+            "role": "control",
+            "event": {
+              "modifiers": 2,
+              "kind": "keyDown",
+              "key": "a"
+            },
+            "level": 3,
+            "expectedHex": "1b5b39373b3575",
+            "actualHex": "1b5b39373b3575",
+            "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-kitty-pop",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a",
+              "text": "a",
+              "keySymbol": "a"
+            },
+            "level": 3,
+            "expectedHex": "1b5b32373b313b39377e",
+            "actualHex": "1b5b32373b313b39377e",
+            "handled": true,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "return-to-level2",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a",
+              "text": "a"
+            },
+            "level": 2,
+            "expectedHex": "61",
+            "actualHex": "61",
+            "handled": false,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "reset-to-text",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a",
+              "text": "a"
+            },
+            "level": 0,
+            "expectedHex": "61",
+            "actualHex": "61",
+            "handled": false,
+            "textHandled": true,
+            "matches": true
+          }
+        ]
+      },
+      "stock": {
+        "outcome": "inconclusive",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "rerun": false
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "pinned",
+        "evidence": "generated-input-child-bytes"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      }
+    }
+  ]
+}

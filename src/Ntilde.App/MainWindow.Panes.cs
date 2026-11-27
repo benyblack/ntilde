@@ -304,12 +304,10 @@ namespace Ntilde
         /// siblings need the C0 byte. A pane with kitty flags in effect keeps the legacy bytes:
         /// kitty wins over modifyOtherKeys there, and broadcast does not speak kitty.
         ///
-        /// Text-producing chords normally reach siblings through the separate text broadcast, so
-        /// they are not encoded here - unless the focused pane consumes the keydown itself
-        /// (<paramref name="focusedConsumesText"/>, e.g. Shift+Space at level 2), which suppresses
-        /// that TextInput. Then each sibling gets its own form here: the modifyOtherKeys sequence
-        /// if its level claims the chord, otherwise the chord's text. Alt chords stay unbroadcast
-        /// at every level, as before.
+        /// A level-3 receiver gets its eligible printable report on keydown even when the
+        /// focused pane uses TextInput. Other receivers get the corresponding text callback.
+        /// When <paramref name="focusedConsumesText"/> is true, every sibling receives its
+        /// report or plain character on keydown. Alt chords stay unbroadcast.
         /// </remarks>
         internal static bool TryMapBroadcastKey(Key key, KeyModifiers modifiers, PhysicalKey physical, string? keySymbol,
             TerminalBuffer? buffer, int kittyFlags, bool focusedConsumesText, out string? sequence)
@@ -323,13 +321,11 @@ namespace Ntilde
             int level = kittyFlags == 0 && buffer?.Modes is { IsVt52: false } modes ? modes.ModifyOtherKeys.Level : 0;
             if (!ProducesNoTextInput(key, modifiers))
             {
-                if (!focusedConsumesText) return false; // the text broadcast delivers it
-                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical)
-                    ?? (key == Key.Space ? " " : PrintableKeySymbol(keySymbol));
+                sequence = BroadcastPrintableKey(key, modifiers, physical, keySymbol, level, focusedConsumesText);
                 return sequence != null;
             }
 
-            sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical);
+            sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical, keySymbol);
             if (sequence != null) return true;
 
             switch (key)
@@ -356,6 +352,15 @@ namespace Ntilde
             return sequence != null;
         }
 
+        private static string? BroadcastPrintableKey(Key key, KeyModifiers modifiers, PhysicalKey physical,
+            string? keySymbol, int level, bool focusedConsumesText)
+        {
+            if (!focusedConsumesText && level != 3) return null;
+            string? encoded = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical, keySymbol);
+            if (encoded != null || !focusedConsumesText) return encoded;
+            return key == Key.Space ? " " : TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol);
+        }
+
         /// <summary>
         /// True for keydowns that never raise TextInput: Ctrl chords (Avalonia drops control
         /// characters) and keys with no printable text. Everything else may arrive as text.
@@ -365,17 +370,14 @@ namespace Ntilde
                 || !TerminalInputModeEncoder.MayProduceTextInput(key, null)
                 || key is Key.Enter or Key.Tab or Key.Back or Key.Escape;
 
-        private static string? PrintableKeySymbol(string? symbol)
-            => symbol is { Length: 1 } && !char.IsControl(symbol[0]) ? symbol : null;
-
         /// <summary>
         /// True when the focused pane's own view will encode this text-capable chord as
         /// modifyOtherKeys and handle the keydown, so its TextInput (and the text broadcast) never
         /// happens and siblings must be served by the key broadcast instead.
         /// </summary>
-        internal static bool FocusedPaneConsumesText(Key key, KeyModifiers modifiers, PhysicalKey physical, TerminalBuffer? buffer, int kittyFlags)
-            => kittyFlags == 0 && !ProducesNoTextInput(key, modifiers)
-                && TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, buffer?.Modes.ModifyOtherKeys.Level ?? 0, physical) != null;
+        internal static bool FocusedPaneConsumesText(Key key, KeyModifiers modifiers, PhysicalKey physical, TerminalBuffer? buffer, int kittyFlags, string? keySymbol = null)
+            => kittyFlags == 0 && buffer?.Modes.IsVt52 == false && !ProducesNoTextInput(key, modifiers)
+                && TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, buffer.Modes.ModifyOtherKeys.Level, physical, keySymbol) != null;
 
         /// <summary>One broadcast receiver: its modes, its effective kitty flags, and its input sink.</summary>
         internal readonly record struct BroadcastReceiver(TerminalBuffer? Buffer, int KittyFlags, Action<string> Send);
@@ -397,7 +399,7 @@ namespace Ntilde
             if (IsFocusOverlayVisible() || !TryGetSelectedTab(out var tabItem)
                 || !_broadcastEnabledTabs.Contains(tabItem) || _currentPane == null)
             {
-                _broadcastTextGate.TryConsumeText(); // a gesture's arming never outlives its text
+                _broadcastTextGate.Clear(); // a gesture's arming never outlives its text
                 return;
             }
 
@@ -428,30 +430,38 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// The keydown half of tab broadcast: each receiver gets the bytes its own modes ask for
-        /// (#829). When the focused pane consumes a text-capable chord itself, the gesture is
-        /// delivered here and <paramref name="gate"/> is armed so its trailing TextInput, which some
-        /// backends still raise after a handled keydown, is not broadcast again.
+        /// Sends each receiver the keydown bytes its own modes request. For a text-capable
+        /// chord, <paramref name="gate"/> records each receiver served here so a matching
+        /// text callback reaches only the remaining receivers.
         /// </summary>
         internal static void FanOutBroadcastKey(Key key, KeyModifiers modifiers, PhysicalKey physical, string? keySymbol,
             TerminalBuffer? focusedBuffer, int focusedKittyFlags, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
         {
             if ((modifiers & KeyModifiers.Alt) != 0) return;
-            bool focusedConsumesText = FocusedPaneConsumesText(key, modifiers, physical, focusedBuffer, focusedKittyFlags);
+            bool focusedConsumesText = FocusedPaneConsumesText(key, modifiers, physical, focusedBuffer, focusedKittyFlags, keySymbol);
+            bool mayProduceText = !ProducesNoTextInput(key, modifiers);
             foreach (BroadcastReceiver receiver in receivers)
             {
-                if (TryMapBroadcastKey(key, modifiers, physical, keySymbol, receiver.Buffer, receiver.KittyFlags,
-                        focusedConsumesText, out string? sequence) && !string.IsNullOrEmpty(sequence))
-                    receiver.Send(sequence);
+                if (!TryMapBroadcastKey(key, modifiers, physical, keySymbol, receiver.Buffer, receiver.KittyFlags,
+                        focusedConsumesText, out string? sequence) || string.IsNullOrEmpty(sequence)) continue;
+                receiver.Send(sequence);
+                if (mayProduceText)
+                {
+                    // A legacy focus can leave this same gesture to TextInput for the other siblings.
+                    string? pairedText = focusedConsumesText && focusedBuffer?.Modes.ModifyOtherKeys.Level == 2
+                        ? null : TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol);
+                    gate.MarkFannedOut(key, physical, pairedText, receiver.Buffer);
+                }
             }
-            if (focusedConsumesText) gate.MarkFannedOut(key, physical);
         }
 
-        /// <summary>The text half: skipped once for a gesture the keydown half already delivered.</summary>
+        /// <summary>Sends text to the receivers that still need the gesture.</summary>
         internal static void FanOutBroadcastText(string text, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
         {
-            if (string.IsNullOrEmpty(text) || gate.TryConsumeText()) return;
-            foreach (BroadcastReceiver receiver in receivers) receiver.Send(text);
+            if (string.IsNullOrEmpty(text)) return;
+            var delivered = gate.ConsumeText(text);
+            foreach (BroadcastReceiver receiver in receivers)
+                if (delivered?.Contains(receiver.Buffer) != true) receiver.Send(text);
         }
 
         private void ToggleBroadcastForCurrentTab()

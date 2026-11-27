@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "measurement": {
+    "runId": "002d8e45d50164fd2f2583e29f859ecb",
+    "appRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+    "scriptsRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+    "platform": "macOS 27.0.1, arm64",
+    "sourcePolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
+    "receiptSchema": 1
+  },
+  "archives": {
+    "owned-run.zip": "6cbc4e06572fc7e95effb3bc610d835341dd1620d3f418eafbc03360367b0b1b"
+  }
+}

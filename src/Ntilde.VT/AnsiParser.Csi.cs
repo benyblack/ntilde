@@ -1239,11 +1239,14 @@ namespace Ntilde.VT
         }
 
         /// <summary>xterm key-modifier resource number of modifyOtherKeys.</summary>
+        /// <summary>The mux wire flag advertises levels 1/2 only, including on older peers.</summary>
+        public bool AllowModifyOtherKeysLevelThree { get; set; } = true;
+
         private const int XtermModifyOtherKeysResource = 4;
 
         /// <summary>
         /// xterm XTMODKEYS / XTQMODKEYS, resource 4 (modifyOtherKeys) only:
-        ///   CSI &gt; 4 ; Pv m   set the active screen's level to Pv (0, 1 or 2)
+        ///   CSI &gt; 4 ; Pv m   set the active screen's level to Pv (0 through 3)
         ///   CSI &gt; 4 m        reset to the initial value 0; an empty Pv (CSI &gt; 4 ; m, which
         ///                    Vim's t_TE sends) is the same reset, as in xterm
         ///   CSI &gt; m          reset every resource, so the active screen's level returns to 0
@@ -1253,7 +1256,7 @@ namespace Ntilde.VT
         /// Following xterm, only the first two parameters of a set are read. Other resources
         /// (modifyKeyboard, modifyCursorKeys, modifyFunctionKeys, ...) are not tracked: setting
         /// them is ignored and querying them stays silent rather than guessing a value, as the
-        /// unimplemented DSR reports do. Level 3 and other unsupported values leave the level
+        /// unimplemented DSR reports do. Unsupported values leave the level
         /// unchanged (see <see cref="ModifyOtherKeysState"/>). Colon sub-parameters (xterm's
         /// ignore-modifier mask extension) are not implemented, so such a sequence is ignored
         /// whole.
@@ -1287,7 +1290,8 @@ namespace Ntilde.VT
 
             // An omitted or empty Pv parses as 0, which is also modifyOtherKeys' initial value,
             // so "reset to initial" and "set 0" are the same operation here.
-            state.SetLevel(args.Length > 1 ? args[1] : 0);
+            int level = args.Length > 1 ? args[1] : 0;
+            if (level != 3 || AllowModifyOtherKeysLevelThree) state.SetLevel(level);
         }
 
         /// <summary>

@@ -36,8 +36,8 @@ export const utf8PinnedFeeds = pinnedFeeds;
 export const utf8PinnedCases = Object.freeze({ set: 'input.mex.u.pinned.set', reset: 'input.mex.u.pinned.reset' });
 
 /** The v3 events (their modes extended with both new states, false) plus 44 extended-encoding events. */
-export function makeMexCases(rows, cols) {
-    const cases = makeModifyOtherKeysCases(rows, cols).map(item => ({ ...item, modes: { ...item.modes, mouseUtf8: false, mouseUrxvt: false } }));
+export function makeMexCases(rows, cols, ignoredLevel) {
+    const cases = makeModifyOtherKeysCases(rows, cols, ignoredLevel).map(item => ({ ...item, modes: { ...item.modes, mouseUtf8: false, mouseUrxvt: false } }));
     const add = (id, setup, event, expected, modes, roles, reset = true) => cases.push({ id: 'input.mex.' + id,
         setup: (reset ? mexReset : '') + setup, event: { modifiers: 0, ...event }, expectedHex: hex(expected), modes, roles });
     // One mouse experiment: a tracking selector plus the coordinate-encoding selects that the setup performs, in order.

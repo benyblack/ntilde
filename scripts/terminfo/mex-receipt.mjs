@@ -56,7 +56,7 @@ export function checkMexEvidence(output, evidence, runId, context, proof) {
     if (context.mexAdapterId !== mexAdapterId || context.mexSuiteId !== mexGradedSuiteId) {
         throw new Error('Missing or changed Extended-mouse adapter declaration.');
     }
-    if (plan === undefined || !['v4', 'v5'].includes(plan.id)) throw new Error('Extended-mouse evidence requires the owned routed-input v4 or later suite plan.');
+    if (plan === undefined || !['v4', 'v5', 'v6'].includes(plan.id)) throw new Error('Extended-mouse evidence requires the owned routed-input v4 or later suite plan.');
     if (layerChain.some(([name]) => context[`${name}AdapterId`] === undefined || evidence[`${name}Evidence`] === undefined)) {
         throw new Error(`Extended-mouse evidence requires ${predecessorList}.`);
     }

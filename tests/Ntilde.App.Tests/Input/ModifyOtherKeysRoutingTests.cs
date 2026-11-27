@@ -161,6 +161,91 @@ public sealed class ModifyOtherKeysRoutingTests
         Assert.Equal(new[] { "\x1b[27;2;32~", "x" }, sent);
     }
 
+    [AvaloniaTheory]
+    [InlineData(Key.A, KeyModifiers.None, "a", "\x1b[27;1;97~")]
+    [InlineData(Key.OemSemicolon, KeyModifiers.None, ";", "\x1b[27;1;59~")]
+    [InlineData(Key.D1, KeyModifiers.Shift, "!", "\x1b[27;2;33~")]
+    public void LevelThree_ReportsTheKeyOnceAndPreservesLaterText(Key key, KeyModifiers modifiers, string text, string frame)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        var observed = new List<string>();
+        view.TextInputObserved += observed.Add;
+        Assert.True(view.Down(key, modifiers, symbol: text).Handled);
+        Assert.Equal(new[] { text }, observed);
+        view.Text(text);
+        view.Text(text);
+        Assert.True(view.Down(key, modifiers, symbol: text).Handled);
+        view.Text("日本語");
+        Assert.True(view.Down(key, modifiers, symbol: text).Handled);
+        view.Up(key, modifiers);
+        view.Text(text);
+        Assert.False(view.Down(Key.ImeProcessed, KeyModifiers.None).Handled);
+        view.Text("é");
+        Assert.Equal(new[] { frame, text, frame, "日本語", frame, text, "é" }, sent);
+        Assert.Equal(new[] { text, text, text, "日本語", text, text, "é" }, observed);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(KeyModifiers.None, "A", "\x1b[27;1;65~")]
+    [InlineData(KeyModifiers.Shift, "a", "\x1b[27;2;97~")]
+    [InlineData(KeyModifiers.None, "я", "\x1b[27;1;1103~")]
+    [InlineData(KeyModifiers.None, "😀", "\x1b[27;1;128512~")]
+    public void LevelThree_ReportsTheBackendSymbolOnce(KeyModifiers modifiers, string symbol, string report)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.True(view.Down(Key.A, modifiers, PhysicalKey.A, symbol).Handled);
+        view.Text(symbol);
+        Assert.Equal(new[] { report }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(KeyModifiers.None, "A")]
+    [InlineData(KeyModifiers.Shift, "a")]
+    [InlineData(KeyModifiers.None, "あ")]
+    public void LevelThree_LeavesMissingSymbolsForTheBackendText(KeyModifiers modifiers, string text)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.False(view.Down(Key.A, modifiers, PhysicalKey.A).Handled);
+        Assert.Empty(sent);
+        view.Text(text);
+        Assert.Equal(new[] { text }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(KeyModifiers.Control)]
+    [InlineData(KeyModifiers.Alt)]
+    public void LevelThree_ModifiedShortcutsDoNotAppendCommandText(KeyModifiers modifiers)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        var observed = new List<string>();
+        view.TextInputObserved += observed.Add;
+        Assert.True(view.Down(Key.A, modifiers, PhysicalKey.A, "a").Handled);
+        view.Text("a");
+        Assert.Single(sent);
+        Assert.Empty(observed);
+    }
+
+    [AvaloniaFact]
+    public void LevelThree_LeavesACompositionSymbolForTextInput()
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.False(view.Down(Key.A, KeyModifiers.None, PhysicalKey.A, "a\u0308").Handled);
+        view.Text("ä");
+        Assert.Equal(new[] { "ä" }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(Key.Up, PhysicalKey.ArrowUp, "\x1b[A")]
+    [InlineData(Key.F5, PhysicalKey.F5, "\x1b[15~")]
+    [InlineData(Key.Enter, PhysicalKey.NumPadEnter, "\r")]
+    [InlineData(Key.Tab, PhysicalKey.Tab, "\t")]
+    public void LevelThree_PreservesSpecialKeyRoutes(Key key, PhysicalKey physical, string expected)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.True(view.Down(key, KeyModifiers.None, physical).Handled);
+        Assert.Equal(new[] { expected }, sent);
+    }
+
     [AvaloniaFact]
     public void ShiftedLetters_StayOnTextInput()
     {

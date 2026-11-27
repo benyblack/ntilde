@@ -86,6 +86,11 @@ const flashScope = {
     entry: 'osc-flash-owned.mjs',
 };
 const blinkPolicy = 'readonly-owned-source-graph-v75';
+function collectionForScope(suite, selected) {
+    if (selected.policy === blinkPolicy) return { scope: suite.scope, workerFile: suite.workerFile, prefix: 'mblink-', Collection: suite.BlinkCollection, completeReceipt: suite.completeBlinkReceipt };
+    return selected.baseline ? { ...suite, scope: suite.baselineScope } : suite;
+}
+
 const blinkSources = {
     modernBlinkSourceSha256: 'modern-blink.mjs',
     modernBlinkNativeSourceSha256: 'modern-blink-native.mjs',
@@ -144,6 +149,12 @@ const sixelReportsSources = {
     sixelReportsOwnedSourceSha256: 'sixel-reports-owned.mjs',
     sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
 };
+const mok3Sources = {
+    mok3ContractsSourceSha256: 'modify-other-keys-3-contracts.mjs',
+    mok3OwnedSourceSha256: 'modify-other-keys-3-owned.mjs',
+    mok3WorkerSourceSha256: 'modify-other-keys-3-worker.mjs',
+};
+const mok3Scope = { policy: 'readonly-owned-source-graph-modify-other-keys-3-v1', sources: mok3Sources, entry: mok3Sources.mok3OwnedSourceSha256 };
 const fontLigatureSources = {
     fontLigaturesContractsSourceSha256: 'font-ligatures-contracts.mjs',
     fontLigaturesOwnedSourceSha256: 'font-ligatures-owned.mjs',
@@ -171,6 +182,8 @@ const unicodeWidthSources = {
 };
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
+    'modify-other-keys-3': mok3Scope,
+    'modify-other-keys-3-baseline': { ...mok3Scope, baseline: true },
     'osc555': flashScope,
     'osc555-disabled': flashScope,
     'font-ligatures': { policy: 'readonly-owned-source-graph-font-ligatures-v1', sources: fontLigatureSources, entry: fontLigatureSources.fontLigaturesOwnedSourceSha256 },
@@ -290,10 +303,7 @@ async function launch() {
         } });
         if (focusedScope) {
             const suite = await import(pathToFileURL(pathFor(root, focusedScope.entry)).href);
-            const selected = suite.selectScope?.(requestedScope) ?? suite;
-            globalThis[focusedSuiteKey] = focusedScope.policy === blinkPolicy
-                ? { scope: suite.scope, workerFile: suite.workerFile, prefix: 'mblink-', Collection: suite.BlinkCollection, completeReceipt: suite.completeBlinkReceipt }
-                : selected;
+            globalThis[focusedSuiteKey] = collectionForScope(suite.selectScope?.(requestedScope) ?? suite, focusedScope);
         }
         await import(pathToFileURL(pathFor(root, 'terminfo-owned-runner.mjs')).href);
         if (interrupted) process.exitCode = 1;

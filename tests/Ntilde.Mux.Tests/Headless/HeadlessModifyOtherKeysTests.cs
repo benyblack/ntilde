@@ -65,13 +65,14 @@ public sealed class HeadlessModifyOtherKeysTests
     }
 
     [Fact]
-    public async Task Query_is_answered_once_by_the_daemon()
+    public async Task Query_preserves_level_two_after_a_level_three_request_to_the_daemon()
     {
         using var host = new MuxTestHost();
         using var client = await host.ConnectClientAsync();
         Guid id = await MuxTestHost.SpawnAsync(client);
         var pane = await MuxTestHost.AttachPaneAsync(client, id, Gui);
-        host.Fake(id).Emit("\u001b[>4;2m\u001b[?4m");
+        // The legacy mux capability bit promises levels 1/2. An older GUI ignores 3.
+        host.Fake(id).Emit("\u001b[>4;2m\u001b[>4;3m\u001b[?4m");
         await host.SettleAsync(id, client);
         await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the XTQMODKEYS reply reached the child");
         Assert.Equal("\u001b[>4;2m", Assert.Single(host.Fake(id).SentInput));

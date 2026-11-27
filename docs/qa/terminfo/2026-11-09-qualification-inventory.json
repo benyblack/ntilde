@@ -40,15 +40,15 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 161,
-    "suiteClaims": 165,
+    "uniqueBenchmarkIds": 162,
+    "suiteClaims": 166,
     "idsWithMultipleClaims": [
       "extensions.osc-633-vscode",
       "extensions.sixel",
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 153,
+    "effectSupportedIds": 154,
     "effectUnsupportedIds": 6,
     "effectOtherIds": 2,
     "pinnedAndEffectSupportedIds": 98,
@@ -91,6 +91,7 @@
       "extensions.semantic-prompts",
       "input.button-event-mouse",
       "input.modify-other-keys",
+      "input.modify-other-keys-3",
       "input.pixel-mouse",
       "input.urxvt-mouse",
       "input.x10-mouse",
@@ -117,7 +118,7 @@
       "modes.deccolm",
       "modes.decsclm"
     ],
-    "effectSupportedOfStockInconclusive": 151,
+    "effectSupportedOfStockInconclusive": 152,
     "effectUnsupportedOfStockInconclusive": 6,
     "pinnedSupportedOfStockInconclusive": 96,
     "reassessedStockUnsupportedIds": [
@@ -135,10 +136,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 17,
+      "effectUnqualified": 16,
       "effectMeasuredUnsupported": 6,
       "effectMeasuredOther": 2,
-      "effectNotMeasured": 9,
+      "effectNotMeasured": 8,
       "notPinnedSupported": 72
     }
   },
@@ -3639,6 +3640,63 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/osc633-implementation-publication.test.mjs",
         "testSha256": "a300678b3afdbbded85d7355ab0080553b97ce712458dec6841b745556f701f1"
+      }
+    },
+    {
+      "suite": "modify-other-keys-3",
+      "suiteId": "ntilde-owned-modify-other-keys-3-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-27-modify-other-keys-3/",
+      "doc": "2026-11-27-modify-other-keys-3/report.md",
+      "caseCount": 1,
+      "caseIds": [
+        "input.modify-other-keys-3"
+      ],
+      "evidence": {
+        "files": 10,
+        "bytes": 5571311,
+        "sha256": "fb0ed8c737b2d1e2e54bc64f9bf835c41741d2a8ab0d0b81c0fd3a8438a7451d"
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "runId": "002d8e45d50164fd2f2583e29f859ecb",
+        "cellReceipt": null,
+        "suiteEvidence": null
+      },
+      "run": {
+        "ownedRunId": "002d8e45d50164fd2f2583e29f859ecb",
+        "measuredAt": "2026-11-27T16:23:32.981Z",
+        "appRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+        "appVersion": "0.14.0+1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+        "collectorAdapterId": "ntilde-owned-modify-other-keys-3-v1",
+        "collectorAdapterBundleSha256": null,
+        "gradingAdapterId": null,
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
+        "sourceSnapshotManifestSha256": "f7576efda8d6b5e96b6567b92eabc25824e84894e3cc97c339533a678dcbb1ce"
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "counts": {
+          "inconclusive": 168,
+          "supported": 86,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "c47151de0decfeb07ec77f86819a97f595170bda9705b3cdf47ed18d89eba70d",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock counts carried forward from the retained November 9 baseline."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/modify-other-keys-3-publication.test.mjs",
+        "testSha256": "397c7f24aff4c4d5dfefcca3255bc7bb21965e64f1c606bf242d5fca72acab43"
       }
     },
     {
@@ -9786,6 +9844,58 @@
             "generated-input-child-bytes"
           ],
           "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "input.modify-other-keys-3",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "modify-other-keys-3",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "modify-other-keys-3",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "input.modify-other-keys-3",
+          "suite": "modify-other-keys-3",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": null
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "generated-input-child-bytes"
         }
       ]
     },

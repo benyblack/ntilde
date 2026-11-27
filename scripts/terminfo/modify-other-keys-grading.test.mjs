@@ -7,7 +7,8 @@ import { makeModifyOtherKeysCases } from './modify-other-keys-cases.mjs';
 import { makeRoutedInputCases } from './routed-input-cases.mjs';
 import { modifyOtherKeysCaseIds } from './modify-other-keys-contracts.mjs';
 import { inputModeReplyHex } from './input-state.mjs';
-import { inputPlanV3 } from './input-plan.mjs';
+import { initialInputScreen, syntheticInputJournal } from './fixtures/input-journal.mjs';
+import { inputPlanV3, inputPlanV6 } from './input-plan.mjs';
 
 const build = (evidence, options = {}) => buildModifyOtherKeysGradingReport(evidence, evidence.run, evidence.runId, evidence.adapter,
     { replayModule: fakeModifyOtherKeysGradingModule, inputPlan: inputPlanV3, ...options });
@@ -38,6 +39,17 @@ test('measured child bytes that match every literal grade supported beside the i
     assert.ok(item.experiments.some(experiment => experiment.id.startsWith('input.mok.l1.')));
     assert.ok(item.experiments.some(experiment => experiment.id.startsWith('input.mok.l2.')));
     assert.ok(item.experiments.every(experiment => !experiment.id.includes('other-keys-3')));
+});
+
+test('the current suite grades the level 4 rejection beside the frozen level 3 rejection in older journals', () => {
+    const evidence = syntheticModifyOtherKeysEvidence();
+    const journal = syntheticInputJournal(evidence.runId, { plan: inputPlanV6, initial: initialInputScreen(30, 120),
+        controlHex: item => (item.controlPrefixHex ?? '') + inputModeReplyHex(item.modes),
+        finalHex: () => inputModeReplyHex(inputPlanV6.finalModes) });
+    const report = build({ ...evidence, ...journal }, { inputPlan: inputPlanV6 });
+    assert.deepEqual(modifyOtherKeysCounts(report), { 'inconclusive/supported': 1 });
+    assert.match(report.scope, /ignored level 4/);
+    assert.ok(byId(report).experiments.some(experiment => experiment.id === 'input.mok.trans.l4.ignored' && experiment.matched));
 });
 
 for (const [label, id, hex] of [

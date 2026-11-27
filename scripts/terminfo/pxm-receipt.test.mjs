@@ -92,9 +92,9 @@ test('the SGR-pixel receipt refuses a changed observation report that no longer 
     assert.throws(own(f), refusal);
 }));
 
-test('the SGR-pixel receipt refuses a run whose declared input suite is not the v5 plan', () => privateClipboardReceiptFixture(f => {
+test('the SGR-pixel receipt refuses an input suite that predates the pixel-coordinate plan', () => privateClipboardReceiptFixture(f => {
     f.context.inputSuiteId = 'ntilde-owned-routed-input-v4'; f.write('context.json', f.context);
-    assert.throws(own(f), /requires the owned routed-input v5 suite plan/);
+    assert.throws(own(f), /requires the owned routed-input v5 or later suite plan/);
 }));
 
 test('the earlier input layers keep re-deriving from the v5 journal: routed-input, modifyOtherKeys and extended-mouse accept it', () => privateClipboardReceiptFixture(async f => {

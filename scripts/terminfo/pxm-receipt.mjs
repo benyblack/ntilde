@@ -56,7 +56,7 @@ export function checkPxmEvidence(output, evidence, runId, context, proof) {
     if (context.pxmAdapterId !== pxmAdapterId || context.pxmSuiteId !== pxmGradedSuiteId) {
         throw new Error('Missing or changed SGR-pixel adapter declaration.');
     }
-    if (plan === undefined || plan.id !== 'v5') throw new Error('SGR-pixel evidence requires the owned routed-input v5 suite plan.');
+    if (plan === undefined || !['v5', 'v6'].includes(plan.id)) throw new Error('SGR-pixel evidence requires the owned routed-input v5 or later suite plan.');
     if (layerChain.some(([name]) => context[`${name}AdapterId`] === undefined || evidence[`${name}Evidence`] === undefined)) {
         throw new Error(`SGR-pixel evidence requires ${predecessorList}.`);
     }

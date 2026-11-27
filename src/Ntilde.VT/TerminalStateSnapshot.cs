@@ -487,13 +487,13 @@ namespace Ntilde.VT
         public bool IsLocalEchoEnabled { get; set; }
 
         /// <summary>
-        /// xterm modifyOtherKeys level of the main screen (0-2). Optional: absent from legacy
+        /// xterm modifyOtherKeys level of the main screen (0-3). Optional: absent from legacy
         /// peers, which never negotiated it, and imported as 0. Which screen's level is live
         /// follows <see cref="TerminalStateSnapshot.IsAltScreenActive"/>.
         /// </summary>
         [JsonPropertyName("mok_main"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? ModifyOtherKeysMain { get; set; }
 
-        /// <summary>xterm modifyOtherKeys level of the alternate screen (0-2); see <see cref="ModifyOtherKeysMain"/>.</summary>
+        /// <summary>xterm modifyOtherKeys level of the alternate screen (0-3); see <see cref="ModifyOtherKeysMain"/>.</summary>
         [JsonPropertyName("mok_alt"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? ModifyOtherKeysAlt { get; set; }
 
         /// <summary>

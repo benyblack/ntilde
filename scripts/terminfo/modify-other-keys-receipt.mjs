@@ -56,7 +56,7 @@ export function checkModifyOtherKeysEvidence(output, evidence, runId, context, p
     if (context.modifyOtherKeysAdapterId !== modifyOtherKeysAdapterId || context.modifyOtherKeysSuiteId !== modifyOtherKeysGradedSuiteId) {
         throw new Error('Missing or changed modifyOtherKeys adapter declaration.');
     }
-    if (plan === undefined || !['v3', 'v4', 'v5'].includes(plan.id)) throw new Error('modifyOtherKeys evidence requires the owned routed-input v3 or later suite plan.');
+    if (plan === undefined || !['v3', 'v4', 'v5', 'v6'].includes(plan.id)) throw new Error('modifyOtherKeys evidence requires the owned routed-input v3 or later suite plan.');
     if (layerChain.some(([name]) => context[`${name}AdapterId`] === undefined || evidence[`${name}Evidence`] === undefined)) {
         throw new Error(`modifyOtherKeys evidence requires ${predecessorList}.`);
     }

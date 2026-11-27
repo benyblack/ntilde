@@ -66,7 +66,7 @@ public class ModifyOtherKeysProtocolTests
     }
 
     [Theory]
-    [InlineData("\x1b[>4;3m")]    // level 3 is unsupported
+    [InlineData("\x1b[>4;4m")]
     [InlineData("\x1b[>4;99m")]
     [InlineData("\x1b[>1;0m")]    // other resources are not tracked
     [InlineData("\x1b[>0;1m")]
@@ -96,7 +96,7 @@ public class ModifyOtherKeysProtocolTests
     [InlineData(0, true)]
     [InlineData(1, true)]
     [InlineData(2, true)]
-    public void LevelThree_IsNotAnAlias_AndQueryKeepsTheSupportedLevel(int level, bool alternate)
+    public void LevelThree_IsSelectedOnTheActiveScreen_AndCanBeRestored(int level, bool alternate)
     {
         var (buffer, parser, responses) = CreateTerminal();
         parser.Process("\x1b[>4;1m\x1b[?1049h\x1b[>4;2m");
@@ -109,10 +109,10 @@ public class ModifyOtherKeysProtocolTests
         parser.Process("\x1b[>4;3m");
 
         Assert.Empty(responses);
-        Assert.Equal(levels, (buffer.Modes.ModifyOtherKeys.MainLevel, buffer.Modes.ModifyOtherKeys.AltLevel));
-        Assert.Equal(level, buffer.Modes.ModifyOtherKeys.Level);
-        Assert.Equal($"\x1b[>4;{level}m", Query(parser, responses));
-        // A supported transition still works; refusing 3 does not disable negotiation.
+        Assert.Equal(alternate ? (levels.MainLevel, 3) : (3, levels.AltLevel),
+            (buffer.Modes.ModifyOtherKeys.MainLevel, buffer.Modes.ModifyOtherKeys.AltLevel));
+        Assert.Equal(3, buffer.Modes.ModifyOtherKeys.Level);
+        Assert.Equal("\x1b[>4;3m", Query(parser, responses));
         int next = (level + 1) % 3;
         parser.Process($"\x1b[>4;{next}m");
         Assert.Equal($"\x1b[>4;{next}m", Query(parser, responses));
@@ -282,7 +282,7 @@ public class ModifyOtherKeysProtocolTests
     }
 
     [Theory]
-    [InlineData(3)]
+    [InlineData(4)]
     [InlineData(-1)]
     [InlineData(int.MaxValue)]
     public void StateTransfer_ClampsAnUnsupportedLevelToZero(int corrupted)

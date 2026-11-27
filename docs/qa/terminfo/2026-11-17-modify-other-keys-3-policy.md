@@ -1,5 +1,7 @@
 # modifyOtherKeys level 3: unsupported implementation, deferred qualification
 
+Historical audit. The [implementation and owned measurement](2026-11-27-modify-other-keys-3/report.md) supersede the deferred implementation policy. The original pinned verdict remains inconclusive.
+
 Issue [#1002](https://github.com/benyblack/ntilde/issues/1002) is disposed as an explicit
 unsupported/deferred policy for `input.modify-other-keys-3`. This is a source audit and
 regression check, not a new owned runtime measurement or graded effect contract.

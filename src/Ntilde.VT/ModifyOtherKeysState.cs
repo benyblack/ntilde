@@ -8,8 +8,7 @@ namespace Ntilde.VT
     /// <c>CSI &gt; m</c>, disabled with <c>CSI &gt; 4 n</c> and queried with XTQMODKEYS
     /// <c>CSI ? 4 m</c> (reply <c>CSI &gt; 4 ; Pv m</c>).
     ///
-    /// Only levels 0 (off), 1 and 2 are honored. Level 3 (xterm's "modify all ordinary keys,
-    /// even unmodified") and any other value is ignored and leaves the current level in place,
+    /// Levels 0 through 3 are honored. An unknown value leaves the current level in place,
     /// so the query never advertises a level whose encoding is not implemented - the same
     /// "report only what is in effect" rule <see cref="KittyKeyboardState"/> follows.
     ///
@@ -22,7 +21,7 @@ namespace Ntilde.VT
     public sealed class ModifyOtherKeysState
     {
         /// <summary>The highest level whose encoding the App layer implements.</summary>
-        public const int MaxSupportedLevel = 2;
+        public const int MaxSupportedLevel = 3;
 
         private readonly object _gate = new();
         private int _mainLevel;
@@ -35,7 +34,7 @@ namespace Ntilde.VT
         private volatile bool _isSupported = true;
 
         /// <summary>
-        /// The level in effect for the active screen buffer: 0, 1 or 2, or 0 while the input host
+        /// The level in effect for the active screen buffer: 0 through 3, or 0 while the input host
         /// cannot encode it (<see cref="IsSupported"/>). The App encoder and the query read this.
         /// </summary>
         public int Level => _isSupported ? _currentLevel : 0;

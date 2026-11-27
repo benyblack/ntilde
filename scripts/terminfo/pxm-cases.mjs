@@ -47,8 +47,8 @@ const encodingOf = { 1005: 'utf8', 1006: 'sgr', 1015: 'urxvt', 1016: 'pixel' };
 const sgrPixel = (code, position, final = 'M') => `\x1b[<${code};${position.pixelX + 1};${position.pixelY + 1}${final}`;
 
 /** The v4 events (their modes extended with the pixel state, false) plus the pixel-encoding events. */
-export function makePxmCases(rows, cols) {
-    const cases = makeMexCases(rows, cols).map(item => ({ ...item, modes: { ...item.modes, mousePixel: false } }));
+export function makePxmCases(rows, cols, ignoredLevel) {
+    const cases = makeMexCases(rows, cols, ignoredLevel).map(item => ({ ...item, modes: { ...item.modes, mousePixel: false } }));
     const add = (id, setup, event, expected, modes, roles) => cases.push({ id: 'input.pxm.' + id,
         setup: pxmReset + setup, event: { modifiers: 0, ...event }, expectedHex: hex(expected), modes, roles });
     const selects = numbers => numbers.map(number => `\x1b[?${number}h`).join('');

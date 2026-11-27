@@ -145,7 +145,7 @@ public sealed class ModifyOtherKeysBroadcastTextGateTests
         var (sent, receivers) = Siblings("", "\x1b[>4;2m");
         var gate = new BroadcastTextGate();
 
-        gate.KeyDown();
+        gate.Clear();
         MainWindow.FanOutBroadcastKey(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, " ", LevelTwo(), 0, receivers, gate);
         MainWindow.FanOutBroadcastText(" ", receivers, gate); // backend raised TextInput anyway
         gate.KeyUp(Key.Space, PhysicalKey.Space);
@@ -156,15 +156,49 @@ public sealed class ModifyOtherKeysBroadcastTextGateTests
     }
 
     [Fact]
+    public void LevelThreeFocusedPane_BroadcastsOneReportOrTextPerSiblingAndPreservesAnImeCommit()
+    {
+        var focused = LevelTwo();
+        focused.Modes.ModifyOtherKeys.SetLevel(3);
+        var (sent, receivers) = Siblings("", "\x1b[>4;3m");
+        var gate = new BroadcastTextGate();
+
+        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, "a", focused, 0, receivers, gate);
+        MainWindow.FanOutBroadcastText("a", receivers, gate);
+        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, "a", focused, 0, receivers, gate);
+        MainWindow.FanOutBroadcastText("日本語", receivers, gate);
+
+        Assert.Equal(new[] { "a", "a", "日本語" }, sent[0]);
+        Assert.Equal(new[] { "\x1b[27;1;97~", "\x1b[27;1;97~", "日本語" }, sent[1]);
+    }
+
+    [Fact]
+    public void LevelTwoFocus_LeavesLegacySiblingsOnTextAndDeliversEachLevelThreeKeydownOnce()
+    {
+        var (sent, receivers) = Siblings("", "\x1b[>4;3m", "\x1b[>4;3m\x1b[>1u");
+        var gate = new BroadcastTextGate();
+        var focused = LevelTwo();
+        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, "a", focused, 0, receivers, gate);
+        Assert.Empty(sent[0]);
+        Assert.Equal(new[] { "\x1b[27;1;97~" }, sent[1]);
+        Assert.Empty(sent[2]);
+        MainWindow.FanOutBroadcastText("a", receivers, gate);
+        MainWindow.FanOutBroadcastText("日本語", receivers, gate);
+        Assert.Equal(new[] { "a", "日本語" }, sent[0]);
+        Assert.Equal(new[] { "\x1b[27;1;97~", "日本語" }, sent[1]);
+        Assert.Equal(sent[0], sent[2]);
+    }
+
+    [Fact]
     public void BackendsThatSuppressTheText_DoNotLoseTheNextGesturesText()
     {
         var (sent, receivers) = Siblings("");
         var gate = new BroadcastTextGate();
 
-        gate.KeyDown();
+        gate.Clear();
         MainWindow.FanOutBroadcastKey(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, " ", LevelTwo(), 0, receivers, gate);
         // No TextInput and no release seen (focus moved, say); the next keydown starts afresh.
-        gate.KeyDown();
+        gate.Clear();
         MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, "a", LevelTwo(), 0, receivers, gate);
         MainWindow.FanOutBroadcastText("a", receivers, gate);
 
@@ -178,7 +212,7 @@ public sealed class ModifyOtherKeysBroadcastTextGateTests
         var (sent, receivers) = Siblings("", "\x1b[>4;2m");
         var gate = new BroadcastTextGate();
 
-        gate.KeyDown();
+        gate.Clear();
         MainWindow.FanOutBroadcastKey(Key.Space, KeyModifiers.Shift, PhysicalKey.Space, " ", new TerminalBuffer(80, 24), 0, receivers, gate);
         Assert.False(gate.IsArmed);
         MainWindow.FanOutBroadcastText(" ", receivers, gate);
@@ -191,10 +225,10 @@ public sealed class ModifyOtherKeysBroadcastTextGateTests
     public void ReleaseOfAnotherKey_DoesNotDisarm_AndTheGateIsOneShot()
     {
         var gate = new BroadcastTextGate();
-        gate.MarkFannedOut(Key.Space, PhysicalKey.Space);
+        gate.MarkFannedOut(Key.Space, PhysicalKey.Space, " ", null);
         gate.KeyUp(Key.LeftShift, PhysicalKey.ShiftLeft);
         Assert.True(gate.IsArmed);
-        Assert.True(gate.TryConsumeText());
-        Assert.False(gate.TryConsumeText());
+        Assert.NotNull(gate.ConsumeText(" "));
+        Assert.Null(gate.ConsumeText(" "));
     }
 }

@@ -229,7 +229,7 @@
       "key": "CSI:>4m",
       "mnemonic": "XTMODKEYS modifyOtherKeys",
       "support": "partial",
-      "description": "Set xterm modifyOtherKeys level 0, 1 or 2 for the active screen (CSI > 4 ; Pv m); CSI > 4 m, an empty Pv, CSI > m and CSI > 4 n reset it to 0. Level 3 and other resources are ignored.",
+      "description": "Set xterm modifyOtherKeys levels 0 through 3 for the active screen (CSI > 4 ; Pv m); CSI > 4 m, an empty Pv, CSI > m and CSI > 4 n reset it to 0. Level 3 also reports unmodified printable keys. Shared mux sessions support levels 0 through 2.",
       "matrixFeature": "xterm modifyOtherKeys",
       "evidencePath": "tests/Ntilde.VT.Tests/ModifyOtherKeysProtocolTests.cs"
     },
