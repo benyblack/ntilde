@@ -121,8 +121,7 @@ def tree(env):
 
 
 def title_snapshot(endpoint, app, pane):
-    result = agent(endpoint, app, "readPaneMetadata", {"paneId": pane["paneId"]})
-    metadata = result["metadata"]
+    metadata = agent(endpoint, app, "readPaneMetadata", {"paneId": pane["paneId"]})
     need(metadata["paneId"] == pane["paneId"], "wrong App pane observed")
     return {"paneId": metadata["paneId"], "oscTitle": metadata.get("oscTitle"),
             "tabText": metadata["presentation"]["tabText"],
