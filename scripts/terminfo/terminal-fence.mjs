@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { assertPrivateFile, requestOwner, verifyNtildeOutput } from './ownership.mjs';
+import { withOwnedOutput } from './terminal-output.mjs';
 import { parseQueryFrame, querySequence, querySpec } from './color-query.mjs';
 import { cursorReportQuery, parseCursorReportFrame } from './cursor-report.mjs';
 import { checksumReportExpectation, parseChecksumReportFrame } from './checksum-report.mjs';
@@ -117,4 +120,60 @@ export function terminalFence(input, output, timeoutMs = 1000) {
             if (wasPaused) input.pause();
         },
     };
+}
+
+async function recordStep(fence, send, step, da) {
+    const captured = step.query ? await fence.cursorReport(step.bytes) : { barrier: await fence.write(step.bytes) };
+    await send(step.stage, { ...captured, requestBytes: step.bytes + (step.query ? cursorReportQuery : '') + da });
+}
+
+async function collectFencedPlan(runId, request, fence, { planFor, prefix, da, label }) {
+    const send = (stage, value) => request(prefix + stage, value);
+    const { cursorVisible } = await send('start');
+    const plan = planFor(runId, cursorVisible), finish = plan.at(-1);
+    let failure;
+    try {
+        for (const step of plan.slice(1, -1)) {
+            await recordStep(fence, send, step, da); // NOSONAR: Observe the fenced transition before the next write.
+        }
+    } catch (error) {
+        failure = error;
+    }
+    try {
+        if (fence.failed) await fence.writeCleanup(finish.bytes);
+        else if (failure) await fence.write(finish.bytes);
+        else await recordStep(fence, send, finish, da);
+    } catch (error) {
+        if (failure) throw new AggregateError([failure, error], label + ' collection and restoration failed.');
+        throw error;
+    }
+    if (failure) throw failure;
+}
+
+async function runFencedPlan(config, plan) {
+    const { tabTty: tty, originalTerminalState: original } = await verifyNtildeOutput(config, process.stdout);
+    const request = (kind, details) => requestOwner(config, kind, { ...details, tty });
+    const fence = terminalFence(process.stdin, process.stdout);
+    try {
+        await withOwnedOutput({ tty, original, restoreInput: fence.dispose }, async () => {
+            await request('raw-output');
+            await collectFencedPlan(config.runId, request, fence, plan);
+        });
+        await request('done');
+    } catch (error) {
+        const message = error instanceof AggregateError ? error.errors.map(item => item.message).join('; ') : error.message;
+        await request('failed', { error: message }).catch(() => {});
+        throw error;
+    }
+}
+
+/** Worker entrypoint for a fixed sequence of writes and optional CPR observations. */
+export async function runFencedWorker(plan) {
+    try {
+        assertPrivateFile(process.argv[2]);
+        await runFencedPlan(JSON.parse(readFileSync(process.argv[2], 'utf8')), plan);
+    } catch (error) {
+        console.error(error.message);
+        process.exitCode = 1;
+    }
 }

@@ -1,0 +1,477 @@
+{
+  "schemaVersion": 1,
+  "featureId": "extensions.font-ligatures",
+  "pinned": {
+    "probe": "unprobed",
+    "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "stock": null,
+    "commonHarness": null
+  },
+  "oracleSha256": "9b5d947e439f81a9f46d93edffee5b1eac7b92a0dde7e0582be0c8706e4e85a0",
+  "font": {
+    "family": "Fira Code",
+    "subfamily": "Regular",
+    "version": "Version 6.002",
+    "postscript": "FiraCode-Regular",
+    "releaseSha256": "5992ab9640e2df491b2f609467b1de60e8bc39b2c28db184342a0592d98f6117",
+    "resolvedSha256": "17b8fa486c637b165ef747570fe84539e5c9423f1a10483423df6948f72893b1",
+    "matchingTables": 18,
+    "sizeDip": 26
+  },
+  "owned": {
+    "outcome": "supported",
+    "baseline": "unsupported",
+    "restored": true,
+    "changedPixelsOutsideOperators": 0,
+    "observations": [
+      {
+        "pair": "=>",
+        "text": "L=>R",
+        "crop": {
+          "x": 52,
+          "y": 67,
+          "width": 32,
+          "height": 32
+        },
+        "changedPixels": 215,
+        "ordinary": {
+          "expectedError": 35.95,
+          "alternativeError": 87.71
+        },
+        "shaped": {
+          "expectedError": 32.51,
+          "alternativeError": 95.71
+        },
+        "selection": {
+          "startRow": 2,
+          "startCol": 3,
+          "endRow": 2,
+          "endCol": 3
+        },
+        "selectedChangedPixels": 631,
+        "selectionMatchesOrdinary": true
+      },
+      {
+        "pair": "!=",
+        "text": "L!=R",
+        "crop": {
+          "x": 52,
+          "y": 133,
+          "width": 32,
+          "height": 32
+        },
+        "changedPixels": 242,
+        "ordinary": {
+          "expectedError": 29.56,
+          "alternativeError": 143.86
+        },
+        "shaped": {
+          "expectedError": 48.9,
+          "alternativeError": 167.48
+        },
+        "selection": {
+          "startRow": 4,
+          "startCol": 4,
+          "endRow": 4,
+          "endCol": 4
+        },
+        "selectedChangedPixels": 671,
+        "selectionMatchesOrdinary": true
+      }
+    ]
+  },
+  "runs": {
+    "baseline-on": {
+      "runId": "0370dfce5f4f5ca77803e1ea45bf1f86",
+      "suite": "ntilde-owned-font-ligatures-v1",
+      "configured": true,
+      "enabled": false,
+      "restored": true,
+      "captures": [
+        {
+          "file": "ligature-pixels/frame-000.png",
+          "sha256": "70634866038369465eca0c192c44850991e30fc0364e77e552d462683d25d277",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-020.png",
+          "sha256": "91594e688c2620aecb83611bd900c334ec261ffa8f7c1fed0d3a3f40935ae2eb",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-021.png",
+          "sha256": "5eccd11d63a1179949d0e149aed14fc7afabb4dad585c23b9985c15cb2746a8d",
+          "selection": {
+            "startRow": 2,
+            "startCol": 3,
+            "endRow": 2,
+            "endCol": 3
+          }
+        },
+        {
+          "file": "ligature-pixels/frame-022.png",
+          "sha256": "3b29f83461ef9f4c3acf5c6b1d9722ad5710c4c6c02fe6d6665745564444b0ec",
+          "selection": {
+            "startRow": 4,
+            "startCol": 4,
+            "endRow": 4,
+            "endCol": 4
+          }
+        },
+        {
+          "file": "ligature-pixels/frame-023.png",
+          "sha256": "91594e688c2620aecb83611bd900c334ec261ffa8f7c1fed0d3a3f40935ae2eb",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-070.png",
+          "sha256": "70634866038369465eca0c192c44850991e30fc0364e77e552d462683d25d277",
+          "selection": null
+        }
+      ],
+      "cursors": [
+        {
+          "stage": "cursor-0-0",
+          "raw": "\u001b[3;4R",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "stage": "cursor-0-1",
+          "raw": "\u001b[3;5R",
+          "row": 2,
+          "col": 4
+        },
+        {
+          "stage": "cursor-1-0",
+          "raw": "\u001b[5;4R",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "stage": "cursor-1-1",
+          "raw": "\u001b[5;5R",
+          "row": 4,
+          "col": 4
+        }
+      ],
+      "measurement": {
+        "runId": "0370dfce5f4f5ca77803e1ea45bf1f86",
+        "appRevision": "db411becbe33922691e29d78b0ab7dc443d26b14",
+        "scriptsRevision": "905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
+        "receiptSchema": 1,
+        "version": "0.14.0+db411becbe33922691e29d78b0ab7dc443d26b14",
+        "nodeVersion": "v24.22.2",
+        "startedAt": "2026-11-27T09:19:31.615Z",
+        "releasedAt": "2026-11-27T09:19:34.781Z",
+        "geometry": {
+          "rows": 23,
+          "cols": 74
+        },
+        "mode": "render",
+        "scale": 1,
+        "presentationTimeMs": 0,
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "assemblySha256": "d1e05469db08512c73ac418c1b8a129e75b585a4154b220e78d91aa4cecd61cb",
+        "sourceSnapshotManifestSha256": "aa33d65a779337446db36d98ca8f083a4f3011c19a8d73f2c616e859311b1f15",
+        "archiveSha256": "81a78ea9bf5985c84a63c06760a28972d98c2af4b00dfc3428f8fa63890f06c6"
+      }
+    },
+    "off": {
+      "runId": "037b9586d8287f2242020ab5f3c6c861",
+      "suite": "ntilde-owned-font-ligatures-v1",
+      "configured": false,
+      "enabled": false,
+      "restored": true,
+      "captures": [
+        {
+          "file": "ligature-pixels/frame-000.png",
+          "sha256": "70634866038369465eca0c192c44850991e30fc0364e77e552d462683d25d277",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-020.png",
+          "sha256": "91594e688c2620aecb83611bd900c334ec261ffa8f7c1fed0d3a3f40935ae2eb",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-021.png",
+          "sha256": "5eccd11d63a1179949d0e149aed14fc7afabb4dad585c23b9985c15cb2746a8d",
+          "selection": {
+            "startRow": 2,
+            "startCol": 3,
+            "endRow": 2,
+            "endCol": 3
+          }
+        },
+        {
+          "file": "ligature-pixels/frame-022.png",
+          "sha256": "3b29f83461ef9f4c3acf5c6b1d9722ad5710c4c6c02fe6d6665745564444b0ec",
+          "selection": {
+            "startRow": 4,
+            "startCol": 4,
+            "endRow": 4,
+            "endCol": 4
+          }
+        },
+        {
+          "file": "ligature-pixels/frame-023.png",
+          "sha256": "91594e688c2620aecb83611bd900c334ec261ffa8f7c1fed0d3a3f40935ae2eb",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-070.png",
+          "sha256": "70634866038369465eca0c192c44850991e30fc0364e77e552d462683d25d277",
+          "selection": null
+        }
+      ],
+      "cursors": [
+        {
+          "stage": "cursor-0-0",
+          "raw": "\u001b[3;4R",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "stage": "cursor-0-1",
+          "raw": "\u001b[3;5R",
+          "row": 2,
+          "col": 4
+        },
+        {
+          "stage": "cursor-1-0",
+          "raw": "\u001b[5;4R",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "stage": "cursor-1-1",
+          "raw": "\u001b[5;5R",
+          "row": 4,
+          "col": 4
+        }
+      ],
+      "measurement": {
+        "runId": "037b9586d8287f2242020ab5f3c6c861",
+        "appRevision": "905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "scriptsRevision": "905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
+        "receiptSchema": 1,
+        "version": "0.14.0+905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "nodeVersion": "v24.22.2",
+        "startedAt": "2026-11-27T09:20:28.177Z",
+        "releasedAt": "2026-11-27T09:20:30.698Z",
+        "geometry": {
+          "rows": 23,
+          "cols": 74
+        },
+        "mode": "render",
+        "scale": 1,
+        "presentationTimeMs": 0,
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "assemblySha256": "151dc35c13f9e7600e955669bd0c79ccc08e7966e23f99aedce378c021f3d905",
+        "sourceSnapshotManifestSha256": "aa33d65a779337446db36d98ca8f083a4f3011c19a8d73f2c616e859311b1f15",
+        "archiveSha256": "81a78ea9bf5985c84a63c06760a28972d98c2af4b00dfc3428f8fa63890f06c6"
+      }
+    },
+    "on": {
+      "runId": "a5f7ca5b0204bf091682f5258ec58e26",
+      "suite": "ntilde-owned-font-ligatures-v1",
+      "configured": true,
+      "enabled": true,
+      "restored": true,
+      "captures": [
+        {
+          "file": "ligature-pixels/frame-000.png",
+          "sha256": "70634866038369465eca0c192c44850991e30fc0364e77e552d462683d25d277",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-020.png",
+          "sha256": "eee329f8aa132941e3d26170e0e534a35e77f03e679d8f599b4d976d98f209c1",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-021.png",
+          "sha256": "dd6f70ac217b853575a5a9e0fb692b06e703c6e10977761dbb689ccb6bcb4dae",
+          "selection": {
+            "startRow": 2,
+            "startCol": 3,
+            "endRow": 2,
+            "endCol": 3
+          }
+        },
+        {
+          "file": "ligature-pixels/frame-022.png",
+          "sha256": "1ee62cc09cc047ecf13c4e1006eaf62ccacb3b06f50d90a76c194c5e2e706641",
+          "selection": {
+            "startRow": 4,
+            "startCol": 4,
+            "endRow": 4,
+            "endCol": 4
+          }
+        },
+        {
+          "file": "ligature-pixels/frame-023.png",
+          "sha256": "eee329f8aa132941e3d26170e0e534a35e77f03e679d8f599b4d976d98f209c1",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-070.png",
+          "sha256": "70634866038369465eca0c192c44850991e30fc0364e77e552d462683d25d277",
+          "selection": null
+        }
+      ],
+      "cursors": [
+        {
+          "stage": "cursor-0-0",
+          "raw": "\u001b[3;4R",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "stage": "cursor-0-1",
+          "raw": "\u001b[3;5R",
+          "row": 2,
+          "col": 4
+        },
+        {
+          "stage": "cursor-1-0",
+          "raw": "\u001b[5;4R",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "stage": "cursor-1-1",
+          "raw": "\u001b[5;5R",
+          "row": 4,
+          "col": 4
+        }
+      ],
+      "measurement": {
+        "runId": "a5f7ca5b0204bf091682f5258ec58e26",
+        "appRevision": "905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "scriptsRevision": "905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
+        "receiptSchema": 1,
+        "version": "0.14.0+905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "nodeVersion": "v24.22.2",
+        "startedAt": "2026-11-27T09:20:31.054Z",
+        "releasedAt": "2026-11-27T09:20:33.014Z",
+        "geometry": {
+          "rows": 23,
+          "cols": 74
+        },
+        "mode": "render",
+        "scale": 1,
+        "presentationTimeMs": 0,
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "assemblySha256": "151dc35c13f9e7600e955669bd0c79ccc08e7966e23f99aedce378c021f3d905",
+        "sourceSnapshotManifestSha256": "aa33d65a779337446db36d98ca8f083a4f3011c19a8d73f2c616e859311b1f15",
+        "archiveSha256": "81a78ea9bf5985c84a63c06760a28972d98c2af4b00dfc3428f8fa63890f06c6"
+      }
+    },
+    "off-restored": {
+      "runId": "7ee067a2d1979059146cfc6d8652cbfc",
+      "suite": "ntilde-owned-font-ligatures-v1",
+      "configured": false,
+      "enabled": false,
+      "restored": true,
+      "captures": [
+        {
+          "file": "ligature-pixels/frame-000.png",
+          "sha256": "70634866038369465eca0c192c44850991e30fc0364e77e552d462683d25d277",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-020.png",
+          "sha256": "91594e688c2620aecb83611bd900c334ec261ffa8f7c1fed0d3a3f40935ae2eb",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-021.png",
+          "sha256": "5eccd11d63a1179949d0e149aed14fc7afabb4dad585c23b9985c15cb2746a8d",
+          "selection": {
+            "startRow": 2,
+            "startCol": 3,
+            "endRow": 2,
+            "endCol": 3
+          }
+        },
+        {
+          "file": "ligature-pixels/frame-022.png",
+          "sha256": "3b29f83461ef9f4c3acf5c6b1d9722ad5710c4c6c02fe6d6665745564444b0ec",
+          "selection": {
+            "startRow": 4,
+            "startCol": 4,
+            "endRow": 4,
+            "endCol": 4
+          }
+        },
+        {
+          "file": "ligature-pixels/frame-023.png",
+          "sha256": "91594e688c2620aecb83611bd900c334ec261ffa8f7c1fed0d3a3f40935ae2eb",
+          "selection": null
+        },
+        {
+          "file": "ligature-pixels/frame-070.png",
+          "sha256": "70634866038369465eca0c192c44850991e30fc0364e77e552d462683d25d277",
+          "selection": null
+        }
+      ],
+      "cursors": [
+        {
+          "stage": "cursor-0-0",
+          "raw": "\u001b[3;4R",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "stage": "cursor-0-1",
+          "raw": "\u001b[3;5R",
+          "row": 2,
+          "col": 4
+        },
+        {
+          "stage": "cursor-1-0",
+          "raw": "\u001b[5;4R",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "stage": "cursor-1-1",
+          "raw": "\u001b[5;5R",
+          "row": 4,
+          "col": 4
+        }
+      ],
+      "measurement": {
+        "runId": "7ee067a2d1979059146cfc6d8652cbfc",
+        "appRevision": "905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "scriptsRevision": "905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
+        "receiptSchema": 1,
+        "version": "0.14.0+905b1e07fc929d327cea9dad790fb1bd59d38be0",
+        "nodeVersion": "v24.22.2",
+        "startedAt": "2026-11-27T09:20:33.519Z",
+        "releasedAt": "2026-11-27T09:20:35.887Z",
+        "geometry": {
+          "rows": 23,
+          "cols": 74
+        },
+        "mode": "render",
+        "scale": 1,
+        "presentationTimeMs": 0,
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "assemblySha256": "151dc35c13f9e7600e955669bd0c79ccc08e7966e23f99aedce378c021f3d905",
+        "sourceSnapshotManifestSha256": "aa33d65a779337446db36d98ca8f083a4f3011c19a8d73f2c616e859311b1f15",
+        "archiveSha256": "81a78ea9bf5985c84a63c06760a28972d98c2af4b00dfc3428f8fa63890f06c6"
+      }
+    }
+  }
+}

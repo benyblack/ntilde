@@ -40,4 +40,8 @@ The [aggregate reassessment](../2026-11-26-osc633-aggregate-reassessment/report.
 
 The [OSC 5522 assessment](../2026-11-27-osc5522-clipboard/report.md) replays the pinned mode query and measures a separate paste-token transfer on a disposable X11 clipboard. The pinned query and the owned paste both grade supported. The historical stock grade is unsupported.
 
+## Font ligatures
+
+The [font ligature assessment](../2026-11-27-rich-font-ligatures/report.md) records the owned glyph and partial-selection comparisons for two operators with a pinned Fira Code face. The pinned collector has no probe for this case.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.

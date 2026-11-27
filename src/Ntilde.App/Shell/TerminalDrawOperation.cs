@@ -152,6 +152,7 @@ namespace Ntilde.Shell
         {
             public int AbsRow;
             public SKPicture? CachedPicture;
+            public SelectionRowSnapshot? LigatureSelection;
             public RenderRowSnapshot? Snapshot;
             public bool HasBlinkInk { get; set; }
         }
@@ -546,7 +547,10 @@ namespace Ntilde.Shell
                     _rowCache.RequestClear();
                 }
                 _wasAltScreenLastFrame = isAltScreen;
+                var tf = _skTypeface?.Typeface ?? SKTypeface.FromFamilyName(_typeface.FontFamily.Name);
+                _shapeAsciiLigatures = _enableLigatures && SupportsAsciiSubstitutions(tf);
                 bool containsTextBlinkInk = false;
+                int ligatureSelectionIndex = 0;
 
                 for (int r = 0; r < bufferRows; r++)
                 {
@@ -571,11 +575,20 @@ namespace Ntilde.Shell
                     bool hasRenderableRow = rowSnapshot.Cols > 0 && rowSnapshot.Cells.Length >= rowSnapshot.Cols && rowSnapshot.RowId != 0;
                     if (hasRenderableRow)
                     {
+                        if (_shapeAsciiLigatures && ligatureSelectionIndex < renderSnapshot.SelectionRows.Length)
+                        {
+                            var selected = renderSnapshot.SelectionRows.Array[ligatureSelectionIndex];
+                            if (selected.AbsRow == rowSnapshot.AbsRow)
+                            {
+                                item.LigatureSelection = selected;
+                                ligatureSelectionIndex++;
+                            }
+                        }
                         item.HasBlinkInk = ContainsBlinkInk(rowSnapshot);
                         containsTextBlinkInk |= item.HasBlinkInk;
                         // A pre-animation picture must not become the span baseline when blinking ends.
                         if (useRowCache && item.HasBlinkInk) _rowCache?.InvalidateRow(rowSnapshot.RowId);
-                        item.CachedPicture = useRowCache && !item.HasBlinkInk ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
+                        item.CachedPicture = useRowCache && !item.HasBlinkInk && item.LigatureSelection is null ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
 
                         if (item.CachedPicture != null)
                         {
@@ -626,7 +639,6 @@ namespace Ntilde.Shell
                 int maxBuilds = MaxPictureBuildsPerFrame; // always unlimited
 
                 // Pass 3: Text
-                var tf = _skTypeface?.Typeface ?? SKTypeface.FromFamilyName(_typeface.FontFamily.Name);
                 LogPrimaryFontDiagnostics(tf);
                 using var font = (_skFont?.Font != null)
                     ? new SKFont(_skFont.Font.Typeface, _skFont.Font.Size)
@@ -657,13 +669,17 @@ namespace Ntilde.Shell
                     {
                         var snapshot = item.Snapshot.Value;
                         // Span repaint clears and clips in single-width column space, so a double-size row is always drawn whole.
-                        bool shouldUseSpanRendering = !item.HasBlinkInk && snapshot.LineSize == LineSize.SingleWidth
+                        // Existing and newly formed ligatures can affect cells beyond a dirty span.
+                        bool mayShape = _shapeAsciiLigatures && MayShapeAsciiLigatures(snapshot);
+                        bool shouldUseSpanRendering = !mayShape && item.LigatureSelection is null
+                            && !item.HasBlinkInk && snapshot.LineSize == LineSize.SingleWidth
                             && rowSpans is { Count: > 0 } && ShouldUseSpanRenderingForRow(rowSpans, snapshot.Cols);
 
                         SKPicture? previousRowPicture = null;
                         if (shouldUseSpanRendering)
                         {
-                            if (!(_rowCache?.TryGetLatestByRowId(snapshot.RowId, out previousRowPicture, out _) ?? false))
+                            if (_rowCache is null || !_rowCache.TryGetLatestByRowId(snapshot.RowId, out previousRowPicture, out _, out bool previousRequiresFullRepaint)
+                                || previousRequiresFullRepaint)
                             {
                                 shouldUseSpanRendering = false;
                             }
@@ -753,7 +769,7 @@ namespace Ntilde.Shell
                         else if (buildsThisFrame < maxBuilds)
                         {
                             rowRenderCount++;
-                            if (useRowCache && !item.HasBlinkInk)
+                            if (useRowCache && !item.HasBlinkInk && item.LigatureSelection is null)
                             {
                                 // Record into a picture so it can be cached and replayed on future frames.
                                 var recSw = System.Diagnostics.Stopwatch.StartNew();
@@ -776,7 +792,7 @@ namespace Ntilde.Shell
                                     drawBackgrounds: true);
 
                                 var picture = recorder.EndRecording();
-                                _rowCache!.Add(snapshot.RowId, snapshot.Revision, picture);
+                                _rowCache!.Add(snapshot.RowId, snapshot.Revision, picture, requiresFullRepaint: mayShape);
                                 canvas.DrawPicture(picture, 0, rowTopY);
                                 IncrementOtherDrawCall();
                                 IncrementPictureBuild();
@@ -802,7 +818,8 @@ namespace Ntilde.Shell
                                     renderSnapshot.Theme,
                                     alpha,
                                     tf,
-                                    drawBackgrounds: true);
+                                    drawBackgrounds: true,
+                                    ligatureSelection: item.LigatureSelection);
                             }
                         }
                         else
@@ -822,7 +839,8 @@ namespace Ntilde.Shell
                                 renderSnapshot.Theme,
                                 alpha,
                                 tf,
-                                drawBackgrounds: true);
+                                drawBackgrounds: true,
+                                ligatureSelection: item.LigatureSelection);
                         }
 
                         if (!shouldUseSpanRendering)
@@ -953,7 +971,8 @@ namespace Ntilde.Shell
                         spanColStart: colStart,
                         spanColEndExclusive: colEndExclusive,
                         foregroundOverride: foregroundOverride,
-                        overlayFill: overlayFill);
+                        overlayFill: overlayFill,
+                        ligatureSelection: frame.RowItems[r].LigatureSelection);
                 }
 
                 // Pass 4: Overlays (Selection / Search)
@@ -1418,7 +1437,8 @@ namespace Ntilde.Shell
             int spanColStart = 0,
             int spanColEndExclusive = int.MaxValue,
             SKColor? foregroundOverride = null,
-            SKColor? overlayFill = null)
+            SKColor? overlayFill = null,
+            SelectionRowSnapshot? ligatureSelection = null)
         {
             const float paddingLeft = 4f;
             int cellsRendered = 0;
@@ -1530,6 +1550,7 @@ namespace Ntilde.Shell
                     bool runNeedsComplexShaping = false;
                     bool runHasBoxDrawing = false;
                     bool runHasComplexShapingGlyph = false;
+                    bool runIsAscii = false;
                     int k = c;
 
                     while (k < snapshot.Cols)
@@ -1569,6 +1590,13 @@ namespace Ntilde.Shell
                             break;
 
                         string cellText = NormalizeTextElementForRender(next.Text ?? next.Character.ToString());
+                        bool cellIsAscii = _shapeAsciiLigatures && !next.IsWide && cellText.Length == 1
+                            && cellText[0] is >= ' ' and <= '~';
+                        if (k == c) runIsAscii = cellIsAscii;
+                        else if (cellIsAscii != runIsAscii || (runIsAscii && ligatureSelection is { } selection
+                            && (k == selection.ColStart || k == selection.ColEnd + 1)))
+                            break;
+
                         bool cellHasBoxDrawing = ContainsBoxDrawing(cellText);
                         bool cellNeedsComplexShaping = _enableComplexShaping && ContainsRunesRequiringComplexShaping(cellText);
 
@@ -1654,6 +1682,8 @@ namespace Ntilde.Shell
                         appliedItalicTransform = true;
                     }
 
+                    bool hasLigatureClip = runIsAscii && DrawAsciiLigatures(canvas, runText,
+                        new LigatureRow(c, rowTopYDip, snappedCellHeight, baselineYDip), font, fgPaint, primaryTf);
                     if (runNeedsComplexShaping)
                     {
                         FlushBatches(canvas);
@@ -1686,7 +1716,7 @@ namespace Ntilde.Shell
                         {
                             // The shortcut skips the decorations below, so a run of blanks carrying a styled or colored
                             // underline (#270) or strikethrough takes the per-glyph path so its decoration is painted.
-                            if (runUnderline is null && !runIsStrikethrough && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
+                            if (!hasLigatureClip && runUnderline is null && !runIsStrikethrough && ShouldDrawRunDirectWhenGlyphCacheEnabled(runText))
                             {
                                 FlushBatches(canvas);
                                 canvas.DrawText(runText, rx, baselineYDip, font, fgPaint);
@@ -1906,6 +1936,12 @@ namespace Ntilde.Shell
                             IncrementDirectDrawTextCall();
                         }
                         cellsRendered += totalRunWidth;
+                    }
+
+                    if (hasLigatureClip)
+                    {
+                        FlushBatches(canvas);
+                        canvas.Restore();
                     }
 
                     if (appliedItalicTransform)

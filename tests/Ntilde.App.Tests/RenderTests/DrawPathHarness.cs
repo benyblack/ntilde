@@ -35,12 +35,14 @@ internal sealed class DrawPathHarness : IDisposable
     private readonly SKSurface _surface;
     private readonly Rect _bounds;
 
-    public DrawPathHarness(int cols, int rows, bool withRowCache = true)
+    public DrawPathHarness(int cols, int rows, bool withRowCache = true, string? fontPath = null)
     {
         Buffer = new TerminalBuffer(cols, rows);
         Parser = new AnsiParser(Buffer);
         RowCache = withRowCache ? new RowImageCache { MaxEntries = Math.Max(rows * 3, 50) } : null;
-        _skTypeface = new SharedSKTypeface(SKTypeface.FromFamilyName(_typeface.FontFamily.Name));
+        _skTypeface = new SharedSKTypeface(fontPath is null
+            ? SKTypeface.FromFamilyName(_typeface.FontFamily.Name)
+            : SKTypeface.FromFile(fontPath));
         _skFont = new SharedSKFont(new SKFont(_skTypeface.Typeface, 14));
         int width = (int)Math.Ceiling((cols * Metrics.CellWidth) + 8);
         int height = (int)Math.Ceiling(rows * Metrics.CellHeight);
@@ -57,6 +59,12 @@ internal sealed class DrawPathHarness : IDisposable
     public RowImageCache? RowCache { get; }
 
     public int ScrollOffset { get; set; }
+
+    public int PixelWidth => _surface.Canvas.DeviceClipBounds.Width;
+
+    public bool EnableLigatures { get; set; }
+
+    public SelectionState Selection => _selection;
 
     /// <summary>
     /// A screenful of what a shell shows: a prompt, colored listings, bold and underlined words, a 256-color and an RGB
@@ -113,7 +121,7 @@ internal sealed class DrawPathHarness : IDisposable
             glyphTypeface: _typeface.GlyphTypeface,
             skTypeface: _skTypeface,
             skFont: _skFont,
-            enableLigatures: false,
+            enableLigatures: EnableLigatures,
             fallbackCache: _fallbackCache,
             fallbackChain: _fallbackChain,
             opacity: 1.0,
