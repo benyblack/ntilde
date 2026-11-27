@@ -107,6 +107,12 @@ const childEnvironmentSources = {
     modernChildEnvironmentOwnedSourceSha256: 'modern-child-environment-owned.mjs',
     modernChildEnvironmentWorkerSourceSha256: 'modern-child-environment-worker.mjs',
 };
+const termFeaturesSources = {
+    ...childEnvironmentSources,
+    richTermFeaturesSourceSha256: 'rich-term-features.mjs',
+    richTermFeaturesOwnedSourceSha256: 'rich-term-features-owned.mjs',
+    richTermFeaturesWorkerSourceSha256: 'rich-term-features-worker.mjs',
+};
 const vendorEnvironmentSources = {
     ...childEnvironmentSources,
     richVendorEnvironmentSourceSha256: 'rich-vendor-environment.mjs',
@@ -167,6 +173,8 @@ const scopes = {
     'modern-blink': { policy: blinkPolicy, sources: blinkSources, entry: blinkSources.modernBlinkOwnedSourceSha256 },
     'modern-viewport': { policy: viewportPolicy, sources: viewportSources, entry: viewportSources.modernViewportOwnedSourceSha256 },
     'modern-osc-titles': { policy: 'readonly-owned-source-graph-v77', sources: oscTitlesSources, entry: oscTitlesSources.modernOscTitlesOwnedSourceSha256 },
+    'rich-term-features': { policy: 'readonly-owned-source-graph-rich-term-features-v1',
+        sources: termFeaturesSources, entry: termFeaturesSources.richTermFeaturesOwnedSourceSha256 },
     'rich-vendor-environment': { policy: 'readonly-owned-source-graph-rich-vendor-environment-v1',
         sources: vendorEnvironmentSources, entry: vendorEnvironmentSources.richVendorEnvironmentOwnedSourceSha256 },
     'modern-child-environment': { policy: 'readonly-owned-source-graph-v79', sources: childEnvironmentSources, entry: childEnvironmentSources.modernChildEnvironmentOwnedSourceSha256 },

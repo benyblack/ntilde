@@ -1,11 +1,8 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { isDeepStrictEqual as same } from 'node:util';
 import { gunzipSync } from 'node:zlib';
-import { extractOwnedArchive } from '../terminfo-core-results.mjs';
-import { leaseReleasedAt } from './modern-child-environment-results.mjs';
+import { describeEnvironmentRun, readEnvironmentPair, withEnvironmentArchive } from './child-environment-archives.mjs';
 import { digest, pinnedJson, snapshotFiles } from './modern-inputs.mjs';
 import { assessEnvironment, controls, controlVariable, families, requireVendorEnvironment as requireEvidence, scopeName } from './rich-vendor-environment.mjs';
 import { verifyChildEnvironmentRun } from './rich-vendor-environment-owned.mjs';
@@ -41,59 +38,18 @@ export function pinnedCriteria() {
     });
 }
 
-export function verifyVendorEnvironmentRun(scratch) {
-    const { child, context, ownership, launch, pane, receipt } = verifyChildEnvironmentRun(scratch);
-    const proof = ownership.proofs[0];
-    const host = launch.host;
-    requireEvidence(host?.product === 'macOS' && /^\d+\.\d+(\.\d+)?$/.test(host.version)
-        && /^[A-Z\d]+$/.test(host.build) && ['arm64', 'x64'].includes(host.arch), 'missing macOS launch metadata');
-    return { child, measurement: {
-        runId: context.runId, control: launch.control, host, startedAt: context.startedAt, appVersion: context.appVersion,
-        appVersionSource: context.appVersionSource, executableSha256: context.executableSha256, appBinarySha256: launch.appBinaries,
-        nodeVersion: context.nodeVersion, nodeSha256: launch.nodeSha256, sourcePolicy: context.sourceSnapshotPolicy,
-        collectorSnapshotSha256: context.sourceSnapshotManifestSha256, receiptSchema: receipt.schemaVersion,
-        childOutputSha256: receipt.sha256['child-environment.json'], appData: launch.appData, pane, app: proof.app, child: proof.worker,
-        terminalRestoredAt: proof.privateClipboard.restoredAt, cleanedUpAt: ownership.cleanedUpAt, fixtureRemoved: receipt.fixtureRemoved,
-        sourceSnapshotRemovedAt: ownership.sourceSnapshot.removedAt, leaseReleasedAt: leaseReleasedAt(scratch, context, ownership),
-    } };
-}
-
-export function withRetainedRun(entry, callback) {
-    const scratch = mkdtempSync(join(tmpdir(), 'ntilde-rich-vendor-environment-'));
-    try {
-        requireEvidence(controls.includes(entry.control) && entry.archive === entry.control + '-run.zip', 'unexpected archive name');
-        extractOwnedArchive(directory, { archives: { 'owned-run.zip': entry.sha256 } }, scratch, join(directory, entry.archive));
-        return callback(scratch);
-    } finally {
-        rmSync(scratch, { recursive: true, force: true });
-    }
-}
-
-function readRun(entry) {
-    const { child, measurement } = withRetainedRun(entry, verifyVendorEnvironmentRun);
-    requireEvidence(measurement.runId === entry.runId && measurement.control === entry.control, 'run identity differs from manifest');
-    return { child, measurement: { ...measurement, archive: entry.archive, archiveSha256: entry.sha256 } };
-}
+export const verifyVendorEnvironmentRun = scratch => describeEnvironmentRun(scratch, verifyChildEnvironmentRun);
+export const withRetainedRun = (entry, callback) => withEnvironmentArchive(directory, entry, callback);
 
 export function buildPublication() {
-    const manifest = pinnedJson(join(directory, 'manifest.json'), manifestSha256);
-    requireEvidence(manifest.schemaVersion === 1 && [manifest.appRevision, manifest.scriptsRevision].every(value => /^[a-f\d]{40}$/.test(value))
-        && same(manifest.runs.map(run => run.control), controls), 'unexpected pair in the measurement manifest');
-    const [clean, inherited] = manifest.runs.map(readRun);
-    const a = clean.measurement, b = inherited.measurement;
-    const common = ['host', 'appVersion', 'executableSha256', 'appBinarySha256', 'nodeVersion', 'nodeSha256',
-        'sourcePolicy', 'collectorSnapshotSha256', 'receiptSchema'];
-    requireEvidence(a.runId !== b.runId && a.appData !== b.appData && a.pane.paneId !== b.pane.paneId
-        && a.app.executable === b.app.executable && a.child.executable === b.child.executable
-        && Date.parse(a.leaseReleasedAt) <= Date.parse(b.startedAt)
-        && common.every(field => same(a[field], b[field])), 'expected two isolated, serialized runs of the same App and collector');
+    const { manifest, clean, inherited } = readEnvironmentPair(directory, manifestSha256, verifyChildEnvironmentRun);
     const result = assessEnvironment(clean.child, inherited.child);
     const criteria = new Map(pinnedCriteria().map(item => [item.id, item]));
     return {
         schemaVersion: 1, scope, manifestSha256, appRevision: manifest.appRevision, scriptsRevision: manifest.scriptsRevision,
         revisionSource: 'recorded build and collector checkouts with retained executable and source hashes',
         pinned: { package: 'terminfo.dev@4.0.0', bundlePath, bundleSha256, requirementsSha256, stockSha256 },
-        runs: [a, b], controls: result.controls,
+        runs: [clean.measurement, inherited.measurement], controls: result.controls,
         rows: result.rows.map(row => ({ ...row, frozen: criteria.get(row.id) })),
     };
 }
