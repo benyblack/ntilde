@@ -73,6 +73,56 @@ public class PromptClickTests
         Assert.Equal(1, WireRow(4));
     }
 
+    [Theory]
+    [InlineData(1, 1, 2, 4)]
+    [InlineData(2, 2, 1, 1)]
+    public void RetainedHistoryAnchorsKeepVisiblePromptRowsClickable(int mode, int atTop, int atSecondary, int atFreshSecondary)
+    {
+        var buffer = new TerminalBuffer(20, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"\x1b]133;A;click_events={mode}\aPS1>\r\nfirst\r\n\x1b]133;A;k=s\aPS2>\r\nthird\r\nfourth");
+        Assert.Equal(1, buffer.Scrollback.Count);
+        Assert.True(buffer.TryGetPromptClickRow(0, out int top, out _));
+        Assert.Equal(atTop, top);
+        Assert.True(buffer.TryGetPromptClickRow(1, out int secondary, out _));
+        Assert.Equal(atSecondary, secondary);
+
+        parser.Process("\r\n\x1b]133;A;k=s\aPS2> fifth");
+        Assert.Equal(2, buffer.Scrollback.Count);
+        Assert.True(buffer.TryGetPromptClickRow(3, out int freshSecondary, out _));
+        Assert.Equal(atFreshSecondary, freshSecondary);
+
+        parser.Process("\r\nsixth");
+        Assert.Equal(3, buffer.Scrollback.Count);
+        Assert.True(buffer.TryGetPromptClickRow(0, out int afterHistoricalSecondary, out _));
+        Assert.Equal(atTop, afterHistoricalSecondary);
+    }
+
+    [Theory]
+    [InlineData(1, 4, 5)]
+    [InlineData(2, 2, 1)]
+    public void WidthReflowKeepsBothAnchorsWithTheirContent(int mode, int beforeSecondary, int atSecondary)
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"0123456789abcdef\r\n\x1b]133;A;click_events={mode}\aPS1>\r\nfirst\r\n\x1b]133;A;k=s\aPS2>\r\ncontinued");
+        Assert.True(buffer.TryGetPromptClickRow(3, out _, out ulong oldVersion));
+
+        buffer.Resize(10, 12);
+        Assert.False(buffer.TryGetPromptClickRow(1, out _, out _));
+        Assert.True(buffer.TryGetPromptClickRow(3, out int primary, out ulong newVersion));
+        Assert.Equal(beforeSecondary, primary);
+        Assert.NotEqual(oldVersion, newVersion);
+        Assert.True(buffer.TryGetPromptClickRow(4, out int secondary, out _));
+        Assert.Equal(atSecondary, secondary);
+
+        buffer.Resize(20, 12);
+        Assert.True(buffer.TryGetPromptClickRow(2, out primary, out _));
+        Assert.Equal(mode == 1 ? 3 : 2, primary);
+        Assert.True(buffer.TryGetPromptClickRow(3, out secondary, out _));
+        Assert.Equal(mode == 1 ? 4 : 1, secondary);
+    }
+
     private int WireRow(int visualRow)
     {
         Assert.True(_buffer.TryGetPromptClickRow(visualRow, out int row, out _));

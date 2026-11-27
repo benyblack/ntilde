@@ -36,7 +36,7 @@ public partial class TerminalBuffer
             lock (_trackedMarkGate)
             {
                 if (_clickPrompt is not { } primary
-                    || !ShellMarkAnchorResolver.TryResolveVisualRow(this, primary, 0, Rows, out _)
+                    || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out _)
                     || mark.IsAltScreen || mark.AbsoluteRow < primary.AbsoluteRow)
                 {
                     return;
@@ -73,6 +73,34 @@ public partial class TerminalBuffer
         _secondaryClickPrompts.Clear();
     }
 
+    private (ulong Version, ShellIntegrationMark Primary, ShellIntegrationMark[] Secondary)? CaptureClickPromptForReflow()
+    {
+        lock (_trackedMarkGate)
+        {
+            return _clickPrompt is { } primary
+                ? (_clickPromptVersion, primary, _secondaryClickPrompts.ToArray())
+                : null;
+        }
+    }
+
+    private void RestoreClickPromptAfterReflow(ulong version, ShellIntegrationMark? primary, List<ShellIntegrationMark> secondary)
+    {
+        lock (_trackedMarkGate)
+        {
+            if (_clickPromptVersion != version) return;
+            if (primary is null)
+            {
+                ClearClickPromptLocked();
+                return;
+            }
+
+            _clickPromptVersion++;
+            _clickPrompt = primary;
+            _secondaryClickPrompts.Clear();
+            _secondaryClickPrompts.AddRange(secondary);
+        }
+    }
+
     /// <summary>Resolves a live, zero-based viewport row to Kitty's one-based SGR wire row.</summary>
     public bool TryGetPromptClickRow(int row, out int wireRow, out ulong promptVersion)
     {
@@ -85,8 +113,9 @@ public partial class TerminalBuffer
             {
                 if (_promptClickMode == PromptClickMode.Disabled || _clickPrompt is not { } primary
                     || !Modes.IsCursorVisible || IsMouseReportingActive()
-                    || !ShellMarkAnchorResolver.TryResolveVisualRow(this, primary, 0, Rows, out int anchorRow)
-                    || row < anchorRow || row > CursorRow)
+                    || row < 0 || row > CursorRow
+                    || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int anchorRow)
+                    || row < anchorRow)
                 {
                     return false;
                 }
@@ -100,7 +129,7 @@ public partial class TerminalBuffer
 
                 foreach (var secondary in _secondaryClickPrompts)
                 {
-                    if (!ShellMarkAnchorResolver.TryResolveVisualRow(this, secondary, 0, Rows, out int secondaryRow)
+                    if (!ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, secondary, out int secondaryRow)
                         || secondaryRow > row)
                     {
                         break;

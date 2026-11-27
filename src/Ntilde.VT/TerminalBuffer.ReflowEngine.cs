@@ -8,7 +8,7 @@ namespace Ntilde.VT
 {
     public partial class TerminalBuffer
     {
-        private static (int Row, int Column) MapReflowImageOffset(List<int>? rowStarts, int offset, int columns, bool keepInFlow)
+        private static (int Row, int Column) MapReflowOffset(List<int>? rowStarts, int offset, int columns, bool keepInFlow)
         {
             ArgumentNullException.ThrowIfNull(rowStarts);
             int row = rowStarts.BinarySearch(offset);
@@ -18,6 +18,12 @@ namespace Ntilde.VT
             return keepInFlow && targetRow >= rowStarts.Count
                 ? (rowStarts.Count - 1, columns - 1)
                 : (targetRow, column % columns);
+        }
+
+        private sealed class ReflowPromptAnchor(ShellIntegrationMark mark)
+        {
+            public ShellIntegrationMark Mark { get; } = mark;
+            public (int Row, int Column) Placement { get; set; } = (-1, -1);
         }
 
         private sealed class ReflowEngineContext
@@ -65,6 +71,10 @@ namespace Ntilde.VT
             // bug being fixed. If the slot moved under us, the newer mark wins untouched.
             private readonly ShellIntegrationMark? _observedCommandStartMark;
             private readonly ShellIntegrationMark? _observedCommandOutputStartMark;
+            private readonly ulong _promptVersion;
+            private readonly ReflowPromptAnchor[]? _promptAnchors;
+            private ShellIntegrationMark? _reflowedPrimaryPrompt;
+            private List<ShellIntegrationMark>? _reflowedSecondaryPrompts;
 
             public ReflowEngineContext(TerminalBuffer source)
             {
@@ -73,6 +83,11 @@ namespace Ntilde.VT
                 _scrollback = source._scrollback;
                 _commandStartMark = _observedCommandStartMark = source.CommandStartMark;
                 _commandOutputStartMark = _observedCommandOutputStartMark = source.CommandOutputStartMark;
+                if (source.CaptureClickPromptForReflow() is { } prompt)
+                {
+                    _promptVersion = prompt.Version;
+                    _promptAnchors = prompt.Secondary.Prepend(prompt.Primary).Select(mark => new ReflowPromptAnchor(mark)).ToArray();
+                }
                 _maxScrollbackBytes = source.MaxScrollbackBytes;
                 _images = source._images;
                 _source = source;
@@ -135,6 +150,10 @@ namespace Ntilde.VT
                 if (target.CommandOutputStartMark == _observedCommandOutputStartMark)
                 {
                     target.CommandOutputStartMark = _commandOutputStartMark;
+                }
+                if (_reflowedSecondaryPrompts != null)
+                {
+                    target.RestoreClickPromptAfterReflow(_promptVersion, _reflowedPrimaryPrompt, _reflowedSecondaryPrompts);
                 }
             }
 
@@ -347,10 +366,13 @@ namespace Ntilde.VT
                         if (img != null && !img.IsAltScreenImage) unanchoredImages.Add(img);
                     }
                     var imagePlacements = new List<(TerminalImage Image, int NewY, int NewX)>();
-                    // Only image-bearing buffers need row-prefix maps. Wide pre-wrap gaps do not
-                    // contribute to the logical stream on either side of the reflow.
+                    // Wide pre-wrap gaps do not contribute to the logical stream on either side of
+                    // the reflow. Image and prompt anchors use its actual row boundaries.
                     var sourceRowOffsets = unanchoredImages.Count > 0 ? new List<int>() : null;
-                    var targetRowOffsets = unanchoredImages.Count > 0 ? new List<int>() : null;
+                    var targetRowOffsets = unanchoredImages.Count > 0 || _promptAnchors != null ? new List<int>() : null;
+                    var promptAnchorsByRow = _promptAnchors?.GroupBy(anchor => GetTrackedMarkPhysicalRow(anchor.Mark))
+                        .ToDictionary(group => group.Key, group => group.ToArray());
+                    var linePromptAnchors = _promptAnchors == null ? null : new List<(ReflowPromptAnchor Anchor, int Offset)>();
                     var lineAnchors = new List<(TerminalImage Image, int OffsetInLogicalLine)>();
 
                     // 5. Distribution state
@@ -546,10 +568,18 @@ namespace Ntilde.VT
 
                         foreach (var (image, offsetInLine) in lineAnchors)
                         {
-                            var position = MapReflowImageOffset(targetRowOffsets, offsetInLine, newCols,
+                            var position = MapReflowOffset(targetRowOffsets, offsetInLine, newCols,
                                 keepInFlow: image.NativeRaster is not null);
                             imagePlacements.Add((image, startFlowIndex + position.Row, position.Column));
                         }
+
+                        if (linePromptAnchors == null) return;
+                        foreach (var (anchor, offset) in linePromptAnchors)
+                        {
+                            var position = MapReflowOffset(targetRowOffsets, Math.Min(offset, lineCount), newCols, keepInFlow: true);
+                            anchor.Placement = (startFlowIndex + position.Row, position.Column);
+                        }
+                        linePromptAnchors.Clear();
                     }
 
                     // Old scrollback rows already handed back to the pool; the store's logical indexes
@@ -570,6 +600,8 @@ namespace Ntilde.VT
                     int newLastCharPhysRow = -1;
                     int newLastCharPhysCol = -1;
                     var doubleTracked = new List<(int Kind, int Stream, int Segment, int Offset, TerminalImage? Image)>();
+                    var doublePromptAnchors = _promptAnchors == null
+                        ? null : new List<(ReflowPromptAnchor Anchor, int Stream, int Segment, int Offset)>();
                     int doubleStartPhys = -1;
                     var doubleLine = default(DoubleSizeLineRows);
                     // How many of the line's rows were history.
@@ -599,6 +631,7 @@ namespace Ntilde.VT
                         int lastCol = Math.Max(1, oldCols / 2) - 1;
                         // Only the left half is the line. What an erase with a background colour painted past it was never shown.
                         int shown = Math.Min(lastCol + 1, row.Cells.Length);
+                        var promptAnchors = promptAnchorsByRow?.GetValueOrDefault(phys);
                         int len;
                         if (row.IsWrapped)
                         {
@@ -626,6 +659,8 @@ namespace Ntilde.VT
                             if (phys == absMainSavedIdx) len = Math.Max(len, DoubleLineOffset(_savedCursors.Main.Col, _savedCursors.Main.IsPendingWrap, lastCol));
                             if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark csPad) len = Math.Max(len, Math.Min(csPad.Column, lastCol + 1));
                             if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark osPad) len = Math.Max(len, Math.Min(osPad.Column, lastCol + 1));
+                            if (promptAnchors != null)
+                                foreach (var anchor in promptAnchors) len = Math.Max(len, Math.Min(anchor.Mark.Column, shown));
                             foreach (var image in unanchoredImages)
                                 if (image.CellY == phys) len = Math.Max(len, Math.Clamp(image.CellX, 0, lastCol));
                             len = Math.Min(len, row.Cells.Length);
@@ -639,6 +674,9 @@ namespace Ntilde.VT
                         if (phys < splitPhysIndex) doubleHistoryRows++;
                         if (phys == absCommandStartIdx && _commandStartMark is ShellIntegrationMark cs) doubleTracked.Add((3, stream, segment, start + Math.Min(cs.Column, len), null));
                         if (phys == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark os) doubleTracked.Add((4, stream, segment, start + Math.Min(os.Column, len), null));
+                        if (promptAnchors != null)
+                            foreach (var anchor in promptAnchors)
+                                doublePromptAnchors!.Add((anchor, stream, segment, start + Math.Min(anchor.Mark.Column, len)));
                         for (int k = unanchoredImages.Count - 1; k >= 0; k--)
                         {
                             if (unanchoredImages[k].CellY != phys) continue;
@@ -710,7 +748,7 @@ namespace Ntilde.VT
                         // A line that lies in history stays there however many rows it becomes. One that straddles
                         // the top of the screen keeps as many rows in history as it had there.
                         int historyRows = doubleHistoryRows == doubleLine.Count ? int.MaxValue : doubleHistoryRows;
-                        foreach (var (kind, stream, segment, offset, image) in doubleTracked)
+                        (int Row, int Column, bool PastLastColumn) PlaceDoubleAnchor(int stream, int segment, int offset)
                         {
                             var chunks = doubleChunks[stream];
                             int chunk = 0;
@@ -725,6 +763,12 @@ namespace Ntilde.VT
                             bool pastLastColumn = col >= half;
                             if (pastLastColumn) col = half - 1;
                             int flowRow = startFlowIndex + (doubleLine.HasSecondRun ? chunk * 2 + stream : chunk);
+                            return (flowRow, col, pastLastColumn);
+                        }
+
+                        foreach (var (kind, stream, segment, offset, image) in doubleTracked)
+                        {
+                            var (flowRow, col, pastLastColumn) = PlaceDoubleAnchor(stream, segment, offset);
                             switch (kind)
                             {
                                 case 0: newCursorPhysRow = flowRow; newCursorPhysCol = col; _cursorOnDoubleLine = true; _cursorWaitsAtDoubleRowEnd = pastLastColumn; break;
@@ -736,6 +780,16 @@ namespace Ntilde.VT
                                 case 5: imagePlacements.Add((image!, flowRow, Math.Min(col, newCols - 1))); break;
                                 default: newLastCharPhysRow = flowRow; newLastCharPhysCol = col; break;
                             }
+                        }
+
+                        if (doublePromptAnchors != null)
+                        {
+                            foreach (var (anchor, stream, segment, offset) in doublePromptAnchors)
+                            {
+                                var position = PlaceDoubleAnchor(stream, segment, offset);
+                                anchor.Placement = (position.Row, position.Column);
+                            }
+                            doublePromptAnchors.Clear();
                         }
 
                         for (int r = 0; r < rowsPerHalf; r++)
@@ -803,6 +857,7 @@ namespace Ntilde.VT
                             continue;
                         }
                         FlushDoubleLine();
+                        var promptAnchors = promptAnchorsByRow?.GetValueOrDefault(i);
 
                         // Multi-line rectangles are physical grid content. Keep their rows together
                         // as fixed layout barriers; ordinary logical lines on either side still reflow.
@@ -821,6 +876,9 @@ namespace Ntilde.VT
                             { newCommandStartPhysRow = flowedRows; newCommandStartPhysCol = Math.Min(sizedCs.Column, newCols); }
                             if (i == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark sizedOs)
                             { newOutputStartPhysRow = flowedRows; newOutputStartPhysCol = Math.Min(sizedOs.Column, newCols); }
+                            if (promptAnchors != null)
+                                foreach (var anchor in promptAnchors)
+                                    anchor.Placement = (flowedRows, Math.Min(anchor.Mark.Column, newCols - 1));
                             for (int k = unanchoredImages.Count - 1; k >= 0; k--)
                                 if (unanchoredImages[k].CellY == i)
                                 {
@@ -844,6 +902,9 @@ namespace Ntilde.VT
                             sourceRowOffsets?.Clear();
                         }
                         sourceRowOffsets?.Add(lineLen);
+                        if (promptAnchors != null)
+                            foreach (var anchor in promptAnchors)
+                                linePromptAnchors!.Add((anchor, lineLen + anchor.Mark.Column));
 
                         // One physical row adds at most its own cells plus a right-prompt fill up to newCols.
                         EnsureLineCapacity(lineLen + physRow.Cells.Length + newCols + 4);
@@ -1004,6 +1065,10 @@ namespace Ntilde.VT
                             {
                                 validLen = osPad.Column;
                             }
+
+                            if (promptAnchors != null)
+                                foreach (var anchor in promptAnchors)
+                                    validLen = Math.Max(validLen, Math.Min(anchor.Mark.Column, physRow.Cells.Length));
                         }
 
                         // Improved sparse row detection: Find the LARGEST contiguous gap
@@ -1216,6 +1281,19 @@ namespace Ntilde.VT
                         _commandStartMark, newCommandStartPhysRow, newCommandStartPhysCol, discardedRows, newCols);
                     _commandOutputStartMark = RebuildTrackedMark(
                         _commandOutputStartMark, newOutputStartPhysRow, newOutputStartPhysCol, discardedRows, newCols);
+                    if (_promptAnchors != null)
+                    {
+                        ShellIntegrationMark? RebuildPrompt(ReflowPromptAnchor anchor) =>
+                            RebuildTrackedMark(anchor.Mark, anchor.Placement.Row, anchor.Placement.Column, discardedRows, newCols);
+                        _reflowedPrimaryPrompt = RebuildPrompt(_promptAnchors[0]);
+                        _reflowedSecondaryPrompts = new List<ShellIntegrationMark>();
+                        for (int index = 1; index < _promptAnchors.Length; index++)
+                        {
+                            if (RebuildPrompt(_promptAnchors[index]) is { } secondary)
+                                _reflowedSecondaryPrompts.Add(secondary);
+                        }
+                        _reflowedSecondaryPrompts.Sort(static (left, right) => left.AbsoluteRow.CompareTo(right.AbsoluteRow));
+                    }
 
                     // Fill viewport
                     // If vpCount < newRows (Growth), we will have empty space at the bottom (Top Anchoring).
