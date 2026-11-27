@@ -3654,23 +3654,23 @@
       ],
       "evidence": {
         "files": 8,
-        "bytes": 3737471,
-        "sha256": "4ec44688ac04c282c8fe951850a0610f9d362b68205301b96bf6cc40cfc689db"
+        "bytes": 3737969,
+        "sha256": "dbd7964b7ccef7250a31969964a90ad33d5c454f389f71234a586725b56ff559"
       },
       "receipt": {
         "schemaVersion": 1,
-        "runId": "0e36f4e91a4329ae0a78cb452c6ad0ab",
+        "runId": "430374eca0e0156c5120559232436dd7",
         "cellReceipt": null,
         "suiteEvidence": null
       },
       "run": {
-        "ownedRunId": "0e36f4e91a4329ae0a78cb452c6ad0ab",
-        "measuredAt": "2026-11-27T15:48:06.054Z",
-        "appRevision": "a739c3235abe3722262b3557634744fe97a1a0c0",
-        "appVersion": "0.14.0+a739c3235abe3722262b3557634744fe97a1a0c0",
+        "ownedRunId": "430374eca0e0156c5120559232436dd7",
+        "measuredAt": "2026-11-27T16:04:47.240Z",
+        "appRevision": "9671f8c61893654412d7f9b655e69d835657a106",
+        "appVersion": "0.14.0+9671f8c61893654412d7f9b655e69d835657a106",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "a739c3235abe3722262b3557634744fe97a1a0c0",
+        "scriptsRevision": "9671f8c61893654412d7f9b655e69d835657a106",
         "collectorAdapterId": "ntilde-owned-modify-other-keys-3-v1",
         "collectorAdapterBundleSha256": null,
         "gradingAdapterId": null,
