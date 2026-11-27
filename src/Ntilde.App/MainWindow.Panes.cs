@@ -323,9 +323,10 @@ namespace Ntilde
             int level = kittyFlags == 0 && buffer?.Modes is { IsVt52: false } modes ? modes.ModifyOtherKeys.Level : 0;
             if (!ProducesNoTextInput(key, modifiers))
             {
-                if (!focusedConsumesText) return false; // the text broadcast delivers it
-                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical)
-                    ?? TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, PrintableKeySymbol(keySymbol));
+                if (!focusedConsumesText && level != 3) return false; // legacy receivers wait for text
+                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical);
+                if (sequence == null && focusedConsumesText)
+                    sequence = key == Key.Space ? " " : TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, PrintableKeySymbol(keySymbol));
                 return sequence != null;
             }
 
@@ -397,7 +398,7 @@ namespace Ntilde
             if (IsFocusOverlayVisible() || !TryGetSelectedTab(out var tabItem)
                 || !_broadcastEnabledTabs.Contains(tabItem) || _currentPane == null)
             {
-                _broadcastTextGate.TryConsumeText(); // a gesture's arming never outlives its text
+                _broadcastTextGate.Clear(); // a gesture's arming never outlives its text
                 return;
             }
 
@@ -438,25 +439,29 @@ namespace Ntilde
         {
             if ((modifiers & KeyModifiers.Alt) != 0) return;
             bool focusedConsumesText = FocusedPaneConsumesText(key, modifiers, physical, focusedBuffer, focusedKittyFlags);
+            bool mayProduceText = !ProducesNoTextInput(key, modifiers);
             foreach (BroadcastReceiver receiver in receivers)
             {
-                if (TryMapBroadcastKey(key, modifiers, physical, keySymbol, receiver.Buffer, receiver.KittyFlags,
-                        focusedConsumesText, out string? sequence) && !string.IsNullOrEmpty(sequence))
-                    receiver.Send(sequence);
-            }
-            if (focusedConsumesText)
-            {
-                string? pairedText = focusedBuffer?.Modes.ModifyOtherKeys.Level == 3
-                    ? TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol) : null;
-                gate.MarkFannedOut(key, physical, pairedText);
+                if (!TryMapBroadcastKey(key, modifiers, physical, keySymbol, receiver.Buffer, receiver.KittyFlags,
+                        focusedConsumesText, out string? sequence) || string.IsNullOrEmpty(sequence)) continue;
+                receiver.Send(sequence);
+                if (mayProduceText)
+                {
+                    // A legacy focus can leave this same gesture to TextInput for the other siblings.
+                    string? pairedText = focusedConsumesText && focusedBuffer?.Modes.ModifyOtherKeys.Level == 2
+                        ? null : TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol);
+                    gate.MarkFannedOut(key, physical, pairedText, receiver.Buffer);
+                }
             }
         }
 
         /// <summary>The text half: skipped once for a gesture the keydown half already delivered.</summary>
         internal static void FanOutBroadcastText(string text, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
         {
-            if (string.IsNullOrEmpty(text) || gate.TryConsumeText(text)) return;
-            foreach (BroadcastReceiver receiver in receivers) receiver.Send(text);
+            if (string.IsNullOrEmpty(text)) return;
+            var delivered = gate.ConsumeText(text);
+            foreach (BroadcastReceiver receiver in receivers)
+                if (delivered?.Contains(receiver.Buffer) != true) receiver.Send(text);
         }
 
         private void ToggleBroadcastForCurrentTab()
