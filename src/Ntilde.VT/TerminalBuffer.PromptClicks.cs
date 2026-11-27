@@ -182,6 +182,21 @@ public partial class TerminalBuffer
         }
     }
 
+    private void InvalidateClickPromptForMovedRows(int top, int bottom)
+    {
+        if (!_clickPrompt.HasValue || _isAltScreen) return;
+        lock (_trackedMarkGate)
+        {
+            if (_clickPrompt is { } primary
+                && ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int primaryRow)
+                && ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, _clickPromptEnd, out int endRow)
+                && primaryRow <= bottom && endRow >= top)
+            {
+                ClearClickPromptLocked();
+            }
+        }
+    }
+
     internal void ClearClickPrompt()
     {
         lock (_trackedMarkGate) ClearClickPromptLocked();

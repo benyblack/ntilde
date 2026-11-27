@@ -672,6 +672,7 @@ namespace Ntilde.VT
                     return;
                 }
 
+                InvalidateClickPromptForMovedRows(top, bottom);
                 int sizedTop = TextSizingAbsoluteRow(top);
                 int sizedEnd = TextSizingAbsoluteRow(bottom + 1);
                 EraseTextSizingAcrossBoundary(sizedTop);
@@ -745,6 +746,7 @@ namespace Ntilde.VT
                     return;
                 }
 
+                InvalidateClickPromptForMovedRows(top, bottom);
                 int sizedTop = TextSizingAbsoluteRow(top);
                 int sizedEnd = TextSizingAbsoluteRow(bottom + 1);
                 EraseTextSizingRange(0, Cols, sizedTop, sizedTop + n);

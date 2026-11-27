@@ -165,7 +165,7 @@ public class PromptClickTests
     }
 
     [Fact]
-    public void ReflowRetainsPromptExtentWithAWhitespaceOnlyLowerRow()
+    public void ReflowKeepsTheRetainedInputWhenATrailingBlankRowIsTrimmed()
     {
         var buffer = new TerminalBuffer(20, 12);
         var parser = new AnsiParser(buffer);
@@ -174,9 +174,7 @@ public class PromptClickTests
         buffer.Resize(10, 12);
         Assert.True(buffer.TryGetPromptClickRow(1, out int row, out _));
         Assert.Equal(2, row);
-        Assert.True(buffer.TryGetPromptClickRow(2, out row, out _));
-        Assert.Equal(3, row);
-        Assert.False(buffer.TryGetPromptClickRow(3, out _, out _));
+        Assert.False(buffer.TryGetPromptClickRow(2, out _, out _));
     }
 
     [Theory]
@@ -197,6 +195,57 @@ public class PromptClickTests
             try { Assert.Equal('O', _buffer.GetCell(0, 2).Character); }
             finally { _buffer.Lock.ExitReadLock(); }
         }
+    }
+
+    [Fact]
+    public void PromptClickAnchorsLeaveReflowContentIdenticalAfterSnapshotImport()
+    {
+        var live = new TerminalBuffer(20, 12);
+        new AnsiParser(live).Process("\x1b]133;A;click_events=2\a" + new string('a', 20) + " \x1b[H");
+        var restored = new TerminalBuffer(20, 12);
+        restored.ImportState(live.ExportState(0));
+
+        foreach (TerminalBuffer buffer in new[] { live, restored })
+        {
+            buffer.Resize(10, 12);
+            new AnsiParser(buffer).Process("\x1b[3;1HZ");
+            buffer.Resize(40, 12);
+        }
+
+        var actual = live.ExportState(0).Main;
+        var expected = restored.ExportState(0).Main;
+        Assert.Equal(expected.CellsBase64, actual.CellsBase64);
+        Assert.Equal(expected.RowWraps, actual.RowWraps);
+    }
+
+    [Fact]
+    public void RepeatedWidthChangesKeepTheExclusiveEndOfRetainedText()
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        new AnsiParser(buffer).Process("\x1b]133;A;click_events=2\a" + new string('a', 20) + "\x1b[H");
+
+        foreach (int width in new[] { 10, 20, 19 })
+            buffer.Resize(width, 12);
+
+        Assert.True(buffer.TryGetPromptClickRow(1, out int row, out _));
+        Assert.Equal(2, row);
+        Assert.False(buffer.TryGetPromptClickRow(2, out _, out _));
+    }
+
+    [Theory]
+    [InlineData("\x1b[3;1H\x1b[2M")]
+    [InlineData("\x1b[3;1H\x1b[2L")]
+    [InlineData("\x1b[2;8r\x1b[S")]
+    [InlineData("\x1b[T")]
+    public void RowEditsThatIntersectThePromptRequireFreshAnchors(string edit)
+    {
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\x1b[5;1H\x1b]133;A;k=s\aPS2>");
+        Assert.Equal(1, WireRow(4));
+
+        _parser.Process(edit);
+        Assert.False(_buffer.TryGetPromptClickRow(2, out _, out _));
+        _parser.Process("\x1b[4;1H\x1b]133;A;click_events=2\aPS1>");
+        Assert.Equal(1, WireRow(3));
     }
 
     private int WireRow(int visualRow)
