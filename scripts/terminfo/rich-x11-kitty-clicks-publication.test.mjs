@@ -17,6 +17,7 @@ test('the Kitty click publication rederives both SGR coordinate modes and the si
     assert.deepEqual(samples.filter(sample => sample.expectedHex).map(sample => sample.childHex[2]), [
         '1b5b3c303b35323b31344d', '1b5b3c303b35323b32304d', '1b5b3c303b35323b32364d',
         '1b5b3c303b35323b324d', '1b5b3c303b35323b314d', '1b5b3c303b35323b374d',
+        '1b5b3c303b35323b314d', '1b5b3c303b35323b374d',
     ]);
     const silent = samples.filter(sample => !sample.expectedHex);
     assert.deepEqual(silent.map(sample => sample.phase + '/' + sample.position), [

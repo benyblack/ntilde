@@ -74,6 +74,7 @@ namespace Ntilde.VT
             private readonly ulong _promptVersion;
             private readonly ReflowPromptAnchor[]? _promptAnchors;
             private ShellIntegrationMark? _reflowedPrimaryPrompt;
+            private ShellIntegrationMark? _reflowedPromptEnd;
             private List<ShellIntegrationMark>? _reflowedSecondaryPrompts;
 
             public ReflowEngineContext(TerminalBuffer source)
@@ -86,7 +87,8 @@ namespace Ntilde.VT
                 if (source.CaptureClickPromptForReflow() is { } prompt)
                 {
                     _promptVersion = prompt.Version;
-                    _promptAnchors = prompt.Secondary.Prepend(prompt.Primary).Select(mark => new ReflowPromptAnchor(mark)).ToArray();
+                    _promptAnchors = prompt.Secondary.Prepend(prompt.End).Prepend(prompt.Primary)
+                        .Select(mark => new ReflowPromptAnchor(mark)).ToArray();
                 }
                 _maxScrollbackBytes = source.MaxScrollbackBytes;
                 _images = source._images;
@@ -153,7 +155,7 @@ namespace Ntilde.VT
                 }
                 if (_reflowedSecondaryPrompts != null)
                 {
-                    target.RestoreClickPromptAfterReflow(_promptVersion, _reflowedPrimaryPrompt, _reflowedSecondaryPrompts);
+                    target.RestoreClickPromptAfterReflow(_promptVersion, _reflowedPrimaryPrompt, _reflowedPromptEnd, _reflowedSecondaryPrompts);
                 }
             }
 
@@ -1286,8 +1288,9 @@ namespace Ntilde.VT
                         ShellIntegrationMark? RebuildPrompt(ReflowPromptAnchor anchor) =>
                             RebuildTrackedMark(anchor.Mark, anchor.Placement.Row, anchor.Placement.Column, discardedRows, newCols);
                         _reflowedPrimaryPrompt = RebuildPrompt(_promptAnchors[0]);
+                        _reflowedPromptEnd = RebuildPrompt(_promptAnchors[1]);
                         _reflowedSecondaryPrompts = new List<ShellIntegrationMark>();
-                        for (int index = 1; index < _promptAnchors.Length; index++)
+                        for (int index = 2; index < _promptAnchors.Length; index++)
                         {
                             if (RebuildPrompt(_promptAnchors[index]) is { } secondary)
                                 _reflowedSecondaryPrompts.Add(secondary);

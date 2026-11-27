@@ -751,6 +751,7 @@ namespace Ntilde.VT
                 {
                     _buffer.EraseLineAll(r, resetLineSize: resetLineSizes);
                 }
+                if (allowHistoryErase) _buffer.EraseClickPromptTail(CaptureCursorMark());
             }
             else if (displayMode == 1) // Erase from start of screen to cursor
             {
@@ -764,6 +765,7 @@ namespace Ntilde.VT
             else if (displayMode == 2) // Erase entire screen (scrollback is preserved)
             {
                 _buffer.ClearScreen(resetCursor: false, keepLineSizes: !resetLineSizes);
+                if (allowHistoryErase) _buffer.ClearClickPrompt();
                 _verticalOffset = 0; // Reset offset on clear screen
             }
             else if (displayMode == 3 && allowHistoryErase) // Erase saved lines (scrollback only, xterm ED 3)

@@ -10,6 +10,7 @@ internal enum PromptClickMode
 public partial class TerminalBuffer
 {
     private ShellIntegrationMark? _clickPrompt;
+    private ShellIntegrationMark _clickPromptEnd;
     private PromptClickMode _promptClickMode;
     private ulong _clickPromptVersion;
     private readonly List<ShellIntegrationMark> _secondaryClickPrompts = new();
@@ -22,6 +23,7 @@ public partial class TerminalBuffer
             if (!mark.IsAltScreen)
             {
                 _clickPrompt = mark;
+                _clickPromptEnd = mark;
                 _promptClickMode = mode;
             }
         }
@@ -51,12 +53,59 @@ public partial class TerminalBuffer
                     _promptClickMode = mode;
                 }
 
+                ExtendClickPromptLocked(mark);
                 _clickPromptVersion++;
             }
         }
         finally
         {
             if (lockTaken) Lock.ExitReadLock();
+        }
+    }
+
+    // Called at the end of a printable run with the grid write lock held.
+    private void ExtendClickPromptThroughText()
+    {
+        if (_lastCharCol < 0 || _isAltScreen) return;
+        lock (_trackedMarkGate)
+        {
+            if (_promptClickMode == PromptClickMode.Disabled) return;
+            int row = Scrollback.Count + _lastCharRow;
+            ExtendClickPromptLocked(new ShellIntegrationMark(row, _lastCharCol,
+                Scrollback.TotalRowsEvicted + row, IsAltScreen: false, Scrollback.Generation));
+        }
+    }
+
+    private void ExtendClickPromptLocked(ShellIntegrationMark end)
+    {
+        // Shell line editors can move back above a continuation line and edit it
+        // in place. Keep the extent of previously written input through that move.
+        if (end.Generation == _clickPromptEnd.Generation
+            && (end.AbsoluteRow > _clickPromptEnd.AbsoluteRow
+                || (end.AbsoluteRow == _clickPromptEnd.AbsoluteRow && end.Column > _clickPromptEnd.Column)))
+        {
+            _clickPromptEnd = end;
+        }
+    }
+
+    internal void EraseClickPromptTail(ShellIntegrationMark cursor)
+    {
+        lock (_trackedMarkGate)
+        {
+            if (_clickPrompt is not { } primary || cursor.IsAltScreen || cursor.Generation != primary.Generation)
+                return;
+
+            if (cursor.AbsoluteRow < primary.AbsoluteRow)
+            {
+                ClearClickPromptLocked();
+                return;
+            }
+
+            if (cursor.AbsoluteRow < _clickPromptEnd.AbsoluteRow)
+                _clickPromptEnd = cursor;
+
+            int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow <= cursor.AbsoluteRow) + 1;
+            _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
         }
     }
 
@@ -69,21 +118,23 @@ public partial class TerminalBuffer
     {
         _clickPromptVersion++;
         _clickPrompt = null;
+        _clickPromptEnd = default;
         _promptClickMode = PromptClickMode.Disabled;
         _secondaryClickPrompts.Clear();
     }
 
-    private (ulong Version, ShellIntegrationMark Primary, ShellIntegrationMark[] Secondary)? CaptureClickPromptForReflow()
+    private (ulong Version, ShellIntegrationMark Primary, ShellIntegrationMark End, ShellIntegrationMark[] Secondary)? CaptureClickPromptForReflow()
     {
         lock (_trackedMarkGate)
         {
             return _clickPrompt is { } primary
-                ? (_clickPromptVersion, primary, _secondaryClickPrompts.ToArray())
+                ? (_clickPromptVersion, primary, _clickPromptEnd, _secondaryClickPrompts.ToArray())
                 : null;
         }
     }
 
-    private void RestoreClickPromptAfterReflow(ulong version, ShellIntegrationMark? primary, List<ShellIntegrationMark> secondary)
+    private void RestoreClickPromptAfterReflow(ulong version, ShellIntegrationMark? primary,
+        ShellIntegrationMark? end, List<ShellIntegrationMark> secondary)
     {
         lock (_trackedMarkGate)
         {
@@ -96,6 +147,7 @@ public partial class TerminalBuffer
 
             _clickPromptVersion++;
             _clickPrompt = primary;
+            _clickPromptEnd = end ?? primary.Value;
             _secondaryClickPrompts.Clear();
             _secondaryClickPrompts.AddRange(secondary);
         }
@@ -113,9 +165,11 @@ public partial class TerminalBuffer
             {
                 if (_promptClickMode == PromptClickMode.Disabled || _clickPrompt is not { } primary
                     || !Modes.IsCursorVisible || IsMouseReportingActive()
-                    || row < 0 || row > CursorRow
+                    || (uint)row >= (uint)Rows
                     || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int anchorRow)
-                    || row < anchorRow)
+                    || row < anchorRow
+                    || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, _clickPromptEnd, out int endRow)
+                    || row > Math.Max(endRow, _cursorRow))
                 {
                     return false;
                 }

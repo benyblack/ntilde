@@ -76,16 +76,20 @@ function fixtures(marker, cells) {
         [cursor, lineText('continuation input')],
         [cells.below.row, lineText('outside prompt')],
     ];
+    const inPrompt = ([row]) => row >= primary && row <= cursor;
+    const background = lines.filter(line => !inPrompt(line)).map(([row, line]) => cup(row) + line).join('');
     function draw(mode) {
-        return clear + marker + lines.map(([row, line]) => {
+        // Visible output outside the edit region precedes the primary marker.
+        return clear + marker + background + lines.filter(inPrompt).map(([row, line]) => {
             const mark = mode === null ? '' : row === primary ? osc('A;click_events=' + mode)
                 : row === secondary ? osc('A;k=s') : '';
             return cup(row) + mark + line;
         }).join('') + cup(cursor);
     }
-    const cpr = { replyHex: bytes(csi + cursor + ';1R') };
-    const phase = (name, write, clicks, linesExpected = lines) => ({ name, clicks, lines: linesExpected,
-        exchange: { ...cpr, writeHex: bytes(write + csi + '6n') } });
+    const phase = (name, write, clicks, linesExpected = lines, cursorRow = cursor) => ({
+        name, clicks, lines: linesExpected, cursorRow,
+        exchange: { replyHex: bytes(csi + cursorRow + ';1R'), writeHex: bytes(write + csi + '6n') },
+    });
 
     const freshPrimary = lineText('fresh primary');
     const updatedLines = lines.map(([row, line]) => [row, row === secondary ? freshPrimary : line]);
@@ -93,6 +97,7 @@ function fixtures(marker, cells) {
         phase('disabled', draw(0), ['secondary']),
         phase('absolute', draw(1), inside),
         phase('relative', draw(2), clickNames),
+        phase('cursor-up', cup(cells.primary.row), ['secondary', 'continuation'], lines, cells.primary.row),
         phase('new-prompt', cup(secondary) + osc('A') + csi + '2K' + freshPrimary + cup(cursor), ['secondary'], updatedLines),
         phase('before-submit', draw(2), []),
         phase('after-submit', osc('C'), ['secondary']),
@@ -142,9 +147,9 @@ export async function collectClicks(record, read, action, screen) {
     record.restore = { modes: await read(restorePlan(record.identity.marker)) };
 }
 
-function checkScreen(screen, phase, identity, cursor) {
+function checkScreen(screen, phase, identity) {
     need(screen?.rows === identity.pane.rows && screen.cols === identity.pane.cols
-        && screen.cursorRow === cursor - 1 && screen.cursorCol === 0 && screen.cursorVisible === true
+        && screen.cursorRow === phase.cursorRow - 1 && screen.cursorCol === 0 && screen.cursorVisible === true
         && Array.isArray(screen.lines) && screen.lines[0] === identity.marker
         && phase.lines.every(([row, line]) => screen.lines[row - 1] === line), 'unexpected marked prompt screen at ' + phase.name);
 }
@@ -152,7 +157,7 @@ function checkScreen(screen, phase, identity, cursor) {
 function expectedFrame(phase, cell, name, plan) {
     if (!inside.includes(name)) return '';
     if (phase === 'absolute') return bytes(sgr(cell.column, cell.row));
-    if (phase !== 'relative') return '';
+    if (phase !== 'relative' && phase !== 'cursor-up') return '';
     const anchor = cell.row < plan.secondary ? plan.primary : plan.secondary;
     return bytes(sgr(cell.column, cell.row - anchor + 1));
 }
@@ -172,7 +177,7 @@ export function replayClicks(record) {
         const trial = captured.phases[index];
         need(trial?.name === phase.name && trial.clicks?.length === phase.clicks.length, 'wrong prompt-click phase or actions');
         previous = exchange(trial.setup, phase.exchange, previous);
-        checkScreen(trial.screen, phase, identity, plan.cursor);
+        checkScreen(trial.screen, phase, identity);
         for (const [clickIndex, name] of phase.clicks.entries()) {
             const click = replayClick(trial.clicks[clickIndex], phase.name, name, identity, previous);
             previous = click.finished;

@@ -123,6 +123,32 @@ public class PromptClickTests
         Assert.Equal(mode == 1 ? 4 : 1, secondary);
     }
 
+    [Theory]
+    [InlineData(1, 5, 6)]
+    [InlineData(2, 2, 2)]
+    public void MovingTheEditorCursorUpKeepsLowerWrittenInputClickable(int mode, int wireRow, int reflowedWireRow)
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"0123456789abcdef\r\n\x1b]133;A;click_events={mode}\aPS1>\r\nfirst\r\n\x1b]133;A;k=s\aPS2>\r\ncontinued\x1b[2;1H");
+        Assert.Equal(1, buffer.CursorRow);
+        Assert.True(buffer.TryGetPromptClickRow(4, out int beforeResize, out _));
+        Assert.Equal(wireRow, beforeResize);
+        Assert.False(buffer.TryGetPromptClickRow(5, out _, out _));
+
+        buffer.Resize(10, 12);
+        Assert.Equal(2, buffer.CursorRow);
+        Assert.True(buffer.TryGetPromptClickRow(5, out int afterResize, out _));
+        Assert.Equal(reflowedWireRow, afterResize);
+        Assert.False(buffer.TryGetPromptClickRow(6, out _, out _));
+
+        parser.Process("\x1b[J");
+        Assert.False(buffer.TryGetPromptClickRow(5, out _, out _));
+        parser.Process("\r\nnew limit");
+        Assert.True(buffer.TryGetPromptClickRow(3, out _, out _));
+        Assert.False(buffer.TryGetPromptClickRow(4, out _, out _));
+    }
+
     private int WireRow(int visualRow)
     {
         Assert.True(_buffer.TryGetPromptClickRow(visualRow, out int row, out _));

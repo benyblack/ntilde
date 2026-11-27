@@ -181,6 +181,7 @@ namespace Ntilde.VT
             try
             {
                 WriteContentCore(text);
+                if (_promptClickMode != PromptClickMode.Disabled) ExtendClickPromptThroughText();
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             Invalidate();
