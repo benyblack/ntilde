@@ -51,7 +51,7 @@ function replayCalibration(clicks, identity, previous) {
         const match = /^\x1b\[<0;([1-9]\d*);([1-9]\d*)M$/.exec(text(press));
         need(!move && match, 'missing SGR delivery press at ' + name);
         const column = Number(match[1]), row = Number(match[2]);
-        need(column <= identity.pane.cols && row <= identity.pane.rows && release === bytes(sgr(column, row, 'm')),
+        need(column < identity.pane.cols && row <= identity.pane.rows && release === bytes(sgr(column, row, 'm')),
             'wrong SGR delivery coordinates or release at ' + name);
         calibration[name] = { column, row, ...observed };
         previous = observed.finished;
@@ -64,13 +64,17 @@ function replayCalibration(clicks, identity, previous) {
 
 function fixtures(marker, cells) {
     const primary = cells.primary.row - 1, secondary = cells.secondary.row, cursor = cells.continuation.row;
+    // Put visible fixture text under the calibrated click cells, leaving the
+    // last column clear to avoid the terminal's pending wrap state.
+    const lineWidth = Math.max(...Object.values(cells).map(cell => cell.column));
+    const lineText = label => (label + ' ').padEnd(lineWidth, '.');
     const lines = [
-        [cells.above.row, 'previous output'],
-        [primary, 'primary prompt'],
-        [cells.primary.row, 'primary input'],
-        [secondary, 'secondary prompt'],
-        [cursor, 'continuation input'],
-        [cells.below.row, 'outside prompt'],
+        [cells.above.row, lineText('previous output')],
+        [primary, lineText('primary prompt')],
+        [cells.primary.row, lineText('primary input')],
+        [secondary, lineText('secondary prompt')],
+        [cursor, lineText('continuation input')],
+        [cells.below.row, lineText('outside prompt')],
     ];
     function draw(mode) {
         return clear + marker + lines.map(([row, line]) => {
@@ -83,12 +87,13 @@ function fixtures(marker, cells) {
     const phase = (name, write, clicks, linesExpected = lines) => ({ name, clicks, lines: linesExpected,
         exchange: { ...cpr, writeHex: bytes(write + csi + '6n') } });
 
-    const updatedLines = lines.map(([row, line]) => [row, row === secondary ? 'fresh primary' : line]);
+    const freshPrimary = lineText('fresh primary');
+    const updatedLines = lines.map(([row, line]) => [row, row === secondary ? freshPrimary : line]);
     return { primary, secondary, cursor, phases: [
         phase('disabled', draw(0), ['secondary']),
         phase('absolute', draw(1), inside),
         phase('relative', draw(2), clickNames),
-        phase('new-prompt', cup(secondary) + osc('A') + csi + '2Kfresh primary' + cup(cursor), ['secondary'], updatedLines),
+        phase('new-prompt', cup(secondary) + osc('A') + csi + '2K' + freshPrimary + cup(cursor), ['secondary'], updatedLines),
         phase('before-submit', draw(2), []),
         phase('after-submit', osc('C'), ['secondary']),
         phase('before-reset', draw(2), []),
