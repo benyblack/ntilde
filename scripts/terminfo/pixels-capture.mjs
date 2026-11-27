@@ -14,10 +14,10 @@ const sha = value => typeof value === 'string' && /^[a-f\d]{64}$/.test(value);
 const name = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 
 /** Validate the actual draw context; missing font fingerprints are not pixel qualifications. */
-function validateDetails(details, screen, image, timeMs, scale) {
+function validateDetails(details, screen, image, timeMs, scale, enableLigatures) {
     if (details?.schemaVersion !== 1 || !['macos', 'linux', 'windows'].includes(details.platform)
         || !/^(arm64|x64|x86|arm|wasm|s390x|loongarch64|ppc64le|riscv64)$/.test(details.architecture ?? '')
-        || details.enableLigatures !== false || details.minimumContrast !== 1 || typeof details.enableComplexShaping !== 'boolean') fail();
+        || details.enableLigatures !== enableLigatures || details.minimumContrast !== 1 || typeof details.enableComplexShaping !== 'boolean') fail();
     const { font, grid, theme, presentation: phase } = details;
     if (!font || !name(font.configuredFamily) || !name(font.primaryFamily) || !sha(font.primarySha256)
         || !integer(font.collectionIndex, 0, 65535) || !integer(font.weight, 1, 1000) || !integer(font.width, 1, 9)
@@ -45,7 +45,7 @@ function validateDetails(details, screen, image, timeMs, scale) {
 }
 
 /** Refuse resamples, clock substitutions, malformed inline bytes, dimensions and ambiguous provenance. */
-export function validateRenderedCapture(result, screen, timeMs, scale = 1) {
+export function validateRenderedCapture(result, screen, timeMs, scale = 1, enableLigatures = false) {
     if (result?.mode !== 'render' || result.scale !== scale || result.downscaled !== false || result.inlineOmitted !== false
         || result.presentationTimeMs !== timeMs || result.rows !== screen.rows || result.cols !== screen.cols
         || !integer(result.byteCount, 1, limits.bytes) || typeof result.pngBase64 !== 'string'
@@ -54,7 +54,7 @@ export function validateRenderedCapture(result, screen, timeMs, scale = 1) {
     if (bytes.length !== result.byteCount || bytes.toString('base64') !== result.pngBase64) fail();
     const image = decodeCapturePng(bytes);
     if (result.width !== image.width || result.height !== image.height) fail();
-    validateDetails(result.renderDetails, screen, image, timeMs, scale);
+    validateDetails(result.renderDetails, screen, image, timeMs, scale, enableLigatures);
     return { bytes, image, details: structuredClone(result.renderDetails) };
 }
 

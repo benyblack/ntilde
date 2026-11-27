@@ -13,6 +13,7 @@ export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
 export const capturedOsc633MetadataSourcePolicy = 'readonly-owned-source-graph-v86';
 export const capturedSixelReportsSourcePolicy = 'readonly-owned-source-graph-v85';
+export const capturedFontLigaturesSourcePolicy = 'readonly-owned-source-graph-font-ligatures-v1';
 export const capturedOsc66SourcePolicy = 'readonly-owned-source-graph-v84';
 export const capturedKittyGraphicsSourcePolicy = 'readonly-owned-source-graph-v83';
 export const capturedUnicodeBoundarySourcePolicy = 'readonly-owned-source-graph-v82';
@@ -20,6 +21,7 @@ export const capturedUnicodeWidthSourcePolicy = 'readonly-owned-source-graph-v81
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 const focusedSourcePolicies = [
+    ['fontLigaturesOwnedSourceSha256', capturedFontLigaturesSourcePolicy],
     ['osc633MetadataOwnedSourceSha256', capturedOsc633MetadataSourcePolicy],
     ['sixelReportsOwnedSourceSha256', capturedSixelReportsSourcePolicy],
     ['osc66OwnedSourceSha256', capturedOsc66SourcePolicy],
@@ -1038,6 +1040,13 @@ export const capturedSixelReportsSourceFiles = Object.freeze({
     sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
 });
 
+export const capturedFontLigaturesSourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    fontLigaturesContractsSourceSha256: 'font-ligatures-contracts.mjs',
+    fontLigaturesOwnedSourceSha256: 'font-ligatures-owned.mjs',
+    fontLigaturesWorkerSourceSha256: 'font-ligatures-worker.mjs',
+});
+
 export const capturedOsc66SourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     osc66ContractsSourceSha256: 'osc66-contracts.mjs',
@@ -1115,6 +1124,7 @@ export function readSourceSnapshot(root) {
         [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
         [capturedSixelReportsSourcePolicy]: capturedSixelReportsSourceFiles,
         [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,
+        [capturedFontLigaturesSourcePolicy]: capturedFontLigaturesSourceFiles,
         [capturedKittyGraphicsSourcePolicy]: capturedKittyGraphicsSourceFiles,
         [capturedUnicodeBoundarySourcePolicy]: capturedUnicodeBoundarySourceFiles,
         [capturedUnicodeWidthSourcePolicy]: capturedUnicodeWidthSourceFiles,

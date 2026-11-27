@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <Content Include="corpus\**\*.*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures\Fonts\FiraCode-Regular.ttf" CopyToOutputDirectory="PreserveNewest" />
     <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

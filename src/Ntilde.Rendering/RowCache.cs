@@ -48,11 +48,13 @@ namespace Ntilde.Rendering
         {
             public SKPicture Picture;
             public LinkedListNode<Key> Node;
+            public bool RequiresFullRepaint;
 
-            public Entry(SKPicture picture, LinkedListNode<Key> node)
+            public Entry(SKPicture picture, LinkedListNode<Key> node, bool requiresFullRepaint)
             {
                 Picture = picture;
                 Node = node;
+                RequiresFullRepaint = requiresFullRepaint;
             }
         }
 
@@ -76,11 +78,16 @@ namespace Ntilde.Rendering
         }
 
         public bool TryGetLatestByRowId(long rowId, out SKPicture? picture, out uint revision)
+            => TryGetLatestByRowId(rowId, out picture, out revision, out _);
+
+        /// <summary>Finds the latest picture and whether it can be used as a partial repaint baseline.</summary>
+        public bool TryGetLatestByRowId(long rowId, out SKPicture? picture, out uint revision, out bool requiresFullRepaint)
         {
             lock (_sync)
             {
                 picture = null;
                 revision = 0;
+                requiresFullRepaint = false;
                 bool found = false;
 
                 foreach (var kvp in _cache)
@@ -95,6 +102,7 @@ namespace Ntilde.Rendering
                         found = true;
                         revision = kvp.Key.Revision;
                         picture = kvp.Value.Picture;
+                        requiresFullRepaint = kvp.Value.RequiresFullRepaint;
                     }
                 }
 
@@ -122,6 +130,9 @@ namespace Ntilde.Rendering
         }
 
         public void Add(long rowId, uint revision, SKPicture picture)
+            => Add(rowId, revision, picture, requiresFullRepaint: false);
+
+        public void Add(long rowId, uint revision, SKPicture picture, bool requiresFullRepaint)
         {
             lock (_sync)
             {
@@ -134,6 +145,7 @@ namespace Ntilde.Rendering
                         _pendingDispose.Add(existing.Picture);
 
                     existing.Picture = picture;
+                    existing.RequiresFullRepaint = requiresFullRepaint;
 
                     // Touch LRU
                     _lru.Remove(existing.Node);
@@ -159,7 +171,7 @@ namespace Ntilde.Rendering
 
                 // Insert new
                 var node = _lru.AddLast(key);
-                _cache[key] = new Entry(picture, node);
+                _cache[key] = new Entry(picture, node, requiresFullRepaint);
             }
         }
 

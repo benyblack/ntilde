@@ -117,6 +117,11 @@ const sixelReportsSources = {
     sixelReportsOwnedSourceSha256: 'sixel-reports-owned.mjs',
     sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
 };
+const fontLigatureSources = {
+    fontLigaturesContractsSourceSha256: 'font-ligatures-contracts.mjs',
+    fontLigaturesOwnedSourceSha256: 'font-ligatures-owned.mjs',
+    fontLigaturesWorkerSourceSha256: 'font-ligatures-worker.mjs',
+};
 const osc66Sources = {
     osc66ContractsSourceSha256: 'osc66-contracts.mjs',
     osc66OwnedSourceSha256: 'osc66-owned.mjs',
@@ -139,6 +144,7 @@ const unicodeWidthSources = {
 };
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
+    'font-ligatures': { policy: 'readonly-owned-source-graph-font-ligatures-v1', sources: fontLigatureSources, entry: fontLigatureSources.fontLigaturesOwnedSourceSha256 },
     'osc633-metadata': { policy: 'readonly-owned-source-graph-v86', sources: osc633MetadataSources, entry: osc633MetadataSources.osc633MetadataOwnedSourceSha256 },
     'sixel-reports': { policy: 'readonly-owned-source-graph-v85', sources: sixelReportsSources, entry: sixelReportsSources.sixelReportsOwnedSourceSha256 },
     'osc66': { policy: 'readonly-owned-source-graph-v84', sources: osc66Sources, entry: osc66Sources.osc66OwnedSourceSha256 },
