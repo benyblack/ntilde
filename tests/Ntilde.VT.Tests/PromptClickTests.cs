@@ -153,7 +153,8 @@ public class PromptClickTests
     [InlineData("\x1b[2;1H\x1b[2K\x1b[3;1H\x1b[2K")]
     [InlineData("\x1b[3;1H\x1b[K\x1b[2;1H\x1b[K")]
     [InlineData("\x1b[2;80H\x1b[1K\x1b[3;80H\x1b[1K")]
-    public void FullLineErasureShrinksThePromptTailInEitherOrder(string erase)
+    [InlineData("\x1b[2;1H\x1b[J")]
+    public void FullLineOrDisplayErasureClearsThePromptTail(string erase)
     {
         _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n\x1b]133;A;k=s\alower\r\nlast\x1b[H");
         Assert.Equal(2, WireRow(2));
@@ -162,6 +163,9 @@ public class PromptClickTests
         Assert.Equal(1, WireRow(0));
         Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
         Assert.False(_buffer.TryGetPromptClickRow(2, out _, out _));
+
+        _parser.Process("\x1b[2;1Hreplacement\x1b[H");
+        Assert.Equal(2, WireRow(1));
     }
 
     [Fact]

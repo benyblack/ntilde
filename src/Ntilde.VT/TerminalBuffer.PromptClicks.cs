@@ -114,21 +114,26 @@ public partial class TerminalBuffer
             _secondaryClickPrompts.RemoveAll(anchor => anchor.AbsoluteRow == erased);
             if (_cursorRow != endRow) return;
 
-            // EL visits rows one at a time. Walk back over an erased tail only
-            // when its last row is removed, regardless of erase order.
-            _clickPromptEnd = primary;
-            for (int row = endRow - 1; row >= Math.Max(0, primaryRow); row--)
-            {
-                int column = LastPromptTextColumn(_viewport[row]);
-                if (column < 0) continue;
-                _clickPromptEnd = CaptureClickPosition(row, column + 1);
-                break;
-            }
-
-            // Marked empty continuation rows are also part of the editable extent.
-            if (_secondaryClickPrompts.Count > 0)
-                ExtendClickPromptLocked(_secondaryClickPrompts[^1]);
+            RestoreClickPromptEndBeforeRow(primary, primaryRow, endRow);
         }
+    }
+
+    private void RestoreClickPromptEndBeforeRow(ShellIntegrationMark primary, int primaryRow, int erasedRow)
+    {
+        // EL visits rows one at a time. Walk back over an erased tail only
+        // when its last row is removed, regardless of erase order.
+        _clickPromptEnd = primary;
+        for (int row = erasedRow - 1; row >= Math.Max(0, primaryRow); row--)
+        {
+            int column = LastPromptTextColumn(_viewport[row]);
+            if (column < 0) continue;
+            _clickPromptEnd = CaptureClickPosition(row, column + 1);
+            break;
+        }
+
+        // Marked empty continuation rows are also part of the editable extent.
+        if (_secondaryClickPrompts.Count > 0)
+            ExtendClickPromptLocked(_secondaryClickPrompts[^1]);
     }
 
     private bool ErasePartialClickPromptLine(int mode, int endRow)
@@ -157,7 +162,8 @@ public partial class TerminalBuffer
     {
         lock (_trackedMarkGate)
         {
-            if (_clickPrompt is not { } primary || cursor.IsAltScreen || cursor.Generation != primary.Generation)
+            if (_clickPrompt is not { } primary
+                || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int primaryRow))
                 return;
 
             if (cursor.AbsoluteRow < primary.AbsoluteRow)
@@ -166,10 +172,14 @@ public partial class TerminalBuffer
                 return;
             }
 
-            LimitClickPromptEnd(cursor);
-
-            int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow <= cursor.AbsoluteRow) + 1;
+            int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow < cursor.AbsoluteRow
+                || (anchor.AbsoluteRow == cursor.AbsoluteRow && anchor.Column < cursor.Column)) + 1;
             _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
+
+            if (cursor.Column == 0 && cursor.AbsoluteRow <= _clickPromptEnd.AbsoluteRow)
+                RestoreClickPromptEndBeforeRow(primary, primaryRow, _cursorRow);
+            else
+                LimitClickPromptEnd(cursor);
         }
     }
 
