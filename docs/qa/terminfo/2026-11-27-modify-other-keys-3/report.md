@@ -28,7 +28,9 @@ The #1002 policy regression passed on main for starting levels 0, 1 and 2 on bot
 | Measurement | App source | Collector source | Run |
 | --- | --- | --- | --- |
 | Ignored request | `6d16bd84bdac25cd8b51a0fa7a4554d74702401d` | `d33840549b1684e1d9278f60df670f9daf67de6d` | `f3106ab6a428a316b68f8ce0b0f38cd7` |
-| Level 3 | `f840fcd41c8a4e2a1635334b3eb92fb7469415c0` | `f840fcd41c8a4e2a1635334b3eb92fb7469415c0` | `3de926c0f4933155116483a55b4f7ad4` |
+| Level 3 | `a739c3235abe3722262b3557634744fe97a1a0c0` | `a739c3235abe3722262b3557634744fe97a1a0c0` | `0e36f4e91a4329ae0a78cb452c6ad0ab` |
+
+After #1125 merged, the integrated App and collector repeated all 24 observations in a fresh sidecar. The table and fixed archive above identify this integration run. The preceding 24-case run on App and collector `f840fcd4` also passed. [Pre-integration receipt](https://github.com/benyblack/ntilde/blob/d96e64d7ff8efc619c215441365cfc4f57b3eee6/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
 
 Four earlier implementation runs each passed the original 22 observations. The final run repeated those cases with explicit printable symbols and added the two missing-symbol controls. [First implementation receipt](https://github.com/benyblack/ntilde/blob/95e23798a9f36e455c67fd512d0de1aa7888a1d0/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip) · [Mixed-pane revision receipt](https://github.com/benyblack/ntilde/blob/57d04d2815702bd4270c1e8bf559e6fe327a1a46/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
 

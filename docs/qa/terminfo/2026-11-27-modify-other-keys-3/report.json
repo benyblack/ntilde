@@ -5,24 +5,24 @@
   "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "probeHash": "16a690f34c0e",
   "measurement": {
-    "runId": "3de926c0f4933155116483a55b4f7ad4",
-    "appRevision": "f840fcd41c8a4e2a1635334b3eb92fb7469415c0",
-    "scriptsRevision": "f840fcd41c8a4e2a1635334b3eb92fb7469415c0",
+    "runId": "0e36f4e91a4329ae0a78cb452c6ad0ab",
+    "appRevision": "a739c3235abe3722262b3557634744fe97a1a0c0",
+    "scriptsRevision": "a739c3235abe3722262b3557634744fe97a1a0c0",
     "platform": "macOS 27.0.1, arm64",
     "sourcePolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
     "receiptSchema": 1,
-    "version": "0.14.0+f840fcd41c8a4e2a1635334b3eb92fb7469415c0",
+    "version": "0.14.0+a739c3235abe3722262b3557634744fe97a1a0c0",
     "nodeVersion": "v24.22.3",
-    "startedAt": "2026-11-27T14:46:31.831Z",
-    "releasedAt": "2026-11-27T14:46:37.266Z",
+    "startedAt": "2026-11-27T15:48:06.054Z",
+    "releasedAt": "2026-11-27T15:48:10.745Z",
     "geometry": {
       "rows": 40,
       "cols": 140
     },
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "67fc28c24453213ba7c56435c317e530dbbabd4ba2d5c89005717ccad5d90786",
-    "sourceSnapshotManifestSha256": "c6c7f0647c7570931e221421fabe3351fbf7e89ce2c6db138ffeef5cfcbb58f0",
-    "archiveSha256": "d676bc8788a68c2c6ed7126167bbf9625070b12035a233a2f3afc61a8b2d019a"
+    "assemblySha256": "26a8569d8cceb2657eb21e28d2e9c4d5c7dfdf1cb8ffbde5b5875fa7da75dea5",
+    "sourceSnapshotManifestSha256": "07bc10b120ceb7b2a71a64c140a3884272d28759e5cbd8dcf74150f2fc9c28b0",
+    "archiveSha256": "cb3292fb4c9b85a19d19d7f4fe90dc6852a64c55872178d1e0beb5e102b063b7"
   },
   "baseline": {
     "measurement": {
