@@ -63,7 +63,7 @@ export function paneArea(cell) {
         height: areaAxis(cell.viewRows, cell.cellHeightDip, cell.renderScaling) };
 }
 
-function rawText(capture, used) {
+export function rawText(capture, used) {
     validateInputBytes(capture, null, used, false);
     const raw = Buffer.from(capture.hex, 'hex');
     requireSixel(raw.every(byte => byte <= 127), 'non-ASCII query reply');

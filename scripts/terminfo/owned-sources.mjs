@@ -15,6 +15,7 @@ export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
 export const capturedPromptPartsSourcePolicy = 'readonly-owned-source-graph-prompt-parts-v1';
 export const capturedOsc633MetadataSourcePolicy = 'readonly-owned-source-graph-v86';
+export const capturedXtwinopsPixelsSourcePolicy = 'readonly-owned-source-graph-xtwinops-pixels-v1';
 export const capturedSixelReportsSourcePolicy = 'readonly-owned-source-graph-v85';
 export const capturedFontLigaturesSourcePolicy = 'readonly-owned-source-graph-font-ligatures-v1';
 export const capturedOsc66SourcePolicy = 'readonly-owned-source-graph-v84';
@@ -26,6 +27,7 @@ export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 export const capturedMok3SourcePolicy = 'readonly-owned-source-graph-modify-other-keys-3-v1';
 const focusedSourcePolicies = [
+    ['xtwinopsPixelsOwnedSourceSha256', capturedXtwinopsPixelsSourcePolicy],
     ['mok3OwnedSourceSha256', capturedMok3SourcePolicy],
     ['oscFlashOwnedSourceSha256', capturedFlashSourcePolicy],
     ['fontLigaturesOwnedSourceSha256', capturedFontLigaturesSourcePolicy],
@@ -1057,6 +1059,15 @@ export const capturedSixelReportsSourceFiles = Object.freeze({
     sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
 });
 
+export const capturedXtwinopsPixelsSourceFiles = Object.freeze({
+    ...capturedSixelReportsSourceFiles,
+    modernBlinkWindowSourceSha256: 'modern-blink-window.jxa',
+    xtwinopsPixelsContractsSourceSha256: 'xtwinops-pixels-contracts.mjs',
+    xtwinopsPixelsFontSourceSha256: 'xtwinops-pixels-font.jxa',
+    xtwinopsPixelsOwnedSourceSha256: 'xtwinops-pixels-owned.mjs',
+    xtwinopsPixelsWorkerSourceSha256: 'xtwinops-pixels-worker.mjs',
+});
+
 export const capturedMok3SourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     mok3ContractsSourceSha256: 'modify-other-keys-3-contracts.mjs',
@@ -1175,6 +1186,7 @@ export function readSourceSnapshot(root) {
         [capturedPromptPartsSourcePolicy]: capturedPromptPartsSourceFiles,
         [capturedFlashSourcePolicy]: capturedFlashSourceFiles,
         [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
+        [capturedXtwinopsPixelsSourcePolicy]: capturedXtwinopsPixelsSourceFiles,
         [capturedSixelReportsSourcePolicy]: capturedSixelReportsSourceFiles,
         [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,
         [capturedMok3SourcePolicy]: capturedMok3SourceFiles,

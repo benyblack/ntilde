@@ -1,0 +1,18 @@
+ObjC.import('CoreGraphics');
+
+function run(argv) {
+    const [pidText, operation] = argv;
+    const pid = Number(pidText);
+    if (!Number.isSafeInteger(pid) || pid <= 1 || !['increase', 'decrease'].includes(operation)) {
+        throw new Error('Expected the owned App PID and a font operation');
+    }
+    // ANSI = and - with the macOS primary modifier. Post only to the proved App.
+    const key = operation === 'increase' ? 24 : 27;
+    for (const pressed of [true, false]) {
+        const event = $.CGEventCreateKeyboardEvent(null, key, pressed);
+        if (!event) throw new Error('Could not create the font shortcut event');
+        $.CGEventSetFlags(event, $.kCGEventFlagMaskCommand);
+        $.CGEventPostToPid(pid, event);
+    }
+    return operation;
+}

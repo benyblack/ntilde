@@ -21,7 +21,7 @@ const save = (output, name, value) => writeFileSync(join(output, name), JSON.str
 const append = (output, name, value) => appendFileSync(join(output, name), JSON.stringify(value) + '\n', { mode: 0o600 });
 const validTime = value => typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
 
-function requireResize(action, stage, target, paneId, runId) {
+export function requireResize(action, stage, target, paneId, runId) {
     requireSixel(action?.stage === stage && same(action.target, target) && !action.error, 'unexpected resize action');
     const { observed } = action;
     requireSixel(observed?.paneId === paneId && observed.runId === runId && validTime(observed.observedAt)
@@ -30,7 +30,7 @@ function requireResize(action, stage, target, paneId, runId) {
     validateOutputGeometry(observed.terminalOutput.description, target.rows, target.cols);
 }
 
-function verifySeal(record, finish) {
+export function verifySeal(record, finish) {
     const { attempts } = record, { sample } = finish;
     requireSixel(attempts?.completed === true && attempts.fenceRequested === true && attempts.error === null
         && attempts.hex === sample.hex + Buffer.from(sample.barrier).toString('hex') && same(attempts.nonces, sample.nonces),
@@ -75,9 +75,10 @@ function verifyStage(frame, step, initial, previous, target, runId, used) {
 }
 
 export class Collection {
-    constructor(run) {
+    constructor(run, { plan = planFor(run.runId), actionsFile = names.actions } = {}) {
         this.run = run;
-        this.plan = planFor(run.runId);
+        this.plan = plan;
+        this.actionsFile = actionsFile;
         this.frames = [];
         this.used = new Set();
         // Use unbound readers. The plan owns all geometry assertions across resize.
@@ -119,7 +120,7 @@ export class Collection {
         } catch (error) {
             action.error = error.message;
             throw error;
-        } finally { append(output, names.actions, action); }
+        } finally { append(output, this.actionsFile, action); }
     }
 
     async capture(budget) {
