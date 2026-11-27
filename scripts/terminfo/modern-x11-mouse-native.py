@@ -163,7 +163,12 @@ class XDisplay:
         """Close only the real default-clipboard dialog transient for the admitted App."""
         parent, app_pid = command["window"], command["appPid"]
         started = str(time.monotonic_ns())
+        deadline = time.monotonic() + 1
         visible = self.mapped_windows()
+        while visible == [parent]:
+            demand(time.monotonic() < deadline, "App clipboard consent dialog did not appear")
+            time.sleep(0.02)
+            visible = self.mapped_windows()
         demand(len(visible) == 2 and parent in visible, "expected one App clipboard consent dialog")
         dialog = next(window["id"] for window in visible if window != parent)
         demand(self.client_pid(parent["id"]) == self.client_pid(dialog) == app_pid, "wrong consent window owner")

@@ -43,6 +43,13 @@ test('mode controls, MIME snapshot, duplicate suppression and consent must come 
         unrelated.cases[0].reuse.dialog.owner++;
         assert.throws(() => replay(unrelated), /fresh explicit consent/);
 
+        const late = structuredClone(run);
+        const reuse = late.cases[0].reuse.capture;
+        const delay = at => (BigInt(at) + 15_000_000_000n).toString();
+        for (const chunk of reuse.chunks) chunk.at = delay(chunk.at);
+        reuse.sealed = delay(reuse.sealed);
+        assert.throws(() => replay(late), /not denied inside its validity window/);
+
         const lost = structuredClone(run);
         lost.cases[0].restoreRead.result.values = lost.cases[0].later;
         assert.throws(() => replay(lost), /independent clipboard readback differs/);
