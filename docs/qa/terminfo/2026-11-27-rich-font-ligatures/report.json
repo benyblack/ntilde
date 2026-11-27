@@ -82,7 +82,7 @@
   },
   "runs": {
     "baseline-on": {
-      "runId": "8ae35458c6c7d505d81a22a57471bf14",
+      "runId": "7386c961d580835e3a4e662b884a0aea",
       "suite": "ntilde-owned-font-ligatures-v1",
       "configured": true,
       "enabled": false,
@@ -156,16 +156,16 @@
         }
       ],
       "measurement": {
-        "runId": "8ae35458c6c7d505d81a22a57471bf14",
+        "runId": "7386c961d580835e3a4e662b884a0aea",
         "appRevision": "db411becbe33922691e29d78b0ab7dc443d26b14",
-        "scriptsRevision": "f6c55fe910d43919bc23a5462499395cc7c0703e",
+        "scriptsRevision": "c591fd155a150447f86f69c724e72102a9185c18",
         "platform": "macOS 27.0.1 (26A434), arm64",
         "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
         "receiptSchema": 1,
         "version": "0.14.0+db411becbe33922691e29d78b0ab7dc443d26b14",
         "nodeVersion": "v24.22.2",
-        "startedAt": "2026-11-27T08:28:12.732Z",
-        "releasedAt": "2026-11-27T08:28:25.667Z",
+        "startedAt": "2026-11-27T08:43:13.440Z",
+        "releasedAt": "2026-11-27T08:43:22.398Z",
         "geometry": {
           "rows": 23,
           "cols": 74
@@ -175,12 +175,12 @@
         "presentationTimeMs": 0,
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
         "assemblySha256": "d1e05469db08512c73ac418c1b8a129e75b585a4154b220e78d91aa4cecd61cb",
-        "sourceSnapshotManifestSha256": "23b790e0cc58a27c98f8df3dbfa7b59d776c7f767ace37f0c0b497e83311f03e",
-        "archiveSha256": "4eb933d1a5b25142e60e67f8d563bb5bd4f1df1a875fa5141a68c71f8b6e4b9a"
+        "sourceSnapshotManifestSha256": "68c5f375fc4473c3dc54e348477ff8d536039802b8e95c364f798f1e2e7de132",
+        "archiveSha256": "2c7752114cc6aef69d7b7528f8f6281ff626323a6788af707ac73caa83635c3c"
       }
     },
     "off": {
-      "runId": "446acb03347b8f44e35ec4d85167a8ce",
+      "runId": "33c61600337a4860f43b8534d1fa4ca0",
       "suite": "ntilde-owned-font-ligatures-v1",
       "configured": false,
       "enabled": false,
@@ -254,16 +254,16 @@
         }
       ],
       "measurement": {
-        "runId": "446acb03347b8f44e35ec4d85167a8ce",
-        "appRevision": "7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
-        "scriptsRevision": "f6c55fe910d43919bc23a5462499395cc7c0703e",
+        "runId": "33c61600337a4860f43b8534d1fa4ca0",
+        "appRevision": "c591fd155a150447f86f69c724e72102a9185c18",
+        "scriptsRevision": "c591fd155a150447f86f69c724e72102a9185c18",
         "platform": "macOS 27.0.1 (26A434), arm64",
         "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
         "receiptSchema": 1,
-        "version": "0.14.0+7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
+        "version": "0.14.0+c591fd155a150447f86f69c724e72102a9185c18",
         "nodeVersion": "v24.22.2",
-        "startedAt": "2026-11-27T08:32:09.775Z",
-        "releasedAt": "2026-11-27T08:32:17.205Z",
+        "startedAt": "2026-11-27T08:44:15.141Z",
+        "releasedAt": "2026-11-27T08:44:21.099Z",
         "geometry": {
           "rows": 23,
           "cols": 74
@@ -272,13 +272,13 @@
         "scale": 1,
         "presentationTimeMs": 0,
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "assemblySha256": "8102e372e0d7711735b9b8d652ffd984c40a309b641c9881f826b4267e3146a4",
-        "sourceSnapshotManifestSha256": "db952a4297aba4510307ff7b642a247815de8f95d12073204811dfb70c864bc3",
-        "archiveSha256": "4eb933d1a5b25142e60e67f8d563bb5bd4f1df1a875fa5141a68c71f8b6e4b9a"
+        "assemblySha256": "e049a6c9f2487b0322c3217b460e57513b7e5c5fd251e984441b35535160e9ef",
+        "sourceSnapshotManifestSha256": "68c5f375fc4473c3dc54e348477ff8d536039802b8e95c364f798f1e2e7de132",
+        "archiveSha256": "2c7752114cc6aef69d7b7528f8f6281ff626323a6788af707ac73caa83635c3c"
       }
     },
     "on": {
-      "runId": "cafae382918479a143f8b9b612c7b325",
+      "runId": "8bb299817db29a993ec47e4d3f68ce7f",
       "suite": "ntilde-owned-font-ligatures-v1",
       "configured": true,
       "enabled": true,
@@ -352,16 +352,16 @@
         }
       ],
       "measurement": {
-        "runId": "cafae382918479a143f8b9b612c7b325",
-        "appRevision": "7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
-        "scriptsRevision": "f6c55fe910d43919bc23a5462499395cc7c0703e",
+        "runId": "8bb299817db29a993ec47e4d3f68ce7f",
+        "appRevision": "c591fd155a150447f86f69c724e72102a9185c18",
+        "scriptsRevision": "c591fd155a150447f86f69c724e72102a9185c18",
         "platform": "macOS 27.0.1 (26A434), arm64",
         "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
         "receiptSchema": 1,
-        "version": "0.14.0+7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
+        "version": "0.14.0+c591fd155a150447f86f69c724e72102a9185c18",
         "nodeVersion": "v24.22.2",
-        "startedAt": "2026-11-27T08:32:19.001Z",
-        "releasedAt": "2026-11-27T08:32:24.031Z",
+        "startedAt": "2026-11-27T08:44:22.556Z",
+        "releasedAt": "2026-11-27T08:44:27.436Z",
         "geometry": {
           "rows": 23,
           "cols": 74
@@ -370,13 +370,13 @@
         "scale": 1,
         "presentationTimeMs": 0,
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "assemblySha256": "8102e372e0d7711735b9b8d652ffd984c40a309b641c9881f826b4267e3146a4",
-        "sourceSnapshotManifestSha256": "db952a4297aba4510307ff7b642a247815de8f95d12073204811dfb70c864bc3",
-        "archiveSha256": "4eb933d1a5b25142e60e67f8d563bb5bd4f1df1a875fa5141a68c71f8b6e4b9a"
+        "assemblySha256": "e049a6c9f2487b0322c3217b460e57513b7e5c5fd251e984441b35535160e9ef",
+        "sourceSnapshotManifestSha256": "68c5f375fc4473c3dc54e348477ff8d536039802b8e95c364f798f1e2e7de132",
+        "archiveSha256": "2c7752114cc6aef69d7b7528f8f6281ff626323a6788af707ac73caa83635c3c"
       }
     },
     "off-restored": {
-      "runId": "d5e852296a524ffd7f8972e50eeb7c1a",
+      "runId": "465a3256e7d24d7acf998dd5428eda1d",
       "suite": "ntilde-owned-font-ligatures-v1",
       "configured": false,
       "enabled": false,
@@ -450,16 +450,16 @@
         }
       ],
       "measurement": {
-        "runId": "d5e852296a524ffd7f8972e50eeb7c1a",
-        "appRevision": "7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
-        "scriptsRevision": "f6c55fe910d43919bc23a5462499395cc7c0703e",
+        "runId": "465a3256e7d24d7acf998dd5428eda1d",
+        "appRevision": "c591fd155a150447f86f69c724e72102a9185c18",
+        "scriptsRevision": "c591fd155a150447f86f69c724e72102a9185c18",
         "platform": "macOS 27.0.1 (26A434), arm64",
         "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
         "receiptSchema": 1,
-        "version": "0.14.0+7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
+        "version": "0.14.0+c591fd155a150447f86f69c724e72102a9185c18",
         "nodeVersion": "v24.22.2",
-        "startedAt": "2026-11-27T08:32:25.155Z",
-        "releasedAt": "2026-11-27T08:32:30.885Z",
+        "startedAt": "2026-11-27T08:44:28.768Z",
+        "releasedAt": "2026-11-27T08:44:32.120Z",
         "geometry": {
           "rows": 23,
           "cols": 74
@@ -468,9 +468,9 @@
         "scale": 1,
         "presentationTimeMs": 0,
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "assemblySha256": "8102e372e0d7711735b9b8d652ffd984c40a309b641c9881f826b4267e3146a4",
-        "sourceSnapshotManifestSha256": "db952a4297aba4510307ff7b642a247815de8f95d12073204811dfb70c864bc3",
-        "archiveSha256": "4eb933d1a5b25142e60e67f8d563bb5bd4f1df1a875fa5141a68c71f8b6e4b9a"
+        "assemblySha256": "e049a6c9f2487b0322c3217b460e57513b7e5c5fd251e984441b35535160e9ef",
+        "sourceSnapshotManifestSha256": "68c5f375fc4473c3dc54e348477ff8d536039802b8e95c364f798f1e2e7de132",
+        "archiveSha256": "2c7752114cc6aef69d7b7528f8f6281ff626323a6788af707ac73caa83635c3c"
       }
     }
   }
