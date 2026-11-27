@@ -48,6 +48,11 @@ export function ownedResizeRequest(endpoint, paneId, rows, cols, timeoutMs) {
     return privateRequest(endpoint, 'resizePane', { paneId, rows, cols }, timeoutMs, 16384);
 }
 
+// Capture the current TerminalView, including its live pane-local overlays.
+export function livePaneCapture(endpoint, paneId, timeoutMs) {
+    return privateRequest(endpoint, 'captureScreen', { paneId, mode: 'live', inline: true, scale: 0.5 }, timeoutMs, 512 * 1024);
+}
+
 /** Fixed render-only capture for the disposable, nonce-bound pixel fixture. */
 export function captureRequest(endpoint, paneId, presentationTimeMs, timeoutMs) {
     return renderRequest(endpoint, paneId, presentationTimeMs, timeoutMs);

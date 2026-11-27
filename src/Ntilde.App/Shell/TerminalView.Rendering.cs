@@ -293,7 +293,7 @@ namespace Ntilde.Shell
                 }
             }
 
-            if (_isBellFlashActive)
+            if (IsBellFlashActive)
             {
                 // The pane theme's foreground at a low alpha: a white flash was invisible on light themes.
                 // As presented, so it still shows while the program has DECSCNM reverse video set.

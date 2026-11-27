@@ -40,8 +40,8 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 160,
-    "suiteClaims": 164,
+    "uniqueBenchmarkIds": 161,
+    "suiteClaims": 165,
     "idsWithMultipleClaims": [
       "extensions.osc-633-vscode",
       "extensions.sixel",
@@ -50,7 +50,7 @@
     ],
     "effectSupportedIds": 153,
     "effectUnsupportedIds": 6,
-    "effectOtherIds": 1,
+    "effectOtherIds": 2,
     "pinnedAndEffectSupportedIds": 98,
     "effectSupportedPinnedInconclusiveIds": [
       "device.xtgettcap",
@@ -137,8 +137,8 @@
     "remainingAgainstStockInconclusive": {
       "effectUnqualified": 17,
       "effectMeasuredUnsupported": 6,
-      "effectMeasuredOther": 1,
-      "effectNotMeasured": 10,
+      "effectMeasuredOther": 2,
+      "effectNotMeasured": 9,
       "notPinnedSupported": 72
     }
   },
@@ -4921,6 +4921,59 @@
         "command": "node --test scripts/terminfo/osc52-read-publication.test.mjs",
         "testSha256": "b280fe148d39f4b23e61258d71b8148723ee1e7aad5fe3c2c6d3a2735f3ad5c5"
       }
+    },
+    {
+      "suite": "osc555",
+      "suiteId": "ntilde-owned-osc555-visual-flash-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-27-osc555-flash/",
+      "doc": "2026-11-27-osc555-flash/report.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc555-flash"
+      ],
+      "evidence": {
+        "files": 11,
+        "bytes": 8208994,
+        "sha256": "d43d7d56e4384a76d03771509b4885da8c4a60ff72e0d495aae6d82ead6e79cb"
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "runId": "ab0003607c9aa2c3616d93b9c40792a2",
+        "cellReceipt": null,
+        "suiteEvidence": null
+      },
+      "run": {
+        "ownedRunId": "ab0003607c9aa2c3616d93b9c40792a2",
+        "measuredAt": "2026-11-27T14:31:59.652Z",
+        "appRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "appVersion": "0.14.0+373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "collectorAdapterId": "ntilde-owned-osc555-visual-flash-v1",
+        "collectorAdapterBundleSha256": null,
+        "gradingAdapterId": null,
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-osc555-v1",
+        "sourceSnapshotManifestSha256": "633e47184c3890c75321fe46ff4cc71bebf7b8fe15efd6d63eb6e1f346bd8fd3"
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": null,
+        "counts": null,
+        "suiteComplete": null,
+        "probeHash": null,
+        "rawSha256": null,
+        "sourceRevision": null,
+        "note": "Outcome carried forward from 2026-11-09-stock-baseline.json."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc-flash-publication.test.mjs",
+        "testSha256": "533e11521d115461effeb29acb9f639ee641c68ca4c2671c68a61d27bb3d167a"
+      }
     }
   ],
   "benchmark": [
@@ -8576,6 +8629,55 @@
             "generated-input-child-bytes"
           ],
           "evidenceTag": "generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc555-flash",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc555",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc555",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc555-flash",
+          "suite": "osc555",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Cursor response does not measure OSC 555 screen flash"
+          },
+          "effect": {
+            "verdict": "inconclusive"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned"
+          },
+          "divergence": null,
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color",
+            "cursor-position-report",
+            "controlled-pixels"
+          ],
+          "evidenceTag": "stored-cells-and-resolved-colors-and-cpr-and-controlled-pixels"
         }
       ]
     },
