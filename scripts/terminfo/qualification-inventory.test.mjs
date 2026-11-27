@@ -522,7 +522,8 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     // 384 KiB: the Unicode placeholder suite entry (no stock run, its own receipt binding) joins the merged inventory.
     // 400 KiB: the DECSCLM suite entry (receipt schema 82, its run and receipt bindings) joins the merged inventory.
     // 404 KiB includes the owned OSC 5522 reassessment and its carried stock provenance.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 404 * 1024, 'the generated files stay reviewable');
+    // 408 KiB includes the OSC 555 pane measurement, receipt and pinned/effect divergence.
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 408 * 1024, 'the generated files stay reviewable');
 });
 
 test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and reset.method, with the reset() API layer named and no stock or Core movement', () => {

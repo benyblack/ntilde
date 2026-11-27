@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
+import { deriveFlash } from './osc-flash-owned.mjs';
+import { readJson, withOwnedArchive } from './unicode-publication-inputs.mjs';
 import { classify } from './osc-flash-contract.mjs';
-import { effectVerdict, publish } from './osc-flash-publication.mjs';
+import { effectVerdict, publication, publish } from './osc-flash-publication.mjs';
 
 test('all three owned receipts, the exact pinned callback and every published frame rederive', async () => {
     const { cases: [result], runs } = await publish(true);
@@ -31,3 +35,20 @@ test('a late or sparse capture, an unrelated pixel change, and a missing control
     assert.equal(effectVerdict(['flashed', 'flashed', 'flashed'], ['steady', 'flashed', 'steady']), 'inconclusive');
 });
 
+test('receipt replay refuses swapped trials, a changed palette, and a modified PNG', () => {
+    const manifest = readJson(publication, 'manifest.json').runs.enabled;
+    withOwnedArchive(join(publication, 'enabled'), manifest, dir => {
+        const log = join(dir, 'flash.jsonl'), original = readFileSync(log, 'utf8');
+        const corrupt = change => {
+            const entries = original.trimEnd().split('\n').map(line => JSON.parse(line));
+            change(entries);
+            writeFileSync(log, entries.map(entry => JSON.stringify(entry)).join('\n') + '\n');
+            assert.throws(() => deriveFlash(dir));
+        };
+        corrupt(entries => { entries.find(e => e.stage === 'pinned').writes[1] = '\x07'; });
+        corrupt(entries => { entries.find(e => e.stage === 'foot').screen.colorBinding.ansiPaletteArgb.reverse(); });
+        writeFileSync(log, original);
+        appendFileSync(join(dir, 'flash-pinned-0.png'), 'changed');
+        assert.throws(() => deriveFlash(dir), /changed PNG/);
+    });
+});

@@ -119,4 +119,3 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
     assert.ok(process.argv.length === 3 && ['--write', '--check'].includes(process.argv[2]));
     await publish(process.argv[2] === '--check');
 }
-

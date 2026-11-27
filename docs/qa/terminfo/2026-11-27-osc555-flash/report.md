@@ -38,4 +38,3 @@ scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained
 node scripts/terminfo-owned.mjs --executable "$SIDECAR/Ntilde" --app-version "0.14.0+$APP_REVISION" --scope osc555
 node scripts/terminfo-owned.mjs --executable "$FIXED_SIDECAR/Ntilde" --app-version "0.14.0+$FIXED_APP_REVISION" --scope osc555-disabled
 ~~~
-
