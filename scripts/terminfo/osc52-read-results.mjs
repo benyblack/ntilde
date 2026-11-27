@@ -1,11 +1,10 @@
-import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { id, peerSteps, replayClipboard } from './modern-x11-osc52-read.mjs';
 import { verifyAttempts, verifyX11Run } from './modern-x11-mouse-results.mjs';
 import { pinnedJson, requireModern } from './modern-inputs.mjs';
 import { replayPinned } from './osc52-read-pinned.mjs';
-import { pinnedBundle, withOwnedArchive } from './unicode-publication-inputs.mjs';
+import { pinnedBundle, withOwnedArchive, writePublicationFiles } from './unicode-publication-inputs.mjs';
 
 export const suiteId = 'ntilde-owned-x11-osc52-read-v1';
 export const contractsVersion = 1;
@@ -13,7 +12,7 @@ export const caseIds = Object.freeze([id]);
 const denialContract = 'ntilde-owned-x11-osc52-read-denial-v1';
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 const directory = join(qa, '2026-11-27-osc52-read');
-const manifestSha256 = '26e5fb89452980cc05ec4d3536649e3088d3f056751a74403ed5ac6fc881d8b8';
+const manifestSha256 = 'd90991aca3078e689a252a4218b8749b3a800daeb27e4f85e74f182285aaecc9';
 const stockSha256 = 'd4418484f935ac1a534eaf0b0368d2e5bb174974ae92f2c9c9a4ff2f8905a82b';
 
 export function verifyRun(scratch) {
@@ -95,13 +94,13 @@ function render({ summary, report }) {
         'Rederive offline with Node 24 and Python 3.', '',
         '~~~sh', 'node scripts/terminfo/osc52-read-results.mjs --check', '~~~', '',
         'For a fresh Linux run, install Node 24, Python 3 with PyGObject and GTK4, Xvfb, libX11, libXtst and libXRes. Use the shared desktop lock across any container boundary.', '',
-        '~~~sh',
-        '# Build from App revision ' + summary.appRevision + '.',
-        'scripts/build.sh publish src/Ntilde.App -c Release -r ' + summary.runtime + ' --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
-        'chmod -R go-w /absolute/private/sidecar',
-        '# Launch from collector revision ' + summary.scriptsRevision + '.',
-        'node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde ' + summary.context.appVersion + ' --osc52-read',
-        '~~~', '',
+        `~~~sh
+# Build from App revision ${summary.appRevision}.
+scripts/build.sh publish src/Ntilde.App -c Release -r ${summary.runtime} --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar
+chmod -R go-w /absolute/private/sidecar
+# Launch from collector revision ${summary.scriptsRevision}.
+node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde ${summary.context.appVersion} --osc52-read
+~~~`, '',
     ].join('\n');
 }
 
@@ -109,11 +108,7 @@ export async function publish(check) {
     const derived = await buildPublication();
     const outputs = { 'summary.json': JSON.stringify(derived.summary, null, 2) + '\n',
         'report.json': JSON.stringify(derived.report, null, 2) + '\n', 'report.md': render(derived) };
-    for (const [name, content] of Object.entries(outputs)) {
-        const path = join(directory, name);
-        if (check) requireModern(readFileSync(path, 'utf8').replaceAll('\r\n', '\n') === content, 'published ' + name + ' differs');
-        else writeFileSync(path, content);
-    }
+    writePublicationFiles(directory, outputs, check, requireModern);
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {

@@ -4,23 +4,23 @@
   "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "scope": "One disposable direct-local Linux X11 pane, default CLIPBOARD and one read-only OSC 52 c query.",
   "measurement": {
-    "startedAt": "2026-11-27T12:12:04.583Z",
-    "fixtureRemovedAt": "2026-11-27T12:12:09.761Z",
-    "leaseReleasedAt": "2026-11-27T12:12:09.765Z",
-    "sha256": "16b073eeb96c98fd466857e90ad9f1d29184cdd6488c084aba76d7df0f0d5058",
+    "startedAt": "2026-11-27T12:27:35.033Z",
+    "fixtureRemovedAt": "2026-11-27T12:27:40.855Z",
+    "leaseReleasedAt": "2026-11-27T12:27:40.859Z",
+    "sha256": "ae508d31fcce3dd6c1f1a115ba8cf1687f47ddbb01adf695980e721828999a13",
     "source": {
       "policy": "owned-modern-x11-osc52-read-v1",
-      "sha256": "350bbe516d3246947bac833daba121082182c8a8272a03edfbbe50ac44006cbb"
+      "sha256": "221d4ec016e735aee81f9854992b6f02af9d2e64779d3d0f8b33f28da59f9ca7"
     },
     "nodeVersion": "v24.22.2",
     "display": ":0",
     "window": 2097171,
-    "serverPid": 5996,
-    "appPid": 5999,
-    "workerPid": 6054,
+    "serverPid": 7488,
+    "appPid": 7491,
+    "workerPid": 7546,
     "pane": {
-      "paneId": "98930a73-37ad-430d-937f-8377defe6b35",
-      "profileName": "X11 OSC 52 Read d55d923e724cda2a115b71234060f533",
+      "paneId": "5ad2782f-79a8-472e-b1b4-f59e6d534606",
+      "profileName": "X11 OSC 52 Read 35af2056ab207bb9481cf9830b01748b",
       "rows": 40,
       "cols": 149,
       "kind": "local",
@@ -28,13 +28,13 @@
     },
     "tty": "/dev/pts/0",
     "peerPids": [
-      6066,
-      6151,
-      6235,
-      6318,
-      6409,
-      6492,
-      6575
+      7558,
+      7643,
+      7727,
+      7810,
+      7901,
+      7984,
+      8067
     ],
     "clipboardWriteEnabled": false
   },
@@ -89,10 +89,10 @@
         "rawHex": "1b5d35323b633b1b5c1b5b313b343852",
         "cprHex": "1b5b313b343852"
       },
-      "baseline": "ntilde-osc52-baseline-559a9b27c85d91c18f653a444252fac3",
-      "before": "terminfo-osc52-733a44ae-9ba5-4c17-b704-01b1f65153c6",
-      "after": "terminfo-osc52-733a44ae-9ba5-4c17-b704-01b1f65153c6",
-      "restored": "ntilde-osc52-baseline-559a9b27c85d91c18f653a444252fac3"
+      "baseline": "ntilde-osc52-baseline-461724c48e09575959090bb20dfeb5ba",
+      "before": "terminfo-osc52-13619d00-af2c-4ed7-b284-90294c84c41a",
+      "after": "terminfo-osc52-13619d00-af2c-4ed7-b284-90294c84c41a",
+      "restored": "ntilde-osc52-baseline-461724c48e09575959090bb20dfeb5ba"
     }
   ]
 }

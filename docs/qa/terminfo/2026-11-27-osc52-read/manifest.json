@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
   "archives": {
-    "owned-run.zip": "d2109fabe70d7a8b87c6e0eb564138f05eb89931d436e78f0c41b1fbfc197b17",
-    "attempt-1.zip": "1eb07657437438fa5c1bae7a5cc63f48c20f6e5582342dcdf9459d3a0b783d4b"
+    "owned-run.zip": "b04b9201e4e5050f8baea5a36e1e38bf1b581bd8d9b130e6c2fe2d28f3f9f141",
+    "attempt-1.zip": "1eb07657437438fa5c1bae7a5cc63f48c20f6e5582342dcdf9459d3a0b783d4b",
+    "attempt-2.zip": "d2109fabe70d7a8b87c6e0eb564138f05eb89931d436e78f0c41b1fbfc197b17"
   },
   "attempts": [
     {
@@ -11,11 +12,18 @@
       "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
       "scriptsRevision": "7cbdbe73405091af0e624527f176565cd987fb17",
       "reason": "This run also verified empty denial and both clipboard readbacks. The collector was rerun after changing how it selects the observer, so the published measurement matches the final collector source."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "d55d923e724cda2a115b71234060f533",
+      "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
+      "scriptsRevision": "a8e95282ca51f4c57e72944a69c5915b371e2a17",
+      "reason": "This run verified the same empty denial, surviving nonce and restored baseline before the SonarCloud fix changed the measured reply parser."
     }
   ],
-  "runId": "d55d923e724cda2a115b71234060f533",
+  "runId": "35af2056ab207bb9481cf9830b01748b",
   "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
-  "scriptsRevision": "a8e95282ca51f4c57e72944a69c5915b371e2a17",
+  "scriptsRevision": "36b9cc07dfde9fbfc7f89e393a5a7673f3fc6940",
   "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
   "runtime": "linux-arm64",
   "dotnetSdk": "10.0.403",

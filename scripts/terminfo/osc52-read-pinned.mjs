@@ -24,8 +24,9 @@ export async function replayPinned(uuid, { queryHex, replyHex }, bundle = readFi
     const helpers = span(source, 'function headlessClipboardRoundtrip(', '\nvar sixelDa1Reply,');
     const replyPattern = span(source, '  osc52Reply = ', '\n  extensionsProbes =');
     const registration = span(source, '    {\n      ...probe("' + id + '",', '\n    oscColorQueryProbe(').trim().slice(0, -1);
-    const definition = runInNewContext(probe + helpers + '\nlet osc52Reply;\n' + replyPattern + '\n(' + registration + ')',
-        { randomUUID: () => uuid, btoa, atob }, { timeout: 1000 }); // NOSONAR: the source and all helper spans come from the digest-verified bundle.
+    const program = probe + helpers + '\nlet osc52Reply;\n' + replyPattern + '\n(' + registration + ')';
+    const sandbox = { randomUUID: () => uuid, btoa, atob };
+    const definition = runInNewContext(program, sandbox, { timeout: 1000 }); // NOSONAR: executes only source spans from the digest-verified upstream bundle.
     assert.equal(definition.id, id);
 
     const steps = [];

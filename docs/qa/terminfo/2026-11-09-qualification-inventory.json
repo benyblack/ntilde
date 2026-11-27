@@ -4832,25 +4832,25 @@
         "extensions.osc52-read"
       ],
       "evidence": {
-        "files": 6,
-        "bytes": 151958,
-        "sha256": "209965159000b159c6b0f2079b69148842fdbb62beb40d370e3af2582f9915a1"
+        "files": 7,
+        "bytes": 223773,
+        "sha256": "23e435f5f37d1fb93f4d6bc9c69129fea30193ce070308a236196aada4a91426"
       },
       "receipt": null,
       "run": {
-        "ownedRunId": "d55d923e724cda2a115b71234060f533",
-        "measuredAt": "2026-11-27T12:12:04.583Z",
+        "ownedRunId": "35af2056ab207bb9481cf9830b01748b",
+        "measuredAt": "2026-11-27T12:27:35.033Z",
         "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
         "appVersion": "0.14.0",
         "appVersionSource": "operator-recorded source archive and publish command",
         "executableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
-        "scriptsRevision": "a8e95282ca51f4c57e72944a69c5915b371e2a17",
+        "scriptsRevision": "36b9cc07dfde9fbfc7f89e393a5a7673f3fc6940",
         "collectorAdapterId": "ntilde-owned-x11-osc52-read-v1",
         "collectorAdapterBundleSha256": null,
         "gradingAdapterId": null,
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "owned-modern-x11-osc52-read-v1",
-        "sourceSnapshotManifestSha256": "350bbe516d3246947bac833daba121082182c8a8272a03edfbbe50ac44006cbb"
+        "sourceSnapshotManifestSha256": "221d4ec016e735aee81f9854992b6f02af9d2e64779d3d0f8b33f28da59f9ca7"
       },
       "stock": {
         "basis": "carried-forward",
