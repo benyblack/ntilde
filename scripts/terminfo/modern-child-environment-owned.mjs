@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
@@ -22,13 +23,19 @@ const read = (directory, file) => readFileSync(join(directory, file));
 const json = (directory, file) => JSON.parse(read(directory, file));
 const write = (directory, file, bytes) => writeFileSync(join(directory, file), bytes, { flag: 'wx', mode: 0o600 });
 const writeJson = (directory, file, value) => write(directory, file, JSON.stringify(value, null, 2) + '\n');
-const appBinaries = executable => Object.fromEntries(files.map(file => [file, hash(read(dirname(executable), file))]));
+export function macHostMetadata() {
+    const [product, version, build] = ['--productName', '--productVersion', '--buildVersion']
+        .map(flag => execFileSync('/usr/bin/sw_vers', [flag], { encoding: 'utf8' }).trim());
+    return { product, version, build, arch: process.arch };
+}
+
+const appBinaries = (executable, extraBinaries = []) => Object.fromEntries([...files, ...extraBinaries].map(file => [file, hash(read(dirname(executable), file))]));
 
 export function workerProfile({ node, workerScript, configPath, runId }) {
     return { Command: node, Arguments: `"${workerScript}" "${configPath}" --ntilde-terminfo-worker=${runId}` };
 }
 
-function prepareLaunch(run, env, { names, parentValues, snapshotEnvironment, controlVariable, hostMetadata }) {
+function prepareLaunch(run, env, { names, parentValues, snapshotEnvironment, controlVariable, hostMetadata, extraBinaries }) {
     const control = process.env[controlVariable];
     const values = parentValues(control);
     const launchEnv = { ...env };
@@ -41,7 +48,7 @@ function prepareLaunch(run, env, { names, parentValues, snapshotEnvironment, con
     const host = hostMetadata?.();
     writeJson(output, launchFile, { runId, control, appData, executable, inputs: snapshotEnvironment(launchEnv), ...(host && { host }),
         nodePreloads: { optionsAbsent: !Object.hasOwn(launchEnv, 'NODE_OPTIONS'), pathAbsent: !Object.hasOwn(launchEnv, 'NODE_PATH') },
-        appBinaries: appBinaries(executable), executableSha256: hash(readFileSync(executable)), nodeSha256: hash(readFileSync(profile.Command)) });
+        appBinaries: appBinaries(executable, extraBinaries), executableSha256: hash(readFileSync(executable)), nodeSha256: hash(readFileSync(profile.Command)) });
     return launchEnv;
 }
 
@@ -61,7 +68,7 @@ class ChildEnvironmentCollection {
         const observer = new OwnedCellObserver({ appData, ownerPid: app.pid, profileName });
         const session = await observer.session(budget);
         const { paneId, kind, rows, cols, isActive } = session;
-        requireEnvironment(isActive && same(appBinaries(executable), json(output, launchFile).appBinaries), 'inactive pane or changed App binaries');
+        requireEnvironment(isActive && same(appBinaries(executable, this.contract.extraBinaries), json(output, launchFile).appBinaries), 'inactive pane or changed App binaries');
         writeJson(output, paneFile, { runId, appPid: app.pid, workerPid: request.workerPid, tty: request.tty,
             paneId, kind, rows, cols, isActive, profileName: session.profileName, at: new Date().toISOString() });
         requireEnvironment(proofs[0]?.worker.pid === request.workerPid, 'child output came from another worker');
@@ -119,7 +126,8 @@ function verifyOwnership(context, ownership, pane, scope) {
 }
 
 function derive(output, contract) {
-    const { parseChildOutput, parentValues, scope, workerFile } = contract;
+    const { parseChildOutput, parentValues, scope, workerFile, extraBinaries = [] } = contract;
+    const binaries = [...files, ...extraBinaries];
     requireEnvironment(!['failure.json', 'cleanup-failure.json'].some(file => existsSync(join(output, file))), 'capture or cleanup failed');
     const inputs = ['context.json', 'ownership-proof.json', 'initial-settings.json', launchFile, outputFile, paneFile]
         .map(file => [file, read(output, file)]);
@@ -130,7 +138,7 @@ function derive(output, contract) {
         && same(launch.nodePreloads, { optionsAbsent: true, pathAbsent: true }), 'invalid controlled launch');
     requireEnvironment(context.executable === launch.executable && isDigest(context.executableSha256)
         && context.executableSha256 === launch.executableSha256 && isDigest(launch.nodeSha256)
-        && same(Object.keys(launch.appBinaries), files) && files.every(file => isDigest(launch.appBinaries[file]))
+        && same(Object.keys(launch.appBinaries), binaries) && binaries.every(file => isDigest(launch.appBinaries[file]))
         && context.assemblySha256 === launch.appBinaries['Ntilde.dll'], 'invalid App or Node identity');
     requireEnvironment(hash(inputs[2][1]) === context.initialSettingsSha256, 'changed settings bytes');
     const proof = verifyOwnership(context, ownership, pane, scope);

@@ -726,11 +726,32 @@ public class PaneParserWiringTests
         Assert.Equal(expected, new Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions { Host = "example.test", User = "qa" }.Term);
     }
 
+    [AvaloniaFact]
+    public void RequestCapabilities_tracks_clipboard_permission_on_the_same_direct_pane()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        var parser = pane.Parser!;
+        var replies = new System.Collections.Generic.List<string>();
+        parser.OnResponse += replies.Add;
+
+        foreach (bool enabled in new[] { true, false, true })
+        {
+            pane.ApplySettings(new TerminalSettings { AllowOsc52ClipboardWrite = enabled });
+            Assert.Same(parser, pane.Parser);
+            parser.Process("\x1b]1337;RequestCapabilities\a");
+        }
+
+        const string withWrite = "\x1b]1337;Capabilities=T3CwLrMSc7UTs3BFGsGoSyHNoP\x1b\\";
+        const string withoutWrite = "\x1b]1337;Capabilities=T3LrMSc7UTs3BFGsGoSyHNoP\x1b\\";
+        Assert.Equal(new[] { withWrite, withoutWrite, withWrite }, replies);
+    }
+
     /// <summary>
     /// The native PTY layer never writes <c>TERM_FEATURES</c> on either spawn path: a child inherits the user's
     /// environment plus only TERM, COLORTERM and TERM_PROGRAM. The iTerm2 feature-reporting declaration is made
     /// through the OSC 1337 reply only (see <c>docs/qa/terminfo/iterm-feature-reporting.md</c>); the environment
-    /// variable stays unset, so the <c>device.term-features</c> probe has nothing Ntilde-made to observe. A
+    /// variable preserves presence or absence from the parent, so the <c>device.term-features</c> probe has nothing Ntilde-made to observe. A
     /// declaration would need owning evidence for every advertised feature. Policy audit:
     /// docs/qa/terminfo/2026-11-17-term-features-policy.md.
     /// </summary>

@@ -56,6 +56,10 @@ The [Kitty prompt click assessment](../2026-11-27-rich-kitty-clicks/report.md) r
 
 The [vendor environment assessment](../2026-11-27-rich-vendor-environment/report.md) covers iTerm2, Kitty, WezTerm and Windows Terminal identifiers. The measured macOS direct-local App path injected none of the 12 vendor names and preserved each synthetic parent value. All four cases are vendor-specific and inapplicable to Ntilde as producer. The pinned bundle leaves all four unprobed, and the stock baseline leaves them ungraded.
 
+## TERM_FEATURES
+
+The [direct-local assessment](../2026-11-27-rich-term-features/report.md) pairs each child's actual environment with its own capability reply. A clean launch left the variable absent and a seeded launch preserved the outer value. The App's live clipboard permission can change the reply after launch. The pinned callback grades both declaration states inconclusive.
+
 ## OSC 176 app ID and OSC 666 terminal properties
 
 The [two-case identity and property assessment](../2026-11-27-rich-identity/report.md) replays both inconclusive cursor probes and records the native foot app-ID and registered VTE property controls. The native app-ID effect is inapplicable to the measured Ntilde XWayland window. The registered property effect remains inconclusive on Ntilde.
