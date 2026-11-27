@@ -6,24 +6,24 @@
   "probeHash": "16a690f34c0e",
   "upstreamCollectorRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
   "measurement": {
-    "runId": "4533aab52a5c45bc8e1545623e81b09e",
-    "appRevision": "f2756e52dac1fb92d97d2c99a7cfda6783e225da",
-    "scriptsRevision": "80c69b8856b5196772ccd6c3709a24bf46bcba6a",
+    "runId": "68c6e323b602b830e5a7461dd7f3146b",
+    "appRevision": "c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
+    "scriptsRevision": "c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-prompt-parts-v1",
     "receiptSchema": 1,
-    "version": "0.14.0+f2756e52dac1fb92d97d2c99a7cfda6783e225da",
+    "version": "0.14.0+c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
     "nodeVersion": "v24.22.3",
-    "startedAt": "2026-11-27T14:14:31.174Z",
-    "releasedAt": "2026-11-27T14:14:33.707Z",
+    "startedAt": "2026-11-27T14:26:32.053Z",
+    "releasedAt": "2026-11-27T14:26:35.351Z",
     "geometry": {
       "rows": 41,
       "cols": 140
     },
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "623c7494884e66ed5d6bba2a3e4ace78db7f2a848981bec13b36e6c78f8ddd21",
-    "sourceSnapshotManifestSha256": "0adae6e9789f5dde8a003922016573f9e2581bbb73fb56d01a59892bf6788256",
-    "archiveSha256": "d90202ad48f52c8e275768c839c01b29234da446eaf27df48ae20fff719fc18a"
+    "assemblySha256": "81900cf34a835bc11faae562d7bac30df5fa0ffcfa7a2ed8e3e99d4f8e32a23f",
+    "sourceSnapshotManifestSha256": "9b263f5cbec4502760725fafbe4fac917a2f93de562b7ef7ccaf1292194c0b41",
+    "archiveSha256": "73b023b911de9e0005644835e8053a31a5f82ed02854cdff65e09a13bece45e2"
   },
   "cases": [
     {
@@ -85,7 +85,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b",
             "cursor": [
               0,
               0
@@ -98,7 +98,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b",
             "cursor": [
               0,
               0
@@ -111,7 +111,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b",
             "cursor": [
               0,
               1
@@ -124,7 +124,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b",
             "cursor": [
               0,
               1
@@ -137,7 +137,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               1
@@ -162,7 +162,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               21
@@ -192,7 +192,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               21
@@ -222,7 +222,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               24
@@ -252,7 +252,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               19
@@ -287,7 +287,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               1,
               6
@@ -322,7 +322,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               2,
               4
@@ -352,7 +352,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               16
@@ -387,7 +387,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               19
@@ -417,7 +417,7 @@
             "accepting": true,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               17
@@ -442,7 +442,7 @@
             "accepting": false,
             "status": "running",
             "command": "cmd",
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               5
@@ -467,7 +467,7 @@
             "accepting": false,
             "status": "running",
             "command": "cmd",
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               5
@@ -486,7 +486,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               11
@@ -499,7 +499,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               1,
               0
@@ -518,7 +518,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               2,
               11
@@ -531,7 +531,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b/control",
             "cursor": [
               0,
               0
@@ -544,7 +544,7 @@
             "accepting": false,
             "status": "awaitingInput",
             "command": null,
-            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cwd": "/qa-prompt-parts-68c6e323b602b830e5a7461dd7f3146b",
             "cursor": [
               0,
               0

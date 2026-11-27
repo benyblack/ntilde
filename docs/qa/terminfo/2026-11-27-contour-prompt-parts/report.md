@@ -22,7 +22,9 @@ The part belongs to the live main viewport. A primary A, C or D, main-screen cle
 
 ## Reproduction
 
-Run `4533aab52a5c45bc8e1545623e81b09e` used App `f2756e52dac1fb92d97d2c99a7cfda6783e225da`, collector `80c69b8856b5196772ccd6c3709a24bf46bcba6a`, and Node 24.22.3. The archive retains the fixture writes, replies, paired reads, captured source graph, initial settings, process and TTY ownership, cleanup proof and four desktop-lease events. The child restored its kernel TTY mode. Final reads verified the initial blank grid, empty parts and anchors, and prepared cwd. The App build label was operator-supplied. Binary digests are recorded in the report. A source-graph selection error on the initial launch command was fixed before the first desktop lease or pane. [Manifest](manifest.json) · [Measurement and binary digests](report.json)
+Run `68c6e323b602b830e5a7461dd7f3146b` used App `c0c1f2ad118ea9b0d3a495760e27c04ff866744d`, collector `c0c1f2ad118ea9b0d3a495760e27c04ff866744d`, and Node 24.22.3. The archive retains the fixture writes, replies, paired reads, captured source graph, initial settings, process and TTY ownership, cleanup proof and four desktop-lease events. The child restored its kernel TTY mode. Final reads verified the initial blank grid, empty parts and anchors, and prepared cwd. The App build label was operator-supplied. Binary digests are recorded in the report. A source-graph selection error on the initial launch command was fixed before the first desktop lease or pane. [Manifest](manifest.json) · [Measurement and binary digests](report.json)
+
+The first measured build also passed. After review of the grid reader and effect grader, the rebuilt App and updated collector repeated the full fixture under a new lease. [First run and receipt](https://github.com/benyblack/ntilde/tree/c749c6c6617d0057d4d1ab6f16a6f3028300baf7/docs/qa/terminfo/2026-11-27-contour-prompt-parts)
 
 Reissue the receipt, execute both pinned callbacks offline and check the inventory with Node 24 or later.
 
@@ -36,7 +38,7 @@ For a fresh measurement, publish the recorded App revision to a private sidecar 
 ~~~sh
 scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false \
   -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true \
-  -p:SourceRevisionId=f2756e52dac1fb92d97d2c99a7cfda6783e225da -o /absolute/private/sidecar
+  -p:SourceRevisionId=c0c1f2ad118ea9b0d3a495760e27c04ff866744d -o /absolute/private/sidecar
 node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde \
-  --app-version 0.14.0+f2756e52dac1fb92d97d2c99a7cfda6783e225da --scope prompt-parts
+  --app-version 0.14.0+c0c1f2ad118ea9b0d3a495760e27c04ff866744d --scope prompt-parts
 ~~~

@@ -1,8 +1,8 @@
 {
-  "ownedRunId": "4533aab52a5c45bc8e1545623e81b09e",
-  "measuredAt": "2026-11-27T14:14:31.174Z",
-  "appRevision": "f2756e52dac1fb92d97d2c99a7cfda6783e225da",
-  "scriptsRevision": "80c69b8856b5196772ccd6c3709a24bf46bcba6a",
+  "ownedRunId": "68c6e323b602b830e5a7461dd7f3146b",
+  "measuredAt": "2026-11-27T14:26:32.053Z",
+  "appRevision": "c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
+  "scriptsRevision": "c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
   "context": {
     "adapter": "ntilde-owned-contour-prompt-parts-v1",
     "collectionScope": {
@@ -10,11 +10,11 @@
       "persistence": "Off",
       "deadlineMs": 90000
     },
-    "appVersion": "0.14.0+f2756e52dac1fb92d97d2c99a7cfda6783e225da",
+    "appVersion": "0.14.0+c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
     "appVersionSource": "operator supplied; not independently verified",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-prompt-parts-v1",
-    "sourceSnapshotManifestSha256": "0adae6e9789f5dde8a003922016573f9e2581bbb73fb56d01a59892bf6788256",
-    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-9wSuhn",
+    "sourceSnapshotManifestSha256": "9b263f5cbec4502760725fafbe4fac917a2f93de562b7ef7ccaf1292194c0b41",
+    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-d4lvVY",
     "runnerSourceSha256": "1c1f9314052439bd491aefd67480f8ce14fe1a682961ea29fdb6ca25021d56dd",
     "adapterSourceSha256": "d21ad64158e39ca20c093cb1cad82f772a42afc0a460b5117ed6f3ff3f4d50e3",
     "ownershipSourceSha256": "65f599b31de43913682a7baf1182a1a8b70da216ae8c38a0acdbe37d68783f8c",
@@ -272,7 +272,7 @@
     "coreGapsReceiptSourceSha256": "57dcd0b128f69b341e8697b8376002e7510d8d5d70e8a1dd45cc37a48eb3b025",
     "coreGapsPinnedSha256": "917d1920da1d08eba5c81b88eb093105161f249a1ce55d544383e6f98b62f30c",
     "coreIconVtSourceSha256": "1e1106c8f50f4e5b31e2b8adbf5454aff65def4dd915458d5fcaf82f0334aee5",
-    "coreIconCaptureSourceSha256": "11c0edd7d76ddabf34793bc49049df7e9feca9ea485efe013a36457011de72a2",
+    "coreIconCaptureSourceSha256": "a398f91f7874ef0f2093399d7b96d43d207c3913df1c88637b99c3b77f0a9211",
     "coreIconContractSourceSha256": "5c1c9ff20a061d68470e234d23d422989bccb47132dc61aea8898f5cdb192662",
     "coreIconWindowSourceSha256": "8f709e434ab16f58e6e4b3dbf8690c5682382a5ce26d5981d4e6c079b962c9f4",
     "inputPlanSourceSha256": "412b4ab8ec572c54f06ce9eb615cf5c040f51b792640da70b6ac525edd27e1f6",
@@ -512,29 +512,29 @@
     "osc633MetadataContractsSourceSha256": "5824cc5b40bc18eb7ee7a0dee56da87149b157c4e683f52e1653460576c03a53",
     "osc633MetadataOwnedSourceSha256": "5ae1399a106800952a01c71f0c9919be819069a1050600edbf80d49b9ef88161",
     "osc633MetadataWorkerSourceSha256": "8813f030726bf68f6f2006746e908397c96ff330a730aefa93e419c6aee87d71",
-    "promptPartsContractsSourceSha256": "e50b3a9326d956a5614fe4e61bb6b5e0c3412be3729d438ac0fd0dc8b9faac2d",
+    "promptPartsContractsSourceSha256": "57e2d392b0abd335296854cbea2b9d87a2b0094bd27def4a9b6496b63ec1b96f",
     "promptPartsOwnedSourceSha256": "efb8b0b00bc7a8f6395619185b59cbe96432f16583a75d1b7580381ff985cd77",
     "promptPartsWorkerSourceSha256": "aa080f3263710d0fb602d04e56f1271d1a5cdf275a9782446394ea808975cbf5",
-    "initialSettingsSha256": "96f479cd4c36c76da2cf299e9c02768e16b75b4f5433481a1cff50849045ebb6",
-    "executable": "/Users/behnam/.ntilde-qa-sidecars/contour-prompt-parts-f2756e52/Ntilde",
+    "initialSettingsSha256": "0b24339f118c6f3d79a931dd26ba295ae8856212d334be41226ee6658540163d",
+    "executable": "/Users/behnam/.ntilde-qa-sidecars/contour-prompt-parts-c0c1f2ad/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "623c7494884e66ed5d6bba2a3e4ace78db7f2a848981bec13b36e6c78f8ddd21",
+    "assemblySha256": "81900cf34a835bc11faae562d7bac30df5fa0ffcfa7a2ed8e3e99d4f8e32a23f",
     "nodeVersion": "v24.22.3",
-    "startedAt": "2026-11-27T14:14:31.174Z",
-    "runId": "4533aab52a5c45bc8e1545623e81b09e",
-    "ownerPid": 50768
+    "startedAt": "2026-11-27T14:26:32.053Z",
+    "runId": "68c6e323b602b830e5a7461dd7f3146b",
+    "ownerPid": 79334
   },
   "receipt": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-contour-prompt-parts-v1",
-    "runId": "4533aab52a5c45bc8e1545623e81b09e",
+    "runId": "68c6e323b602b830e5a7461dd7f3146b",
     "fixtureRemoved": true,
     "files": {
-      "prompt-parts-frames.jsonl": "3bdd7c7aca0853e18ee43f5ec53e3149cecd6ee59a73b3b043384199aa409138",
-      "context.json": "76da4e88316e2466e41008668b995bbdb5e08de5e0d56a0bc29eeceffeeecce1",
-      "ownership-proof.json": "c5904207bbd38976e3fea5fe0e8f54c3aac87b2949894ebb8384623d461aae29",
-      "source-snapshot.json": "0adae6e9789f5dde8a003922016573f9e2581bbb73fb56d01a59892bf6788256",
-      "initial-settings.json": "96f479cd4c36c76da2cf299e9c02768e16b75b4f5433481a1cff50849045ebb6"
+      "prompt-parts-frames.jsonl": "d0b1e4bbb7e2342fe6ce14ed37159bc5296285e44c92ac02c49002b8c15932d4",
+      "context.json": "6e250f57a9bf27c1c4af342bccb9a6fa71ae8031faaa73906de9b8f895c7648c",
+      "ownership-proof.json": "f8874083b60ed19520b464f5ed29c202f0c1ec6b118ed1111fb47c5c217962f0",
+      "source-snapshot.json": "9b263f5cbec4502760725fafbe4fac917a2f93de562b7ef7ccaf1292194c0b41",
+      "initial-settings.json": "0b24339f118c6f3d79a931dd26ba295ae8856212d334be41226ee6658540163d"
     }
   },
   "stockCollector": {
