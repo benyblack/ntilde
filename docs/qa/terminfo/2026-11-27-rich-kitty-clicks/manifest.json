@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "runId": "2fb3d430b57206ea79fc10cafcc01217",
-  "appRevision": "918382f2682d15f9e326da68ff3ec8bcdd6390a1",
-  "scriptsRevision": "918382f2682d15f9e326da68ff3ec8bcdd6390a1",
-  "appSourceArchiveSha256": "982caf4027c3b432bc6d7832b742eea9e879319e470534941198f813a84e60e2",
-  "hostLease": "e36b4269f3b292490bb8bb14428c6ce3",
+  "runId": "7d7f4282cfd244d69996954ce2b7f76d",
+  "appRevision": "0c20c3ac707c5e3e6f9f806bac65761e619ee1ec",
+  "scriptsRevision": "0c20c3ac707c5e3e6f9f806bac65761e619ee1ec",
+  "appSourceArchiveSha256": "f49fcc85532cad19ae349f77889f465cca48e12015ac4b0f1c07885540ea06e4",
+  "hostLease": "f971cdcb714fb6c4605b21e56ee74672",
   "dotnetSdk": "10.0.403",
   "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
   "archives": {
-    "owned-run.zip": "2400b4bcb8fd45b8e3b68138bd9f6e81cd603cd74771d9fdc8fe122a2eece1fd"
+    "owned-run.zip": "d208d18683255d94b39e507848699ab5ec8306f2d90908fa59275a9935584dcf"
   }
 }

@@ -6,7 +6,7 @@ Kitty’s shell integration specification chooses the primary anchor before the 
 
 The linked Kitty dispatch finds an anchor by scanning back from the cursor and rejects clicks above that anchor. This fixture follows the specification’s documented primary-anchor fallback for clicks before the secondary marker. [Kitty anchor lookup](https://github.com/kovidgoyal/kitty/blob/a82dac6a03aae6c48fc84d7c759caf12c0c3dc25/kitty/screen.c#L5398-L5415)
 
-The fixture wrote OSC 133 A (primary), A;k=s (secondary), and C (submission) from a raw child connected to the App through a direct PTY. It verified marker text and cursor coordinates with the private read-only pane connection and cursor-position replies. XTEST delivered real X11 pointer moves, button presses, and button releases on the isolated display. Each target pixel was first calibrated with paired ordinary mode 1000/1006 press and release reports. After disabling application mouse tracking and verifying mode readback, a correlated keyboard delimiter followed every pointer action and closed its child input capture.
+The fixture wrote OSC 133 A (primary), A;k=s (secondary), and C (submission) from a raw child connected to the App through a direct PTY. It cleared the secondary row after its marker and before drawing the prompt text. The private read-only pane connection and cursor-position replies verified marker text and cursor coordinates. XTEST delivered real X11 pointer moves, button presses, and button releases on the isolated display. Each target pixel was first calibrated with paired ordinary mode 1000/1006 press and release reports. After disabling application mouse tracking and verifying mode readback, a correlated keyboard delimiter followed every pointer action and closed its child input capture.
 
 The one-based viewport anchors were primary row 13 and secondary row 20. The live editor cursor was on row 26. The click coordinates below use one-based viewport cells and X11 screen pixels.
 
@@ -31,15 +31,15 @@ The one-based viewport anchors were primary row 13 and secondary row 20. The liv
 
 After moving the editor cursor up to the primary input row, the secondary and continuation clicks repeated the same relative frames. After erasing those lines, the same clicks were silent. The target click frames arrived only after pointer release. The capture retains the three action windows, exact child chunks and delimiters, test marker output bytes, CPR replies, pane snapshots, click coordinates, and process identities. A plain primary A marker cleared the old opt-in. RIS repainted the same fixture text and cursor without prompt markers. The child restored and read back its termios attributes, exited, and the collector reaped the App and Xvfb and verified the socket and fixture were gone. Both the Linux collection lease and its enclosing host desktop lease were released.
 
-Run `2fb3d430b57206ea79fc10cafcc01217` used Ntilde `0.14.0+918382f2682d15f9e326da68ff3ec8bcdd6390a1` in Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop) with XTEST 2.2. The App was published from the source archive of `918382f2682d15f9e326da68ff3ec8bcdd6390a1`. The measured collector revision was `918382f2682d15f9e326da68ff3ec8bcdd6390a1`. The fixture exercised one direct-local App pane with a fake shell prompt. The live geometry stayed fixed. VT tests cover older prompt anchors in scrollback and width reflow.
+Run `7d7f4282cfd244d69996954ce2b7f76d` used Ntilde `0.14.0+0c20c3ac707c5e3e6f9f806bac65761e619ee1ec` in Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop) with XTEST 2.2. The App was published from the source archive of `0c20c3ac707c5e3e6f9f806bac65761e619ee1ec`. The measured collector revision was `0c20c3ac707c5e3e6f9f806bac65761e619ee1ec`. The fixture exercised one direct-local App pane with a fake shell prompt. The live geometry stayed fixed. VT tests cover older prompt anchors in scrollback and width reflow.
 
 Re-derive with `node scripts/terminfo/rich-x11-kitty-clicks-results.mjs --check`. [Raw owned run](owned-run.zip) · [Measurement manifest](manifest.json) · [Exact child bytes and controls](report.json)
 
 To collect on Linux arm64, use Node 24, Python 3, Xvfb, libX11, libXtst, and libXRes. Build the App at the recorded App revision and collect at the recorded collector revision.
 
 ~~~sh
-scripts/build.sh publish src/Ntilde.App -c Release -r linux-arm64 --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -p:SourceRevisionId=918382f2682d15f9e326da68ff3ec8bcdd6390a1 -o /absolute/private/sidecar
+scripts/build.sh publish src/Ntilde.App -c Release -r linux-arm64 --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -p:SourceRevisionId=0c20c3ac707c5e3e6f9f806bac65761e619ee1ec -o /absolute/private/sidecar
 chmod -R go-w /absolute/private/sidecar
-node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde 0.14.0+918382f2682d15f9e326da68ff3ec8bcdd6390a1 --rich-kitty-clicks
+node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde 0.14.0+0c20c3ac707c5e3e6f9f806bac65761e619ee1ec --rich-kitty-clicks
 node scripts/terminfo/rich-x11-kitty-clicks-results.mjs --verify-run /absolute/path/to/modern-x11-run
 ~~~
