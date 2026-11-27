@@ -11,6 +11,7 @@ import { acquireDesktopLease, desktopLockAuditPath, desktopLockWaitMs } from './
 const exec = promisify(execFile);
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = dirname(here);
+const gitExecutable = '/usr/bin/git';
 const entrypoint = 'terminfo-rich-identity-owned.mjs';
 const containerOutput = '/home/node/identity-evidence';
 const sourceNames = ['collect.py', 'pty_child.py', 'vte_reference.py', 'plan.json', 'Dockerfile'];
@@ -28,7 +29,7 @@ async function hashStream(stream) {
 const hash = path => hashStream(createReadStream(path));
 
 async function appSourceHash(archive, revision) {
-    const git = spawn('git', ['archive', '--format=tar', revision], { cwd: repo, stdio: ['ignore', 'pipe', 'inherit'] });
+    const git = spawn(gitExecutable, ['archive', '--format=tar', revision], { cwd: repo, stdio: ['ignore', 'pipe', 'inherit'] });
     const [actual, expected, [exit]] = await Promise.all([hash(archive), hashStream(git.stdout), once(git, 'close')]);
     need(exit === 0 && actual === expected, 'App source archive differs from the exact Git archive of ' + revision);
     return actual;
@@ -106,7 +107,7 @@ async function snapshotSources(sources, revision) {
     const specific = sourceNames.map(name => join(here, 'terminfo', 'rich-identity', name));
     return Object.fromEntries(await Promise.all([...shared, ...specific].map(async path => {
         const gitPath = relative(repo, path).split(sep).join('/');
-        const { stdout: blob } = await exec('git', ['show', revision + ':' + gitPath], { cwd: repo, encoding: 'buffer' });
+        const { stdout: blob } = await exec(gitExecutable, ['show', revision + ':' + gitPath], { cwd: repo, encoding: 'buffer' });
         const name = basename(path);
         need(readFileSync(path).equals(blob), 'collector source differs from ' + revision + ': ' + gitPath);
         writeFileSync(join(sources, name), blob, { mode: 0o444, flag: 'wx' });
@@ -122,7 +123,7 @@ async function main() {
     const sidecar = join(stage, 'sidecar.tar');
     const image = await docker(['image', 'inspect', '--format', '{{.Id}}', imageName]);
     need(/^sha256:[a-f0-9]{64}$/.test(image), 'invalid Docker image ID');
-    const { stdout } = await exec('git', ['rev-parse', 'HEAD'], { cwd: repo });
+    const { stdout } = await exec(gitExecutable, ['rev-parse', 'HEAD'], { cwd: repo });
     const appSourceArchiveSha256 = await appSourceHash(join(stage, 'app-source.tar'), appSourceRevision);
     const sidecarSha256 = await hash(sidecar);
     const lease = await acquireDesktopLease({ entrypoint, worktree: repo, waitMs: desktopLockWaitMs() });
