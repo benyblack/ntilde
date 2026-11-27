@@ -18,7 +18,7 @@ Contour specifies `P` for another part of the current prompt and `k=r` for the s
 | Submission | C closes input, sets the output anchor and reports the command `cmd`. Both remaining boundaries disappear. A subsequent orphan P produces none |
 | New prompt and reset | A new A discards the preceding right boundary. A fresh `P;k=s` reads back at (2,10). A partial-width scroll overwrites that cell and clears its boundary. Re-marking restores it, then RIS and an orphan right marker yield an empty part list |
 
-Selective display erase (`CSI ? 2 J`) spared the protected `R` and its right boundary at (0,13), while the unprotected primary part and neighboring `X` disappeared. The B anchor and input window survived. Ordinary screen clearing removed the remaining boundary during restoration.
+Selective display erase (`CSI ? 2 J`) spared the protected `R` and its right boundary at (0,13), while the unprotected primary part and neighboring `X` disappeared. The B anchor and input window survived. The VT regression sends ordinary ED 2 directly after selective ED and verifies that the remaining boundary disappears. The live finish stage verified an empty list after D, A and ordinary ED 2.
 
 Through the right, redraw and continuation stages, the pane stayed in its original input block with the same full B anchor, no output anchor, and no command in flight. Parser regressions count A/B/C/D callbacks independently. OSC 7 prepared a run-specific directory and the pinned fixture preserved it. A distinct OSC 633 P/Cwd write changed it through the existing directory path. [All paired observations, PTY fences and receipt](owned-run.zip)
 
