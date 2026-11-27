@@ -14,6 +14,21 @@ namespace Ntilde.Controls
     /// </summary>
     public partial class TerminalPane
     {
+        private void WireVisualFlash(AnsiParser parser)
+        {
+            // PTY output can outrun the dispatcher. Queue at most one request for this parser.
+            int pending = 0;
+            parser.OnVisualFlash = () =>
+            {
+                if (Interlocked.Exchange(ref pending, 1) != 0) return;
+                this.Dispatcher.Post(() =>
+                {
+                    Volatile.Write(ref pending, 0);
+                    if (!_disposed && Parser == parser) TermView.TriggerVisualFlash();
+                });
+            };
+        }
+
         internal static string DetermineShellKind(string? shellCommand)
         {
             if (string.IsNullOrWhiteSpace(shellCommand))
@@ -253,6 +268,7 @@ namespace Ntilde.Controls
             // A mux-backed pane never decodes images (above), so it has nothing to read either.
             Parser.ReadFileBytes = ResolveKittyFileReader(muxBacked, imagePolicy, muxFileReader);
 
+            WireVisualFlash(Parser);
             Parser.OnBell += () =>
             {
                 this.Dispatcher.Post(() =>
