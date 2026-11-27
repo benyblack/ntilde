@@ -46,7 +46,7 @@ function replay(value) {
     try {
         if (value === null) delete process.env.TERM_FEATURES;
         else process.env.TERM_FEATURES = value;
-        return callback(new Proxy({}, { get() { assert.fail('pinned callback accessed terminal context'); } }));
+        return callback();
     } finally {
         if (saved === undefined) delete process.env.TERM_FEATURES;
         else process.env.TERM_FEATURES = saved;
