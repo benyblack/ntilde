@@ -15,6 +15,7 @@ export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
 export const capturedPromptPartsSourcePolicy = 'readonly-owned-source-graph-prompt-parts-v1';
 export const capturedOsc633MetadataSourcePolicy = 'readonly-owned-source-graph-v86';
+export const capturedDeviceIdentitySourcePolicy = 'readonly-owned-source-graph-device-identity-v1';
 export const capturedXtwinopsPixelsSourcePolicy = 'readonly-owned-source-graph-xtwinops-pixels-v1';
 export const capturedSixelReportsSourcePolicy = 'readonly-owned-source-graph-v85';
 export const capturedFontLigaturesSourcePolicy = 'readonly-owned-source-graph-font-ligatures-v1';
@@ -27,6 +28,7 @@ export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 export const capturedMok3SourcePolicy = 'readonly-owned-source-graph-modify-other-keys-3-v1';
 const focusedSourcePolicies = [
+    ['deviceIdentityOwnedSourceSha256', capturedDeviceIdentitySourcePolicy],
     ['xtwinopsPixelsOwnedSourceSha256', capturedXtwinopsPixelsSourcePolicy],
     ['mok3OwnedSourceSha256', capturedMok3SourcePolicy],
     ['oscFlashOwnedSourceSha256', capturedFlashSourcePolicy],
@@ -1059,6 +1061,15 @@ export const capturedSixelReportsSourceFiles = Object.freeze({
     sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
 });
 
+export const capturedDeviceIdentitySourceFiles = Object.freeze({
+    ...capturedSixelReportsSourceFiles,
+    deviceIdentityContractsSourceSha256: 'device-identity-contracts.mjs',
+    deviceIdentityMetadataSourceSha256: 'device-identity-metadata.mjs',
+    deviceIdentityVersionReaderSourceSha256: 'device-identity-version.cs',
+    deviceIdentityOwnedSourceSha256: 'device-identity-owned.mjs',
+    deviceIdentityWorkerSourceSha256: 'device-identity-worker.mjs',
+});
+
 export const capturedXtwinopsPixelsSourceFiles = Object.freeze({
     ...capturedSixelReportsSourceFiles,
     modernBlinkWindowSourceSha256: 'modern-blink-window.jxa',
@@ -1186,6 +1197,7 @@ export function readSourceSnapshot(root) {
         [capturedPromptPartsSourcePolicy]: capturedPromptPartsSourceFiles,
         [capturedFlashSourcePolicy]: capturedFlashSourceFiles,
         [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
+        [capturedDeviceIdentitySourcePolicy]: capturedDeviceIdentitySourceFiles,
         [capturedXtwinopsPixelsSourcePolicy]: capturedXtwinopsPixelsSourceFiles,
         [capturedSixelReportsSourcePolicy]: capturedSixelReportsSourceFiles,
         [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,
