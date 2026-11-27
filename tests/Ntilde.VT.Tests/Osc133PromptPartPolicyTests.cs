@@ -36,6 +36,46 @@ public class Osc133PromptPartPolicyTests
     }
 
     [Theory]
+    [InlineData("\x1b[2@", 10, "cmd")]
+    [InlineData("\x1b[2P", 6, "cmd")]
+    [InlineData("\x1b[4hXY\x1b[4l", 10, "cmdXY")]
+    [InlineData("\x1b[2'}", 10, "cmd")]
+    [InlineData("\x1b[2'~", 6, "cmd")]
+    public void ColumnEditsMoveTheRightBoundaryWithItsText(string edit, int column, string command)
+    {
+        var buffer = new TerminalBuffer(24, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A\a\x1b]133;P\a$ \x1b]133;B\acmd\x1b[9G\x1b]133;P;k=r\aRHS\x1b[6G");
+        var anchor = buffer.CommandStartMark!.Value;
+        parser.Process(edit);
+        Assert.Equal([new PromptPart("i", 0, 0), new PromptPart("r", 0, column)], buffer.ReadPromptParts());
+        buffer.Lock.EnterReadLock();
+        try { Assert.Equal('R', buffer.GetCell(column, 0).Character); }
+        finally { buffer.Lock.ExitReadLock(); }
+        Assert.Equal(anchor, buffer.CommandStartMark);
+        Assert.True(GridQueryReader.TryReadCommandLine(buffer, anchor, out var line));
+        Assert.True(line.RightPromptTrimmed);
+        Assert.Equal(command, line.Text);
+    }
+
+    [Theory]
+    [InlineData("\x1b[5G\x1b[3@", 7)]
+    [InlineData("\x1b[5G\x1b[2P", -1)]
+    [InlineData("\x1b[5G\x1b[4@", -1)]
+    public void ColumnEditsRespectMarginsAndRetireLostStarts(string edit, int survivingColumn)
+    {
+        var buffer = new TerminalBuffer(24, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A\a\x1b]133;P\a$\x1b[5G\x1b]133;P;k=r\aR\x1b[12G\x1b]133;P;k=c\aC");
+        parser.Process("\x1b[?69h\x1b[4;8s" + edit);
+        var parts = buffer.ReadPromptParts();
+        Assert.Contains(new PromptPart("i", 0, 0), parts);
+        Assert.Contains(new PromptPart("c", 0, 11), parts);
+        if (survivingColumn >= 0) Assert.Contains(new PromptPart("r", 0, survivingColumn), parts);
+        else Assert.DoesNotContain(parts, part => part.Kind == "r");
+    }
+
+    [Theory]
     [InlineData("\x1b]133;C\a")]
     [InlineData("\x1b]133;D;0\a")]
     [InlineData("\x1b]133;A\a")]

@@ -33,6 +33,8 @@ export function planFor(id) {
         write('input', top + mark('A;click_events=2') + mark('P') + '$ ' + mark('B') + 'cmd' + '\x1b[22G'),
         write('right', '\x1b]133;P;k=r\x1b\\'),
         write('paint', 'RHS'),
+        write('inserted', '\x1b[1;7H\x1b[2@'),
+        write('deleted', '\x1b[2P'),
         write('relocated', '\x1b[17G' + mark('P;k=r') + 'new'),
         write('continuation', '\x1b[2;4H' + mark('P;k=c') + 'PS2'),
         write('kitty', '\x1b[3;2H' + mark('A;k=s') + 'KIT'),
@@ -67,7 +69,7 @@ export function deriveEffects(id, frames) {
         cwd: metadata.workingDirectory, cursor: [screen.cursorRow, screen.cursorCol],
     }]));
     const o = observations, base = expectedCwd(id), a = o.input.commandStart;
-    const controlStages = ['input', 'right', 'paint', 'relocated', 'continuation', 'kitty', 'erased', 'repaint', 'overwrite'];
+    const controlStages = ['input', 'right', 'paint', 'inserted', 'deleted', 'relocated', 'continuation', 'kitty', 'erased', 'repaint', 'overwrite'];
     const controls = a?.row === 0 && a.col === 2 && a.absoluteRow === 0 && !a.alternateScreen
         && o.input.accepting && o.input.command === null && o.input.outputStart === null
         && o['p-setup'].cwd === base && o['directory-control'].cwd === base + '/control'
@@ -76,6 +78,8 @@ export function deriveEffects(id, frames) {
         && o['next-cycle'].commandStart === null && o['next-cycle'].outputStart === null
         && same(reads.get('input').screen, reads.get('right').screen)
         && reads.get('paint').screen.lines[0].slice(21, 24) === 'RHS'
+        && reads.get('inserted').screen.lines[0].slice(23, 26) === 'RHS'
+        && reads.get('deleted').screen.lines[0].slice(21, 24) === 'RHS'
         && reads.get('relocated').screen.lines[0].slice(16, 19) === 'new'
         && reads.get('continuation').screen.lines[1] === '   PS2'
         && reads.get('kitty').screen.lines[2] === ' KIT'
@@ -86,6 +90,7 @@ export function deriveEffects(id, frames) {
     const primary = part('i', 0, 0), right = part('r', 0, 21), moved = part('r', 0, 16), continuation = part('c', 1, 3);
     const expected = {
         'p-termless': [], 'p-terminal': [], input: [primary], right: [primary, right], paint: [primary, right],
+        inserted: [primary, part('r', 0, 23)], deleted: [primary, right],
         relocated: [primary, moved], continuation: [primary, moved, continuation], kitty: [primary, moved, continuation],
         erased: [primary, continuation], repaint: [primary, moved, continuation], overwrite: [primary, continuation],
         submitted: [], orphan: [], 'next-cycle': [part('r', 0, 10)], 'new-prompt': [], 'pre-reset': [part('s', 2, 10)], reset: [],

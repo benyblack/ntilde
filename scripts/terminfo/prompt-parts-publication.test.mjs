@@ -33,6 +33,7 @@ test('distinguish an incorrect kind, a stale boundary, a changed anchor and miss
     }
     for (const [stage, mutate] of [
         ['right', b => { b.promptParts[1].kind = 's'; }],
+        ['inserted', b => { b.promptParts[1].col = 21; }],
         ['relocated', b => { b.promptParts[1].col = 21; }],
         ['right', b => { b.commandStart.col = 21; }],
         ['reset', b => { b.promptParts = [{ kind: 'r', row: 0, col: 21 }]; }],

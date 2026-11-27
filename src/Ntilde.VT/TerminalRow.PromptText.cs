@@ -91,8 +91,9 @@ public partial class TerminalRow
             spans = text.ReadRow(0, Cells.Length);
         }
 
-        WrittenColumns = Cells.Length;
+        _writtenColumns = Cells.Length;
         PromptTextSpans = spans;
+        PromptParts?.Shift(start, edge, delta);
     }
 
     internal void NoteGlyphWritten(int start, int end, bool extendsGlyph = false)

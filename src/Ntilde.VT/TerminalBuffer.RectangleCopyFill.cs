@@ -29,6 +29,7 @@ public partial class TerminalBuffer
             {
                 var row = _viewport[rowIndex];
                 RetireSplitWideEdges(row, left, right, blank);
+                row.PromptParts?.Edit(left, right + 1, paint: false);
                 row.NoteColumnsWritten(right + 1);
                 for (int col = left; col <= right; col++)
                 {
@@ -104,6 +105,7 @@ public partial class TerminalBuffer
             {
                 var row = _viewport[destinationTop + y];
                 RetireSplitWideEdges(row, destinationLeft, destinationLeft + width - 1, blank);
+                row.PromptParts?.Edit(destinationLeft, destinationLeft + width, paint: false);
                 row.NoteColumnsWritten(destinationLeft + width);
                 for (int x = 0; x < width; x++)
                 {
@@ -132,6 +134,7 @@ public partial class TerminalBuffer
 
     private static void BlankCell(TerminalRow row, int col, TerminalCell blank)
     {
+        row.PromptParts?.Edit(col, col + 1, paint: false);
         row.Cells[col] = blank;
         row.SetExtendedText(col, null);
         row.SetHyperlink(col, null);

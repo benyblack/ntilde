@@ -18,6 +18,20 @@ internal sealed class RowPromptParts(object cycle)
         Boundaries.Add(new(kind, column));
     }
 
+    internal void Shift(int start, int edge, int delta)
+    {
+        for (int i = Boundaries.Count - 1; i >= 0; i--)
+        {
+            var boundary = Boundaries[i];
+            if (boundary.Column < start || boundary.Column >= edge) continue;
+            int column = boundary.Column + delta;
+            if (column < start || column >= edge)
+                Boundaries.RemoveAt(i);
+            else
+                Boundaries[i] = boundary with { Column = column };
+        }
+    }
+
     internal void Edit(int start, int end, bool paint)
     {
         for (int i = Boundaries.Count - 1; i >= 0; i--)
