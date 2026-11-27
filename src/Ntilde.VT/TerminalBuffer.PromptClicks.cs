@@ -98,8 +98,6 @@ public partial class TerminalBuffer
         if (_promptClickMode == PromptClickMode.Disabled) return;
         bool wholeLine = mode == 2 || (mode == 0 && _cursorCol == 0)
             || (mode == 1 && _cursorCol >= CursorRowLastColumnNoLock);
-        if (!wholeLine) return;
-
         lock (_trackedMarkGate)
         {
             if (_clickPrompt is not { } primary
@@ -109,6 +107,8 @@ public partial class TerminalBuffer
             {
                 return;
             }
+
+            if (!wholeLine && !ErasePartialClickPromptLine(mode, endRow)) return;
 
             long erased = CaptureClickPosition(_cursorRow, 0).AbsoluteRow;
             _secondaryClickPrompts.RemoveAll(anchor => anchor.AbsoluteRow == erased);
@@ -129,6 +129,17 @@ public partial class TerminalBuffer
             if (_secondaryClickPrompts.Count > 0)
                 ExtendClickPromptLocked(_secondaryClickPrompts[^1]);
         }
+    }
+
+    private bool ErasePartialClickPromptLine(int mode, int endRow)
+    {
+        if (_cursorRow != endRow) return false;
+        if (mode == 0)
+        {
+            LimitClickPromptEnd(CaptureClickPosition(_cursorRow, _cursorCol));
+            return false;
+        }
+        return mode == 1 && _cursorCol + 1 >= _clickPromptEnd.Column;
     }
 
     private static int LastPromptTextColumn(TerminalRow row)
@@ -155,11 +166,19 @@ public partial class TerminalBuffer
                 return;
             }
 
-            if (cursor.AbsoluteRow < _clickPromptEnd.AbsoluteRow)
-                _clickPromptEnd = cursor;
+            LimitClickPromptEnd(cursor);
 
             int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow <= cursor.AbsoluteRow) + 1;
             _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
+        }
+    }
+
+    private void LimitClickPromptEnd(ShellIntegrationMark end)
+    {
+        if (end.AbsoluteRow < _clickPromptEnd.AbsoluteRow
+            || (end.AbsoluteRow == _clickPromptEnd.AbsoluteRow && end.Column < _clickPromptEnd.Column))
+        {
+            _clickPromptEnd = end;
         }
     }
 

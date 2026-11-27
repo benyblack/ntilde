@@ -179,6 +179,26 @@ public class PromptClickTests
         Assert.False(buffer.TryGetPromptClickRow(3, out _, out _));
     }
 
+    [Theory]
+    [InlineData("K")]
+    [InlineData("J")]
+    public void PartialTailErasureDoesNotReflowOldPromptPadding(string erase)
+    {
+        var parser = new AnsiParser(_buffer);
+        parser.Process("\x1b[3;1HOUT\x1b[H\x1b]133;A;click_events=2\aPS1>\r\n" + new string('a', 70));
+        parser.Process("\x1b[2;6H\x1b[" + erase + "\x1b[H");
+
+        _buffer.Resize(10, 24);
+        Assert.Equal(2, WireRow(1));
+        Assert.False(_buffer.TryGetPromptClickRow(2, out _, out _));
+        if (erase == "K")
+        {
+            _buffer.Lock.EnterReadLock();
+            try { Assert.Equal('O', _buffer.GetCell(0, 2).Character); }
+            finally { _buffer.Lock.ExitReadLock(); }
+        }
+    }
+
     private int WireRow(int visualRow)
     {
         Assert.True(_buffer.TryGetPromptClickRow(visualRow, out int row, out _));
