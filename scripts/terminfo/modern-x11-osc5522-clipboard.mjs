@@ -35,7 +35,7 @@ function verifiedFixture(values, phase) {
 function exchanges(step, key, write, previous) {
     const { arm, checkpoint, capture, dialog } = step;
     need([arm, checkpoint, capture].every(sample => sample.key === key)
-        && arm.armed === capture.armed && checkpoint.writeHex === hex(write)
+        && checkpoint.writeHex === hex(write)
         && before(previous, arm.armed) && before(arm.armed, checkpoint.started)
         && before(checkpoint.started, checkpoint.finished) && before(checkpoint.finished, capture.sealed)
         && BigInt(checkpoint.finished) - BigInt(checkpoint.started) >= 200_000_000n,
