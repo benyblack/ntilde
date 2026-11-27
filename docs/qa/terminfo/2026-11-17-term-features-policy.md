@@ -5,6 +5,8 @@ inapplicable/deferred policy for `device.term-features`. This is a source and pr
 plus regression checks, not a new owned runtime measurement or graded effect contract.
 Audited base: `f50b259e361234c3a661d8c7b51be21d442671ad`.
 
+The [2026-11-27 follow-up](2026-11-27-rich-term-features/report.md) measures both direct-local inheritance states and the capability reply on the same pane for each state.
+
 ## Exact pinned question
 
 `terminfo.dev@4.0.0`, bundle SHA-256

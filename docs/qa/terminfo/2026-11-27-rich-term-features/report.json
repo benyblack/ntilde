@@ -1,0 +1,247 @@
+{
+  "schemaVersion": 1,
+  "appRevision": "6d16bd84bdac25cd8b51a0fa7a4554d74702401d",
+  "scriptsRevision": "d5ef2e6457a621364fbf5c28981a85dfbd7d12e8",
+  "manifestSha256": "0e5d7ae2f495b5da7c1ab5099cc847c05393d4dbe830faf8da7354b61a39a9b7",
+  "assessment": {
+    "id": "device.term-features",
+    "directLocal": "unprovided when absent; inherited verbatim when seeded",
+    "replyCodes": [
+      "T3",
+      "Lr",
+      "M",
+      "Sc7",
+      "U",
+      "Ts3",
+      "B",
+      "F",
+      "Gs",
+      "Go",
+      "Sy",
+      "H",
+      "No",
+      "P"
+    ]
+  },
+  "pinned": {
+    "package": "terminfo.dev@4.0.0",
+    "bundlePath": "2026-11-16-shell-integration-aggregates/terminfo-dev-4.0.0.bundle.mjs.gz",
+    "bundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "criterion": "Record whether TERM_FEATURES is advertised; without an authenticated terminal source, presence cannot be attributed to the terminal.",
+    "termless": null,
+    "termInput": "collector process.env.TERM_FEATURES",
+    "stock": "inconclusive"
+  },
+  "runs": [
+    {
+      "measurement": {
+        "runId": "606e3cd7be30ce29e4b28c59cd160d53",
+        "control": "clean",
+        "host": {
+          "product": "macOS",
+          "version": "27.0.1",
+          "build": "26A434",
+          "arch": "arm64"
+        },
+        "startedAt": "2026-11-27T14:09:34.677Z",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "appBinarySha256": {
+          "Ntilde.dll": "6dd550531d6fdfc01b47e435bde56f4f054f4f1c279f9121e21790645cc75859",
+          "Ntilde.Pty.dll": "ee7d7611b82b979971618b52b259166c4ede3808129e4c62fcc0a896b78ae496",
+          "librusty_pty.dylib": "8e49be704c02cebae3574440fae5fa98edd1eaca07d80b0a86acf74ca07f0a0e",
+          "Ntilde.VT.dll": "521b2c56496c6852c6eb948e2eafa0a73825660457efd6aa7917bd034d5a094c"
+        },
+        "nodeVersion": "v24.22.2",
+        "nodeSha256": "ab0fc8db86abad289091b6bad2d60b2d64f0e6900bfbbf9f7dc195d1ecbfb28e",
+        "sourcePolicy": "readonly-owned-source-graph-rich-term-features-v1",
+        "collectorSnapshotSha256": "ad0e9d9d17bf2b50374ebc316ac410822f5dff57801291e6cc44d85441707050",
+        "receiptSchema": 1,
+        "childOutputSha256": "77ad82511fa2f634021710926b740918faeb8a72ed117302cf0dcffbf011ab2d",
+        "appData": "/Users/behnam/.ntilde-qa/nt-YyBAkN/appdata",
+        "pane": {
+          "runId": "606e3cd7be30ce29e4b28c59cd160d53",
+          "appPid": 40681,
+          "workerPid": 40696,
+          "tty": "/dev/ttys000",
+          "paneId": "7dea9384-9be9-4c0f-8052-be93714395a6",
+          "kind": "local",
+          "rows": 41,
+          "cols": 140,
+          "isActive": true,
+          "profileName": "terminfo disposable worker 606e3cd7be30ce29e4b28c59cd160d53",
+          "at": "2026-11-27T14:09:36.606Z"
+        },
+        "app": {
+          "pid": 40681,
+          "ppid": 40672,
+          "uid": 501,
+          "tty": "??",
+          "executable": "/Users/behnam/.ntilde-qa-sidecars/term-features-6d16bd8/Ntilde"
+        },
+        "child": {
+          "pid": 40696,
+          "ppid": 40681,
+          "uid": 501,
+          "tty": "ttys000",
+          "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+        },
+        "terminalRestoredAt": "2026-11-27T14:09:36.640Z",
+        "cleanedUpAt": "2026-11-27T14:09:36.796Z",
+        "fixtureRemoved": true,
+        "sourceSnapshotRemovedAt": "2026-11-27T14:09:36.851Z",
+        "leaseReleasedAt": "2026-11-27T14:09:36.903Z",
+        "archive": "clean-run.zip",
+        "archiveSha256": "f041d3a322b530d82c64065d5d490adf86816deccb68bc1d0b693d0a5667600e"
+      },
+      "inputs": {
+        "TERM_FEATURES": {
+          "state": "absent",
+          "value": null
+        },
+        "TERM_PROGRAM": {
+          "state": "absent",
+          "value": null
+        },
+        "NTILDE_QA_ENVIRONMENT_CONTROL": {
+          "state": "present",
+          "value": "ntilde-qa-neutral-clean"
+        }
+      },
+      "observation": {
+        "environment": {
+          "TERM_FEATURES": {
+            "state": "absent",
+            "value": null
+          },
+          "TERM_PROGRAM": {
+            "state": "present",
+            "value": "Ntilde"
+          },
+          "NTILDE_QA_ENVIRONMENT_CONTROL": {
+            "state": "present",
+            "value": "ntilde-qa-neutral-clean"
+          }
+        },
+        "preflight": "\u001b[?62;4;22c",
+        "sent": "\u001b]1337;RequestCapabilities\u0007\u001b[c",
+        "received": "\u001b]1337;Capabilities=T3LrMSc7UTs3BFGsGoSyHNoP\u001b\\\u001b[?62;4;22c"
+      },
+      "replay": {
+        "pass": false,
+        "note": "TERM_FEATURES not advertised",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy"
+        }
+      }
+    },
+    {
+      "measurement": {
+        "runId": "b4a499063488f8ac050b59a1589d27c4",
+        "control": "inherited",
+        "host": {
+          "product": "macOS",
+          "version": "27.0.1",
+          "build": "26A434",
+          "arch": "arm64"
+        },
+        "startedAt": "2026-11-27T14:09:49.108Z",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "appBinarySha256": {
+          "Ntilde.dll": "6dd550531d6fdfc01b47e435bde56f4f054f4f1c279f9121e21790645cc75859",
+          "Ntilde.Pty.dll": "ee7d7611b82b979971618b52b259166c4ede3808129e4c62fcc0a896b78ae496",
+          "librusty_pty.dylib": "8e49be704c02cebae3574440fae5fa98edd1eaca07d80b0a86acf74ca07f0a0e",
+          "Ntilde.VT.dll": "521b2c56496c6852c6eb948e2eafa0a73825660457efd6aa7917bd034d5a094c"
+        },
+        "nodeVersion": "v24.22.2",
+        "nodeSha256": "ab0fc8db86abad289091b6bad2d60b2d64f0e6900bfbbf9f7dc195d1ecbfb28e",
+        "sourcePolicy": "readonly-owned-source-graph-rich-term-features-v1",
+        "collectorSnapshotSha256": "ad0e9d9d17bf2b50374ebc316ac410822f5dff57801291e6cc44d85441707050",
+        "receiptSchema": 1,
+        "childOutputSha256": "4cbbbede5cfe5bc6523c6c1a23899c19372d3f3295c26321949f72b72e9dca47",
+        "appData": "/Users/behnam/.ntilde-qa/nt-PTpV5S/appdata",
+        "pane": {
+          "runId": "b4a499063488f8ac050b59a1589d27c4",
+          "appPid": 40879,
+          "workerPid": 40883,
+          "tty": "/dev/ttys000",
+          "paneId": "a38e1103-b02f-45f5-a2c4-d56a096d69ee",
+          "kind": "local",
+          "rows": 41,
+          "cols": 140,
+          "isActive": true,
+          "profileName": "terminfo disposable worker b4a499063488f8ac050b59a1589d27c4",
+          "at": "2026-11-27T14:09:49.877Z"
+        },
+        "app": {
+          "pid": 40879,
+          "ppid": 40866,
+          "uid": 501,
+          "tty": "??",
+          "executable": "/Users/behnam/.ntilde-qa-sidecars/term-features-6d16bd8/Ntilde"
+        },
+        "child": {
+          "pid": 40883,
+          "ppid": 40879,
+          "uid": 501,
+          "tty": "ttys000",
+          "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+        },
+        "terminalRestoredAt": "2026-11-27T14:09:49.891Z",
+        "cleanedUpAt": "2026-11-27T14:09:50.005Z",
+        "fixtureRemoved": true,
+        "sourceSnapshotRemovedAt": "2026-11-27T14:09:50.053Z",
+        "leaseReleasedAt": "2026-11-27T14:09:50.080Z",
+        "archive": "inherited-run.zip",
+        "archiveSha256": "436f5a65b6e3d7cbfc83207275ed8bdffc90fb9dbfbab51d3f62f4428677930a"
+      },
+      "inputs": {
+        "TERM_FEATURES": {
+          "state": "present",
+          "value": "ntilde-qa-outer-features"
+        },
+        "TERM_PROGRAM": {
+          "state": "present",
+          "value": "ntilde-qa-outer-program"
+        },
+        "NTILDE_QA_ENVIRONMENT_CONTROL": {
+          "state": "present",
+          "value": "ntilde-qa-neutral-inherited"
+        }
+      },
+      "observation": {
+        "environment": {
+          "TERM_FEATURES": {
+            "state": "present",
+            "value": "ntilde-qa-outer-features"
+          },
+          "TERM_PROGRAM": {
+            "state": "present",
+            "value": "Ntilde"
+          },
+          "NTILDE_QA_ENVIRONMENT_CONTROL": {
+            "state": "present",
+            "value": "ntilde-qa-neutral-inherited"
+          }
+        },
+        "preflight": "\u001b[?62;4;22c",
+        "sent": "\u001b]1337;RequestCapabilities\u0007\u001b[c",
+        "received": "\u001b]1337;Capabilities=T3LrMSc7UTs3BFGsGoSyHNoP\u001b\\\u001b[?62;4;22c"
+      },
+      "replay": {
+        "pass": false,
+        "note": "TERM_FEATURES advertised; source unverified",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "legacy"
+        }
+      }
+    }
+  ]
+}
