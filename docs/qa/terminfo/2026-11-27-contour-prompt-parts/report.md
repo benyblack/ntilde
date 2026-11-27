@@ -14,8 +14,9 @@ Contour specifies `P` for another part of the current prompt and `k=r` for the s
 | Repaint | The right marker moves to (0,16). The old `RHS` cells are still visible at column 21 |
 | Continuation and Kitty control | `P;k=c` adds (1,3). Kitty’s `A;k=s` on the next row leaves the three P boundaries intact |
 | Erase, re-mark, overwrite | Erasing the marked cell drops `r`. A fresh `r` reappears at (0,16). Typing across that cell drops it again |
+| Empty right part | An unpainted `r` at (0,7) disappears when the cursor returns to input and types `abcd` across it. The primary and continuation remain, with the same B anchor |
 | Submission | C closes input, sets the output anchor and reports the command `cmd`. Both remaining boundaries disappear. A subsequent orphan P produces none |
-| New prompt and reset | A new A discards the preceding right boundary. A fresh `P;k=s` reads back at (2,10). RIS and an orphan right marker yield an empty part list |
+| New prompt and reset | A new A discards the preceding right boundary. A fresh `P;k=s` reads back at (2,10). A partial-width scroll overwrites that cell and clears its boundary. Re-marking restores it, then RIS and an orphan right marker yield an empty part list |
 
 Through the right, redraw and continuation stages, the pane stayed in its original input block with the same full B anchor, no output anchor, and no command in flight. Parser regressions count A/B/C/D callbacks independently. OSC 7 prepared a run-specific directory and the pinned fixture preserved it. A distinct OSC 633 P/Cwd write changed it through the existing directory path. [All paired observations, PTY fences and receipt](owned-run.zip)
 
@@ -23,9 +24,9 @@ The part belongs to the live main viewport. A primary A, C or D, main-screen cle
 
 ## Reproduction
 
-Run `1a8e4ae21112bdd81c84c717c28fe683` used App `c7f6918e8ae9402f160a4396319320d8e797d270`, collector `c7f6918e8ae9402f160a4396319320d8e797d270`, and Node 24.22.3. The archive retains the fixture writes, replies, paired reads, captured source graph, initial settings, process and TTY ownership, cleanup proof and four desktop-lease events. The child restored its kernel TTY mode. Final reads verified the initial blank grid, empty parts and anchors, and prepared cwd. The App build label was operator-supplied. Binary digests are recorded in the report. A source-graph selection error on the initial launch command was fixed before the first desktop lease or pane. [Manifest](manifest.json) · [Measurement and binary digests](report.json)
+Run `47a92da8f85fb432df81c5881176f60c` used App `3ddb0c3543b620589b925b96ae622f0a6ad44f63`, collector `3ddb0c3543b620589b925b96ae622f0a6ad44f63`, and Node 24.22.3. The archive retains the fixture writes, replies, paired reads, captured source graph, initial settings, process and TTY ownership, cleanup proof and four desktop-lease events. The child restored its kernel TTY mode. Final reads verified the initial blank grid, empty parts and anchors, and prepared cwd. The App build label was operator-supplied. Binary digests are recorded in the report. A source-graph selection error on the initial launch command was fixed before the first desktop lease or pane. [Manifest](manifest.json) · [Measurement and binary digests](report.json)
 
-The first measured build also passed. After review of the grid reader and effect grader, the rebuilt App and updated collector repeated the full fixture under a new lease. Codex subsequently identified a column-edit defect. The current measurement includes the ICH and DCH controls on the fixed build. [First run](https://github.com/benyblack/ntilde/tree/c749c6c6617d0057d4d1ab6f16a6f3028300baf7/docs/qa/terminfo/2026-11-27-contour-prompt-parts) · [Reader and grader remeasurement](https://github.com/benyblack/ntilde/tree/a6c4b11dfbb5e008f5a10b81a390afd225810197/docs/qa/terminfo/2026-11-27-contour-prompt-parts)
+The first measured build also passed. After review of the grid reader and effect grader, the rebuilt App and updated collector repeated the full fixture under a new lease. Codex subsequently identified a column-edit defect. The next run exercised the ICH and DCH fix. The current measurement also covers the unpainted right marker and the partial-width scroll found in the follow-up review. [Column-edit measurement](https://github.com/benyblack/ntilde/tree/40778d85f8fb43bbdcc33e59269aaa47146f9abc/docs/qa/terminfo/2026-11-27-contour-prompt-parts) · [First run](https://github.com/benyblack/ntilde/tree/c749c6c6617d0057d4d1ab6f16a6f3028300baf7/docs/qa/terminfo/2026-11-27-contour-prompt-parts) · [Reader and grader remeasurement](https://github.com/benyblack/ntilde/tree/a6c4b11dfbb5e008f5a10b81a390afd225810197/docs/qa/terminfo/2026-11-27-contour-prompt-parts)
 
 Reissue the receipt, execute both pinned callbacks offline and check the inventory with Node 24 or later.
 
@@ -39,7 +40,7 @@ For a fresh measurement, publish the recorded App revision to a private sidecar 
 ~~~sh
 scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false \
   -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true \
-  -p:SourceRevisionId=c7f6918e8ae9402f160a4396319320d8e797d270 -o /absolute/private/sidecar
+  -p:SourceRevisionId=3ddb0c3543b620589b925b96ae622f0a6ad44f63 -o /absolute/private/sidecar
 node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde \
-  --app-version 0.14.0+c7f6918e8ae9402f160a4396319320d8e797d270 --scope prompt-parts
+  --app-version 0.14.0+3ddb0c3543b620589b925b96ae622f0a6ad44f63 --scope prompt-parts
 ~~~
