@@ -100,7 +100,10 @@ test('benchmark ids, Ntilde findings, controls and diagnostics are separated', (
         if (item.stockStatus) {
             assert.equal(item.stockStatus, 'ungraded-collector-error'); assert.equal(item.stockOutcome, null);
             assert.ok(stored.ungradedDiagnostics.some(diagnostic => diagnostic.id === item.id), item.id);
-        } else assert.equal(base.outcomes[item.id], 'inconclusive', item.id);
+        } else {
+            const expected = item.id === 'extensions.osc5522-clipboard' ? 'unsupported' : 'inconclusive';
+            assert.equal(base.outcomes[item.id], expected, item.id);
+        }
         assert.doesNotMatch(item.id, /^(?:finding|ntilde)\./);
     }
     assert.deepEqual(stored.findings.map(finding => finding.suite), ['truecolor-literal-finding', 'sgr-underline-color-resolved']);
@@ -180,9 +183,9 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock?.basis === 'carried-forward');
-    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment']);
+    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard']);
     for (const suite of carried) assert.match(suite.stock.note, /carried, not re-measured|carried forward from/, suite.suite);
-    const runIds = stored.suites.map(suite => suite.stock?.runId).filter(Boolean);
+    const runIds = stored.suites.filter(suite => suite.stock?.basis !== 'carried-forward').map(suite => suite.stock?.runId).filter(Boolean);
     assert.equal(new Set(runIds).size, runIds.length, 'two suites must not claim the same stock run as freshly collected');
     assert.deepEqual(stockProvenance({}), null);
     assert.equal(stockProvenance({ stockCollector: { rerun: false, counts: {} }, stockCollectorRunId: 'x' }).basis, 'carried-forward');
@@ -365,15 +368,26 @@ test('current effect totals preserve the separate unsupported and measured-other
         assert.equal(font.effect.verdict, 'supported');
     }
     assert.equal(row(stored, 'extensions.osc710-font-normal'), undefined);
-    assert.equal(totals.effectSupportedIds, 151);
-    assert.equal(totals.pinnedSupportedIds, 97);
-    assert.equal(totals.pinnedAndEffectSupportedIds, 97);
+    assert.equal(totals.effectSupportedIds, 152);
+    assert.equal(totals.pinnedSupportedIds, 98);
+    assert.equal(totals.pinnedAndEffectSupportedIds, 98);
     assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 54);
     assert.equal(totals.effectSupportedOfStockInconclusive, 150);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
     assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 18, effectMeasuredUnsupported: 5, effectMeasuredOther: 1, effectNotMeasured: 12, notPinnedSupported: 72 });
+});
+
+test('OSC 5522 adds an owned verdict to the historical unsupported row without regrading stock', () => {
+    const stored = committed(), id = 'extensions.osc5522-clipboard', base = baseline();
+    const clipboard = row(stored, id);
+    assert.deepEqual([clipboard.stockOutcome, clipboard.pinned.best, clipboard.effect.verdict], ['unsupported', 'supported', 'supported']);
+    const without = totalsOf(stored.benchmark.filter(item => item.id !== id), base);
+    assert.equal(stored.totals.uniqueBenchmarkIds, without.uniqueBenchmarkIds + 1);
+    assert.equal(stored.totals.suiteClaims, without.suiteClaims + 1);
+    assert.deepEqual(stored.totals.baseline, without.baseline);
+    assert.deepEqual(stored.totals.remainingAgainstStockInconclusive, without.remainingAgainstStockInconclusive);
 });
 
 test('totalsOf separates unsupported from supported and unmeasured for any rows, and pinned inconclusive stays pinned inconclusive', () => {
@@ -490,7 +504,8 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     // 368 KiB: the OSC 3008 and OSC 720 cases add their source-bound runs and receipts.
     // 384 KiB: the Unicode placeholder suite entry (no stock run, its own receipt binding) joins the merged inventory.
     // 400 KiB: the DECSCLM suite entry (receipt schema 82, its run and receipt bindings) joins the merged inventory.
-    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 400 * 1024, 'the generated files stay reviewable');
+    // 404 KiB includes the owned OSC 5522 reassessment and its carried stock provenance.
+    assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 404 * 1024, 'the generated files stay reviewable');
 });
 
 test('the Core-gaps reconciliation admits exactly text.reverse-index-scroll and reset.method, with the reset() API layer named and no stock or Core movement', () => {

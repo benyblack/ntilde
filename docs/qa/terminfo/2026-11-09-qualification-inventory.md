@@ -373,5 +373,5 @@ Controls and aggregate summaries inside each publication are retained in their j
 
 ## Guards
 
-`assertInventory` (run on every generation and by `scripts/terminfo/qualification-inventory.test.mjs`) refuses: a benchmark id listed twice or claimed twice by one suite; a retained report whose case ids differ from the live contract (lost or added case); a claim whose id is not a stock-inconclusive case of the pinned baseline; an Ntilde finding or the `cursor.reverse-wrap` diagnostic among benchmark ids; a pinned/effect difference without a recorded divergence; a qualified claim whose suite was not rederived; and recorded totals that differ from the recomputed ones.
+`assertInventory` (run on every generation and by `scripts/terminfo/qualification-inventory.test.mjs`) refuses: a benchmark id listed twice or claimed twice by one suite; a retained report whose case ids differ from the live contract (lost or added case); a claim outside the eligible stock-inconclusive cases, repaired stock diagnostics, and explicitly registered stock-unsupported reassessments; an Ntilde finding among benchmark ids; a pinned/effect difference without a recorded divergence; a qualified claim whose suite was not rederived; and recorded totals that differ from the recomputed ones.
 
