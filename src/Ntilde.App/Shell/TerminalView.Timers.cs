@@ -140,6 +140,7 @@ namespace Ntilde.Shell
                 if (_cursorBlinkTimer.IsEnabled) running.Add("cursor blink");
                 if (_scrollAnimationTimer.IsEnabled) running.Add("scroll animation");
                 if (_metricsTimer.IsEnabled) running.Add("metrics");
+                if (IsBellFlashActive) running.Add("visual flash");
                 if (_autoScrollTimer?.IsEnabled == true) running.Add("auto-scroll");
                 if (_resizeThrottleTimer?.IsEnabled == true) running.Add("resize throttle");
                 return running;
@@ -273,6 +274,7 @@ namespace Ntilde.Shell
             _autoScrollTimer?.Stop();
             _resizeThrottleTimer?.Stop();
             _metricsTimer.Stop();
+            if (IsBellFlashActive) EndVisualFlash();
             CancelKittyAnimationWake();
 
             // And its glyph atlas and row pictures: the last draw operation still holding them disposes them (#644).
