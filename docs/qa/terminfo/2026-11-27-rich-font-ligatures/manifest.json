@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "runs": {
+    "baseline-on": {
+      "runId": "8ae35458c6c7d505d81a22a57471bf14",
+      "appRevision": "db411becbe33922691e29d78b0ab7dc443d26b14",
+      "scriptsRevision": "f6c55fe910d43919bc23a5462499395cc7c0703e",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
+      "receiptSchema": 1
+    },
+    "off": {
+      "runId": "446acb03347b8f44e35ec4d85167a8ce",
+      "appRevision": "7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
+      "scriptsRevision": "f6c55fe910d43919bc23a5462499395cc7c0703e",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
+      "receiptSchema": 1
+    },
+    "on": {
+      "runId": "cafae382918479a143f8b9b612c7b325",
+      "appRevision": "7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
+      "scriptsRevision": "f6c55fe910d43919bc23a5462499395cc7c0703e",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
+      "receiptSchema": 1
+    },
+    "off-restored": {
+      "runId": "d5e852296a524ffd7f8972e50eeb7c1a",
+      "appRevision": "7d25f35c7c0ec7a416b3172ec1d6cec701ee7699",
+      "scriptsRevision": "f6c55fe910d43919bc23a5462499395cc7c0703e",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-font-ligatures-v1",
+      "receiptSchema": 1
+    }
+  },
+  "archives": {
+    "owned-run.zip": "4eb933d1a5b25142e60e67f8d563bb5bd4f1df1a875fa5141a68c71f8b6e4b9a"
+  }
+}

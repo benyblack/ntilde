@@ -60,6 +60,8 @@ internal sealed class DrawPathHarness : IDisposable
 
     public int ScrollOffset { get; set; }
 
+    public int PixelWidth => _surface.Canvas.DeviceClipBounds.Width;
+
     public bool EnableLigatures { get; set; }
 
     public SelectionState Selection => _selection;

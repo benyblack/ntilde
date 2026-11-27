@@ -36,4 +36,8 @@ The [two-case OSC 633 assessment](../2026-11-26-osc633-metadata/report.md) quali
 
 The [aggregate reassessment](../2026-11-26-osc633-aggregate-reassessment/report.md) combines rederived A–D and E/P evidence from two App revisions. The bounded owned aggregate is supported, and the exact aggregate probe remains inconclusive.
 
+## Font ligatures
+
+The [font ligature assessment](../2026-11-27-rich-font-ligatures/report.md) records the owned glyph and partial-selection comparisons for two operators with a pinned Fira Code face. The pinned collector has no probe for this case.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.

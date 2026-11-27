@@ -16,7 +16,7 @@ public sealed class FontLigatureRenderTests
     {
         using var pane = new TerminalPane(new TerminalProfile { EnableLigatures = profile });
         pane.ApplySettings(new TerminalSettings { EnableLigatures = global });
-        Assert.Equal(expected, pane.TermView.EnableLigatures);
+        Assert.Equal(expected, Assert.IsType<TerminalView>(pane.ActiveControl).EnableLigatures);
     }
 
     [AvaloniaTheory]
@@ -36,7 +36,17 @@ public sealed class FontLigatureRenderTests
         plain.DrawFrame();
         shaped.DrawFrame();
         byte[] ligature = shaped.Pixels();
-        Assert.False(plain.Pixels().AsSpan().SequenceEqual(ligature));
+        byte[] ordinary = plain.Pixels();
+        Assert.False(ordinary.AsSpan().SequenceEqual(ligature));
+        var grid = TerminalDrawOperation.CreatePixelGrid(DrawPathHarness.Metrics, 1);
+        for (int y = 0; y < grid.CellHeightPx; y++)
+        {
+            int rowStart = y * plain.PixelWidth * 4;
+            int left = grid.XForCol(1) * 4, right = grid.XForCol(3) * 4;
+            Assert.True(ordinary.AsSpan(rowStart, left).SequenceEqual(ligature.AsSpan(rowStart, left)));
+            int rightBytes = plain.PixelWidth * 4 - right;
+            Assert.True(ordinary.AsSpan(rowStart + right, rightBytes).SequenceEqual(ligature.AsSpan(rowStart + right, rightBytes)));
+        }
 
         foreach (var harness in new[] { plain, shaped })
         {
