@@ -34,6 +34,10 @@ The [OSC 66 assessment](../2026-11-26-rich-osc66/report.md) rederives the histor
 
 The [Sixel report assessment](../2026-11-26-rich-sixel-reports/report.md) rederives the retained replies and compares the exact child PTY results across a controlled resize and restoration. The [native Sixel raster qualification](../2026-11-26-sixel-native-fidelity/report.md) records the fixed pixel effect and links the earlier unsupported measurement.
 
+## Text-area and cell pixel reporting
+
+The [XTWINOPS pixel assessment](../2026-11-27-rich-xtwinops-pixels/report.md) replays both pinned callbacks and checks the App and child PTY geometry across resize, font change, and restoration. The live font change exposed a one-column overdispatch, fixed by reusing the padded layout calculation.
+
 ## OSC 633 command-line and Cwd metadata
 
 The [two-case OSC 633 assessment](../2026-11-26-osc633-metadata/report.md) qualifies E for a single command cycle and P for two reported-directory updates. Both owned effects were supported and both pinned probe verdicts were inconclusive.
