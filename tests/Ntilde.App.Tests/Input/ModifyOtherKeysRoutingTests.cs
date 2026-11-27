@@ -182,6 +182,28 @@ public sealed class ModifyOtherKeysRoutingTests
     }
 
     [AvaloniaTheory]
+    [InlineData(KeyModifiers.None, "A", "\x1b[27;1;65~")]
+    [InlineData(KeyModifiers.Shift, "a", "\x1b[27;2;97~")]
+    [InlineData(KeyModifiers.None, "я", "\x1b[27;1;1103~")]
+    [InlineData(KeyModifiers.None, "😀", "\x1b[27;1;128512~")]
+    public void LevelThree_ReportsTheBackendSymbolOnce(KeyModifiers modifiers, string symbol, string report)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.True(view.Down(Key.A, modifiers, PhysicalKey.A, symbol).Handled);
+        view.Text(symbol);
+        Assert.Equal(new[] { report }, sent);
+    }
+
+    [AvaloniaFact]
+    public void LevelThree_LeavesACompositionSymbolForTextInput()
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.False(view.Down(Key.A, KeyModifiers.None, PhysicalKey.A, "a\u0308").Handled);
+        view.Text("ä");
+        Assert.Equal(new[] { "ä" }, sent);
+    }
+
+    [AvaloniaTheory]
     [InlineData(Key.Up, PhysicalKey.ArrowUp, "\x1b[A")]
     [InlineData(Key.F5, PhysicalKey.F5, "\x1b[15~")]
     [InlineData(Key.Enter, PhysicalKey.NumPadEnter, "\r")]

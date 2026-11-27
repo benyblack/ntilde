@@ -39,7 +39,7 @@ internal static partial class TerminalInputModeEncoder
     ///   as BS (<c>CSI 27;6;8~</c>) and plain Ctrl+Backspace legacy, as xterm's backarrow toggle
     ///   gives.
     ///
-    /// Level 3 also reports unmodified and Shift-only printable keys. Named controls keep their level-2 routing.
+    /// Level 3 also reports unmodified and Shift-only printable keys using the backend scalar when supplied. Named controls keep their level-2 routing.
     ///
     /// Deliberate deviations, each falling back to the existing legacy/text path:
     /// - Shift alone on a printable key stays text at levels 1 and 2. xterm level 2 sends Shift+A as
@@ -60,7 +60,7 @@ internal static partial class TerminalInputModeEncoder
     /// <see cref="EncodeLegacyControlKey"/> and <see cref="EncodeAltKey"/> make, so the code
     /// for a punctuation chord is that of the key in the US position.
     /// </summary>
-    internal static string? EncodeModifyOtherKeys(Key key, KeyModifiers modifiers, int level, PhysicalKey physical = PhysicalKey.None)
+    internal static string? EncodeModifyOtherKeys(Key key, KeyModifiers modifiers, int level, PhysicalKey physical = PhysicalKey.None, string? keySymbol = null)
     {
         if (level is < 1 or > 3) return null;
         if ((modifiers & KeyModifiers.Meta) != 0) return null;
@@ -78,7 +78,12 @@ internal static partial class TerminalInputModeEncoder
         if (level == 3 && !ctrl && !alt)
         {
             int printable = GetUsLayoutCharacter(key, shift);
-            if (printable >= 0) return FormatModifyOtherKey(printable, m);
+            if (printable >= 0)
+            {
+                if (string.IsNullOrEmpty(keySymbol)) return FormatModifyOtherKey(printable, m);
+                // Lock state and layout are already reflected in the symbol. Leave composition to TextInput.
+                return TryKeyScalar(keySymbol, out var rune) ? FormatModifyOtherKey(rune.Value, m) : null;
+            }
         }
         if (modifiers == KeyModifiers.None) return null;
         bool levelTwoOrHigher = level >= 2;
@@ -120,7 +125,8 @@ internal static partial class TerminalInputModeEncoder
     internal static string? OrdinaryKeyText(Key key, KeyModifiers modifiers, string? symbol)
     {
         int code = GetUsLayoutCharacter(key, (modifiers & KeyModifiers.Shift) != 0);
-        return code < 0 ? null : string.IsNullOrEmpty(symbol) ? ((char)code).ToString() : symbol;
+        if (code < 0) return null;
+        return TryKeyScalar(symbol, out _) ? symbol : ((char)code).ToString();
     }
 
     private static bool IsPhysicalKeypadKey(PhysicalKey physical)

@@ -324,13 +324,13 @@ namespace Ntilde
             if (!ProducesNoTextInput(key, modifiers))
             {
                 if (!focusedConsumesText && level != 3) return false; // legacy receivers wait for text
-                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical);
+                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical, keySymbol);
                 if (sequence == null && focusedConsumesText)
-                    sequence = key == Key.Space ? " " : TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, PrintableKeySymbol(keySymbol));
+                    sequence = key == Key.Space ? " " : TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol);
                 return sequence != null;
             }
 
-            sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical);
+            sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical, keySymbol);
             if (sequence != null) return true;
 
             switch (key)
@@ -366,17 +366,14 @@ namespace Ntilde
                 || !TerminalInputModeEncoder.MayProduceTextInput(key, null)
                 || key is Key.Enter or Key.Tab or Key.Back or Key.Escape;
 
-        private static string? PrintableKeySymbol(string? symbol)
-            => symbol is { Length: 1 } && !char.IsControl(symbol[0]) ? symbol : null;
-
         /// <summary>
         /// True when the focused pane's own view will encode this text-capable chord as
         /// modifyOtherKeys and handle the keydown, so its TextInput (and the text broadcast) never
         /// happens and siblings must be served by the key broadcast instead.
         /// </summary>
-        internal static bool FocusedPaneConsumesText(Key key, KeyModifiers modifiers, PhysicalKey physical, TerminalBuffer? buffer, int kittyFlags)
+        internal static bool FocusedPaneConsumesText(Key key, KeyModifiers modifiers, PhysicalKey physical, TerminalBuffer? buffer, int kittyFlags, string? keySymbol = null)
             => kittyFlags == 0 && buffer?.Modes.IsVt52 == false && !ProducesNoTextInput(key, modifiers)
-                && TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, buffer?.Modes.ModifyOtherKeys.Level ?? 0, physical) != null;
+                && TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, buffer.Modes.ModifyOtherKeys.Level, physical, keySymbol) != null;
 
         /// <summary>One broadcast receiver: its modes, its effective kitty flags, and its input sink.</summary>
         internal readonly record struct BroadcastReceiver(TerminalBuffer? Buffer, int KittyFlags, Action<string> Send);
@@ -438,7 +435,7 @@ namespace Ntilde
             TerminalBuffer? focusedBuffer, int focusedKittyFlags, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
         {
             if ((modifiers & KeyModifiers.Alt) != 0) return;
-            bool focusedConsumesText = FocusedPaneConsumesText(key, modifiers, physical, focusedBuffer, focusedKittyFlags);
+            bool focusedConsumesText = FocusedPaneConsumesText(key, modifiers, physical, focusedBuffer, focusedKittyFlags, keySymbol);
             bool mayProduceText = !ProducesNoTextInput(key, modifiers);
             foreach (BroadcastReceiver receiver in receivers)
             {

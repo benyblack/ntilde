@@ -323,7 +323,7 @@ namespace Ntilde.Shell
             if (level == 0) return false;
             if (key == Key.Enter && _session?.IsProcessRunning != true) return false;
             if (key == Key.C && (modifiers & KeyModifiers.Control) != 0 && HasSelection() && !UseMacOSClipboardChords) return false;
-            string? sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical);
+            string? sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical, keySymbol);
             if (sequence == null) return false;
             if (TerminalInputModeEncoder.MayProduceTextInput(key, keySymbol))
             {
