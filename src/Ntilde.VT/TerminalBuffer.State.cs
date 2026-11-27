@@ -12,7 +12,7 @@ namespace Ntilde.VT
             get => _state.CursorCol;
             set
             {
-                if (_pendingPartPaint != null && value != _state.CursorCol) EndInitialPartPaint();
+                if (_pendingPartPaint is { } pending && value != _state.CursorCol) EndInitialPartPaint(pending);
                 _state.CursorCol = value;
             }
         }
@@ -21,7 +21,7 @@ namespace Ntilde.VT
             get => _state.CursorRow;
             set
             {
-                if (_pendingPartPaint != null && value != _state.CursorRow) EndInitialPartPaint();
+                if (_pendingPartPaint is { } pending && value != _state.CursorRow) EndInitialPartPaint(pending);
                 _state.CursorRow = value;
             }
         }

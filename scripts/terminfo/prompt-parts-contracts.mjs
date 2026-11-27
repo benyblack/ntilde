@@ -51,6 +51,9 @@ export function planFor(id) {
         write('band-scroll', '\x1b[3;4r\x1b[?69h\x1b[6;20s\x1b[S\x1b[?69l\x1b[r'),
         write('before-ris', '\x1b[3;11H' + mark('P;k=s') + 'S'),
         write('reset', '\x1bc' + tag(id) + mark('P;k=r')),
+        write('protected', top + mark('A') + mark('P') + '$ ' + mark('B') + 'cmd\x1b[14G'
+            + mark('P;k=r') + '\x1b[1"qR\x1b[0"qX\x1b[1"q' + tag(id) + '\x1b[0"q'),
+        write('selective-all', '\x1b[?2J'),
         write('finish', restore(id)),
         { stage: 'seal' },
     ];
@@ -88,6 +91,9 @@ export function deriveEffects(id, frames) {
         && reads.get('continuation').screen.lines[1] === '   PS2'
         && reads.get('kitty').screen.lines[2] === ' KIT'
         && reads.get('erased').screen.lines[0].slice(16, 19) === '   '
+        && reads.get('protected').screen.lines[0].slice(13) === 'RX'
+        && reads.get('selective-all').screen.lines[0] === ' '.repeat(13) + 'R'
+        && same(o.protected.commandStart, o['selective-all'].commandStart) && o['selective-all'].accepting
         && reads.get('pre-reset').screen.lines[2][10] === 'S'
         && !reads.get('band-scroll').screen.lines[2].includes('S')
         && reads.get('typed-through').screen.lines[0].startsWith('$ cmdabcd')
@@ -104,6 +110,7 @@ export function deriveEffects(id, frames) {
         'empty-right': [primary, part('r', 0, 7), continuation], 'typed-through': [primary, continuation],
         submitted: [], orphan: [], 'next-cycle': [part('r', 0, 10)], 'new-prompt': [], 'pre-reset': [part('s', 2, 10)],
         'band-scroll': [], 'before-ris': [part('s', 2, 10)], reset: [],
+        protected: [primary, part('r', 0, 13)], 'selective-all': [part('r', 0, 13)],
     };
     const matched = Object.entries(expected).every(([stage, parts]) => same(o[stage].parts, parts))
         && controlStages.every(stage => same(o[stage].commandStart, a) && o[stage].outputStart === null

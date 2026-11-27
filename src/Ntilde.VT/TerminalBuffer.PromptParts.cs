@@ -58,9 +58,9 @@ public partial class TerminalBuffer
 
     // Moving the cursor away ends the one initial paint allowed at a new marker.
     // If input later crosses that cell, it overwrites the boundary.
-    private void EndInitialPartPaint()
+    private void EndInitialPartPaint(RowPromptParts parts)
     {
-        _pendingPartPaint!.InitialPaintColumn = null;
+        parts.InitialPaintColumn = null;
         _pendingPartPaint = null;
     }
 
@@ -77,7 +77,7 @@ public partial class TerminalBuffer
             _promptPartCycle ??= new object();
             if (row.PromptParts?.Cycle != _promptPartCycle)
                 row.PromptParts = new(_promptPartCycle);
-            if (_pendingPartPaint != null) EndInitialPartPaint();
+            if (_pendingPartPaint is { } pending) EndInitialPartPaint(pending);
             row.PromptParts.Set(kind, mark.Column);
             _pendingPartPaint = row.PromptParts;
         }

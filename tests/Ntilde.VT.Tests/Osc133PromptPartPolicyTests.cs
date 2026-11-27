@@ -137,6 +137,23 @@ public class Osc133PromptPartPolicyTests
     }
 
     [Fact]
+    public void SelectiveFullDisplayEraseKeepsOnlyProtectedStartsAndOrdinaryClearRetiresThem()
+    {
+        var buffer = new TerminalBuffer(30, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A\a\x1b]133;P\a$ \x1b]133;B\acmd\x1b[9G\x1b]133;P;k=r\a\x1b[1\"qR\x1b[0\"qX");
+        var anchor = buffer.CommandStartMark!.Value;
+        parser.Process("\x1b[?2J");
+        Assert.Equal(new PromptPart("r", 0, 8), Assert.Single(buffer.ReadPromptParts()));
+        Assert.Equal(anchor, buffer.CommandStartMark);
+        Assert.True(GridQueryReader.TryReadCommandLine(buffer, anchor, out var line));
+        Assert.True(line.RightPromptTrimmed);
+        Assert.DoesNotContain("R", line.Text);
+        parser.Process("\x1b[2J");
+        Assert.Empty(buffer.ReadPromptParts());
+    }
+
+    [Fact]
     public void KittySecondaryAndContourContinuationAreIndependentAndResizeAwaitsRedraw()
     {
         var buffer = new TerminalBuffer(40, 8);
