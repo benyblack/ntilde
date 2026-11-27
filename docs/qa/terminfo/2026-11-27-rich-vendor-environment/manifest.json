@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
+  "scriptsRevision": "a33b9bfacde48e6c35b7dbe7b70290661b3d5d12",
+  "runs": [
+    {
+      "control": "clean",
+      "archive": "clean-run.zip",
+      "runId": "b9c0a789d71ceeaec3c58b62042948a5",
+      "sha256": "47b6ac402fe6b70ee2ab3b38b3a1402324a2417d84425088f73ae008acb53278"
+    },
+    {
+      "control": "inherited",
+      "archive": "inherited-run.zip",
+      "runId": "ef2bc4be6e1e7427997bab8c73b52dd6",
+      "sha256": "d8e0245ab0b6a8f1e036338fa38d9ce5683adbe7a3018b386e9b6343713881a9"
+    }
+  ]
+}
