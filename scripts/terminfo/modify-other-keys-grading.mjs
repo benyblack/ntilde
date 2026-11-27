@@ -17,13 +17,13 @@ import { gradeModifyOtherKeys, modifyOtherKeysCaseIds, modifyOtherKeysContractsV
 
 const label = 'modifyOtherKeys';
 const derivedFrom = 'ntilde-owned-left-right-margins-grading-v1';
-const scope = 'Pinned terminfo.dev@4.0.0 input.modify-other-keys termless code (always inconclusive by design: the probe validates no generated '
+const scope = ignoredLevel => 'Pinned terminfo.dev@4.0.0 input.modify-other-keys termless code (always inconclusive by design: the probe validates no generated '
     + 'event or report and reads only the capability declaration) replayed over the declaration value the child itself answered (its XTGETTCAP refusal for the '
     + 'modifyOtherKeys capability name), preserved beside a separately identified effect contract graded from 58 declared Avalonia events routed through the '
     + 'production App input path in a disposable direct-local pane: negotiation proved by the child XTQMODKEYS reply before every dispatch, exact child-received '
     + 'bytes from an independent raw stdin reader, literal protocol expectations cross-checked by an independent oracle, disabled-mode legacy controls, level 1 '
     + 'alias versus extended-chord cases, level 2 Ctrl/Ctrl+Shift/Alt chords, the Enter/Tab/Backspace/Escape table, disabled/1/2 transitions including the reset '
-    + 'and disable forms and the ignored level 3, paired key-down/backend-text duplicate suppression, Shift-only-printable and Meta and AltGr policy controls, '
+    + `and disable forms and the ignored level ${ignoredLevel}, paired key-down/backend-text duplicate suppression, Shift-only-printable and Meta and AltGr policy controls, `
     + 'key-up and deliberately unhandled-event controls, a bounded kitty-precedence control in a verified neutral state, ordered FIFO capture barriers, and '
     + 'restoration of the original negotiation state. Generated App events are not physical keyboard input, App admission is not child receipt, direct-local '
     + 'delivery does not qualify SSH, mux or Windows, and no stock grade changes.';
@@ -70,7 +70,7 @@ function caseReport(recorded, context) {
     if (recorded.caseId !== caseId || recorded.declarationCase !== 'input.mok.declaration.xtgettcap'
         || JSON.stringify(recorded.feeds) !== JSON.stringify([...pinnedFixture.feeds])) throw new Error(`Pinned ${caseId} fixture differs from the contract.`);
     const experiments = experimentsOf(caseId, plan, input, actions, oracleHex);
-    const effect = gradeModifyOtherKeys(caseId, experiments, contractsVersion);
+    const effect = gradeModifyOtherKeys(caseId, experiments, contractsVersion, context.ignoredLevel);
     const controls = {};
     for (const frame of context.frames) if (frame.kind === 'input-control') controls[frame.caseId] = frame.capture.hex;
     const served = servedDeclaration(controls[recorded.declarationCase]);
@@ -90,19 +90,19 @@ export function buildModifyOtherKeysGradingReport({ frames, actions, seal }, run
     if (!inputPlan || typeof inputPlan.make !== 'function') throw new Error(`${label} requires the policy-selected input plan.`);
     validateModifyOtherKeysEvidence(run, adapter);
     const input = buildInputReport(frames, actions, seal, runId, inputPlan);
-    // Later plan generations keep every v3 event verbatim and append their own: the journal must equal the policy-selected plan, and this
-    // benchmark's experiments are the events that carry its roles.
+    // The suite identity selects the canonical plan, including the first ignored level for its generation.
     const plan = inputPlan.make(frames[0].screen.rows, frames[0].screen.cols);
     checkInput(sameInputFact(input.inputs, plan) && oracleDisagreements(plan).length === 0);
     const routedPlan = makeRoutedInputCases(frames[0].screen.rows, frames[0].screen.cols);
     const diverge = routedInputsDiverge(input.inputs, routedPlan);
     if (diverge) throw new Error(`The shared journal no longer carries the routed-input benchmarks verbatim: ${diverge}.`);
-    const context = { plan, input, actions, frames, contractsVersion, replayModule };
+    const ignoredLevel = inputPlan.ignoredModifyOtherKeysLevel ?? 3;
+    const context = { plan, input, actions, frames, contractsVersion, replayModule, ignoredLevel };
     const cases = modifyOtherKeysCaseIds.map((caseId, position) => {
         if (run.cases[position].caseId !== caseId) throw new Error(`${label} case order differs from the contracts.`);
         return caseReport(run.cases[position], context);
     });
-    return { schemaVersion: 1, suiteId: modifyOtherKeysGradedSuiteId, runId, contractsVersion, adapter, scope, inputSuiteId: inputPlan.suiteId,
+    return { schemaVersion: 1, suiteId: modifyOtherKeysGradedSuiteId, runId, contractsVersion, adapter, scope: scope(ignoredLevel), inputSuiteId: inputPlan.suiteId,
         inputReportSha256: inputReportSha256 ?? hash(JSON.stringify(input, null, 2) + '\n'), initialSnapshot: 0, restoredSnapshot: frames.length - 1, cases };
 }
 

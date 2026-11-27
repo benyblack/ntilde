@@ -37,13 +37,15 @@ export const inputPlanV5 = Object.freeze({ id: pxmPlanId, suiteId: pxmSuiteId, p
     captureBudget: 512, readerBudget: 256,
     scope: count => `${count} standalone declared Avalonia events in the benchmark plan (input.x10-mouse, input.button-event-mouse, modes.application-keypad, input.modify-other-keys levels 1 and 2, modes.utf8-mouse-1005, input.urxvt-mouse, input.pixel-mouse); paired complete state, independent raw local-child bytes, source-selected mode, XTQMODKEYS and 1005/1015/1016 DECRQM queries and recorded (not asserted) event bytes. No native keyboard or pointer, remote/mux transport, Windows runtime or stock-grade claim.` });
 /** The plan the current runner and worker execute; every older plan stays available for historical re-derivation. */
-export const currentInputPlan = inputPlanV5;
-export const inputPlans = Object.freeze([inputPlanV1, inputPlanV2, inputPlanV3, inputPlanV4, inputPlanV5]);
+export const inputPlanV6 = Object.freeze({ ...inputPlanV5, id: 'v6', suiteId: 'ntilde-owned-routed-input-v6',
+    ignoredModifyOtherKeysLevel: 4, make: (rows, cols) => makePxmCases(rows, cols, 4) });
+export const currentInputPlan = inputPlanV6;
+export const inputPlans = Object.freeze([inputPlanV1, inputPlanV2, inputPlanV3, inputPlanV4, inputPlanV5, inputPlanV6]);
 /** Frames: start, bind, a control and a read per case, finish. Raw attempts: bind, two per case, the final restoration. */
 export const inputFrameCount = count => 2 * count + 3;
 export const inputAttemptCount = count => 2 * count + 2;
 /** The exact raw-capture count of one execution of each plan (bind + two per case + restoration); case counts do not vary with geometry. */
-export const inputPlanCaptureCounts = Object.freeze(inputPlans.map(plan => inputAttemptCount(plan.make(40, 140).length)));
+export const inputPlanCaptureCounts = Object.freeze([...new Set(inputPlans.map(plan => inputAttemptCount(plan.make(40, 140).length)))]);
 /** The largest prior-capture count any later suite can owe after an input collection of the current plans. */
 export const inputPriorCaptureCap = Math.max(...inputPlanCaptureCounts);
 /** First source policy whose runs execute the v2 benchmark plan; the v3 plan (modifyOtherKeys) follows the same rule. */

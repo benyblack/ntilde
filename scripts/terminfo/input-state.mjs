@@ -123,6 +123,6 @@ export function buildInputReport(frames, actions, seal, runId, plan = inputPlanV
         && seal.lastAttempt.error === null && seal.lastAttempt.fenceRequested === true
         && seal.lastAttempt.hex === final.capture.hex + Buffer.from(final.capture.barrier).toString('hex')
         && sameInputFact(seal.lastAttempt.nonces, final.capture.nonces));
-    return { schemaVersion: { v1: 1, v2: 2, v3: 3, v4: 4, v5: 5 }[plan.id], suiteId: plan.suiteId, runId, scope: plan.scope(count),
+    return { schemaVersion: { v1: 1, v2: 2, v3: 3, v4: 4, v5: 5, v6: 6 }[plan.id], suiteId: plan.suiteId, runId, scope: plan.scope(count),
         inputs: cases, initialSnapshot: 0, restoredSnapshot: frames.length - 1, snapshots: frames, actions, seal, observations };
 }

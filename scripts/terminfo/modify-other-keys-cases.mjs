@@ -29,7 +29,7 @@ const mok = (level, kittyKeyboardFlags = 0) => ({ applicationKeypad: false, mous
 const required = { [MOK]: 'required' }, control = { [MOK]: 'control' }, label = { [MOK]: 'label' };
 
 /** The 60 v2 events (modes extended with the negotiated level, which inputReset holds at 0) plus 57 modifyOtherKeys events. */
-export function makeModifyOtherKeysCases(rows, cols) {
+export function makeModifyOtherKeysCases(rows, cols, ignoredLevel = 3) {
     const routed = makeRoutedInputCases(rows, cols);
     const cases = routed.map(item => ({ ...item, modes: { ...item.modes, modifyOtherKeysLevel: 0 } }));
     const add = (id, setup, event, expected, modes, roles, reset = true) => cases.push({ id: 'input.mok.' + id,
@@ -75,7 +75,7 @@ export function makeModifyOtherKeysCases(rows, cols) {
     add('trans.reset.form', '\x1b[>4;2m\x1b[>4m', { kind: 'keyDown', key: 'a', modifiers: 2 }, '\x01', mok(0), required);
     add('trans.set1.from0', '\x1b[>4;1m', { kind: 'keyDown', key: 'digit1', modifiers: 2 }, '\x1b[27;5;49~', mok(1), required);
     add('trans.disable.form', '\x1b[>4;2m\x1b[>4n', { kind: 'keyDown', key: 'a', modifiers: 2 }, '\x01', mok(0), required);
-    add('trans.l3.ignored', '\x1b[>4;2m\x1b[>4;3m', { kind: 'keyDown', key: 'a', modifiers: 2 }, '\x1b[27;5;97~', mok(2), required);
+    add(`trans.l${ignoredLevel}.ignored`, `\x1b[>4;2m\x1b[>4;${ignoredLevel}m`, { kind: 'keyDown', key: 'a', modifiers: 2 }, '\x1b[27;5;97~', mok(2), required);
 
     // --- Level 2: representative Ctrl, Ctrl+Shift and Alt chords of ordinary keys and the Enter/Tab/Backspace/Escape table ------------------
     add('l2.ctrl.a', '\x1b[>4;2m', { kind: 'keyDown', key: 'a', modifiers: 2 }, '\x1b[27;5;97~', mok(2), required);

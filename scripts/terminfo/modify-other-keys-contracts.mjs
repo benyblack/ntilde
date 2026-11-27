@@ -210,9 +210,9 @@ export function contractExperiments(caseId, cases = makeModifyOtherKeysCases(40,
  * Grade the benchmark from its measured experiments ({id, role, matched}). A mismatching required experiment establishes
  * unsupported only when every control held; an invalid control leaves the benchmark inconclusive; labels never grade.
  */
-export function gradeModifyOtherKeys(caseId, experiments, version = modifyOtherKeysContractsVersion) {
+export function gradeModifyOtherKeys(caseId, experiments, version = modifyOtherKeysContractsVersion, ignoredLevel = 3) {
     if (version !== modifyOtherKeysContractsVersion) throw new Error('Unknown modifyOtherKeys contracts version.');
-    const planned = contractExperiments(caseId);
+    const planned = contractExperiments(caseId, makeModifyOtherKeysCases(40, 140, ignoredLevel));
     if (experiments.length !== planned.length || planned.some((item, index) => experiments[index].id !== item.id || experiments[index].role !== item.role
         || typeof experiments[index].matched !== 'boolean')) throw new Error(`modifyOtherKeys experiments differ from the plan for ${caseId}.`);
     const failedControls = experiments.filter(item => item.role === 'control' && !item.matched).map(item => item.id);

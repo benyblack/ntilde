@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { inputAttemptCount, inputFrameCount, inputPlanForPolicy, inputPlanV4, inputPlanV5, inputPlanForSuiteId, inputPlans, currentInputPlan, pxmFirstPolicy } from './input-plan.mjs';
+import { inputAttemptCount, inputFrameCount, inputPlanForPolicy, inputPlanV4, inputPlanV5, inputPlanV6, inputPlanForSuiteId, inputPlans, currentInputPlan, pxmFirstPolicy } from './input-plan.mjs';
 import { inputModeReplyHex } from './input-state.mjs';
 import { makeMexCases } from './mex-cases.mjs';
 import { makePxmCases, minimumPxmColumns, minimumPxmRows, pixelPositions, pxmBenchmarkIds, pxmQueries, pxmReset, pxmSuiteId } from './pxm-cases.mjs';
@@ -21,10 +21,21 @@ test('v5 keeps every v4 event verbatim, its modes only gaining the neutral pixel
     assert.equal(new Set(cases.map(item => item.id)).size, cases.length);
 });
 
+test('current collection probes the first unimplemented level and retains the original v5 journal contract', () => {
+    assert.equal(currentInputPlan, inputPlanV6);
+    assert.equal(inputPlanForSuiteId(inputPlanV6.suiteId), inputPlanV6);
+    const current = inputPlanV6.make(30, 140);
+    const index = cases.findIndex(item => item.id === 'input.mok.trans.l3.ignored');
+    assert.ok(index >= 0);
+    assert.deepEqual(current[index], { ...cases[index], id: 'input.mok.trans.l4.ignored',
+        setup: cases[index].setup.replace('\x1b[>4;3m', '\x1b[>4;4m') });
+    assert.deepEqual(current.filter((_, i) => i !== index), cases.filter((_, i) => i !== index));
+});
+
 test('the plan identity, reset, queries, budgets and policy selection', () => {
-    assert.equal(inputPlanV5.id, 'v5'); assert.equal(inputPlanV5.suiteId, pxmSuiteId); assert.equal(currentInputPlan, inputPlanV5);
+    assert.equal(inputPlanV5.id, 'v5'); assert.equal(inputPlanV5.suiteId, pxmSuiteId);
     assert.equal(inputPlanForSuiteId(pxmSuiteId), inputPlanV5);
-    assert.equal(inputPlans.at(-1), inputPlanV5);
+    assert.equal(inputPlans.at(-1), currentInputPlan);
     assert.equal(inputPlanForPolicy(`readonly-owned-source-graph-v${pxmFirstPolicy}`), inputPlanV5);
     assert.equal(inputPlanForPolicy(`readonly-owned-source-graph-v${pxmFirstPolicy - 1}`), inputPlanV4, 'earlier policies keep the plan they executed');
     assert.ok(pxmReset.endsWith('\x1b[?1005;1015l\x1b[?1016l'));
