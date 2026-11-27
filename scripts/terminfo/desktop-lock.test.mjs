@@ -433,12 +433,14 @@ test('only approved collection entrypoints and lock tooling reference the deskto
     const referencing = walk(scripts).filter(url => /\.(?:mjs|ts|py|sh|ps1)$/.test(url.pathname) && !/\.test\./.test(url.pathname))
         .filter(url => {
             let source = readFileSync(url, 'utf8');
-            // The offline X11 publication checks this retained source basename as data.
-            if (url.pathname.endsWith('/terminfo/modern-x11-mouse-results.mjs')) source = source.replace("'desktop-lock.mjs',", '');
+            // These offline publications verify the retained source basename as data.
+            if (/\/terminfo\/(?:modern-x11-mouse|rich-identity)-results\.mjs$/.test(url.pathname)) {
+                source = source.replace("'desktop-lock.mjs',", '');
+            }
             return /desktop-lock|desktop-collection\.lock|acquireDesktopLease|desktopLeaseKey|ntilde\.terminfo\.desktopLease/.test(source);
         })
         .map(url => url.pathname.slice(scripts.pathname.length)).toSorted();
     assert.deepEqual(referencing, ['terminfo-desktop-lock.mjs', 'terminfo-modern-x11-owned.mjs', 'terminfo-owned-runner.mjs',
-        'terminfo-owned.mjs', 'terminfo/common-core-driver.ts',
+        'terminfo-owned.mjs', 'terminfo-rich-identity-owned.mjs', 'terminfo/common-core-driver.ts',
         'terminfo/desktop-lock.mjs', 'terminfo/fixtures/desktop-lock-fixture.mjs']);
 });

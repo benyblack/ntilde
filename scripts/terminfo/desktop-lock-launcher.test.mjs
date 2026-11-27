@@ -4,12 +4,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { installPrivateLockLauncher } from './fixtures/desktop-lock-fixture.mjs';
 import { join } from 'node:path';
 import { acquireDesktopLease, desktopLockAuditPath, readDesktopLockState, recoverDesktopLease } from './desktop-lock.mjs';
+import { runContainer, withLaunchLease } from '../terminfo-rich-identity-owned.mjs';
 
 const posix = process.platform !== 'win32';
 const real = path => new URL(path, import.meta.url);
@@ -198,6 +199,99 @@ test('the launcher releases only through the broker after the runner returns, an
     assert.ok(launcher.indexOf("process.on('SIGHUP', onHup)") > 0);
     assert.ok(/NTILDE_TERMINFO_PENDING_SIGNAL/.test(launcher));
     assert.ok(!/process\.env\.[A-Z_]*(?:LOCK|LEASE)/.test(launcher.replaceAll('NTILDE_TERMINFO_DESKTOP_LOCK_WAIT_SECONDS', '')));
+});
+
+test('the Rich identity launcher acquires the lease before its Docker call', () => {
+    const launcher = readFileSync(real('../terminfo-rich-identity-owned.mjs'), 'utf8');
+    const at = text => { const index = launcher.indexOf(text); assert.ok(index >= 0, text); return index; };
+    assert.ok(at('await acquireDesktopLease({') < at('await runContainer({'));
+    assert.ok(at('lease.noteLaunchAttempt()') < at("invoke(['create'"));
+});
+
+async function identityLease(scenario) {
+    const root = mkdtempSync(join(tmpdir(), 'nt-identity-lease-'));
+    const lockPath = join(root, '.desktop-collection.lock');
+    const output = join(root, 'evidence');
+    const sources = join(root, 'source, with "quotes"');
+    const sidecar = join(root, 'sidecar.tar');
+    const image = 'sha256:' + 'a'.repeat(64);
+    const id = 'b'.repeat(64);
+    let present = false;
+
+    try {
+        const lease = await acquireDesktopLease({ lockPath, entrypoint: 'identity-test', worktree: root });
+        const name = 'ntilde-identity-' + lease.leaseId;
+        const invoke = async args => {
+            switch (args[0]) {
+            case 'create': {
+                assert.ok(args.includes('type=bind,"source=' + sources.replaceAll('"', '""') + '",target=/sources,readonly'));
+                assert.ok(args.includes('type=bind,source=' + sidecar + ',target=/inputs/sidecar.tar,readonly'));
+                present = true;
+                if (scenario === 'lost') throw new Error('lost create response');
+                return id;
+            }
+            case 'inspect':
+                assert.equal(args[1], id);
+                return JSON.stringify([{ Id: id, Name: '/' + name, Image: image,
+                    Config: { User: '1000:1000', Labels: { 'ntilde.qa.run': lease.leaseId } },
+                    HostConfig: { NetworkMode: 'none' },
+                    Mounts: [{ Destination: '/sources', RW: false }, { Destination: '/inputs/sidecar.tar', RW: false }],
+                    State: { Status: 'exited', ExitCode: 0 } }]);
+            case 'start': {
+                // Two rotations while the container runs roll the acquisition and launch intent out of both files.
+                const log = desktopLockAuditPath(lockPath);
+                renameSync(log, log + '.1');
+                writeFileSync(log, '{}\n');
+                rmSync(log + '.1');
+                renameSync(log, log + '.1');
+                return '';
+            }
+            case 'stop':
+            case 'cp':
+                return '';
+            case 'rm':
+                if (scenario === 'failed') throw new Error('removal failed');
+                present = false;
+                return '';
+            case 'ps':
+                return present ? id : '';
+            default:
+                throw new Error('Unexpected Docker command: ' + args[0]);
+            }
+        };
+        const launch = withLaunchLease(lease, output, audit =>
+            runContainer({ output, image, sources, sidecar, lease, appSourceRevision: 'a'.repeat(40), audit }, invoke));
+        if (scenario === 'lost') await assert.rejects(launch, /lost create response/);
+        else if (scenario === 'failed') await assert.rejects(launch, /removal failed/);
+        else await launch;
+        const audit = JSON.parse(readFileSync(join(output, 'desktop-lease.json'), 'utf8')).map(event => event.event);
+        return { audit, present, lock: readDesktopLockState(lockPath), container: JSON.parse(readFileSync(join(output, 'container.json'))) };
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+}
+
+test('the Rich identity collector keeps one audit event per transition across rotation', async () => {
+    const { audit, present, lock } = await identityLease('clean');
+    assert.deepEqual(audit, ['acquired', 'launch-attempt', 'cleanup-verified', 'released']);
+    assert.equal(present, false);
+    assert.equal(lock.kind, 'absent');
+});
+
+test('the Rich identity collector finds and removes its container after a lost create response', async () => {
+    const { audit, present, lock, container } = await identityLease('lost');
+    assert.deepEqual(audit, ['acquired', 'launch-attempt', 'cleanup-verified', 'released']);
+    assert.equal(present, false);
+    assert.equal(lock.kind, 'absent');
+    assert.match(container.id, /^[a-f0-9]{64}$/);
+});
+
+test('the Rich identity collector retains the lease after failed container removal', async () => {
+    const { audit, present, lock } = await identityLease('failed');
+    assert.deepEqual(audit, ['acquired', 'launch-attempt', 'retained']);
+    assert.equal(present, true);
+    assert.equal(lock.kind, 'owned');
+    assert.equal(lock.record.status, 'cleanup-failed');
 });
 
 test('the common-core driver acquires before creating output and persists every launch intent before the launch it guards', () => {

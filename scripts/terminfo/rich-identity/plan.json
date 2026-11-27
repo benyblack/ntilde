@@ -1,0 +1,30 @@
+{
+  "app": {
+    "pinned176": ["\u001b[1;1H\u001b[2K", "\u001b]176;terminfo-test\u0007", "\u001b[6n", "\u001b[c"],
+    "pinned666": ["\u001b[1;1H\u001b[2K", "\u001b]666;test-prop=value\u0007", "\u001b[6n", "\u001b[c"],
+    "baseline": ["\u001b[3;5H", "\u001b]2;identity-baseline\u001b\\", "\u001b]10;#123456\u001b\\", "\u001b]10;?\u001b\\", "\u001b[6n", "\u001b[c"],
+    "request176": ["\u001b]176;terminfo-test\u001b\\", "\u001b]10;?\u001b\\", "\u001b[6n", "\u001b[c"],
+    "reset176": ["\u001b]176;\u001b\\", "\u001b]10;?\u001b\\", "\u001b[6n", "\u001b[c"],
+    "unregistered666": ["\u001b]666;test-prop=value\u001b\\", "\u001b]10;?\u001b\\", "\u001b[6n", "\u001b[c"],
+    "request666": ["\u001b]666;vte.container.name=ntilde-qa\u001b\\", "\u001b]10;?\u001b\\", "\u001b[6n", "\u001b[c"],
+    "reset666": ["\u001b]666;vte.container.name\u001b\\", "\u001b]10;?\u001b\\", "\u001b[6n", "\u001b[c"],
+    "control": ["\u001b[4;7H", "\u001b]2;identity-control\u001b\\", "\u001b]10;#654321\u001b\\", "\u001b]10;?\u001b\\", "\u001b[6n", "\u001b[c"],
+    "restore": ["\u001b[3;5H", "\u001b]2;identity-baseline\u001b\\", "\u001b]10;#123456\u001b\\", "\u001b]10;?\u001b\\", "\u001b[6n", "\u001b[c"]
+  },
+  "foot": {
+    "baseline": ["\u001b[3;5H", "\u001b[6n", "\u001b[c"],
+    "pinned176": ["\u001b[1;1H\u001b[2K", "\u001b]176;terminfo-test\u0007", "\u001b[6n", "\u001b[c"],
+    "resetBel": ["\u001b]176;\u0007", "\u001b[6n", "\u001b[c"],
+    "request176": ["\u001b]176;terminfo-test\u001b\\", "\u001b[6n", "\u001b[c"],
+    "reset176": ["\u001b]176;\u001b\\", "\u001b[6n", "\u001b[c"]
+  },
+  "vte": {
+    "baseline": "",
+    "pinned666": "\u001b]666;test-prop=value\u0007",
+    "unregistered666": "\u001b]666;test-prop=value\u001b\\",
+    "wrongTerminator": "\u001b]666;vte.container.name=ntilde-qa\u0007",
+    "request666": "\u001b]666;vte.container.name=ntilde-qa\u001b\\",
+    "query666": "\u001b]666;vte.container.name?\u001b\\",
+    "reset666": "\u001b]666;vte.container.name\u001b\\"
+  }
+}
