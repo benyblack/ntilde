@@ -13,8 +13,8 @@ import uharfbuzz as hb
 ROOT = Path(__file__).resolve().parent.parent
 FONT = ROOT / "tests/Ntilde.App.Tests/Fixtures/Fonts/FiraCode-Regular.ttf"
 DIGEST = "5992ab9640e2df491b2f609467b1de60e8bc39b2c28db184342a0592d98f6117"
-SIZE = 25
-BOX = {"width": 30, "height": 32, "yFromBaseline": -24}
+SIZE = 26
+BOX = {"width": 32, "height": 32, "yFromBaseline": -24}
 
 
 def shape(font, glyph_order, text, enabled):

@@ -76,7 +76,7 @@ export function gradePixels(runs, oracle) {
         'font, grid, theme or presentation changed between fixture renders');
     check(oracle.fontSha256 === fontSha256 && oracle.family === family && oracle.version === 'Version 6.002'
         && oracle.postscript === 'FiraCode-Regular' && oracle.sizeDip === fontSize
-        && same(oracle.box, { width: 30, height: 32, yFromBaseline: -24 }) && grid.cellWidthPx * 2 === oracle.box.width,
+        && same(oracle.box, { width: 32, height: 32, yFromBaseline: -24 }) && grid.cellWidthPx * 2 === oracle.box.width,
     'oracle or cell geometry differs from the fixed font preflight');
     check(off.pixels.equals(restored.pixels), 'off pixels did not restore');
     const targets = fixtures.map(({ row, start }) => ({

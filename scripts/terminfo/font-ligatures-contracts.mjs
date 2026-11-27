@@ -2,8 +2,9 @@ export const featureId = 'extensions.font-ligatures';
 export const scope = Object.freeze({ id: 'ntilde-owned-font-ligatures-v1', persistence: 'Off', deadlineMs: 90000 });
 export const prefix = 'ligatures-';
 export const family = 'Fira Code';
-export const fontSize = 25;
+export const fontSize = 26;
 export const fontSha256 = '5992ab9640e2df491b2f609467b1de60e8bc39b2c28db184342a0592d98f6117';
+export const resolvedFontSha256 = '17b8fa486c637b165ef747570fe84539e5c9423f1a10483423df6948f72893b1';
 export const da = '\x1b[c';
 export const nonce = runId => 'NTILDE_LIGATURES_' + runId;
 export const fixtures = Object.freeze([

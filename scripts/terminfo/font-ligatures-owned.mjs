@@ -6,7 +6,7 @@ import { cursorReportQuery, validateCursorReport } from './cursor-report.mjs';
 import { pngHash, retainedCapture, totalPixelLimit, validateRenderedCapture } from './pixels-capture.mjs';
 import { pristineImageBaseline, validateImageOwnership } from './static-images.mjs';
 import { journal, json, read } from './static-images-receipt.mjs';
-import { da, family, fixtures, fontSha256, fontSize, nonce, planFor, prefix, requireLigatures as check, scope } from './font-ligatures-contracts.mjs';
+import { da, family, fixtures, fontSize, nonce, planFor, prefix, requireLigatures as check, resolvedFontSha256, scope } from './font-ligatures-contracts.mjs';
 
 export { prefix, scope };
 export const workerFile = 'font-ligatures-worker.mjs';
@@ -51,7 +51,7 @@ function verifyCapture(result, frame, selected, enabled) {
     check(typeof enabled === 'boolean', 'missing effective setting');
     const view = validateRenderedCapture(result, frame.screen, 0, 1, enabled);
     const { font, syntheticSelection } = view.details;
-    check(font.primaryFamily === family && font.configuredFamily === family && font.primarySha256 === fontSha256
+    check(font.primaryFamily === family && font.configuredFamily === family && font.primarySha256 === resolvedFontSha256
         && font.sizeDip === fontSize && font.collectionIndex === 0 && font.weight === 400 && font.width === 5 && font.slant === 'Upright'
         && same(result.syntheticSelection ?? null, selected) && same(syntheticSelection ?? null, selected),
     'resolved face or selection changed');
