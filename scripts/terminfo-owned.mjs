@@ -138,6 +138,12 @@ const osc633MetadataSources = {
     osc633MetadataOwnedSourceSha256: 'osc633-metadata-owned.mjs',
     osc633MetadataWorkerSourceSha256: 'osc633-metadata-worker.mjs',
 };
+const promptPartsSources = {
+    ...osc633MetadataSources,
+    promptPartsContractsSourceSha256: 'prompt-parts-contracts.mjs',
+    promptPartsOwnedSourceSha256: 'prompt-parts-owned.mjs',
+    promptPartsWorkerSourceSha256: 'prompt-parts-worker.mjs',
+};
 const sixelReportsSources = {
     sixelReportsContractsSourceSha256: 'sixel-reports-contracts.mjs',
     sixelReportsOwnedSourceSha256: 'sixel-reports-owned.mjs',
@@ -181,6 +187,7 @@ const scopes = {
     'osc555': flashScope,
     'osc555-disabled': flashScope,
     'font-ligatures': { policy: 'readonly-owned-source-graph-font-ligatures-v1', sources: fontLigatureSources, entry: fontLigatureSources.fontLigaturesOwnedSourceSha256 },
+    'prompt-parts': { policy: 'readonly-owned-source-graph-prompt-parts-v1', sources: promptPartsSources, entry: promptPartsSources.promptPartsOwnedSourceSha256 },
     'osc633-metadata': { policy: 'readonly-owned-source-graph-v86', sources: osc633MetadataSources, entry: osc633MetadataSources.osc633MetadataOwnedSourceSha256 },
     'sixel-reports': { policy: 'readonly-owned-source-graph-v85', sources: sixelReportsSources, entry: sixelReportsSources.sixelReportsOwnedSourceSha256 },
     'osc66': { policy: 'readonly-owned-source-graph-v84', sources: osc66Sources, entry: osc66Sources.osc66OwnedSourceSha256 },

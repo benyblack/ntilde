@@ -1,0 +1,178 @@
+[
+  {
+    "runId": "5d2c8a1ecdc60e05cb21d8171433353a",
+    "appVersion": "0.14.0+c05d9c10a1ac7b1e6badcf90b0f58a9fa26767b6",
+    "sourceSnapshotManifestSha256": "93b3383d90f773133d35d62359842f89e1e84d592a24bb68dcb319724be3ff90",
+    "failure": {
+      "error": "OSC 633 metadata: paired App state changed during a read",
+      "at": "2026-11-27T14:55:58.083Z"
+    },
+    "ownershipProof": {
+      "proofs": [
+        {
+          "privateClipboard": {
+            "policy": "private-app-storage-parent-transactions-v1",
+            "appBirth": "Fri Nov 27 14:55:55 2026",
+            "workerBirth": "Fri Nov 27 14:55:57 2026",
+            "outputDevice": {
+              "dev": "1018044615",
+              "rdev": "268435471",
+              "ino": "190099"
+            },
+            "originalTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600"
+          },
+          "app": {
+            "pid": 29342,
+            "ppid": 29294,
+            "uid": 501,
+            "tty": "??",
+            "executable": "/Users/behnam/.ntilde-qa-sidecars/contour-prompt-parts-c05d9c10/Ntilde"
+          },
+          "worker": {
+            "pid": 29497,
+            "ppid": 29342,
+            "uid": 501,
+            "tty": "ttys015",
+            "executable": "/Users/behnam/.npm/_npx/387698761821791d/node_modules/node/bin/node"
+          },
+          "tty": "/dev/ttys015",
+          "at": "2026-11-27T14:55:57.426Z",
+          "terminalOutput": {
+            "tool": "/bin/stty",
+            "outputProcessing": false,
+            "description": "speed 9600 baud; 41 rows; 140 columns;\nlflags: icanon isig iexten echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip icrnl -inlcr -igncr ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;",
+            "verifiedAt": "2026-11-27T14:55:57.449Z"
+          }
+        }
+      ],
+      "completed": false,
+      "collectionScope": {
+        "id": "ntilde-owned-contour-prompt-parts-v1",
+        "persistence": "Off",
+        "deadlineMs": 90000
+      },
+      "cleanedUpAt": "2026-11-27T14:55:58.083Z"
+    },
+    "desktopLease": [
+      {
+        "at": "2026-11-27T14:55:55.544Z",
+        "pid": 29294,
+        "event": "acquired",
+        "lease": "5d2c8a1ecdc60e05cb21d8171433353a",
+        "entrypoint": "terminfo-owned.mjs",
+        "worktree": "/Users/behnam/.codex/worktrees/contour-prompt-parts/ntilde",
+        "waitedMs": 5
+      },
+      {
+        "at": "2026-11-27T14:55:55.629Z",
+        "pid": 29294,
+        "event": "launch-attempt",
+        "lease": "5d2c8a1ecdc60e05cb21d8171433353a",
+        "entrypoint": "terminfo-owned.mjs"
+      },
+      {
+        "at": "2026-11-27T14:55:58.083Z",
+        "pid": 29294,
+        "event": "cleanup-verified",
+        "lease": "5d2c8a1ecdc60e05cb21d8171433353a",
+        "by": "marker-scan"
+      },
+      {
+        "at": "2026-11-27T14:55:58.131Z",
+        "pid": 29294,
+        "event": "released",
+        "lease": "5d2c8a1ecdc60e05cb21d8171433353a",
+        "entrypoint": "terminfo-owned.mjs",
+        "launch": "attempted"
+      }
+    ]
+  },
+  {
+    "runId": "e6e150ee947762853707c93b3689348a",
+    "appVersion": "0.14.0+c05d9c10a1ac7b1e6badcf90b0f58a9fa26767b6",
+    "sourceSnapshotManifestSha256": "93b3383d90f773133d35d62359842f89e1e84d592a24bb68dcb319724be3ff90",
+    "failure": {
+      "error": "OSC 633 metadata: paired App state changed during a read",
+      "at": "2026-11-27T14:56:14.444Z"
+    },
+    "ownershipProof": {
+      "proofs": [
+        {
+          "privateClipboard": {
+            "policy": "private-app-storage-parent-transactions-v1",
+            "appBirth": "Fri Nov 27 14:56:12 2026",
+            "workerBirth": "Fri Nov 27 14:56:13 2026",
+            "outputDevice": {
+              "dev": "1018044615",
+              "rdev": "268435468",
+              "ino": "190221"
+            },
+            "originalTerminalState": "gfmt1:cflag=4b00:iflag=2b02:lflag=5cb:oflag=3:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600"
+          },
+          "app": {
+            "pid": 30909,
+            "ppid": 30835,
+            "uid": 501,
+            "tty": "??",
+            "executable": "/Users/behnam/.ntilde-qa-sidecars/contour-prompt-parts-c05d9c10/Ntilde"
+          },
+          "worker": {
+            "pid": 31144,
+            "ppid": 30909,
+            "uid": 501,
+            "tty": "ttys012",
+            "executable": "/Users/behnam/.npm/_npx/387698761821791d/node_modules/node/bin/node"
+          },
+          "tty": "/dev/ttys012",
+          "at": "2026-11-27T14:56:13.822Z",
+          "terminalOutput": {
+            "tool": "/bin/stty",
+            "outputProcessing": false,
+            "description": "speed 9600 baud; 41 rows; 140 columns;\nlflags: icanon isig iexten echo echoe -echok echoke -echonl echoctl\n\t-echoprt -altwerase -noflsh -tostop -flusho -pendin -nokerninfo\n\t-extproc\niflags: -istrip icrnl -inlcr -igncr ixon -ixoff ixany imaxbel -iutf8\n\t-ignbrk brkint -inpck -ignpar -parmrk\noflags: -opost onlcr -oxtabs -onocr -onlret\ncflags: cread cs8 -parenb -parodd hupcl -clocal -cstopb -crtscts -dsrflow\n\t-dtrflow -mdmbuf\ncchars: discard = ^O; dsusp = ^Y; eof = ^D; eol = <undef>;\n\teol2 = <undef>; erase = ^?; intr = ^C; kill = ^U; lnext = ^V;\n\tmin = 1; quit = ^\\; reprint = ^R; start = ^Q; status = ^T;\n\tstop = ^S; susp = ^Z; time = 0; werase = ^W;",
+            "verifiedAt": "2026-11-27T14:56:13.899Z"
+          }
+        }
+      ],
+      "completed": false,
+      "collectionScope": {
+        "id": "ntilde-owned-contour-prompt-parts-v1",
+        "persistence": "Off",
+        "deadlineMs": 90000
+      },
+      "cleanedUpAt": "2026-11-27T14:56:14.444Z"
+    },
+    "desktopLease": [
+      {
+        "at": "2026-11-27T14:56:12.187Z",
+        "pid": 30835,
+        "event": "acquired",
+        "lease": "e6e150ee947762853707c93b3689348a",
+        "entrypoint": "terminfo-owned.mjs",
+        "worktree": "/Users/behnam/.codex/worktrees/contour-prompt-parts/ntilde",
+        "waitedMs": 13
+      },
+      {
+        "at": "2026-11-27T14:56:12.329Z",
+        "pid": 30835,
+        "event": "launch-attempt",
+        "lease": "e6e150ee947762853707c93b3689348a",
+        "entrypoint": "terminfo-owned.mjs"
+      },
+      {
+        "at": "2026-11-27T14:56:14.444Z",
+        "pid": 30835,
+        "event": "cleanup-verified",
+        "lease": "e6e150ee947762853707c93b3689348a",
+        "by": "marker-scan"
+      },
+      {
+        "at": "2026-11-27T14:56:14.642Z",
+        "pid": 30835,
+        "event": "released",
+        "lease": "e6e150ee947762853707c93b3689348a",
+        "entrypoint": "terminfo-owned.mjs",
+        "launch": "attempted"
+      }
+    ]
+  }
+]

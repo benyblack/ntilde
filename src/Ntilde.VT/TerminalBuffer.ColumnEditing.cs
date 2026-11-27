@@ -54,7 +54,6 @@ public partial class TerminalBuffer
         }
         var cells = row.Cells;
         row.WrappedColumns = null;
-        row.WrittenColumns = Cols;
 
         // Retire, before anything moves, every wide glyph straddling a boundary the shift cuts: the shift column itself, and
         // the first column pushed off the edge (insert) or the first column kept after the deleted run (delete).
@@ -62,6 +61,7 @@ public partial class TerminalBuffer
         RetireWideAcross(row, insert ? edge - n : column + n, blank);
         // A lead alone in the last column (ICH can leave one) has no continuation to travel with: a delete would carry it inward as an orphan.
         if (!insert && cells[edge - 1].IsWide) BlankCell(row, edge - 1, blank);
+        row.NoteColumnShift(column, edge, insert ? n : -n, _promptClickMode != PromptClickMode.Disabled);
 
         if (insert)
         {

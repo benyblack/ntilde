@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "e400379a1c8d2d4b95d528578a7a10c01a144095341ac76e67c6da31b54e3d32",
+  "matrixSha256": "c3ac45ba4830983d430b1de947700d0ff0f430054d824ab498b1e55da22a3ffd",
   "summary": {
     "totalRows": 159,
     "supportedCount": 76,
@@ -3966,7 +3966,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BCommand Assist",
-      "knownDeviations": "Supports A/B/C/D markers; C\u0027s command from base64, plain text or kitty\u0027s \u0060cmdline_url\u0060 (fish 4); a direct-local App pane supports Kitty A;click_events=1/2 and A;k=s for SGR prompt clicks. See the [owned prompt click assessment](qa/terminfo/2026-11-27-rich-kitty-clicks/report.md).",
+      "knownDeviations": "Supports A/B/C/D markers; C\u0027s command from base64, plain text or kitty\u0027s \u0060cmdline_url\u0060 (fish 4); a direct-local App pane supports Kitty A;click_events=1/2 and A;k=s for SGR prompt clicks. OSC 133 P records a live prompt part at the cursor. An explicit right part bounds grid command reads. See the [owned prompt-part assessment](qa/terminfo/2026-11-27-contour-prompt-parts/report.md) and the [owned prompt click assessment](qa/terminfo/2026-11-27-rich-kitty-clicks/report.md).",
       "sourceLine": 246
     },
     {

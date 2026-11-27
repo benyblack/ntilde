@@ -48,6 +48,12 @@ internal static class AgentPaneMetadataCapture
                 AcceptingCommandInput = buffer.IsAcceptingCommandInput,
                 CommandStart = Mark(buffer.CommandStartMark),
                 OutputStart = Mark(buffer.CommandOutputStartMark),
+                PromptParts = buffer.ReadPromptParts().Select(p => new PanePromptPart
+                {
+                    Kind = p.Kind,
+                    Row = p.Row,
+                    Col = p.Column
+                }).ToArray(),
                 Links = links,
                 Contexts = parser == null ? null : ReadContexts(parser),
             };

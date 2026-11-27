@@ -25,19 +25,19 @@ function span(source, start, end) {
     return source.slice(from, to);
 }
 
-export function pinnedMetadataProbes(gzip) {
+export function pinnedMetadataProbes(gzip, ids = caseIds, nextRegistration = '    probe("extensions.notifications"') {
     const bytes = gunzipSync(gzip, { maxOutputLength: 1_000_000 });
     assert.equal(digest(bytes), pinnedBundle, 'pinned terminfo.dev bundle changed');
     const source = bytes.toString('utf8');
     const define = span(source, 'function probe(id, termless, term, termObservationEvidence) {', 'function readHyperlinkMetadata(');
     const verdict = span(source, 'function promptConsumptionResult(consumed) {', 'function colorStackError(');
-    const registrations = span(source, '    {\n      ...probe("' + caseIds[0] + '",', '    probe("extensions.notifications"');
+    const registrations = span(source, '    {\n      ...probe("' + ids[0] + '",', nextRegistration);
     const entries = runInNewContext(define + verdict + '[' + registrations + ']', Object.create(null), { timeout: 1000 }); // NOSONAR: digest-pinned upstream code.
-    assert.deepEqual(Array.from(entries, probe => probe.id), caseIds);
+    assert.deepEqual(Array.from(entries, probe => probe.id), ids);
     return Array.from(entries);
 }
 
-async function replayPinned(probe, termless, terminal) {
+export async function replayPinned(probe, termless, terminal) {
     let feedCalls = 0, cellReads = 0, writes = 0, queries = 0;
     const termlessResult = probe.termless({
         feed(bytes) {
@@ -68,18 +68,18 @@ async function replayPinned(probe, termless, terminal) {
             terminalWrites: terminal.writes, query: terminal.query, reply } };
 }
 
-export function verifySources(directory, context) {
+export function verifySources(directory, context, files = capturedOsc633MetadataSourceFiles, policy = capturedOsc633MetadataSourcePolicy) {
     const retained = join(directory, 'sources'), manifest = readJson(directory, 'source-snapshot.json');
-    const entries = Object.entries(capturedOsc633MetadataSourceFiles);
-    assert.equal(context.sourceSnapshotPolicy, capturedOsc633MetadataSourcePolicy);
+    const entries = Object.entries(files);
+    assert.equal(context.sourceSnapshotPolicy, policy);
     assert.equal(manifest.policy, context.sourceSnapshotPolicy);
     assert.equal(manifest.schemaVersion, 1);
     assert.equal(readdirSync(retained).length, entries.length);
-    assert.deepEqual(readJson(retained, 'owned-source-inventory.json'), capturedOsc633MetadataSourceFiles);
+    assert.deepEqual(readJson(retained, 'owned-source-inventory.json'), files);
     const hashes = Object.fromEntries(entries.map(([field, file]) => [field, digest(readFileSync(join(retained, file)))]));
     assert.deepEqual(hashes, manifest.hashes);
     assert.deepEqual(hashes, Object.fromEntries(entries.map(([field]) => [field, context[field]])));
-    assertRetainedSourceClosure(retained, capturedOsc633MetadataSourceFiles);
+    assertRetainedSourceClosure(retained, files);
 }
 
 function rederive(directory, manifest) {
