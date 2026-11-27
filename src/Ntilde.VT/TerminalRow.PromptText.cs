@@ -33,6 +33,23 @@ public partial class TerminalRow
         NoteLayoutColumnsWritten(to);
     }
 
+    internal void NoteColumnShift(int start, int edge, int delta, bool trackPromptText)
+    {
+        PromptTextSpan[]? spans = null;
+        if (trackPromptText || PromptTextSpans != null)
+        {
+            var text = new PromptTextReflow();
+            int moved = edge - start - System.Math.Abs(delta);
+            text.Append(this, 0, 0, start);
+            text.Append(this, start + System.Math.Max(0, delta), start + System.Math.Max(0, -delta), moved);
+            text.Append(this, edge, edge, Cells.Length - edge);
+            spans = text.ReadRow(0, Cells.Length);
+        }
+
+        WrittenColumns = Cells.Length;
+        PromptTextSpans = spans;
+    }
+
     private void NotePromptTextWritten(PromptTextSpan[] spans, int start, int end)
     {
         if (end <= start) return;

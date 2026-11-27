@@ -73,6 +73,17 @@ public class PromptClickTests
         Assert.Equal(1, WireRow(4));
     }
 
+    [Fact]
+    public void ExplicitSecondaryOptOutDisablesReports()
+    {
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n\x1b]133;A;k=s\aPS2>");
+        Assert.Equal(1, WireRow(1));
+
+        _parser.Process("\x1b[2;1H\x1b]133;A;k=s;click_events=0\aPS2>");
+        Assert.False(_buffer.TryGetPromptClickRow(0, out _, out _));
+        Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
+    }
+
     [Theory]
     [InlineData(1, 1, 2, 4)]
     [InlineData(2, 2, 1, 1)]
@@ -166,6 +177,34 @@ public class PromptClickTests
 
         _parser.Process("\x1b[2;1Hreplacement\x1b[H");
         Assert.Equal(2, WireRow(1));
+    }
+
+    [Theory]
+    [InlineData("\x1b[2;5H\x1b[1K")]
+    [InlineData("\x1b[2;1H\x1b[5X")]
+    [InlineData("\x1b[2;1H\x1b[5P")]
+    public void ErasingTheSecondaryBeforeItsTailRetiresTheAnchor(string erase)
+    {
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n\x1b]133;A;k=s\a12345\r\nlast");
+        Assert.Equal(2, WireRow(2));
+
+        _parser.Process(erase + "\x1b[H");
+        Assert.Equal(3, WireRow(2));
+        _parser.Process("\x1b[3;1H\x1b[2K\x1b[H");
+        Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
+        Assert.False(_buffer.TryGetPromptClickRow(2, out _, out _));
+    }
+
+    [Theory]
+    [InlineData("\x1b[5X")]
+    [InlineData("\x1b[5P")]
+    public void CharacterEditsCanRemoveTheLastPromptRow(string edit)
+    {
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n12345\x1b[H");
+        Assert.Equal(2, WireRow(1));
+
+        _parser.Process("\x1b[2;1H" + edit + "\x1b[H");
+        Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
     }
 
     [Fact]

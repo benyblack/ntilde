@@ -65,13 +65,14 @@ namespace Ntilde.VT
             }
         }
 
-        private static PromptClickMode ParsePromptClickMode(string[] parts)
+        private static PromptClickMode? ParsePromptClickMode(string[] parts)
         {
-            var mode = PromptClickMode.Disabled;
+            PromptClickMode? mode = null;
             foreach (string part in parts.AsSpan(1))
             {
                 mode = part switch
                 {
+                    "click_events=0" => PromptClickMode.Disabled,
                     "click_events=1" => PromptClickMode.Absolute,
                     "click_events=2" => PromptClickMode.Relative,
                     _ => mode
@@ -98,7 +99,7 @@ namespace Ntilde.VT
                     if (vsCodeDialect)
                         _buffer.ClearClickPrompt();
                     else
-                        _buffer.BeginClickPrompt(CaptureCursorMark(), ParsePromptClickMode(parts));
+                        _buffer.BeginClickPrompt(CaptureCursorMark(), ParsePromptClickMode(parts) ?? PromptClickMode.Disabled);
                     ClearVsCodeCommandLine();
                     // We're back at a shell prompt: clear any mouse/focus reporting a TUI
                     // left enabled after an unclean exit, so pointer moves don't flood the

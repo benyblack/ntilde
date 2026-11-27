@@ -535,6 +535,7 @@ namespace Ntilde.VT
                     row.SetProtected(i, false);
                 }
                 row.TouchRevision();
+                UpdateClickPromptAfterRowEdit();
             }
             finally
             {
@@ -563,6 +564,7 @@ namespace Ntilde.VT
                     row.SetProtected(i, false);
                 }
                 row.TouchRevision();
+                UpdateClickPromptAfterRowEdit();
             }
             finally
             {
@@ -578,6 +580,7 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 ClearRowInternal(_cursorRow);
+                UpdateClickPromptAfterRowEdit();
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             OnInvalidate?.Invoke();
@@ -626,10 +629,12 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 SnapCursorToLineSizeNoLock();
-                EraseTextSizingRange(_cursorCol, (int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count)), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
+                int end = (int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count));
+                EraseTextSizingRange(_cursorCol, end, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                if (count > 0 && _cursorCol >= 0 && _cursorCol < Cols)
-                    row.NoteColumnsWritten((int)Math.Min(Cols, (long)_cursorCol + count));
+                bool erasesCells = _cursorCol < end;
+                if (erasesCells)
+                    row.NoteLineErasure(_cursorCol, end, _promptClickMode != PromptClickMode.Disabled);
 
                 for (int i = 0; i < count; i++)
                 {
@@ -643,6 +648,7 @@ namespace Ntilde.VT
                     row.SetProtected(col, false);
                 }
                 row.TouchRevision();
+                if (erasesCells) UpdateClickPromptAfterRowEdit();
             }
             finally
             {

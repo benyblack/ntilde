@@ -801,7 +801,7 @@ namespace Ntilde.VT
                 EraseTextSizingForShift(insert: true, Math.Max(0, endCol - _cursorCol));
             }
             row.WrappedColumns = null;
-            row.WrittenColumns = Cols;
+            row.NoteColumnShift(_cursorCol, edge, endCol - _cursorCol, _promptClickMode != PromptClickMode.Disabled);
 
             // A glyph pushed against the right edge loses its continuation off the end; its anchor must not stay protected there.
             // (A glyph that is already an edge anchor keeps its record: nothing was cut.)
@@ -827,6 +827,7 @@ namespace Ntilde.VT
                 row.Cells[c] = empty;
             }
             row.TouchRevision();
+            if (endCol > _cursorCol) UpdateClickPromptAfterRowEdit();
         }
 
         public void DeleteCharacters(int count)
@@ -871,7 +872,7 @@ namespace Ntilde.VT
             // the anchor's record must go with the half that is deleted, or the two would read as one protected glyph.
             if (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation && row.Cells[_cursorCol - 1].IsWide) row.SetProtected(_cursorCol - 1, false);
             row.WrappedColumns = null;
-            row.WrittenColumns = Cols;
+            row.NoteColumnShift(_cursorCol, edge, -count, _promptClickMode != PromptClickMode.Disabled);
 
             // Shift characters to left
             for (int c = _cursorCol; c < endCol; c++)
@@ -910,6 +911,7 @@ namespace Ntilde.VT
                 row.Cells[c] = empty;
             }
             row.TouchRevision();
+            if (count > 0) UpdateClickPromptAfterRowEdit();
         }
     }
 }

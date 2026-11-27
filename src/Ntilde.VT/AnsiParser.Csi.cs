@@ -449,7 +449,6 @@ namespace Ntilde.VT
                         if (mode == 0) _buffer.EraseLineToEnd();
                         else if (mode == 1) _buffer.EraseLineFromStart();
                         else if (mode == 2) _buffer.EraseLineAll();
-                        _buffer.EraseClickPromptLine(mode);
                     }
                     break;
                 case 'z': // DECERA - Erase Rectangular Area

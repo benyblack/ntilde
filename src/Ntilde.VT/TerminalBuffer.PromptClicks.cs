@@ -29,7 +29,7 @@ public partial class TerminalBuffer
         }
     }
 
-    internal void MarkSecondaryClickPrompt(ShellIntegrationMark mark, PromptClickMode mode)
+    internal void MarkSecondaryClickPrompt(ShellIntegrationMark mark, PromptClickMode? mode)
     {
         // Keep the grid lock outermost, as when the parser updates shell marks.
         bool lockTaken = EnterReadLockIfNeeded();
@@ -48,9 +48,11 @@ public partial class TerminalBuffer
                 int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow < mark.AbsoluteRow) + 1;
                 _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
                 _secondaryClickPrompts.Add(mark);
-                if (mode != PromptClickMode.Disabled)
+                if (mode is { } requested)
                 {
-                    _promptClickMode = mode;
+                    if (requested == PromptClickMode.Disabled || _promptClickMode == PromptClickMode.Disabled)
+                        _clickPromptEnd = mark;
+                    _promptClickMode = requested;
                 }
 
                 ExtendClickPromptLocked(mark);
@@ -93,11 +95,9 @@ public partial class TerminalBuffer
         }
     }
 
-    internal void EraseClickPromptLine(int mode)
+    private void UpdateClickPromptAfterRowEdit()
     {
         if (_promptClickMode == PromptClickMode.Disabled) return;
-        bool wholeLine = mode == 2 || (mode == 0 && _cursorCol == 0)
-            || (mode == 1 && _cursorCol >= CursorRowLastColumnNoLock);
         lock (_trackedMarkGate)
         {
             if (_clickPrompt is not { } primary
@@ -108,13 +108,18 @@ public partial class TerminalBuffer
                 return;
             }
 
-            if (!wholeLine && !ErasePartialClickPromptLine(mode, endRow)) return;
-
-            long erased = CaptureClickPosition(_cursorRow, 0).AbsoluteRow;
-            _secondaryClickPrompts.RemoveAll(anchor => anchor.AbsoluteRow == erased);
+            int columns = _viewport[_cursorRow].PromptTextColumns;
+            var edited = CaptureClickPosition(_cursorRow, columns);
+            if (columns == 0)
+                _secondaryClickPrompts.RemoveAll(anchor => anchor.AbsoluteRow == edited.AbsoluteRow);
             if (_cursorRow != endRow) return;
-
-            RestoreClickPromptEndBeforeRow(primary, primaryRow, endRow);
+            if (columns == 0)
+                RestoreClickPromptEndBeforeRow(primary, primaryRow, endRow);
+            else
+            {
+                _clickPromptEnd = primary;
+                ExtendClickPromptLocked(edited);
+            }
         }
     }
 
@@ -134,17 +139,6 @@ public partial class TerminalBuffer
         // Marked empty continuation rows are also part of the editable extent.
         if (_secondaryClickPrompts.Count > 0)
             ExtendClickPromptLocked(_secondaryClickPrompts[^1]);
-    }
-
-    private bool ErasePartialClickPromptLine(int mode, int endRow)
-    {
-        if (_cursorRow != endRow) return false;
-        if (mode == 0)
-        {
-            LimitClickPromptEnd(CaptureClickPosition(_cursorRow, _cursorCol));
-            return false;
-        }
-        return mode == 1 && _cursorCol + 1 >= _clickPromptEnd.Column;
     }
 
     internal void EraseClickPromptTail(ShellIntegrationMark cursor)
