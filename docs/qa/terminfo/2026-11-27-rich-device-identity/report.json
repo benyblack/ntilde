@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "suite": "ntilde-owned-device-identity-v1",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "stock": {
+    "device.tertiary-da": "supported",
+    "device.xtversion": "supported"
+  },
+  "pinned": [
+    {
+      "id": "device.tertiary-da",
+      "terminal": {
+        "pass": true,
+        "response": "\u001bP!|00000000\u001b\\\u001b[?62;4;22c",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete DECRPTUI DCS !| followed by four hexadecimal pairs and ST",
+            "observed": "\u001bP!|00000000\u001b\\"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "response": "\u001bP!|00000000\u001b\\",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete DECRPTUI DCS !| followed by four hexadecimal pairs and ST",
+            "observed": "\u001bP!|00000000\u001b\\"
+          }
+        ]
+      }
+    },
+    {
+      "id": "device.xtversion",
+      "terminal": {
+        "pass": true,
+        "response": "\u001bP>|Ntilde 0.14.0\u001b\\\u001b[?62;4;22c",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete XTVERSION DCS >| printable name/version ST",
+            "observed": "\u001bP>|Ntilde 0.14.0\u001b\\"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "response": "\u001bP>|Ntilde 0.14.0\u001b\\",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete XTVERSION DCS >| printable name/version ST",
+            "observed": "\u001bP>|Ntilde 0.14.0\u001b\\"
+          }
+        ]
+      }
+    }
+  ],
+  "owned": {
+    "runId": "ac613503d891f9fbd4b6c532d262f1b0",
+    "suite": "ntilde-owned-device-identity-v1",
+    "metadata": {
+      "assembly": "Ntilde.VT.dll",
+      "attribute": "System.Reflection.AssemblyInformationalVersionAttribute",
+      "sha256": "963fd2fa4cf988d9bf912b4dc25bc908360fbfc93ff8a9291789217c592a4cd6",
+      "informationalVersion": "0.14.0+b267b01a054fc9bae4b6b4153f28fcec7a822a34",
+      "version": "0.14.0"
+    },
+    "exchanges": [
+      {
+        "stage": "primary",
+        "request": "\u001b[c",
+        "raw": "\u001b[?62;4;22c",
+        "reply": "\u001b[?62;4;22c",
+        "expected": "\u001b[?62;4;22c",
+        "outcome": "passed"
+      },
+      {
+        "stage": "secondary",
+        "request": "\u001b[>c",
+        "raw": "\u001b[>1;10;0c",
+        "reply": "\u001b[>1;10;0c",
+        "expected": "\u001b[>1;10;0c",
+        "outcome": "passed"
+      },
+      {
+        "id": "device.tertiary-da",
+        "stage": "da3",
+        "request": "\u001b[=c\u001b[c",
+        "raw": "\u001bP!|00000000\u001b\\\u001b[?62;4;22c",
+        "reply": "\u001bP!|00000000\u001b\\",
+        "expected": "\u001bP!|00000000\u001b\\",
+        "outcome": "passed"
+      },
+      {
+        "stage": "da3-zero",
+        "request": "\u001b[=0c",
+        "raw": "\u001bP!|00000000\u001b\\",
+        "reply": "\u001bP!|00000000\u001b\\",
+        "expected": "\u001bP!|00000000\u001b\\",
+        "outcome": "passed"
+      },
+      {
+        "stage": "da3-nonzero",
+        "request": "\u001b[=1c",
+        "raw": "",
+        "reply": "",
+        "expected": "",
+        "outcome": "passed"
+      },
+      {
+        "id": "device.xtversion",
+        "stage": "version",
+        "request": "\u001b[>0q\u001b[c",
+        "raw": "\u001bP>|Ntilde 0.14.0\u001b\\\u001b[?62;4;22c",
+        "reply": "\u001bP>|Ntilde 0.14.0\u001b\\",
+        "expected": "\u001bP>|Ntilde 0.14.0\u001b\\",
+        "outcome": "passed"
+      },
+      {
+        "stage": "version-default",
+        "request": "\u001b[>q",
+        "raw": "\u001bP>|Ntilde 0.14.0\u001b\\",
+        "reply": "\u001bP>|Ntilde 0.14.0\u001b\\",
+        "expected": "\u001bP>|Ntilde 0.14.0\u001b\\",
+        "outcome": "passed"
+      },
+      {
+        "stage": "version-nonzero",
+        "request": "\u001b[>1q",
+        "raw": "",
+        "reply": "",
+        "expected": "",
+        "outcome": "passed"
+      }
+    ],
+    "paneId": "d520ec43-759c-499b-8543-24ec93d1ad06",
+    "tty": "/dev/ttys002",
+    "appPid": 92275,
+    "workerPid": 92283,
+    "restored": true
+  },
+  "measurement": {
+    "runId": "ac613503d891f9fbd4b6c532d262f1b0",
+    "appRevision": "b267b01a054fc9bae4b6b4153f28fcec7a822a34",
+    "scriptsRevision": "b8cc58f4e94e752012cb5fbe9bb575f1b67dad00",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-device-identity-v1",
+    "receiptSchema": 1,
+    "version": "0.14.0+b267b01a054fc9bae4b6b4153f28fcec7a822a34",
+    "nodeVersion": "v24.22.2",
+    "startedAt": "2026-11-27T18:04:04.767Z",
+    "releasedAt": "2026-11-27T18:04:09.583Z",
+    "geometry": {
+      "rows": 40,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "619bedc337d409e89847a95d5ee169eff0e6a6b6df3965b4e9fd0f798f49ab39",
+    "sourceSnapshotManifestSha256": "ca8749aaa7b6e8180e93b42c9f96bcfdac6a7aa747d27f98cf7194bd18e0a7b8",
+    "archiveSha256": "7c1580e440106141e5669aeb777f44feb93e57aeae9de108daac0e0e3e85434d"
+  },
+  "superseded": [
+    {
+      "runId": "8265cdb79436de29751b860abf0b266c",
+      "appRevision": "b267b01a054fc9bae4b6b4153f28fcec7a822a34",
+      "scriptsRevision": "6ff8c1d9e6d4e90ed4b09053c7583c8fec3f6891",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-device-identity-v1",
+      "receiptSchema": 1,
+      "archiveSha256": "bf89056fc4797c948cf1650cfeb79bfdbe545e1fd38df5fff6cb3e79e821565d",
+      "archive": "https://github.com/benyblack/ntilde/blob/15a1308f57c313fe8ba59500782211ed0fdfbfdf/docs/qa/terminfo/2026-11-27-rich-device-identity/owned-run.zip"
+    }
+  ]
+}

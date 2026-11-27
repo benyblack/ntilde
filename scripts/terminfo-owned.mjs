@@ -149,6 +149,14 @@ const sixelReportsSources = {
     sixelReportsOwnedSourceSha256: 'sixel-reports-owned.mjs',
     sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
 };
+const deviceIdentitySources = {
+    ...sixelReportsSources,
+    deviceIdentityContractsSourceSha256: 'device-identity-contracts.mjs',
+    deviceIdentityMetadataSourceSha256: 'device-identity-metadata.mjs',
+    deviceIdentityVersionReaderSourceSha256: 'device-identity-version.cs',
+    deviceIdentityOwnedSourceSha256: 'device-identity-owned.mjs',
+    deviceIdentityWorkerSourceSha256: 'device-identity-worker.mjs',
+};
 const xtwinopsPixelsSources = {
     ...sixelReportsSources,
     modernBlinkWindowSourceSha256: 'modern-blink-window.jxa',
@@ -197,6 +205,8 @@ const scopes = {
     'font-ligatures': { policy: 'readonly-owned-source-graph-font-ligatures-v1', sources: fontLigatureSources, entry: fontLigatureSources.fontLigaturesOwnedSourceSha256 },
     'prompt-parts': { policy: 'readonly-owned-source-graph-prompt-parts-v1', sources: promptPartsSources, entry: promptPartsSources.promptPartsOwnedSourceSha256 },
     'osc633-metadata': { policy: 'readonly-owned-source-graph-v86', sources: osc633MetadataSources, entry: osc633MetadataSources.osc633MetadataOwnedSourceSha256 },
+    'device-identity': { policy: 'readonly-owned-source-graph-device-identity-v1',
+        sources: deviceIdentitySources, entry: deviceIdentitySources.deviceIdentityOwnedSourceSha256 },
     'xtwinops-pixels': { policy: 'readonly-owned-source-graph-xtwinops-pixels-v1',
         sources: xtwinopsPixelsSources, entry: xtwinopsPixelsSources.xtwinopsPixelsOwnedSourceSha256 },
     'sixel-reports': { policy: 'readonly-owned-source-graph-v85', sources: sixelReportsSources, entry: sixelReportsSources.sixelReportsOwnedSourceSha256 },
@@ -265,6 +275,7 @@ async function capture(root) {
     for (const [key, file] of Object.entries(inventory)) {
         if (!/^[a-zA-Z][a-zA-Z0-9]*Sha256$/.test(key) || (!/^[a-z][a-z0-9-]*\.(?:mjs|json)$/.test(file)
             && file !== blinkSources.modernBlinkWindowSourceSha256 && file !== oscCwdSources.modernOscCwdNativeSourceSha256
+            && file !== deviceIdentitySources.deviceIdentityVersionReaderSourceSha256
             && file !== xtwinopsPixelsSources.xtwinopsPixelsFontSourceSha256 && !Object.hasOwn(oscCwdReferencePaths, file)
             && !Object.hasOwn(coreGapsReferencePaths, file) && !Object.hasOwn(oscTitleReferencePaths, file) && !Object.hasOwn(insertReplaceReferencePaths, file) && !Object.hasOwn(privateClipboardReferencePaths, file) && !Object.hasOwn(sgrRgbReferencePaths, file) && !Object.hasOwn(cellSizeReferencePaths, file))) throw new Error('Invalid source inventory entry.');
         const source = pathFor(repo, file), info = lstatSync(source);

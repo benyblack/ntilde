@@ -75,10 +75,11 @@ function verifyStage(frame, step, initial, previous, target, runId, used) {
 }
 
 export class Collection {
-    constructor(run, { plan = planFor(run.runId), actionsFile = names.actions } = {}) {
+    constructor(run, { plan = planFor(run.runId), actionsFile = names.actions, stagePrefix = prefix } = {}) {
         this.run = run;
         this.plan = plan;
         this.actionsFile = actionsFile;
+        this.stagePrefix = stagePrefix;
         this.frames = [];
         this.used = new Set();
         // Use unbound readers. The plan owns all geometry assertions across resize.
@@ -89,7 +90,7 @@ export class Collection {
     }
 
     async observe(request, budget, ownership) {
-        const stage = request.kind.slice(prefix.length), step = this.plan[this.frames.length];
+        const stage = request.kind.slice(this.stagePrefix.length), step = this.plan[this.frames.length];
         requireSixel(!this.busy && !this.restored && !this.aborted && (step?.stage === stage || stage === 'abort'), 'unexpected or concurrent stage');
         this.busy = true;
         try {

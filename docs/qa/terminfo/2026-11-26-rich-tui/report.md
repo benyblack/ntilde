@@ -38,6 +38,8 @@ The [Sixel report assessment](../2026-11-26-rich-sixel-reports/report.md) rederi
 
 The [XTWINOPS pixel assessment](../2026-11-27-rich-xtwinops-pixels/report.md) replays both pinned callbacks and checks the App and child PTY geometry across resize, font change, and restoration. The live font change exposed a one-column overdispatch, fixed by reusing the padded layout calculation.
 
+The [DA3 and XTVERSION assessment](../2026-11-27-rich-device-identity/report.md) replays both pinned framing callbacks and verifies the exact unassigned unit ID, the VT assembly version, and query state preservation in one direct-local App pane.
+
 ## OSC 633 command-line and Cwd metadata
 
 The [two-case OSC 633 assessment](../2026-11-26-osc633-metadata/report.md) qualifies E for a single command cycle and P for two reported-directory updates. Both owned effects were supported and both pinned probe verdicts were inconclusive.
