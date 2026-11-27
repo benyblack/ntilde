@@ -14,7 +14,7 @@ import { pinnedXtwinopsPixels, replayXtwinopsPixels, replayXtwinopsPixelsTermles
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(qa, '2026-11-27-rich-xtwinops-pixels');
-const manifestHash = '578c0865277abdb91e5e3dcaac166344afb542007b1074dba41aafd7a3fd34ee';
+const manifestHash = 'af0c89605a36343e5864b55ab8687b6239dbe502dc87a30e440ae95650eb27dd';
 
 export function readPinnedProbes() {
     return pinnedXtwinopsPixels(readFileSync(join(qa, '2026-11-16-static-images/terminfo-dev-4.0.0.bundle.mjs.gz')));

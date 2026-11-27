@@ -679,9 +679,9 @@
           "cols": 84
         },
         "observed": {
-          "paneId": "f1d6f1a1-de31-4081-a605-61cc9c7addc7",
-          "runId": "3a8075b2a5340e427dcb8b26ae2af841",
-          "observedAt": "2026-11-27T17:07:59.304Z",
+          "paneId": "0958351e-cfca-46d2-b88f-d090129f0509",
+          "runId": "6ef5b839b27c220ef603cd2843e93c25",
+          "observedAt": "2026-11-27T17:24:21.534Z",
           "app": {
             "rows": 26,
             "cols": 84,
@@ -702,9 +702,9 @@
           "cols": 140
         },
         "observed": {
-          "paneId": "f1d6f1a1-de31-4081-a605-61cc9c7addc7",
-          "runId": "3a8075b2a5340e427dcb8b26ae2af841",
-          "observedAt": "2026-11-27T17:08:01.073Z",
+          "paneId": "0958351e-cfca-46d2-b88f-d090129f0509",
+          "runId": "6ef5b839b27c220ef603cd2843e93c25",
+          "observedAt": "2026-11-27T17:24:22.762Z",
           "app": {
             "rows": 40,
             "cols": 140,
@@ -722,23 +722,23 @@
     "restored": true
   },
   "measurement": {
-    "runId": "3a8075b2a5340e427dcb8b26ae2af841",
+    "runId": "6ef5b839b27c220ef603cd2843e93c25",
     "appRevision": "8ce13633b18218121a24948672fb9987afc26914",
-    "scriptsRevision": "8ce13633b18218121a24948672fb9987afc26914",
+    "scriptsRevision": "4cc1e37877a0310c4fa289e8906cefe38bfd713b",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-xtwinops-pixels-v1",
     "receiptSchema": 1,
     "version": "0.14.0+8ce13633b18218121a24948672fb9987afc26914",
     "nodeVersion": "v24.22.2",
-    "startedAt": "2026-11-27T17:07:57.356Z",
-    "releasedAt": "2026-11-27T17:08:01.975Z",
+    "startedAt": "2026-11-27T17:24:18.932Z",
+    "releasedAt": "2026-11-27T17:24:23.449Z",
     "geometry": {
       "rows": 40,
       "cols": 140
     },
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "417b7420170e6570018cd62df5c18629f37cac4d8cd1184a0ecbc3b320f0a2a4",
-    "sourceSnapshotManifestSha256": "672233b2bab81fb576f2c82d405077df6fff3de4f2464f9926ee10d0ec18b14d",
-    "archiveSha256": "2b3e7cb2abbff0ee64ac54b660f9ada7e0f045b39534cf928c71fed53a9efc55"
+    "sourceSnapshotManifestSha256": "95d10c09cd8ae60884fdf02f0ac992aa21f37617e4bfd5a8da3515b913e84a72",
+    "archiveSha256": "3254a2169d9b47537302595feeafbf09f3a4162aa80a436c4d2922ab290e4638"
   }
 }

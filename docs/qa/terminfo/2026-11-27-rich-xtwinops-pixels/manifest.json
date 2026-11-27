@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "measurement": {
-    "runId": "3a8075b2a5340e427dcb8b26ae2af841",
+    "runId": "6ef5b839b27c220ef603cd2843e93c25",
     "appRevision": "8ce13633b18218121a24948672fb9987afc26914",
-    "scriptsRevision": "8ce13633b18218121a24948672fb9987afc26914",
+    "scriptsRevision": "4cc1e37877a0310c4fa289e8906cefe38bfd713b",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-xtwinops-pixels-v1",
     "receiptSchema": 1
   },
   "archives": {
-    "owned-run.zip": "2b3e7cb2abbff0ee64ac54b660f9ada7e0f045b39534cf928c71fed53a9efc55"
+    "owned-run.zip": "3254a2169d9b47537302595feeafbf09f3a4162aa80a436c4d2922ab290e4638"
   },
   "failedAttempts": [
     {

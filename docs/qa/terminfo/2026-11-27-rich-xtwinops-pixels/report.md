@@ -35,7 +35,7 @@ The original App dispatched 80 columns to the buffer and kernel after the font c
 
 ## Reproduce
 
-The [owned archive](owned-run.zip) retains the raw fenced replies, paired App observations, kernel geometry, resize actions, App and collector identities, source hashes, and cleanup proof. The [machine-readable report](report.json) records the independent oracle and the pinned verdicts. Run `3a8075b2a5340e427dcb8b26ae2af841` used macOS 27.0.1 (26A434), arm64, App `8ce13633b18218121a24948672fb9987afc26914` and collector `8ce13633b18218121a24948672fb9987afc26914`. Cleanup restored the original kernel PTY mode, removed the disposable fixture and released the desktop lease.
+The [owned archive](owned-run.zip) retains the raw fenced replies, paired App observations, kernel geometry, resize actions, App and collector identities, source hashes, and cleanup proof. The [machine-readable report](report.json) records the independent oracle and the pinned verdicts. Run `6ef5b839b27c220ef603cd2843e93c25` used macOS 27.0.1 (26A434), arm64, App `8ce13633b18218121a24948672fb9987afc26914` and collector `4cc1e37877a0310c4fa289e8906cefe38bfd713b`. Cleanup restored the original kernel PTY mode, removed the disposable fixture and released the desktop lease.
 
 Build the recorded App revision with Node 24+ available for the collector. Run the collector from the recorded scripts revision.
 
