@@ -109,7 +109,7 @@ function variableLine([name, { clean, inherited }]) {
         sampleCell(inherited.input), sampleCell(inherited.child) + ' (' + inherited.origin + ')'].join(' | ') + ' |';
 }
 
-function readableReport({ appRevision, scriptsRevision, pinned, runs, controls: observedControls, rows }) {
+export function readableReport({ appRevision, scriptsRevision, pinned, runs, controls: observedControls, rows }) {
     const [clean] = runs;
     const { product, version, build, arch } = clean.host;
     return [

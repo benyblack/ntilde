@@ -3,9 +3,11 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { assessEnvironment, families, neutralName, parentValues, parseChildOutput, snapshotEnvironment } from './rich-vendor-environment.mjs';
-import { buildPublication, pinnedCriteria, verifyVendorEnvironmentRun, withRetainedRun } from './rich-vendor-environment-results.mjs';
+import { buildPublication, pinnedCriteria, readableReport, verifyVendorEnvironmentRun, withRetainedRun } from './rich-vendor-environment-results.mjs';
 
-const manifest = JSON.parse(readFileSync(new URL('../../docs/qa/terminfo/2026-11-27-rich-vendor-environment/manifest.json', import.meta.url)));
+const publicationRoot = new URL('../../docs/qa/terminfo/2026-11-27-rich-vendor-environment/', import.meta.url);
+const readPublication = file => readFileSync(new URL(file, publicationRoot), 'utf8').replaceAll('\r\n', '\n');
+const manifest = JSON.parse(readPublication('manifest.json'));
 const expectedIds = ['device.env-lc-terminal', 'device.env-kitty', 'device.env-wezterm', 'device.env-wt-session'];
 const childFor = control => ({ ...parentValues(control), TERM_PROGRAM: { state: 'present', value: 'Ntilde' } });
 
@@ -17,6 +19,8 @@ test('verifies the four manual catalogue criteria against the pinned bundle and 
 
 test('rederives all four applicability decisions with exact ancestry and both controls', () => {
     const publication = buildPublication();
+    assert.equal(readPublication('report.json'), JSON.stringify(publication, null, 2) + '\n');
+    assert.equal(readPublication('report.md'), readableReport(publication));
     assert.deepEqual(publication.rows.map(row => row.applicability), Array(4).fill('not-applicable'));
     for (const { variables } of publication.rows) {
         for (const samples of Object.values(variables)) {
