@@ -26,6 +26,15 @@ class WindowAttributes(ct.Structure):
     ]
 
 
+class ClientMessage(ct.Structure):
+    _fields_ = [("type", INT), ("serial", XID), ("send_event", INT), ("display", PTR),
+                ("window", XID), ("message_type", XID), ("format", INT), ("data", ct.c_long * 5)]
+
+
+class XEvent(ct.Union):
+    _fields_ = [("client", ClientMessage), ("pad", ct.c_long * 24)]
+
+
 class ClientSpec(ct.Structure):
     _fields_ = [("client", XID), ("mask", UINT)]
 
@@ -114,7 +123,7 @@ class XDisplay:
             if ids:
                 self.destroy_ids(count.value, ids)
 
-    def window(self, app_pid):
+    def mapped_windows(self):
         root, parent, children, count = XID(), XID(), XIDP(), UINT()
         demand(self.query_tree(self.display, self.root, ct.byref(root), ct.byref(parent),
                                ct.byref(children), ct.byref(count)), "cannot enumerate owned display root")
@@ -126,12 +135,54 @@ class XDisplay:
                 demand(self.attributes(self.display, window, ct.byref(info)), "missing owned X11 geometry")
                 if info.map_state == 2 and info.width >= 400 and info.height >= 300:
                     visible.append({"id": window, "x": info.x, "y": info.y, "width": info.width, "height": info.height})
-            demand(len(visible) == 1, "expected a single mapped App window")
-            demand(self.client_pid(visible[0]["id"]) == app_pid, "wrong mapped X window owner")
-            return visible[0]
+            return visible
         finally:
             if children:
                 self.free(children)
+
+    def window(self, app_pid):
+        visible = self.mapped_windows()
+        demand(len(visible) == 1, "expected a single mapped App window")
+        demand(self.client_pid(visible[0]["id"]) == app_pid, "wrong mapped X window owner")
+        return visible[0]
+
+    def dismiss_clipboard_consent(self, command):
+        """Close only the real default-clipboard dialog transient for the admitted App."""
+        parent, app_pid = command["window"], command["appPid"]
+        started = str(time.monotonic_ns())
+        visible = self.mapped_windows()
+        demand(len(visible) == 2 and parent in visible, "expected one App clipboard consent dialog")
+        dialog = next(window["id"] for window in visible if window != parent)
+        demand(self.client_pid(parent["id"]) == self.client_pid(dialog) == app_pid, "wrong consent window owner")
+        x11 = ct.CDLL("libX11.so.6")
+        transient = bind(x11, "XGetTransientForHint", INT, PTR, XID, XIDP)
+        owner = XID()
+        demand(transient(self.display, dialog, ct.byref(owner)) and owner.value == parent["id"],
+               "wrong consent dialog transient parent")
+        fetch = bind(x11, "XFetchName", INT, PTR, XID, ct.POINTER(PTR))
+        name = PTR()
+        demand(fetch(self.display, dialog, ct.byref(name)) and name, "missing consent dialog title")
+        try:
+            title = ct.string_at(name).decode("utf-8")
+            demand(title == "Clipboard access", "unexpected consent dialog title")
+        finally:
+            self.free(name)
+        atom = bind(x11, "XInternAtom", XID, PTR, ct.c_char_p, INT)
+        send = bind(x11, "XSendEvent", INT, PTR, XID, INT, ct.c_long, ct.POINTER(XEvent))
+        event = XEvent()
+        event.client = ClientMessage(33, 0, 1, self.display, dialog, atom(self.display, b"WM_PROTOCOLS", 1), 32)
+        event.client.data[0] = atom(self.display, b"WM_DELETE_WINDOW", 1)
+        demand(event.client.message_type and event.client.data[0], "missing WM_DELETE_WINDOW protocol")
+        demand(send(self.display, dialog, 0, 0, ct.byref(event)), "consent dialog close failed")
+        self.sync(self.display, 0)
+        deadline = time.monotonic() + 1
+        while self.mapped_windows() != [parent]:
+            demand(time.monotonic() < deadline, "consent dialog did not close")
+            time.sleep(0.02)
+        focus = self.focus_transition(parent["id"])
+        demand(focus["observed"] == parent["id"], "App focus was not restored after consent")
+        return {"dialog": dialog, "title": title, "owner": owner.value, "serverPid": self.server_pid,
+                "appPid": app_pid, "started": started, "focus": focus, "finished": str(time.monotonic_ns())}
 
     def focus(self):
         window, revert = XID(), INT()
@@ -288,6 +339,8 @@ class XDisplay:
                 "windowId": command["window"]["id"], "focus": self.focus(), "at": str(time.monotonic_ns())}
 
     def run(self, command):
+        if command["kind"] == "dismiss-clipboard-consent":
+            return self.dismiss_clipboard_consent(command)
         app_pid = command["appPid"]
         window = self.window(app_pid)
         window_id = window["id"]
