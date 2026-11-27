@@ -124,7 +124,12 @@ export class Collection {
                 frame.screenSha256 = snapshotHash(frame.before.screen);
                 Object.assign(frame, { writes: request.writes, query: request.query, sample: request.sample });
             }
-            checkStage(frame, step, this.frames[0] ?? frame, this.frames.at(-1), this.run.runId, this.used, this.contract);
+            try {
+                checkStage(frame, step, this.frames[0] ?? frame, this.frames.at(-1), this.run.runId, this.used, this.contract);
+            } catch (error) {
+                save(this.run.output, this.contract.fileStem + '-rejected-frame.json', frame);
+                throw error;
+            }
             appendFileSync(join(this.run.output, this.names.frames), JSON.stringify(frame) + '\n', { mode: 0o600 });
             this.frames.push(frame);
             return {};
