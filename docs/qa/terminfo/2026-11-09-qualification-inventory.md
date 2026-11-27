@@ -103,7 +103,7 @@ Stock-unsupported cases with qualified reassessments: `extensions.osc5522-clipbo
 | `pxm` | 1 | v1 | passed | 67 | `9972a6fc` | v61 | 4 | `82badba3` |
 | `extensions-truecolor` | 1 | v1 | passed | 66 | `d82374aa` | v60 | 3 | `5e017718` |
 | `osc633` | 4 | v1 | passed | 69 | `9c814b13` | v62 | 4 | `8cf95ba4` |
-| `modify-other-keys-3` | 1 | v1 | passed | 1 | `ff91b0c2` | modify-other-keys-3-v1 | 7 | `93ec967f` |
+| `modify-other-keys-3` | 1 | v1 | passed | 1 | `ff91b0c2` | modify-other-keys-3-v1 | 7 | `f6da8abb` |
 | `osc633-metadata` | 2 | v1 | passed | 1 | `a3319b62` | v86 | 5 | `4bed2c3b` |
 | `static-images` | 2 | v1 | passed | 69 | `49bc7b76` | v62 | 5 | `b31cf415` |
 | `sixel-native-fidelity` | 1 | v1 | passed | 82 | `f9b0da19` | v80 | 8 | `965880c2` |
@@ -181,7 +181,7 @@ Stock grades are never rewritten by owned evidence. Each publication records its
 | `pxm` | collected-run-id-recorded | `a3651fd7` | 161/93/1 | `cf7d8759` |
 | `extensions-truecolor` | collected-raw-digest-recorded | raw `d7da4d74` | 161/93/1 | `cf7d8759` |
 | `osc633` | collected-run-id-recorded | `cb002bb5` | 161/93/1 | `cf7d8759` |
-| `modify-other-keys-3` | carried-forward | n/a | carried (see note) | n/a |
+| `modify-other-keys-3` | carried-forward | `02be5c60` | 168/86/1 | `cf7d8759` |
 | `osc633-metadata` | carried-forward | n/a | carried (see note) | n/a |
 | `static-images` | collected-run-id-recorded | `620df113` | 161/93/1 | `cf7d8759` |
 | `sixel-native-fidelity` | collected-run-id-recorded | `6c7dc835` | 157/97/1 | `cf7d8759` |

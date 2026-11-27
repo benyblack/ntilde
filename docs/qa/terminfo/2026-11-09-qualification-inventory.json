@@ -3654,8 +3654,8 @@
       ],
       "evidence": {
         "files": 7,
-        "bytes": 3732818,
-        "sha256": "93ec967f472a10e9056bba56de7d745eb0225689468dc57983c886e78a4d25c1"
+        "bytes": 3733230,
+        "sha256": "f6da8abbeeb14d9c12fdf3e5139b3781d72aef8bdd6b28ce70f627eb11869680"
       },
       "receipt": {
         "schemaVersion": 1,
@@ -3680,13 +3680,17 @@
       },
       "stock": {
         "basis": "carried-forward",
-        "runId": null,
-        "counts": null,
-        "suiteComplete": null,
-        "probeHash": null,
-        "rawSha256": null,
-        "sourceRevision": null,
-        "note": "Retained stock baseline."
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "counts": {
+          "inconclusive": 168,
+          "supported": 86,
+          "unsupported": 1
+        },
+        "suiteComplete": false,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": "c47151de0decfeb07ec77f86819a97f595170bda9705b3cdf47ed18d89eba70d",
+        "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+        "note": "Stock counts carried forward from the retained November 9 baseline."
       },
       "rederivation": {
         "status": "passed",

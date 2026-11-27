@@ -535,8 +535,18 @@
     },
     "verdict": "supported"
   },
+  "stockCollectorRunId": "02be5c606e0e7d79ab8e11f142d21ae0",
   "stockCollector": {
     "rerun": false,
-    "note": "Retained stock baseline."
+    "counts": {
+      "inconclusive": 168,
+      "supported": 86,
+      "unsupported": 1
+    },
+    "suiteComplete": false,
+    "probeHash": "16a690f34c0e",
+    "rawSha256": "c47151de0decfeb07ec77f86819a97f595170bda9705b3cdf47ed18d89eba70d",
+    "sourceRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+    "note": "Stock counts carried forward from the retained November 9 baseline."
   }
 }

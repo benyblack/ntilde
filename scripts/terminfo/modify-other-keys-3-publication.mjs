@@ -69,7 +69,10 @@ export async function buildPublication() {
     return {
         summary: { ownedRunId: fixed.context.runId, measuredAt: fixed.context.startedAt, appRevision: fixed.measurement.appRevision,
             scriptsRevision: fixed.measurement.scriptsRevision, context: fixed.context, receipt: fixed.receipt,
-            stockCollector: { rerun: false, note: 'Retained stock baseline.' } },
+            stockCollectorRunId: stock.source.stockCollectorRunId,
+            stockCollector: { rerun: false, counts: stock.counts, suiteComplete: stock.source.suiteComplete, probeHash: stock.source.probeHash,
+                rawSha256: stock.source.rawSha256, sourceRevision: stock.source.collectorSourceRevision,
+                note: 'Stock counts carried forward from the retained November 9 baseline.' } },
         report: { suiteId, contractsVersion, scope: 'Generated Avalonia events and fenced child stdin in one disposable macOS direct-local pane per run.',
             pinnedBundleSha256: pinnedBundle, probeHash: stock.source.probeHash, measurement: fixed.measurement,
             baseline: { measurement: baseline.measurement, observations: baseline.observations },
