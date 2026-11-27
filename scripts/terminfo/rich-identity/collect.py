@@ -23,6 +23,7 @@ PROC = Path("/proc")
 X11_SOCKETS = Path("/tmp/.X11-unix")  # NOSONAR: verify the image-created sticky directory and socket ownership below.
 BASE_ID = "qa.foot.baseline"
 WANTED_ID = "terminfo-test"
+OUTPUT_WIDTH, OUTPUT_HEIGHT = 1280, 800
 
 
 def need(condition, message):
@@ -128,6 +129,7 @@ def title_snapshot(endpoint, app, pane):
     need(metadata["paneId"] == pane["paneId"], "wrong App pane observed")
     return {"paneId": metadata["paneId"], "oscTitle": metadata.get("oscTitle"),
             "tabText": metadata["presentation"]["tabText"],
+            "width": metadata["fontGeometry"]["windowWidthDip"], "height": metadata["fontGeometry"]["windowHeightDip"],
             "rows": metadata["cellGeometry"]["viewRows"], "cols": metadata["cellGeometry"]["viewCols"]}
 
 
@@ -162,7 +164,8 @@ class Run:
 
     def desktop(self):
         config = self.root / "sway.conf"
-        config.write_text("xwayland enable\noutput * resolution 1280x800\nseat seat0 hide_cursor 10000\n")
+        config.write_text(f"xwayland enable\noutput * resolution {OUTPUT_WIDTH}x{OUTPUT_HEIGHT}\n"
+                          "default_border none\nseat seat0 hide_cursor 10000\n")
         self.record["swayConfig"] = config.read_text()
         x11_dir = X11_SOCKETS.lstat()
         need(stat.S_ISDIR(x11_dir.st_mode) and x11_dir.st_uid == 0 and x11_dir.st_mode & stat.S_ISVTX
@@ -272,10 +275,22 @@ class Run:
                  "App agent endpoint", proc)
         descriptor = read(data / "agent-endpoint.json")
         need(descriptor["pid"] == proc.pid and descriptor["endpoint"] == str(endpoint), "wrong App endpoint descriptor")
-        pane = single(agent(endpoint, proc, "listSessions", {})["sessions"])
-        screen = agent(endpoint, proc, "readScreen", {"paneId": pane["paneId"]})
-        need(screen["lines"][1] == "app-" + self.run_id, "App pane did not display PTY marker")
-        record.update(pane=pane, markerScreen=screen)
+        def arranged_pane():
+            pane = single(agent(endpoint, proc, "listSessions", {})["sessions"])
+            if pane is None:
+                return None
+            metadata = title_snapshot(endpoint, proc, pane)
+            if ((metadata["width"], metadata["height"]) != (OUTPUT_WIDTH, OUTPUT_HEIGHT)
+                    or (metadata["rows"], metadata["cols"]) != (pane["rows"], pane["cols"])):
+                return None
+            screen = agent(endpoint, proc, "readScreen", {"paneId": pane["paneId"]})
+            if (screen["rows"], screen["cols"]) != (pane["rows"], pane["cols"]):
+                return None
+            need(screen["lines"][1] == "app-" + self.run_id, "App pane did not display PTY marker")
+            return pane, screen, metadata
+
+        pane, screen, metadata = wait_for(arranged_pane, "arranged App pane with matching geometry", proc)
+        record.update(pane=pane, markerScreen=screen, arranged=metadata)
         return endpoint, pane
 
     def observe_app(self, sample, proc, endpoint, pane, admission, phase):
