@@ -24,7 +24,7 @@
         "1b5b3c303b35323b394d",
         "1b5b3c303b35323b396d"
       ],
-      "finished": "1433201622918401",
+      "finished": "1433770806281160",
       "point": [
         418,
         202
@@ -38,7 +38,7 @@
         "1b5b3c303b35323b31344d",
         "1b5b3c303b35323b31346d"
       ],
-      "finished": "1433202533203068",
+      "finished": "1433771716138411",
       "point": [
         418,
         306
@@ -52,7 +52,7 @@
         "1b5b3c303b35323b32304d",
         "1b5b3c303b35323b32306d"
       ],
-      "finished": "1433203462589277",
+      "finished": "1433772614470328",
       "point": [
         418,
         418
@@ -66,7 +66,7 @@
         "1b5b3c303b35323b32364d",
         "1b5b3c303b35323b32366d"
       ],
-      "finished": "1433204393258486",
+      "finished": "1433773548208828",
       "point": [
         418,
         522
@@ -80,7 +80,7 @@
         "1b5b3c303b35323b33314d",
         "1b5b3c303b35323b33316d"
       ],
-      "finished": "1433205330301069",
+      "finished": "1433774484973829",
       "point": [
         418,
         634
@@ -362,41 +362,41 @@
     }
   ],
   "measurement": {
-    "manifestSha256": "725b8f80b1c8becd41e67743231e098eb047fc8553055d6e1738169a2a365305",
+    "manifestSha256": "f79e700eab117d8927c319af841c3a001f30a24ddec662f96c1e2ee99014a0ea",
     "schemaVersion": 1,
-    "runId": "e5ae007bf608b76734aee40730a0c7c1",
-    "appRevision": "a78c9f722ac35ac2e3859d8e3e1fb946712461aa",
-    "scriptsRevision": "a78c9f722ac35ac2e3859d8e3e1fb946712461aa",
-    "appSourceArchiveSha256": "d20e9a27341852a8297a1bc071317b6fad2b950d972b190277d6b63a506b0ffa",
-    "hostLease": "38de605aa45806e4371cf37a9513232a",
+    "runId": "6d688d0e75f55a98ef5b27652ac4f138",
+    "appRevision": "60172f9122369a7e405e686746c9dac1a931cbf6",
+    "scriptsRevision": "60172f9122369a7e405e686746c9dac1a931cbf6",
+    "appSourceArchiveSha256": "2070936f4657bfe39d199768fb62baaa12bb1c5451c388b12e3045bd18215dc6",
+    "hostLease": "9dbf090b988de924aefd5ac4b5e8ca43",
     "dotnetSdk": "10.0.403",
     "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
     "archives": {
-      "owned-run.zip": "ba82b97c1f1864ed8f4bdee0f61c3462eace3e7d3e717ebc57d85a4cc9f624f0"
+      "owned-run.zip": "f46f488e7ebf67c4d4e5691bf1c98b735cea452605bb7b9fd0fdd7696f64c1c9"
     },
-    "startedAt": "2026-11-27T10:41:56.212Z",
-    "fixtureRemovedAt": "2026-11-27T10:42:16.914Z",
-    "leaseReleasedAt": "2026-11-27T10:42:16.914Z",
-    "sha256": "6f75db30f2f1ee7d6688666eeea138891efd24e364c21e71a8472dea3c1f6da4",
+    "startedAt": "2026-11-27T10:51:25.408Z",
+    "fixtureRemovedAt": "2026-11-27T10:51:46.164Z",
+    "leaseReleasedAt": "2026-11-27T10:51:46.165Z",
+    "sha256": "9d7ac4a6762a1b7c62466eeec0bf00dbc87b58ee4515ec0f663610de8174ede2",
     "source": {
       "policy": "owned-rich-x11-kitty-clicks-v1",
       "sha256": "6d08450456df2ba54610f69259411c4a9a78352b4b979c1afc55bbad3effa250"
     },
-    "hostLeaseReleasedAt": "2026-11-27T10:42:18.460Z",
+    "hostLeaseReleasedAt": "2026-11-27T10:51:47.706Z",
     "nodeVersion": "v24.22.2",
-    "appVersion": "0.14.0+a78c9f722ac35ac2e3859d8e3e1fb946712461aa",
+    "appVersion": "0.14.0+60172f9122369a7e405e686746c9dac1a931cbf6",
     "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
-    "appAssemblySha256": "a177eeab8735df999d8a18b82c561854fa1159138943f90cb59f3ad908bf8d9d",
+    "appAssemblySha256": "991690d7352b2a47f59e7c4e8b1de225315c7afc4af63a41283a9ff417fa1430",
     "xtest": [
       2,
       2
     ],
-    "appPid": 55293,
-    "childPid": 55346,
-    "paneId": "a0307bb7-712a-4198-b142-f2a6107ddec9",
+    "appPid": 59517,
+    "childPid": 59570,
+    "paneId": "ec6ea074-e32e-4db0-bc91-6d24ec4e26c4",
     "tty": "/dev/pts/0",
     "rows": 40,
     "columns": 149,
-    "marker": "x11-prompt-e5ae007bf608b76734aee40730a0c7c1"
+    "marker": "x11-prompt-6d688d0e75f55a98ef5b27652ac4f138"
   }
 }
