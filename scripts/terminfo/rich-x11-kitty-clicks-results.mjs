@@ -10,7 +10,7 @@ import { caseId, replayClicks } from './rich-x11-kitty-clicks.mjs';
 
 const root = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 const directory = join(root, '2026-11-27-rich-kitty-clicks');
-const manifestSha256 = '0c42e0d425061b7af374c93b9798641be163d2c43ec80940ac50953ce2d95902';
+const manifestSha256 = '236a88d27ac69bc6433b8ee0b3b1a271f48ba0ced40c3f91b0c0f94ee22dbd0a';
 const bundleSha256 = 'aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6';
 const scope = 'XTEST pointer events through the production App view to one direct-local child PTY.';
 

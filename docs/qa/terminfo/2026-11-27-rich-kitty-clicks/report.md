@@ -31,15 +31,15 @@ The one-based viewport anchors were primary row 13 and secondary row 20. The liv
 
 After moving the editor cursor up to the primary input row, the secondary and continuation clicks repeated the same relative frames. After erasing those lines, the same clicks were silent. The target click frames arrived only after pointer release. The capture retains the three action windows, exact child chunks and delimiters, test marker output bytes, CPR replies, pane snapshots, click coordinates, and process identities. A plain primary A marker cleared the old opt-in. RIS repainted the same fixture text and cursor without prompt markers. The child restored and read back its termios attributes, exited, and the collector reaped the App and Xvfb and verified the socket and fixture were gone. Both the Linux collection lease and its enclosing host desktop lease were released.
 
-Run `4db6138ba4845496a3964c39f84d5bbb` used Ntilde `0.14.0+6af49522d4835af8acaa73a9335c815b3040593f` in Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop) with XTEST 2.2. The App was published from the source archive of `6af49522d4835af8acaa73a9335c815b3040593f`. The measured collector revision was `6af49522d4835af8acaa73a9335c815b3040593f`. The fixture exercised one direct-local App pane with a fake shell prompt. The live geometry stayed fixed. VT tests cover older prompt anchors in scrollback and width reflow.
+Run `9b88a473698708bceec3e3f38c6b29e7` used Ntilde `0.14.0+4acb0ca31ecfa132702706038f93bd3d7facf493` in Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop) with XTEST 2.2. The App was published from the source archive of `4acb0ca31ecfa132702706038f93bd3d7facf493`. The measured collector revision was `4acb0ca31ecfa132702706038f93bd3d7facf493`. The fixture exercised one direct-local App pane with a fake shell prompt. The live geometry stayed fixed. VT tests cover older prompt anchors in scrollback and width reflow.
 
 Re-derive with `node scripts/terminfo/rich-x11-kitty-clicks-results.mjs --check`. [Raw owned run](owned-run.zip) · [Measurement manifest](manifest.json) · [Exact child bytes and controls](report.json)
 
 To collect on Linux arm64, use Node 24, Python 3, Xvfb, libX11, libXtst, and libXRes. Build the App at the recorded App revision and collect at the recorded collector revision.
 
 ~~~sh
-scripts/build.sh publish src/Ntilde.App -c Release -r linux-arm64 --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -p:SourceRevisionId=6af49522d4835af8acaa73a9335c815b3040593f -o /absolute/private/sidecar
+scripts/build.sh publish src/Ntilde.App -c Release -r linux-arm64 --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -p:SourceRevisionId=4acb0ca31ecfa132702706038f93bd3d7facf493 -o /absolute/private/sidecar
 chmod -R go-w /absolute/private/sidecar
-node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde 0.14.0+6af49522d4835af8acaa73a9335c815b3040593f --rich-kitty-clicks
+node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde 0.14.0+4acb0ca31ecfa132702706038f93bd3d7facf493 --rich-kitty-clicks
 node scripts/terminfo/rich-x11-kitty-clicks-results.mjs --verify-run /absolute/path/to/modern-x11-run
 ~~~
