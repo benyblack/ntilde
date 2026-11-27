@@ -65,6 +65,14 @@ public class PromptClickTests
         Assert.False(_buffer.TryGetPromptClickRow(0, out _, out _));
     }
 
+    [Fact]
+    public void SecondaryPromptCanRequestRelativeReports()
+    {
+        _parser.Process("\x1b[3;1H\x1b]133;A\a\x1b[5;1H\x1b]133;A;k=s;click_events=2\aPS2> ");
+        Assert.Equal(2, WireRow(3));
+        Assert.Equal(1, WireRow(4));
+    }
+
     private int WireRow(int visualRow)
     {
         Assert.True(_buffer.TryGetPromptClickRow(visualRow, out int row, out _));

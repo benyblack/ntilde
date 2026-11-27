@@ -91,7 +91,7 @@ namespace Ntilde.VT
                 case "A":
                     if (!vsCodeDialect && parts.AsSpan(1).Contains("k=s"))
                     {
-                        _buffer.MarkSecondaryClickPrompt(CaptureCursorMark());
+                        _buffer.MarkSecondaryClickPrompt(CaptureCursorMark(), ParsePromptClickMode(parts));
                         break;
                     }
 

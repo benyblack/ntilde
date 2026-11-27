@@ -19,7 +19,7 @@ public partial class TerminalBuffer
         lock (_trackedMarkGate)
         {
             ClearClickPromptLocked();
-            if (!mark.IsAltScreen && mode != PromptClickMode.Disabled)
+            if (!mark.IsAltScreen)
             {
                 _clickPrompt = mark;
                 _promptClickMode = mode;
@@ -27,7 +27,7 @@ public partial class TerminalBuffer
         }
     }
 
-    internal void MarkSecondaryClickPrompt(ShellIntegrationMark mark)
+    internal void MarkSecondaryClickPrompt(ShellIntegrationMark mark, PromptClickMode mode)
     {
         // Keep the grid lock outermost, as when the parser updates shell marks.
         bool lockTaken = EnterReadLockIfNeeded();
@@ -35,7 +35,7 @@ public partial class TerminalBuffer
         {
             lock (_trackedMarkGate)
             {
-                if (_promptClickMode != PromptClickMode.Relative || _clickPrompt is not { } primary
+                if (_clickPrompt is not { } primary
                     || !ShellMarkAnchorResolver.TryResolveVisualRow(this, primary, 0, Rows, out _)
                     || mark.IsAltScreen || mark.AbsoluteRow < primary.AbsoluteRow)
                 {
@@ -46,6 +46,12 @@ public partial class TerminalBuffer
                 int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow < mark.AbsoluteRow) + 1;
                 _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
                 _secondaryClickPrompts.Add(mark);
+                if (mode != PromptClickMode.Disabled)
+                {
+                    _promptClickMode = mode;
+                }
+
+                _clickPromptVersion++;
             }
         }
         finally
@@ -77,7 +83,8 @@ public partial class TerminalBuffer
         {
             lock (_trackedMarkGate)
             {
-                if (_clickPrompt is not { } primary || !Modes.IsCursorVisible || IsMouseReportingActive()
+                if (_promptClickMode == PromptClickMode.Disabled || _clickPrompt is not { } primary
+                    || !Modes.IsCursorVisible || IsMouseReportingActive()
                     || !ShellMarkAnchorResolver.TryResolveVisualRow(this, primary, 0, Rows, out int anchorRow)
                     || row < anchorRow || row > CursorRow)
                 {
