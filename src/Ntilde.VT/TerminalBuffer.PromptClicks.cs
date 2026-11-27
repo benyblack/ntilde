@@ -192,7 +192,8 @@ public partial class TerminalBuffer
         }
     }
 
-    private void InvalidateClickPromptForMovedRows(int top, int bottom)
+    // The grid write lock is held while rows are moved or selectively erased.
+    internal void InvalidateClickPromptInRows(int top, int bottom)
     {
         if (!_clickPrompt.HasValue || _isAltScreen) return;
         lock (_trackedMarkGate)
@@ -204,6 +205,27 @@ public partial class TerminalBuffer
             {
                 ClearClickPromptLocked();
             }
+        }
+    }
+
+    private void TrimClickPromptAfterHeightShrink()
+    {
+        if (!_clickPrompt.HasValue) return;
+        lock (_trackedMarkGate)
+        {
+            if (_clickPrompt is not { } primary) return;
+            if (!ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int primaryRow))
+            {
+                ClearClickPromptLocked();
+                return;
+            }
+
+            long lastRow = CaptureClickPosition(Rows - 1, 0).AbsoluteRow;
+            if (_clickPromptEnd.AbsoluteRow <= lastRow) return;
+            int keep = _secondaryClickPrompts.FindLastIndex(anchor => anchor.AbsoluteRow <= lastRow) + 1;
+            _secondaryClickPrompts.RemoveRange(keep, _secondaryClickPrompts.Count - keep);
+            RestoreClickPromptEndBeforeRow(primary, primaryRow, Rows);
+            _clickPromptVersion++;
         }
     }
 

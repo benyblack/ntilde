@@ -121,6 +121,7 @@ namespace Ntilde.VT
                             Array.Copy(_viewport, evictedFromTop, newVp, 0, newRows);
                             _viewport = newVp;
                             _cursorRow -= evictedFromTop;
+                            if (droppedFromBottom > 0) TrimClickPromptAfterHeightShrink();
 
                             long newlyEvicted = _scrollback.TotalRowsEvicted - prevEvicted;
                             if (newlyEvicted > 0)

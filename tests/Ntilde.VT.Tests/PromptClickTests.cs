@@ -264,6 +264,34 @@ public class PromptClickTests
         Assert.Equal(1, row);
     }
 
+    [Theory]
+    [InlineData("\x1b[1J")]
+    [InlineData("\x1b[?1J")]
+    public void EraseToStartClosesAnOverlappingPrompt(string erase)
+    {
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n\x1b]133;A;k=s\aPS2>\r\ncontinued");
+        Assert.Equal(2, WireRow(2));
+        _parser.Process("\x1b[5;1H" + erase + "\x1b[H");
+        Assert.False(_buffer.TryGetPromptClickRow(0, out _, out _));
+        Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void HeightShrinkDropsBlankTailWithoutDisablingRetainedPromptText(int mode)
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        new AnsiParser(buffer).Process($"\x1b]133;A;click_events={mode}\a" + new string('a', 20) + " \x1b[H");
+        Assert.True(buffer.TryGetPromptClickRow(1, out _, out _));
+
+        buffer.Resize(20, 1);
+        Assert.True(buffer.TryGetPromptClickRow(0, out int row, out _));
+        Assert.Equal(1, row);
+        buffer.Resize(20, 12);
+        Assert.False(buffer.TryGetPromptClickRow(1, out _, out _));
+    }
+
     private int WireRow(int visualRow)
     {
         Assert.True(_buffer.TryGetPromptClickRow(visualRow, out int row, out _));

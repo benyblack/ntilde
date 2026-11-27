@@ -323,6 +323,7 @@ namespace Ntilde.VT
         /// </summary>
         private void ClearScreenInternal(bool resetCursor, bool keepLineSizes = false)
         {
+            if (!_isAltScreen) ClearClickPrompt();
             EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(0), TextSizingAbsoluteRow(Rows));
             RetireImagesOverVisibleScreen();
 

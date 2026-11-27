@@ -428,6 +428,9 @@ namespace Ntilde.VT
                         int displayMode = argCount > 0 ? validArgs[0] : 0;
                         if (leader == '?' && _buffer.TrySelectiveEraseInDisplay(displayMode))
                         {
+                            int top = displayMode == 0 ? _buffer.CursorRow : 0;
+                            int bottom = displayMode == 1 ? _buffer.CursorRow : _buffer.Rows - 1;
+                            _buffer.InvalidateClickPromptInRows(top, bottom);
                             if (displayMode == 2) _verticalOffset = 0; // as ED 2 snaps the view
                         }
                         else
@@ -752,7 +755,7 @@ namespace Ntilde.VT
                 {
                     _buffer.EraseLineAll(r, resetLineSize: resetLineSizes);
                 }
-                if (allowHistoryErase) _buffer.EraseClickPromptTail(CaptureCursorMark());
+                _buffer.EraseClickPromptTail(CaptureCursorMark());
             }
             else if (displayMode == 1) // Erase from start of screen to cursor
             {
@@ -762,11 +765,11 @@ namespace Ntilde.VT
                     _buffer.EraseLineAll(r, resetLineSize: resetLineSizes);
                 }
                 _buffer.EraseLineFromStart(); // Clear start of current line
+                _buffer.InvalidateClickPromptInRows(0, _buffer.CursorRow);
             }
             else if (displayMode == 2) // Erase entire screen (scrollback is preserved)
             {
                 _buffer.ClearScreen(resetCursor: false, keepLineSizes: !resetLineSizes);
-                if (allowHistoryErase) _buffer.ClearClickPrompt();
                 _verticalOffset = 0; // Reset offset on clear screen
             }
             else if (displayMode == 3 && allowHistoryErase) // Erase saved lines (scrollback only, xterm ED 3)

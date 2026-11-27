@@ -593,7 +593,7 @@ namespace Ntilde.VT
 
             if (!isFullScreenScroll || _isAltScreen)
             {
-                InvalidateClickPromptForMovedRows(ScrollTop, ScrollBottom);
+                InvalidateClickPromptInRows(ScrollTop, ScrollBottom);
                 int top = TextSizingAbsoluteRow(ScrollTop);
                 int bottom = TextSizingAbsoluteRow(ScrollBottom + 1);
                 EraseTextSizingAcrossBoundary(top);
@@ -716,7 +716,7 @@ namespace Ntilde.VT
                 return;
             }
 
-            InvalidateClickPromptForMovedRows(ScrollTop, ScrollBottom);
+            InvalidateClickPromptInRows(ScrollTop, ScrollBottom);
             int sizedTop = TextSizingAbsoluteRow(ScrollTop);
             int sizedBottom = TextSizingAbsoluteRow(ScrollBottom + 1);
             EraseTextSizingAcrossBoundary(sizedTop);
