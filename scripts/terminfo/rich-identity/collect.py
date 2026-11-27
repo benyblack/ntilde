@@ -19,8 +19,9 @@ import time
 SOURCE = Path(__file__).parent
 PYTHON = "/usr/bin/python3"
 PROC = Path("/proc")
-# XWayland publishes this conventional local socket. This path is inside the isolated container.
-X11_SOCKETS = Path("/tmp/.X11-unix")  # NOSONAR: verify the image-created sticky directory and socket ownership below.
+# XWayland publishes this conventional socket inside the isolated container.
+# Admission checks the image-created sticky directory and the socket owner.
+X11_SOCKETS = Path("/tmp/.X11-unix")  # NOSONAR(S5443)
 BASE_ID = "qa.foot.baseline"
 WANTED_ID = "terminfo-test"
 OUTPUT_WIDTH, OUTPUT_HEIGHT = 1280, 800
