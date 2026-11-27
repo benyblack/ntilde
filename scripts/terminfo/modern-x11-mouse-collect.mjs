@@ -357,9 +357,10 @@ async function clipboardQuery(run, sample, owner, plan) {
 }
 
 async function observeClipboard(run) {
-    const observer = run.osc52Read ? import('./modern-x11-osc52-read.mjs')
-        : run.keyboard === '--osc52-clipboard' ? import('./modern-x11-osc52-clipboard.mjs') : import('./modern-x11-osc52-write.mjs');
-    const clipboard = await observer;
+    let clipboard;
+    if (run.osc52Read) clipboard = await import('./modern-x11-osc52-read.mjs');
+    else if (run.keyboard === '--osc52-clipboard') clipboard = await import('./modern-x11-osc52-clipboard.mjs');
+    else clipboard = await import('./modern-x11-osc52-write.mjs');
     await clipboard.observeClipboard(run.record, {
         peer: (...args) => clipboardPeer(run, ...args),
         key: step => recordAction(run, step, { kind: 'keyboard', chord: 'a' }, clipboard.id, 'zh'),
