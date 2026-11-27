@@ -96,6 +96,46 @@ public class Osc133PromptPartPolicyTests
         Assert.Empty(buffer.ReadPromptParts());
     }
 
+    [Theory]
+    [InlineData("\x1b[5Gcdefg", "abcdefg")]
+    [InlineData("\x1b[5G\x1b[7Gxyz", "ab  xyz")]
+    public void ReturningToAnUnpaintedRightPartOverwritesIt(string input, string expected)
+    {
+        var buffer = new TerminalBuffer(30, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A\a$ \x1b]133;B\aab\x1b[7G\x1b]133;P;k=r\a");
+        Assert.Equal(new PromptPart("r", 0, 6), Assert.Single(buffer.ReadPromptParts()));
+        parser.Process(input);
+        Assert.Empty(buffer.ReadPromptParts());
+        Assert.True(GridQueryReader.TryReadCommandLine(buffer, buffer.CommandStartMark!.Value, out var line));
+        Assert.Equal(expected, line.Text);
+    }
+
+    [Theory]
+    [InlineData("\x1b[S")]
+    [InlineData("\x1b[T")]
+    public void PartialWidthScrollRetiresOnlyStartsInTheRewrittenBand(string scroll)
+    {
+        var buffer = new TerminalBuffer(30, 8);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A\a\x1b]133;P\a$ \x1b]133;B\acmd");
+        parser.Process("\x1b[3;2H\x1b]133;P;k=c\aC\x1b[3;12H\x1b]133;P;k=r\aR");
+        parser.Process("\x1b[2;6r\x1b[?69h\x1b[3;19s" + scroll);
+        Assert.Equal([new PromptPart("i", 0, 0), new PromptPart("c", 2, 1)], buffer.ReadPromptParts());
+    }
+
+    [Fact]
+    public void SelectiveDisplayEraseAndLineSizePreserveSurvivingStarts()
+    {
+        var buffer = new TerminalBuffer(24, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A\a\x1b]133;P\a$ \x1b[8G\x1b]133;P;k=r\a\x1b[1\"qR\x1b[0\"q");
+        parser.Process("\x1b[18G\x1b]133;P;k=s\aS\x1b[6G\x1b[?0J");
+        Assert.Equal([new PromptPart("i", 0, 0), new PromptPart("r", 0, 7)], buffer.ReadPromptParts());
+        parser.Process("\x1b[18G\x1b]133;P;k=s\aS\x1b#6");
+        Assert.Equal([new PromptPart("i", 0, 0), new PromptPart("r", 0, 7)], buffer.ReadPromptParts());
+    }
+
     [Fact]
     public void KittySecondaryAndContourContinuationAreIndependentAndResizeAwaitsRedraw()
     {

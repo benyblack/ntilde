@@ -9,17 +9,21 @@ public readonly record struct PromptPart(string Kind, int Row, int Column);
 internal sealed class RowPromptParts(object cycle)
 {
     internal object Cycle { get; } = cycle;
-    internal readonly record struct Boundary(string Kind, int Column, bool Painted = false);
+    internal readonly record struct Boundary(string Kind, int Column);
     internal List<Boundary> Boundaries { get; } = new(4);
+
+    internal int? InitialPaintColumn { get; set; }
 
     internal void Set(string kind, int column)
     {
         Boundaries.RemoveAll(b => b.Kind == kind || b.Column == column);
         Boundaries.Add(new(kind, column));
+        InitialPaintColumn = column;
     }
 
     internal void Shift(int start, int edge, int delta)
     {
+        InitialPaintColumn = null;
         for (int i = Boundaries.Count - 1; i >= 0; i--)
         {
             var boundary = Boundaries[i];
@@ -38,10 +42,8 @@ internal sealed class RowPromptParts(object cycle)
         {
             var b = Boundaries[i];
             if (b.Column < start || b.Column >= end) continue;
-            if (paint && !b.Painted && start == b.Column)
-                Boundaries[i] = b with { Painted = true };
-            else
-                Boundaries.RemoveAt(i);
+            if (!paint || b.Column != start || InitialPaintColumn != start) Boundaries.RemoveAt(i);
+            if (InitialPaintColumn == b.Column) InitialPaintColumn = null;
         }
     }
 }
@@ -51,12 +53,22 @@ public partial class TerminalBuffer
     // Only prompts that actually use P allocate a token. Dropping it retires
     // every part at once, including after an asynchronous command-window close.
     private object? _promptPartCycle;
+    private ShellIntegrationMark? _partPrimary;
+    private RowPromptParts? _pendingPartPaint;
+
+    // Moving the cursor away ends the one initial paint allowed at a new marker.
+    // If input later crosses that cell, it overwrites the boundary.
+    private void EndInitialPartPaint()
+    {
+        _pendingPartPaint!.InitialPaintColumn = null;
+        _pendingPartPaint = null;
+    }
 
     internal void RecordPromptPart(string kind, ShellIntegrationMark mark)
     {
         lock (_trackedMarkGate)
         {
-            if (_clickPrompt is not { } primary || mark.IsAltScreen ||
+            if (_partPrimary is not { } primary || mark.IsAltScreen ||
                 !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int primaryRow) ||
                 _cursorRow < primaryRow || (_cursorRow == primaryRow && mark.Column < primary.Column))
                 return;
@@ -65,7 +77,9 @@ public partial class TerminalBuffer
             _promptPartCycle ??= new object();
             if (row.PromptParts?.Cycle != _promptPartCycle)
                 row.PromptParts = new(_promptPartCycle);
+            if (_pendingPartPaint != null) EndInitialPartPaint();
             row.PromptParts.Set(kind, mark.Column);
+            _pendingPartPaint = row.PromptParts;
         }
     }
 
@@ -77,7 +91,7 @@ public partial class TerminalBuffer
         {
             lock (_trackedMarkGate)
             {
-                if (_promptPartCycle == null || _clickPrompt is not { } primary ||
+                if (_promptPartCycle == null || _partPrimary is not { } primary ||
                     !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int first)) return [];
                 var result = new List<PromptPart>();
                 for (int row = Math.Max(0, first); row < Rows; row++)
@@ -95,7 +109,7 @@ public partial class TerminalBuffer
         if (GetRowAbsolute(absoluteRow)?.PromptParts is not { } parts) return null;
         lock (_trackedMarkGate)
         {
-            if (parts.Cycle == _promptPartCycle && _clickPrompt is { } primary &&
+            if (parts.Cycle == _promptPartCycle && _partPrimary is { } primary &&
                 ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int first) &&
                 absoluteRow >= Scrollback.Count + first)
                 foreach (var boundary in parts.Boundaries)

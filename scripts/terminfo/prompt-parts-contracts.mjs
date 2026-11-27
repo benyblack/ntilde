@@ -41,11 +41,15 @@ export function planFor(id) {
         write('erased', '\x1b[1;17H\x1b[3X'),
         write('repaint', mark('P;k=r') + 'rhs'),
         write('overwrite', '\x1b[1;16Hxy'),
-        write('submitted', '\x1b[1;6H' + mark('C;cmdline_url=cmd')),
+        write('empty-right', '\x1b[1;8H' + mark('P;k=r')),
+        write('typed-through', '\x1b[1;6Habcd'),
+        write('submitted', '\x1b[1;6H\x1b[4X' + mark('C;cmdline_url=cmd')),
         write('orphan', mark('P;k=r')),
         write('next-cycle', mark('D;0') + top + mark('A') + '\x1b[11G' + mark('P;k=r') + 'R'),
         write('new-prompt', '\x1b[2;1H' + mark('A')),
         write('pre-reset', '\x1b[3;11H' + mark('P;k=s') + 'S'),
+        write('band-scroll', '\x1b[3;4r\x1b[?69h\x1b[6;20s\x1b[S\x1b[?69l\x1b[r'),
+        write('before-ris', '\x1b[3;11H' + mark('P;k=s') + 'S'),
         write('reset', '\x1bc' + tag(id) + mark('P;k=r')),
         write('finish', restore(id)),
         { stage: 'seal' },
@@ -69,7 +73,7 @@ export function deriveEffects(id, frames) {
         cwd: metadata.workingDirectory, cursor: [screen.cursorRow, screen.cursorCol],
     }]));
     const o = observations, base = expectedCwd(id), a = o.input.commandStart;
-    const controlStages = ['input', 'right', 'paint', 'inserted', 'deleted', 'relocated', 'continuation', 'kitty', 'erased', 'repaint', 'overwrite'];
+    const controlStages = ['input', 'right', 'paint', 'inserted', 'deleted', 'relocated', 'continuation', 'kitty', 'erased', 'repaint', 'overwrite', 'empty-right', 'typed-through'];
     const controls = a?.row === 0 && a.col === 2 && a.absoluteRow === 0 && !a.alternateScreen
         && o.input.accepting && o.input.command === null && o.input.outputStart === null
         && o['p-setup'].cwd === base && o['directory-control'].cwd === base + '/control'
@@ -84,6 +88,10 @@ export function deriveEffects(id, frames) {
         && reads.get('continuation').screen.lines[1] === '   PS2'
         && reads.get('kitty').screen.lines[2] === ' KIT'
         && reads.get('erased').screen.lines[0].slice(16, 19) === '   '
+        && reads.get('pre-reset').screen.lines[2][10] === 'S'
+        && !reads.get('band-scroll').screen.lines[2].includes('S')
+        && reads.get('typed-through').screen.lines[0].startsWith('$ cmdabcd')
+        && reads.get('before-ris').screen.lines[2][10] === 'S'
         && reads.get('overwrite').screen.lines[0].slice(15, 17) === 'xy';
 
     const part = (kind, row, col) => ({ kind, row, col });
@@ -93,7 +101,9 @@ export function deriveEffects(id, frames) {
         inserted: [primary, part('r', 0, 23)], deleted: [primary, right],
         relocated: [primary, moved], continuation: [primary, moved, continuation], kitty: [primary, moved, continuation],
         erased: [primary, continuation], repaint: [primary, moved, continuation], overwrite: [primary, continuation],
-        submitted: [], orphan: [], 'next-cycle': [part('r', 0, 10)], 'new-prompt': [], 'pre-reset': [part('s', 2, 10)], reset: [],
+        'empty-right': [primary, part('r', 0, 7), continuation], 'typed-through': [primary, continuation],
+        submitted: [], orphan: [], 'next-cycle': [part('r', 0, 10)], 'new-prompt': [], 'pre-reset': [part('s', 2, 10)],
+        'band-scroll': [], 'before-ris': [part('s', 2, 10)], reset: [],
     };
     const matched = Object.entries(expected).every(([stage, parts]) => same(o[stage].parts, parts))
         && controlStages.every(stage => same(o[stage].commandStart, a) && o[stage].outputStart === null

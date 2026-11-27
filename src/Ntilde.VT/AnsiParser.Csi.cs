@@ -430,7 +430,7 @@ namespace Ntilde.VT
                         {
                             int top = displayMode == 0 ? _buffer.CursorRow : 0;
                             int bottom = displayMode == 1 ? _buffer.CursorRow : _buffer.Rows - 1;
-                            _buffer.InvalidateClickPromptInRows(top, bottom);
+                            _buffer.InvalidateClickPromptInRows(top, bottom, preserveParts: displayMode != 2);
                             if (displayMode == 2) _verticalOffset = 0; // as ED 2 snaps the view
                         }
                         else

@@ -36,6 +36,8 @@ test('distinguish an incorrect kind, a stale boundary, a changed anchor and miss
         ['inserted', b => { b.promptParts[1].col = 21; }],
         ['relocated', b => { b.promptParts[1].col = 21; }],
         ['right', b => { b.commandStart.col = 21; }],
+        ['typed-through', b => { b.promptParts.push({ kind: 'r', row: 0, col: 7 }); }],
+        ['band-scroll', b => { b.promptParts = [{ kind: 's', row: 2, col: 10 }]; }],
         ['reset', b => { b.promptParts = [{ kind: 'r', row: 0, col: 21 }]; }],
     ]) {
         change(stage, mutate);

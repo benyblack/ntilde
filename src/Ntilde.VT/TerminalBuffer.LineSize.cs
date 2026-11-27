@@ -233,7 +233,8 @@ public partial class TerminalBuffer
             row.SetUnderline(col, null);
             row.SetProtected(col, false);
         }
-        row.WrittenColumns = Math.Min(row.WrittenColumns, from);
+        row.PromptParts?.Edit(from, Cols, paint: false);
+        row.TrimWrittenColumns(from);
         row.TouchRevision();
     }
 
