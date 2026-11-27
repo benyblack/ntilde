@@ -40,8 +40,8 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 158,
-    "suiteClaims": 162,
+    "uniqueBenchmarkIds": 159,
+    "suiteClaims": 163,
     "idsWithMultipleClaims": [
       "extensions.osc-633-vscode",
       "extensions.sixel",
@@ -49,7 +49,7 @@
       "sgr.fg.standard"
     ],
     "effectSupportedIds": 152,
-    "effectUnsupportedIds": 5,
+    "effectUnsupportedIds": 6,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 98,
     "effectSupportedPinnedInconclusiveIds": [
@@ -111,12 +111,13 @@
     "effectUnsupportedPinnedInconclusiveIds": [
       "extensions.osc113-reset-pointer-fg",
       "extensions.osc114-reset-pointer-bg",
+      "extensions.osc52-read",
       "extensions.osc720-scroll-up",
       "modes.deccolm",
       "modes.decsclm"
     ],
     "effectSupportedOfStockInconclusive": 150,
-    "effectUnsupportedOfStockInconclusive": 5,
+    "effectUnsupportedOfStockInconclusive": 6,
     "pinnedSupportedOfStockInconclusive": 96,
     "reassessedStockUnsupportedIds": [
       "extensions.osc5522-clipboard"
@@ -134,9 +135,9 @@
     },
     "remainingAgainstStockInconclusive": {
       "effectUnqualified": 18,
-      "effectMeasuredUnsupported": 5,
+      "effectMeasuredUnsupported": 6,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 12,
+      "effectNotMeasured": 11,
       "notPinnedSupported": 72
     }
   },
@@ -4818,6 +4819,54 @@
         "command": "node --test scripts/terminfo/osc5522-clipboard-publication.test.mjs",
         "testSha256": "dca1899ee2b97cdb1dbca19d673b568979dd990a97d44ef01db7b6bbd7991e34"
       }
+    },
+    {
+      "suite": "osc52-read",
+      "suiteId": "ntilde-owned-x11-osc52-read-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-27-osc52-read/",
+      "doc": "2026-11-27-osc52-read/report.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc52-read"
+      ],
+      "evidence": {
+        "files": 6,
+        "bytes": 151958,
+        "sha256": "209965159000b159c6b0f2079b69148842fdbb62beb40d370e3af2582f9915a1"
+      },
+      "receipt": null,
+      "run": {
+        "ownedRunId": "d55d923e724cda2a115b71234060f533",
+        "measuredAt": "2026-11-27T12:12:04.583Z",
+        "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
+        "appVersion": "0.14.0",
+        "appVersionSource": "operator-recorded source archive and publish command",
+        "executableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
+        "scriptsRevision": "a8e95282ca51f4c57e72944a69c5915b371e2a17",
+        "collectorAdapterId": "ntilde-owned-x11-osc52-read-v1",
+        "collectorAdapterBundleSha256": null,
+        "gradingAdapterId": null,
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "owned-modern-x11-osc52-read-v1",
+        "sourceSnapshotManifestSha256": "350bbe516d3246947bac833daba121082182c8a8272a03edfbbe50ac44006cbb"
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "counts": null,
+        "suiteComplete": null,
+        "probeHash": "16a690f34c0e",
+        "rawSha256": null,
+        "sourceRevision": null,
+        "note": "Historical stock grade carried forward from the frozen baseline."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc52-read-publication.test.mjs",
+        "testSha256": "b280fe148d39f4b23e61258d71b8148723ee1e7aad5fe3c2c6d3a2735f3ad5c5"
+      }
     }
   ],
   "benchmark": [
@@ -8321,6 +8370,58 @@
             "stored-state"
           ],
           "evidenceTag": "owned-raw-replies-and-unchanged-state"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc52-read",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc52-read",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "unsupported",
+        "byClaim": [
+          {
+            "suite": "osc52-read",
+            "verdict": "unsupported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc52-read",
+          "suite": "osc52-read",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "unsupported"
+          },
+          "reportedConclusion": {
+            "outcome": "unsupported",
+            "grading": "ntilde-owned-x11-osc52-read-v1"
+          },
+          "divergence": {
+            "recordedInReport": false,
+            "kind": "derived-by-inventory:pinned-differs-from-effect",
+            "pinned": "inconclusive",
+            "effect": "unsupported",
+            "reason": "the pinned probe did not decide from the evidence this suite measured; a later suite re-measured the id at another layer"
+          },
+          "measuredLayers": [
+            "cursor-position-report"
+          ],
+          "evidenceTag": "cpr-fenced-pty-and-independent-x11-clipboard"
         }
       ]
     },

@@ -118,6 +118,8 @@ export const benchmarkSuites = Object.freeze([
     { ...directory('osc5522-clipboard', '2026-11-27-osc5522-clipboard', '2026-11-27-osc5522-clipboard/report.md'),
         module: 'osc5522-clipboard-results.mjs', exports: ['suiteId', 'contractsVersion', 'caseIds'],
         stockUnsupportedCase: 'extensions.osc5522-clipboard', test: 'osc5522-clipboard-publication.test.mjs' },
+    { ...directory('osc52-read', '2026-11-27-osc52-read', '2026-11-27-osc52-read/report.md'),
+        module: 'osc52-read-results.mjs', exports: ['suiteId', 'contractsVersion', 'caseIds'], test: 'osc52-read-publication.test.mjs' },
 ]);
 
 /**
