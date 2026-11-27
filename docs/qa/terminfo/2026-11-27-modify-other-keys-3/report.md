@@ -28,9 +28,13 @@ The #1002 policy regression passed on main for starting levels 0, 1 and 2 on bot
 | Measurement | App source | Collector source | Run |
 | --- | --- | --- | --- |
 | Ignored request | `6d16bd84bdac25cd8b51a0fa7a4554d74702401d` | `d33840549b1684e1d9278f60df670f9daf67de6d` | `f3106ab6a428a316b68f8ce0b0f38cd7` |
-| Level 3 | `9671f8c61893654412d7f9b655e69d835657a106` | `9671f8c61893654412d7f9b655e69d835657a106` | `430374eca0e0156c5120559232436dd7` |
+| Level 3 | `1307c3f6df344fbfc5810ebfec7905f04a3abb79` | `1307c3f6df344fbfc5810ebfec7905f04a3abb79` | `002d8e45d50164fd2f2583e29f859ecb` |
 
 After #1125 merged, the integrated App and collector repeated all 24 observations in a fresh sidecar. The preceding 24-case run on App and collector `f840fcd4` also passed. [OSC 555 integration receipt](https://github.com/benyblack/ntilde/blob/3c8452be7aabc650790ba08597f759694de6a2b6/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip) · [Pre-integration receipt](https://github.com/benyblack/ntilde/blob/d96e64d7ff8efc619c215441365cfc4f57b3eee6/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
+
+On the combined App, run `15485a9e1e4705051c31eab287ca58df` was inconclusive. Its level-2 A control captured `7f 61`, one extra DEL before the expected `61`. The other 23 rows matched. The origin of the extra byte is unknown. A fresh pane then repeated the complete 24-case plan with the same binary, collector and expected bytes. The fixed archive retains that complete repeat. [Inconclusive archive and receipt](inconclusive/owned-run.zip)
+
+The observer correction and the backend-symbol documentation passed another 24-case run on `9671f8c6`. The table and fixed archive identify the subsequent measurement on the combined OSC 555 and Contour prompt-parts App. [Typing-observer revision receipt](https://github.com/benyblack/ntilde/blob/d546c68ce0d89be417f79783960cb626afd43725/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
 
 The App routing tests also observe the human typing notification used by Command Assist and markless command capture. A plain or Shift-only printable key raises one notification at key-down, including when the backend omits its text callback. A distinct text commit raises its own notification. Ctrl and Alt shortcuts and generated input leave that observer idle.
 
@@ -38,11 +42,11 @@ Four earlier implementation runs each passed the original 22 observations. The f
 
 The [encoder cleanup receipt](https://github.com/benyblack/ntilde/blob/a46e8c75944715b343c88989681067b8ac7e2957/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip) retains the last 22-case run. An earlier attempt on the backend-symbol revision `4a39ecaa`, `7d940ab92c5f2beab8e89316c8b5dfe8`, captured `CSI B` on both sides of its third ordering fence. The trailing input invalidated the capture. The runner stopped, verified cleanup and released the lease. A fresh pane then completed the entire plan. [Rejected raw capture](rejected-input.json) · [Backend-symbol revision receipt](https://github.com/benyblack/ntilde/blob/61ba9f3853eabbeb552821ced031c0baa39d7afb/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
 
-Both runs used Node 24.22.3, a 140 × 40 pane, source policy `readonly-owned-source-graph-modify-other-keys-3-v1` and receipt schema 1. The App revision is build provenance. The archives bind the executable, managed App assembly and captured collector sources by SHA-256. [Fixed manifest](manifest.json) · [Baseline manifest](baseline/manifest.json)
+All three archived runs used Node 24.22.3, a 140 × 40 pane, source policy `readonly-owned-source-graph-modify-other-keys-3-v1` and receipt schema 1. The App revision is build provenance. The archives bind the executable, managed App assembly and captured collector sources by SHA-256. [Fixed manifest](manifest.json) · [Baseline manifest](baseline/manifest.json)
 
 ## Reproduction
 
-Reissue both receipts and replay the original pinned callbacks offline using Node 24 and Python 3.
+Reissue all three receipts and replay the original pinned callbacks offline using Node 24 and Python 3.
 
 ~~~sh
 node scripts/terminfo/modify-other-keys-3-publication.mjs --check

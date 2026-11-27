@@ -3654,30 +3654,30 @@
         "input.modify-other-keys-3"
       ],
       "evidence": {
-        "files": 8,
-        "bytes": 3737969,
-        "sha256": "dbd7964b7ccef7250a31969964a90ad33d5c454f389f71234a586725b56ff559"
+        "files": 10,
+        "bytes": 5571311,
+        "sha256": "fb0ed8c737b2d1e2e54bc64f9bf835c41741d2a8ab0d0b81c0fd3a8438a7451d"
       },
       "receipt": {
         "schemaVersion": 1,
-        "runId": "430374eca0e0156c5120559232436dd7",
+        "runId": "002d8e45d50164fd2f2583e29f859ecb",
         "cellReceipt": null,
         "suiteEvidence": null
       },
       "run": {
-        "ownedRunId": "430374eca0e0156c5120559232436dd7",
-        "measuredAt": "2026-11-27T16:04:47.240Z",
-        "appRevision": "9671f8c61893654412d7f9b655e69d835657a106",
-        "appVersion": "0.14.0+9671f8c61893654412d7f9b655e69d835657a106",
+        "ownedRunId": "002d8e45d50164fd2f2583e29f859ecb",
+        "measuredAt": "2026-11-27T16:23:32.981Z",
+        "appRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+        "appVersion": "0.14.0+1307c3f6df344fbfc5810ebfec7905f04a3abb79",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "9671f8c61893654412d7f9b655e69d835657a106",
+        "scriptsRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
         "collectorAdapterId": "ntilde-owned-modify-other-keys-3-v1",
         "collectorAdapterBundleSha256": null,
         "gradingAdapterId": null,
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
-        "sourceSnapshotManifestSha256": "07bc10b120ceb7b2a71a64c140a3884272d28759e5cbd8dcf74150f2fc9c28b0"
+        "sourceSnapshotManifestSha256": "f7576efda8d6b5e96b6567b92eabc25824e84894e3cc97c339533a678dcbb1ce"
       },
       "stock": {
         "basis": "carried-forward",
@@ -3696,7 +3696,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/modify-other-keys-3-publication.test.mjs",
-        "testSha256": "c75d1772f1139ac1d8ed3a94fb1d83f70371871c1af193c40161fec19e831eb3"
+        "testSha256": "397c7f24aff4c4d5dfefcca3255bc7bb21965e64f1c606bf242d5fca72acab43"
       }
     },
     {

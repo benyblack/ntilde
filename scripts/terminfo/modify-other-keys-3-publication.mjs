@@ -14,19 +14,20 @@ export const contractsVersion = 1;
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(qa, '2026-11-27-modify-other-keys-3');
 const hashes = {
-    fixed: '698976746463e6c8dc2b783be4cd1df34d85fac0fe5e0d66b700ef651afc3aa6',
+    inconclusive: 'ba61a383526337f97eb291319f6878594250adbb090f28310e44cdb6f80b18aa',
+    fixed: '5476a6987d69d3ce4355f59caee7277726bd6a29a37032f3e69cc6636696bb80',
     baseline: 'c5ed87beb967bd995da845287c92782e0702d0fdb56652cea402f23edef0c7bc',
 };
 
-export function withRun(baseline, callback) {
-    const dir = baseline ? join(publication, 'baseline') : publication;
-    return withOwnedArchive(dir, readManifest(dir, baseline ? hashes.baseline : hashes.fixed, assert.ok), callback);
+export function withRun(kind, callback) {
+    const dir = kind === 'fixed' ? publication : join(publication, kind);
+    return withOwnedArchive(dir, readManifest(dir, hashes[kind], assert.ok), callback);
 }
 
-function replayRun(baseline) {
-    return withRun(baseline, (dir, manifest) => {
+function replayRun(kind) {
+    return withRun(kind, (dir, manifest) => {
         const { context, receipt, observations, frames } = deriveRun(dir);
-        assert.equal(receipt.suiteId, baseline ? baselineScope.id : suiteId);
+        assert.equal(receipt.suiteId, kind === 'baseline' ? baselineScope.id : suiteId);
         assert.deepEqual(readJson(dir, 'mok3-receipt.json'), receipt);
         const measurement = focusedMeasurement(dir, manifest, context, receipt, frames[0].screen);
         assert.match(measurement.appRevision, /^[0-9a-f]{40}$/);
@@ -59,7 +60,12 @@ async function replayPinned(controlHex) {
 }
 
 export async function buildPublication() {
-    const fixed = replayRun(false), baseline = replayRun(true);
+    const fixed = replayRun('fixed'), baseline = replayRun('baseline'), prior = replayRun('inconclusive');
+    assert.equal(prior.receipt.verdict, 'inconclusive');
+    assert.notEqual(prior.context.runId, fixed.context.runId);
+    for (const field of ['appRevision', 'scriptsRevision', 'executableSha256', 'assemblySha256', 'sourceSnapshotManifestSha256']) {
+        assert.equal(prior.measurement[field], fixed.measurement[field], field);
+    }
     assert.notEqual(fixed.context.runId, baseline.context.runId);
     assert.equal(baseline.receipt.verdict, 'supported', 'ignored-request reproduction controls failed');
     const [caseId] = caseIds, pinned = await replayPinned(fixed.declaration);
@@ -76,6 +82,8 @@ export async function buildPublication() {
         report: { suiteId, contractsVersion, scope: 'Generated Avalonia events and fenced child stdin in one disposable macOS direct-local pane per run.',
             pinnedBundleSha256: pinnedBundle, probeHash: stock.source.probeHash, measurement: fixed.measurement,
             baseline: { measurement: baseline.measurement, observations: baseline.observations },
+            inconclusiveAttempt: { measurement: prior.measurement, receipt: prior.receipt,
+                mismatches: prior.observations.filter(row => !row.matches) },
             cases: [{ caseId, pinned, contractResult: { contract: effectContract, outcome, observations: fixed.observations },
                 stock: { outcome: stock.outcomes[caseId], runId: stock.source.stockCollectorRunId, rerun: false },
                 conclusion: { outcome: pinnedOutcome, grading: 'pinned', evidence: 'generated-input-child-bytes' },

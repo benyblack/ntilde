@@ -6,10 +6,14 @@ import { buildPublication, publication, withRun } from './modify-other-keys-3-pu
 import { deriveRun } from './modify-other-keys-3-owned.mjs';
 import { readJson } from './unicode-publication-inputs.mjs';
 
-test('both receipts replay, both pinned paths are inconclusive, and the child distinguishes the same four plain keys', async () => {
+test('all three receipts replay, both pinned paths are inconclusive, and the child distinguishes the same four plain keys', async () => {
     const { report, summary } = await buildPublication(), [item] = report.cases;
     assert.deepEqual(summary, readJson(publication, 'summary.json'));
     assert.deepEqual(report, readJson(publication, 'report.json'));
+    const prior = report.inconclusiveAttempt;
+    assert.equal(prior.receipt.verdict, 'inconclusive');
+    assert.deepEqual(prior.mismatches.map(row => [row.id, row.role, row.expectedHex, row.actualHex]),
+        [['level2-a', 'control', '61', '7f61']]);
     assert.equal(item.contractResult.outcome, 'supported');
     assert.equal(item.pinned.termless.observation.outcome, 'inconclusive');
     assert.equal(item.pinned.terminal.observation.outcome, 'inconclusive');
@@ -31,7 +35,7 @@ test('both receipts replay, both pinned paths are inconclusive, and the child di
     }
 });
 
-test('a duplicated text byte fails the effect, a broken delivery control is inconclusive, and a missing fence invalidates the receipt', () => withRun(false, dir => {
+test('a duplicated text byte fails the effect, a broken delivery control is inconclusive, and a missing fence invalidates the receipt', () => withRun('fixed', dir => {
     const file = join(dir, 'mok3-journal.json'), raw = readFileSync(file);
     function changeCapture(id, mutate) {
         const journal = JSON.parse(raw);

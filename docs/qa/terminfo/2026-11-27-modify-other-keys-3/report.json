@@ -5,24 +5,24 @@
   "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "probeHash": "16a690f34c0e",
   "measurement": {
-    "runId": "430374eca0e0156c5120559232436dd7",
-    "appRevision": "9671f8c61893654412d7f9b655e69d835657a106",
-    "scriptsRevision": "9671f8c61893654412d7f9b655e69d835657a106",
+    "runId": "002d8e45d50164fd2f2583e29f859ecb",
+    "appRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+    "scriptsRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
     "platform": "macOS 27.0.1, arm64",
     "sourcePolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
     "receiptSchema": 1,
-    "version": "0.14.0+9671f8c61893654412d7f9b655e69d835657a106",
+    "version": "0.14.0+1307c3f6df344fbfc5810ebfec7905f04a3abb79",
     "nodeVersion": "v24.22.3",
-    "startedAt": "2026-11-27T16:04:47.240Z",
-    "releasedAt": "2026-11-27T16:04:53.075Z",
+    "startedAt": "2026-11-27T16:23:32.981Z",
+    "releasedAt": "2026-11-27T16:23:43.810Z",
     "geometry": {
       "rows": 40,
       "cols": 140
     },
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "b0182de7064491c5a684f7d8fc4b15a66f9bc0888e8dc36d56edfd9423d220ba",
-    "sourceSnapshotManifestSha256": "07bc10b120ceb7b2a71a64c140a3884272d28759e5cbd8dcf74150f2fc9c28b0",
-    "archiveSha256": "224f39357d8ecbdb171ed53a0334894f4b5d67d221a6c23b6c607800eedad734"
+    "assemblySha256": "0b8ebf880c97e7337a5eaab1166dc3bc3f95edd61269b61e63c83c3c912bd871",
+    "sourceSnapshotManifestSha256": "f7576efda8d6b5e96b6567b92eabc25824e84894e3cc97c339533a678dcbb1ce",
+    "archiveSha256": "6cbc4e06572fc7e95effb3bc610d835341dd1620d3f418eafbc03360367b0b1b"
   },
   "baseline": {
     "measurement": {
@@ -108,6 +108,61 @@
         "handled": false,
         "textHandled": true,
         "matches": true
+      }
+    ]
+  },
+  "inconclusiveAttempt": {
+    "measurement": {
+      "runId": "15485a9e1e4705051c31eab287ca58df",
+      "appRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+      "scriptsRevision": "1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+      "platform": "macOS 27.0.1, arm64",
+      "sourcePolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
+      "receiptSchema": 1,
+      "version": "0.14.0+1307c3f6df344fbfc5810ebfec7905f04a3abb79",
+      "nodeVersion": "v24.22.3",
+      "startedAt": "2026-11-27T16:22:51.166Z",
+      "releasedAt": "2026-11-27T16:22:54.842Z",
+      "geometry": {
+        "rows": 40,
+        "cols": 140
+      },
+      "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "assemblySha256": "0b8ebf880c97e7337a5eaab1166dc3bc3f95edd61269b61e63c83c3c912bd871",
+      "sourceSnapshotManifestSha256": "f7576efda8d6b5e96b6567b92eabc25824e84894e3cc97c339533a678dcbb1ce",
+      "archiveSha256": "7af0355f4086650ce6cf4696b008f2a6f8b98b6555c7b953d9670e89f2c1998f"
+    },
+    "receipt": {
+      "schemaVersion": 1,
+      "suiteId": "ntilde-owned-modify-other-keys-3-v1",
+      "runId": "15485a9e1e4705051c31eab287ca58df",
+      "fixtureRemoved": true,
+      "files": {
+        "mok3-journal.json": "d90cf2f21d740ec66d3439e097e4ab42a8445b5ee003619087f95b7b298daaf5",
+        "context.json": "b5479b2076dc778c68f2f0d9dd5c97f25199ba1a065e2ad1b9117e82e0ffcd04",
+        "ownership-proof.json": "c44b367eb5f2db3884ada0efe43e509b5b75aa6bb99ecb5fa2ddbca7a4b01fe9",
+        "initial-settings.json": "3d4ce90966568d59f24d048008cabecd968b98720ccabfb8385b5266e0af282f",
+        "source-snapshot.json": "f7576efda8d6b5e96b6567b92eabc25824e84894e3cc97c339533a678dcbb1ce"
+      },
+      "verdict": "inconclusive"
+    },
+    "mismatches": [
+      {
+        "id": "level2-a",
+        "role": "control",
+        "event": {
+          "modifiers": 0,
+          "kind": "keyDown",
+          "key": "a",
+          "text": "a",
+          "keySymbol": "a"
+        },
+        "level": 2,
+        "expectedHex": "61",
+        "actualHex": "7f61",
+        "handled": false,
+        "textHandled": true,
+        "matches": false
       }
     ]
   },
