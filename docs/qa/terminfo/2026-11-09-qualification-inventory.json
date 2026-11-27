@@ -4834,29 +4834,29 @@
       ],
       "evidence": {
         "files": 5,
-        "bytes": 1910459,
-        "sha256": "20c3da4839f3c50b14cfcce949f67ac50b79ff418742d341225433c35014bdf7"
+        "bytes": 1912371,
+        "sha256": "bcb6aa6d5e4a049afe0b40f686477d96a8ff0b634739232c61b61976e2d32d27"
       },
       "receipt": {
         "schemaVersion": 1,
-        "runId": "68c6e323b602b830e5a7461dd7f3146b",
+        "runId": "1a8e4ae21112bdd81c84c717c28fe683",
         "cellReceipt": null,
         "suiteEvidence": null
       },
       "run": {
-        "ownedRunId": "68c6e323b602b830e5a7461dd7f3146b",
-        "measuredAt": "2026-11-27T14:26:32.053Z",
-        "appRevision": "c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
-        "appVersion": "0.14.0+c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
+        "ownedRunId": "1a8e4ae21112bdd81c84c717c28fe683",
+        "measuredAt": "2026-11-27T14:31:38.697Z",
+        "appRevision": "c7f6918e8ae9402f160a4396319320d8e797d270",
+        "appVersion": "0.14.0+c7f6918e8ae9402f160a4396319320d8e797d270",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
+        "scriptsRevision": "c7f6918e8ae9402f160a4396319320d8e797d270",
         "collectorAdapterId": "ntilde-owned-contour-prompt-parts-v1",
         "collectorAdapterBundleSha256": null,
         "gradingAdapterId": null,
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "readonly-owned-source-graph-prompt-parts-v1",
-        "sourceSnapshotManifestSha256": "9b263f5cbec4502760725fafbe4fac917a2f93de562b7ef7ccaf1292194c0b41"
+        "sourceSnapshotManifestSha256": "b371d6770e2a3c3006e0382ca97206cc9b24353f634b5ad700a27b278cb44ba5"
       },
       "stock": {
         "basis": "carried-forward",
@@ -4871,7 +4871,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/prompt-parts-publication.test.mjs",
-        "testSha256": "e8ac07ca92d61862841efe56edc354c108d6137275e06ee10ae4b2d52edebef1"
+        "testSha256": "69f122a34b3a8aef9233972235102a01589b4e589490c85fc6e9a5d887c032ba"
       }
     },
     {

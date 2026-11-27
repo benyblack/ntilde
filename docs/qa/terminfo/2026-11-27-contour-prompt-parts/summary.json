@@ -1,8 +1,8 @@
 {
-  "ownedRunId": "68c6e323b602b830e5a7461dd7f3146b",
-  "measuredAt": "2026-11-27T14:26:32.053Z",
-  "appRevision": "c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
-  "scriptsRevision": "c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
+  "ownedRunId": "1a8e4ae21112bdd81c84c717c28fe683",
+  "measuredAt": "2026-11-27T14:31:38.697Z",
+  "appRevision": "c7f6918e8ae9402f160a4396319320d8e797d270",
+  "scriptsRevision": "c7f6918e8ae9402f160a4396319320d8e797d270",
   "context": {
     "adapter": "ntilde-owned-contour-prompt-parts-v1",
     "collectionScope": {
@@ -10,11 +10,11 @@
       "persistence": "Off",
       "deadlineMs": 90000
     },
-    "appVersion": "0.14.0+c0c1f2ad118ea9b0d3a495760e27c04ff866744d",
+    "appVersion": "0.14.0+c7f6918e8ae9402f160a4396319320d8e797d270",
     "appVersionSource": "operator supplied; not independently verified",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-prompt-parts-v1",
-    "sourceSnapshotManifestSha256": "9b263f5cbec4502760725fafbe4fac917a2f93de562b7ef7ccaf1292194c0b41",
-    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-d4lvVY",
+    "sourceSnapshotManifestSha256": "b371d6770e2a3c3006e0382ca97206cc9b24353f634b5ad700a27b278cb44ba5",
+    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-0auh0N",
     "runnerSourceSha256": "1c1f9314052439bd491aefd67480f8ce14fe1a682961ea29fdb6ca25021d56dd",
     "adapterSourceSha256": "d21ad64158e39ca20c093cb1cad82f772a42afc0a460b5117ed6f3ff3f4d50e3",
     "ownershipSourceSha256": "65f599b31de43913682a7baf1182a1a8b70da216ae8c38a0acdbe37d68783f8c",
@@ -512,29 +512,29 @@
     "osc633MetadataContractsSourceSha256": "5824cc5b40bc18eb7ee7a0dee56da87149b157c4e683f52e1653460576c03a53",
     "osc633MetadataOwnedSourceSha256": "5ae1399a106800952a01c71f0c9919be819069a1050600edbf80d49b9ef88161",
     "osc633MetadataWorkerSourceSha256": "8813f030726bf68f6f2006746e908397c96ff330a730aefa93e419c6aee87d71",
-    "promptPartsContractsSourceSha256": "57e2d392b0abd335296854cbea2b9d87a2b0094bd27def4a9b6496b63ec1b96f",
+    "promptPartsContractsSourceSha256": "be928bfb66314af0be0fd3a5887ba574b3989e92efe78e5cdc4b206527be04af",
     "promptPartsOwnedSourceSha256": "efb8b0b00bc7a8f6395619185b59cbe96432f16583a75d1b7580381ff985cd77",
     "promptPartsWorkerSourceSha256": "aa080f3263710d0fb602d04e56f1271d1a5cdf275a9782446394ea808975cbf5",
-    "initialSettingsSha256": "0b24339f118c6f3d79a931dd26ba295ae8856212d334be41226ee6658540163d",
-    "executable": "/Users/behnam/.ntilde-qa-sidecars/contour-prompt-parts-c0c1f2ad/Ntilde",
+    "initialSettingsSha256": "d662240e03b44d1f2bc607c604868ddda4df78e30390249201ab89c3353135ee",
+    "executable": "/Users/behnam/.ntilde-qa-sidecars/contour-prompt-parts-c7f6918e/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "81900cf34a835bc11faae562d7bac30df5fa0ffcfa7a2ed8e3e99d4f8e32a23f",
+    "assemblySha256": "bcc5db5303df80b473ccc76e084e48a09a80369583a37770b005c98386b1721e",
     "nodeVersion": "v24.22.3",
-    "startedAt": "2026-11-27T14:26:32.053Z",
-    "runId": "68c6e323b602b830e5a7461dd7f3146b",
-    "ownerPid": 79334
+    "startedAt": "2026-11-27T14:31:38.697Z",
+    "runId": "1a8e4ae21112bdd81c84c717c28fe683",
+    "ownerPid": 85384
   },
   "receipt": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-contour-prompt-parts-v1",
-    "runId": "68c6e323b602b830e5a7461dd7f3146b",
+    "runId": "1a8e4ae21112bdd81c84c717c28fe683",
     "fixtureRemoved": true,
     "files": {
-      "prompt-parts-frames.jsonl": "d0b1e4bbb7e2342fe6ce14ed37159bc5296285e44c92ac02c49002b8c15932d4",
-      "context.json": "6e250f57a9bf27c1c4af342bccb9a6fa71ae8031faaa73906de9b8f895c7648c",
-      "ownership-proof.json": "f8874083b60ed19520b464f5ed29c202f0c1ec6b118ed1111fb47c5c217962f0",
-      "source-snapshot.json": "9b263f5cbec4502760725fafbe4fac917a2f93de562b7ef7ccaf1292194c0b41",
-      "initial-settings.json": "0b24339f118c6f3d79a931dd26ba295ae8856212d334be41226ee6658540163d"
+      "prompt-parts-frames.jsonl": "4489a2070dd51a5e5e007d5132b60971d0b4b1aa228ce94728f8fc4447a91a7c",
+      "context.json": "eb2744b519967cc8eff9e699837a84a951cdcf1dfb8093dbc779edc6b88f8adb",
+      "ownership-proof.json": "0aec12476528ef1c01037279a67deeff3b768b8669eb2ed4ed32d0a9c1d72d35",
+      "source-snapshot.json": "b371d6770e2a3c3006e0382ca97206cc9b24353f634b5ad700a27b278cb44ba5",
+      "initial-settings.json": "d662240e03b44d1f2bc607c604868ddda4df78e30390249201ab89c3353135ee"
     }
   },
   "stockCollector": {
