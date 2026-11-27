@@ -1678,8 +1678,8 @@ namespace Ntilde.Shell
                         appliedItalicTransform = true;
                     }
 
-                    bool hasLigatureClip = runIsAscii && DrawAsciiLigatures(canvas, runText, c, rowTopYDip,
-                        snappedCellHeight, baselineYDip, font, fgPaint, primaryTf);
+                    bool hasLigatureClip = runIsAscii && DrawAsciiLigatures(canvas, runText,
+                        new LigatureRow(c, rowTopYDip, snappedCellHeight, baselineYDip), font, fgPaint, primaryTf);
                     if (runNeedsComplexShaping)
                     {
                         FlushBatches(canvas);

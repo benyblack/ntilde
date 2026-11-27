@@ -16,7 +16,10 @@ const journalFile = 'ligature-frames.jsonl';
 export const reportFile = 'ligature-report.json';
 export const receiptFile = 'ligature-receipt.json';
 const fileFor = (stage, index) => pixelDir + '/frame-' + String(stage * 10 + index).padStart(3, '0') + '.png';
-const outputBytes = (step) => step.bytes === null ? null : step.bytes + (step.query ? cursorReportQuery : '') + da;
+function outputBytes(step) {
+    if (step.bytes === null) return null;
+    return step.bytes + (step.query ? cursorReportQuery : '') + da;
+}
 
 export function prepareSettings(settings) {
     const mode = process.env.NTILDE_TERMINFO_LIGATURES;
