@@ -4,10 +4,7 @@ using Ntilde.VT.Tests.StateTransfer;
 namespace Ntilde.VT.Tests;
 
 /// <summary>
-/// The audio and visual-attention OSCs (#998): mintty's audio playback (OSC 440) and foot's screen flash (OSC 555). Ntilde plays no file a program names (a path
-/// from the byte stream is untrusted, and the App has no audio path of its own) and has no flash beyond the one a plain BEL already triggers, so both are
-/// deliberately unsupported: every form is ignored whole, never answered, rings no bell and fires no host event. A BEL that terminates the OSC is its terminator,
-/// not a bell. These are parser and buffer tests of that policy, not a measurement of the running App.
+/// OSC 440 remains silent. Only bare OSC 555 requests a host visual flash. Neither OSC raises a bell or changes the buffer.
 /// </summary>
 public sealed class AudioAttentionOscPolicyTests
 {
@@ -47,6 +44,7 @@ public sealed class AudioAttentionOscPolicyTests
         var events = new List<string>();
         parser.OnResponse = replies.Add;
         parser.OnBell = () => events.Add("bell");
+        parser.OnVisualFlash = () => events.Add("flash");
         parser.OnTitleChanged = title => events.Add("title:" + title);
         parser.OnWorkingDirectoryChanged = dir => events.Add("cwd:" + dir);
         parser.OnDesktopNotification = text => events.Add("notification:" + text);
@@ -90,7 +88,7 @@ public sealed class AudioAttentionOscPolicyTests
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void An_audio_or_attention_sequence_is_not_answered_and_leaves_the_state_and_the_host_as_the_same_stream_without_it(string sequence, string terminator)
+    public void Only_bare_OSC_555_requests_a_visual_flash_and_all_forms_preserve_terminal_state(string sequence, string terminator)
     {
         var without = Start();
         without.Parser.Process("tail");
@@ -98,7 +96,7 @@ public sealed class AudioAttentionOscPolicyTests
         with.Parser.Process(Osc(sequence, terminator) + "tail");
 
         Assert.Empty(with.Replies); // never a reply, not even to a query
-        Assert.Empty(with.Events);  // no bell, and no title, directory, notification, progress, clipboard, pointer, prompt or command event
+        Assert.Equal(sequence == "555" ? new[] { "flash" } : Array.Empty<string>(), with.Events);
         TerminalStateAssert.AssertEquivalent(sequence, without.Buffer, without.Parser, with.Buffer, with.Parser);
         Assert.Equal(Colors(without.Buffer), Colors(with.Buffer));
         Assert.Equal("ABCtail", Row(with.Buffer));
@@ -120,7 +118,7 @@ public sealed class AudioAttentionOscPolicyTests
             Osc("11;rgb:4040/5050/6060", Esc + "\\"),
             Osc("12;rgb:7070/8080/9090", Esc + "\\"),
         }, run.Replies);
-        Assert.Empty(run.Events);
+        Assert.Equal(sequence == "555" ? new[] { "flash" } : Array.Empty<string>(), run.Events);
     }
 
     [Fact]
@@ -134,7 +132,7 @@ public sealed class AudioAttentionOscPolicyTests
         // An OSC that ends in BEL is terminated by it, not rung: the BEL after the payload is not a bell, for the supported OSC 2 or the ignored ones.
         run.Events.Clear();
         run.Parser.Process(Osc("2;t", "\u0007") + Osc("440;bell.wav", "\u0007") + Osc("555", "\u0007"));
-        Assert.Equal(new[] { "title:t" }, run.Events);
+        Assert.Equal(new[] { "title:t", "flash" }, run.Events);
     }
 
     [Fact]
@@ -147,7 +145,7 @@ public sealed class AudioAttentionOscPolicyTests
     }
 
     [Fact]
-    public void Audio_and_attention_sequences_split_across_chunks_are_ignored_the_same_way()
+    public void Split_sequences_deliver_only_the_completed_bare_flash()
     {
         var without = Start();
         without.Parser.Process("tail");
@@ -156,7 +154,7 @@ public sealed class AudioAttentionOscPolicyTests
             split.Parser.Process(c.ToString());
 
         Assert.Empty(split.Replies);
-        Assert.Empty(split.Events);
+        Assert.Equal(new[] { "flash" }, split.Events);
         TerminalStateAssert.AssertEquivalent("split", without.Buffer, without.Parser, split.Buffer, split.Parser);
         Assert.Equal("ABCtail", Row(split.Buffer));
     }

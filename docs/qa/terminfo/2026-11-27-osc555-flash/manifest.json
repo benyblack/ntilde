@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "runs": {
+    "baseline": {
+      "measurement": {
+        "runId": "8d52f026d808e9c883c03e199e9a0859",
+        "appRevision": "6d16bd84bdac25cd8b51a0fa7a4554d74702401d",
+        "scriptsRevision": "365f3a3911bad025b69935380c952ce52e001423",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1
+      },
+      "archives": {
+        "owned-run.zip": "4f89e5648fba3720cdf1b81e96639f61799d3429fb8a6e744d95c27714bd6c90"
+      }
+    },
+    "enabled": {
+      "measurement": {
+        "runId": "ab0003607c9aa2c3616d93b9c40792a2",
+        "appRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "scriptsRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1
+      },
+      "archives": {
+        "owned-run.zip": "068da9606d1f9beec08107ec136e199170c690de5cce1290d07787617d98d389"
+      }
+    },
+    "disabled": {
+      "measurement": {
+        "runId": "35ecf12a2f4a23f83d86d2a15163cb5b",
+        "appRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "scriptsRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1
+      },
+      "archives": {
+        "owned-run.zip": "d493d4262a624beb4bf3343509ba954267b9110eab9ff1a9163794e16513d564"
+      }
+    },
+    "disabled-repeat": {
+      "archives": {
+        "owned-run.zip": "84d1ca1dd19b2cc5f598e7c8bed6742353672223ba4abafbd921100930337f9a"
+      },
+      "measurement": {
+        "runId": "43018b445c04940764527dde8e85d9d1",
+        "appRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "scriptsRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1
+      }
+    }
+  }
+}

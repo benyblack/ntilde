@@ -66,7 +66,12 @@ public class TerminalViewTimerLifetimeTests
             TerminalView view = Assert.IsType<TerminalView>(pane.FindControl<TerminalView>("TermView"));
             Assert.Contains("render", view.RunningTimersForTest); // setup: a shown view renders
 
+            view.TriggerVisualFlash();
+            Assert.Contains("visual flash", view.RunningTimersForTest);
             pane.Dispose();
+            Assert.False(view.IsBellFlashActive);
+            view.TriggerVisualFlash();
+            Assert.False(view.IsBellFlashActive);
             Dispatcher.UIThread.RunJobs();
 
             Assert.Empty(view.RunningTimersForTest);

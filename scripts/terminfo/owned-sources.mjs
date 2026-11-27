@@ -20,9 +20,11 @@ export const capturedOsc66SourcePolicy = 'readonly-owned-source-graph-v84';
 export const capturedKittyGraphicsSourcePolicy = 'readonly-owned-source-graph-v83';
 export const capturedUnicodeBoundarySourcePolicy = 'readonly-owned-source-graph-v82';
 export const capturedUnicodeWidthSourcePolicy = 'readonly-owned-source-graph-v81';
+export const capturedFlashSourcePolicy = 'readonly-owned-source-graph-osc555-v1';
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 const focusedSourcePolicies = [
+    ['oscFlashOwnedSourceSha256', capturedFlashSourcePolicy],
     ['fontLigaturesOwnedSourceSha256', capturedFontLigaturesSourcePolicy],
     ['osc633MetadataOwnedSourceSha256', capturedOsc633MetadataSourcePolicy],
     ['sixelReportsOwnedSourceSha256', capturedSixelReportsSourcePolicy],
@@ -1072,6 +1074,13 @@ export const capturedUnicodeBoundarySourceFiles = Object.freeze({
     unicodeWidthContractsSourceSha256: 'unicode-width-contracts.mjs',
 });
 
+export const capturedFlashSourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    oscFlashContractSourceSha256: 'osc-flash-contract.mjs',
+    oscFlashOwnedSourceSha256: 'osc-flash-owned.mjs',
+    oscFlashWorkerSourceSha256: 'osc-flash-worker.mjs',
+});
+
 export const capturedUnicodeWidthSourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     unicodeWidthContractsSourceSha256: 'unicode-width-contracts.mjs',
@@ -1145,6 +1154,7 @@ export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
     const expected = {
+        [capturedFlashSourcePolicy]: capturedFlashSourceFiles,
         [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
         [capturedSixelReportsSourcePolicy]: capturedSixelReportsSourceFiles,
         [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,

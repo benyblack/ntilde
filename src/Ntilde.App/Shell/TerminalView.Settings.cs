@@ -39,6 +39,7 @@ namespace Ntilde.Shell
                 _preferredCursorStyle = ParseCursorStyle(settings.CursorStyle);
                 _bellAudioEnabled = settings.BellAudioEnabled;
                 _bellVisualEnabled = settings.BellVisualEnabled;
+                if (!_bellVisualEnabled && IsBellFlashActive) EndVisualFlash();
                 _enableSmoothScrolling = settings.SmoothScrolling;
                 _enableLinkDetection = settings.EnableLinkDetection;
                 _enableKittyKeyboardProtocol = settings.EnableKittyKeyboardProtocol;

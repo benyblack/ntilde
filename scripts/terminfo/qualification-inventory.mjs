@@ -120,6 +120,8 @@ export const benchmarkSuites = Object.freeze([
         stockUnsupportedCase: 'extensions.osc5522-clipboard', test: 'osc5522-clipboard-publication.test.mjs' },
     { ...directory('osc52-read', '2026-11-27-osc52-read', '2026-11-27-osc52-read/report.md'),
         module: 'osc52-read-results.mjs', exports: ['suiteId', 'contractsVersion', 'caseIds'], test: 'osc52-read-publication.test.mjs' },
+    { ...directory('osc555', '2026-11-27-osc555-flash', '2026-11-27-osc555-flash/report.md'),
+        module: 'osc-flash-contract.mjs', exports: ['suiteId', 'contractsVersion', 'caseIds'], test: 'osc-flash-publication.test.mjs' },
 ]);
 
 /**

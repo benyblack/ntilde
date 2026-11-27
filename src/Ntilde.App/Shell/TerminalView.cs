@@ -129,7 +129,8 @@ namespace Ntilde.Shell
         private bool _cursorBlinkEnabled = true;
         private bool _bellAudioEnabled = true;
         private bool _bellVisualEnabled = true;
-        private bool _isBellFlashActive;
+        private IDisposable? _bellFlashTimer;
+        internal bool IsBellFlashActive => _bellFlashTimer != null;
         private CursorStyle _preferredCursorStyle = CursorStyle.Underline;
         private int _lastCursorRow = -1;
         private int _lastCursorCol = -1;
@@ -157,16 +158,21 @@ namespace Ntilde.Shell
                 }
             }
 
-            if (_bellVisualEnabled)
-            {
-                _isBellFlashActive = true;
-                _isDirty = true;
-                DispatcherTimer.RunOnce(() =>
-                {
-                    _isBellFlashActive = false;
-                    _isDirty = true;
-                }, TimeSpan.FromMilliseconds(90));
-            }
+            TriggerVisualFlash();
+        }
+
+        internal void TriggerVisualFlash()
+        {
+            if (!_bellVisualEnabled || IsBellFlashActive || _retired) return;
+            _bellFlashTimer = DispatcherTimer.RunOnce(EndVisualFlash, TimeSpan.FromMilliseconds(90));
+            _isDirty = true;
+        }
+
+        private void EndVisualFlash()
+        {
+            _bellFlashTimer?.Dispose();
+            _bellFlashTimer = null;
+            _isDirty = true;
         }
         private CellMetrics _metrics;
         private double _windowOpacity = 1.0;
