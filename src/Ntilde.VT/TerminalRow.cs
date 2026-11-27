@@ -37,6 +37,7 @@ namespace Ntilde.VT
             }
         }
 
+        internal RowPromptParts? PromptParts { get; set; }
         private int _writtenColumns;
 
         /// <summary>Conservative extent of authored cells; keeps typed spaces distinct from unused padding.</summary>
@@ -47,6 +48,7 @@ namespace Ntilde.VT
             {
                 _writtenColumns = value;
                 PromptTextSpans = null;
+                PromptParts = null;
             }
         }
 

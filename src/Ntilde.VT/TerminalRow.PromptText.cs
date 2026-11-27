@@ -65,6 +65,7 @@ public partial class TerminalRow
 
     internal void NoteCellsErased(int from, int to, bool trackPromptText, bool noteLayout = true)
     {
+        PromptParts?.Edit(from, to, paint: false);
         if (trackPromptText || PromptTextSpans != null)
             PromptTextSpans = PromptTextSpan.Remove(PromptTextSpans, WrittenColumns, from, to);
         if (noteLayout) NoteColumnsWritten(to);
@@ -90,12 +91,14 @@ public partial class TerminalRow
             spans = text.ReadRow(0, Cells.Length);
         }
 
-        WrittenColumns = Cells.Length;
+        _writtenColumns = Cells.Length;
         PromptTextSpans = spans;
+        PromptParts?.Shift(start, edge, delta);
     }
 
-    internal void NoteGlyphWritten(int start, int end)
+    internal void NoteGlyphWritten(int start, int end, bool extendsGlyph = false)
     {
+        PromptParts?.Edit(extendsGlyph ? start + 1 : start, end, paint: true);
         NoteColumnsWritten(end);
         if (PromptTextSpans is { } spans)
             PromptTextSpans = PromptTextSpan.Merge(spans, start, Math.Min(end, Cells.Length), WrittenColumns);

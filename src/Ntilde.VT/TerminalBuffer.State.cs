@@ -7,8 +7,24 @@ namespace Ntilde.VT
         private readonly TerminalBufferState _state = new();
 
         // Cursor and write-path tracking state
-        private int _cursorCol { get => _state.CursorCol; set => _state.CursorCol = value; }
-        private int _cursorRow { get => _state.CursorRow; set => _state.CursorRow = value; }
+        private int _cursorCol
+        {
+            get => _state.CursorCol;
+            set
+            {
+                if (_pendingPartPaint is { } pending && value != _state.CursorCol) EndInitialPartPaint(pending);
+                _state.CursorCol = value;
+            }
+        }
+        private int _cursorRow
+        {
+            get => _state.CursorRow;
+            set
+            {
+                if (_pendingPartPaint is { } pending && value != _state.CursorRow) EndInitialPartPaint(pending);
+                _state.CursorRow = value;
+            }
+        }
         private int _prevCursorCol { get => _state.PrevCursorCol; set => _state.PrevCursorCol = value; }
         private int _prevCursorRow { get => _state.PrevCursorRow; set => _state.PrevCursorRow = value; }
         private int _maxColThisRow { get => _state.MaxColThisRow; set => _state.MaxColThisRow = value; }

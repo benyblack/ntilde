@@ -13,6 +13,7 @@ export const capturedTermFeaturesSourcePolicy = 'readonly-owned-source-graph-ric
 export const capturedVendorEnvironmentSourcePolicy = 'readonly-owned-source-graph-rich-vendor-environment-v1';
 export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph-v79';
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
+export const capturedPromptPartsSourcePolicy = 'readonly-owned-source-graph-prompt-parts-v1';
 export const capturedOsc633MetadataSourcePolicy = 'readonly-owned-source-graph-v86';
 export const capturedSixelReportsSourcePolicy = 'readonly-owned-source-graph-v85';
 export const capturedFontLigaturesSourcePolicy = 'readonly-owned-source-graph-font-ligatures-v1';
@@ -26,6 +27,7 @@ export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('.
 const focusedSourcePolicies = [
     ['oscFlashOwnedSourceSha256', capturedFlashSourcePolicy],
     ['fontLigaturesOwnedSourceSha256', capturedFontLigaturesSourcePolicy],
+    ['promptPartsOwnedSourceSha256', capturedPromptPartsSourcePolicy],
     ['osc633MetadataOwnedSourceSha256', capturedOsc633MetadataSourcePolicy],
     ['sixelReportsOwnedSourceSha256', capturedSixelReportsSourcePolicy],
     ['osc66OwnedSourceSha256', capturedOsc66SourcePolicy],
@@ -1039,6 +1041,13 @@ export const capturedOsc633MetadataSourceFiles = Object.freeze({
     osc633MetadataWorkerSourceSha256: 'osc633-metadata-worker.mjs',
 });
 
+export const capturedPromptPartsSourceFiles = Object.freeze({
+    ...capturedOsc633MetadataSourceFiles,
+    promptPartsContractsSourceSha256: 'prompt-parts-contracts.mjs',
+    promptPartsOwnedSourceSha256: 'prompt-parts-owned.mjs',
+    promptPartsWorkerSourceSha256: 'prompt-parts-worker.mjs',
+});
+
 export const capturedSixelReportsSourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     sixelReportsContractsSourceSha256: 'sixel-reports-contracts.mjs',
@@ -1154,6 +1163,7 @@ export function readSourceSnapshot(root) {
     if (realpathSync(root) !== process.env.NTILDE_TERMINFO_SOURCE_SNAPSHOT
         || dirname(root) !== realpathSync(tmpdir()) || !root.split(/[\\/]/).at(-1).startsWith('ntilde-owned-sources-')) throw new Error('Expected the private captured source tree.');
     const expected = {
+        [capturedPromptPartsSourcePolicy]: capturedPromptPartsSourceFiles,
         [capturedFlashSourcePolicy]: capturedFlashSourceFiles,
         [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
         [capturedSixelReportsSourcePolicy]: capturedSixelReportsSourceFiles,

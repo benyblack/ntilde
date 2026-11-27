@@ -3,9 +3,10 @@ import { rawInputCapture } from './input-bytes.mjs';
 import { assertPrivateFile, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { withOwnedOutput } from './terminal-output.mjs';
 import { write } from './static-images-collector.mjs';
-import { planFor, prefix, requireMetadata, restore } from './osc633-metadata-contracts.mjs';
+import { pathToFileURL } from 'node:url';
+import * as osc633 from './osc633-metadata-contracts.mjs';
 
-async function collect(runId, send) {
+async function collect(runId, send, { planFor, requireMetadata, restore }) {
     await send('start');
     const capture = rawInputCapture(process.stdin, process.stdout);
     try {
@@ -34,14 +35,14 @@ function describeFailure(error) {
     return error.message;
 }
 
-async function run(configPath) {
+export async function runMetadataWorker(configPath, contract = osc633) {
     assertPrivateFile(configPath);
     const config = JSON.parse(readFileSync(configPath, 'utf8'));
     const { tabTty: tty, originalTerminalState: original } = await verifyNtildeOutput(config, process.stdout);
     const request = (kind, details) => requestOwner(config, kind, { ...details, tty });
     const collectMetadata = async () => {
         await request('raw-output');
-        await collect(config.runId, (stage, value) => request(prefix + stage, value));
+        await collect(config.runId, (stage, value) => request(contract.prefix + stage, value), contract);
     };
     try {
         await withOwnedOutput({ tty, original, restoreInput: () => {} }, collectMetadata);
@@ -52,7 +53,7 @@ async function run(configPath) {
     }
 }
 
-await run(process.argv[2]).catch(error => {
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) await runMetadataWorker(process.argv[2]).catch(error => {
     console.error(describeFailure(error));
     process.exitCode = 1;
 });

@@ -1,0 +1,833 @@
+{
+  "suiteId": "ntilde-owned-contour-prompt-parts-v1",
+  "contractsVersion": 1,
+  "scope": "One disposable direct-local macOS App pane, fenced PTY writes, paired pane metadata and session status.",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "probeHash": "16a690f34c0e",
+  "upstreamCollectorRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+  "measurement": {
+    "runId": "004e30031135ab3e6c19d1515512e718",
+    "appRevision": "55392bbf718d9c1f9526e1a52f0396ecb9b9000d",
+    "scriptsRevision": "55392bbf718d9c1f9526e1a52f0396ecb9b9000d",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-prompt-parts-v1",
+    "receiptSchema": 1,
+    "version": "0.14.0+55392bbf718d9c1f9526e1a52f0396ecb9b9000d",
+    "nodeVersion": "v24.22.3",
+    "startedAt": "2026-11-27T15:14:28.739Z",
+    "releasedAt": "2026-11-27T15:14:32.040Z",
+    "geometry": {
+      "rows": 41,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "ba6d29369ebc5d037a1366075f9cb7d0ee4e427d4ed66225ac96b7b14f2f77f8",
+    "sourceSnapshotManifestSha256": "5861999b578ba226578e0278f3579511f1f0ce25da45b211223946e9ecb108ad",
+    "archiveSha256": "68ecf3a46f217fe5cea3d03a83a63f371838c77fc74e057028e479e3679a05fe"
+  },
+  "cases": [
+    {
+      "caseId": "extensions.osc133-p",
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        },
+        "evidence": {
+          "termlessFeed": "\u001b]133;P;Cwd=/tmp\u0007X",
+          "cell": "X",
+          "terminalWrites": [
+            "\u001b[1;1H\u001b[2K",
+            "\u001b]133;P;Cwd=/tmp\u0007X"
+          ],
+          "query": "\u001b[6n",
+          "reply": "\u001b[1;2R"
+        }
+      },
+      "contractResult": {
+        "contractId": "ntilde-osc133-active-prompt-part-v1",
+        "controls": true,
+        "outcome": "supported",
+        "observations": {
+          "start": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": null,
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "bind": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "p-setup": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "p-termless": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718",
+            "cursor": [
+              0,
+              1
+            ]
+          },
+          "p-terminal": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718",
+            "cursor": [
+              0,
+              1
+            ]
+          },
+          "directory-control": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              1
+            ]
+          },
+          "input": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              21
+            ]
+          },
+          "right": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 21
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              21
+            ]
+          },
+          "paint": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 21
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              24
+            ]
+          },
+          "inserted": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 23
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              6
+            ]
+          },
+          "deleted": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 21
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              6
+            ]
+          },
+          "sized-old": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 21
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              19
+            ]
+          },
+          "relocated": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 16
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              19
+            ]
+          },
+          "continuation": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 16
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              1,
+              6
+            ]
+          },
+          "kitty": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 16
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              2,
+              4
+            ]
+          },
+          "erased": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              16
+            ]
+          },
+          "repaint": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 16
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              19
+            ]
+          },
+          "overwrite": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              17
+            ]
+          },
+          "empty-right": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 7
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              7
+            ]
+          },
+          "typed-through": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              9
+            ]
+          },
+          "submitted": {
+            "parts": [],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": {
+              "row": 1,
+              "col": 0,
+              "absoluteRow": 1,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "accepting": false,
+            "status": "running",
+            "command": "cmd",
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              5
+            ]
+          },
+          "orphan": {
+            "parts": [],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": {
+              "row": 1,
+              "col": 0,
+              "absoluteRow": 1,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "accepting": false,
+            "status": "running",
+            "command": "cmd",
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              5
+            ]
+          },
+          "next-cycle": {
+            "parts": [
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 10
+              }
+            ],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              11
+            ]
+          },
+          "new-prompt": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              1,
+              0
+            ]
+          },
+          "pre-reset": {
+            "parts": [
+              {
+                "kind": "s",
+                "row": 2,
+                "col": 10
+              }
+            ],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              2,
+              11
+            ]
+          },
+          "band-scroll": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "before-ris": {
+            "parts": [
+              {
+                "kind": "s",
+                "row": 2,
+                "col": 10
+              }
+            ],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              2,
+              11
+            ]
+          },
+          "reset": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "protected": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 13
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 4,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "selective-all": {
+            "parts": [
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 13
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 4,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "alignment": {
+            "parts": [],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 4,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718/control",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "finish": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-004e30031135ab3e6c19d1515512e718",
+            "cursor": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "stock": {
+        "outcome": "inconclusive",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "rerun": false
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "pinned",
+        "evidence": "stored-cells+cpr+pane-metadata"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      }
+    }
+  ]
+}

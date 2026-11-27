@@ -179,7 +179,7 @@ public partial class TerminalBuffer
         int kept = from;
         // Cells the erase spared (protected, or part of a scaled block with a protected cell) are still authored content.
         for (int c = from; c < row.Cells.Length; c++) if (IsProtectedOrInProtectedBlock(rowIndex, c)) kept = c + 1;
-        row.WrittenColumns = Math.Min(row.WrittenColumns, kept);
+        row.TrimWrittenColumns(kept);
     }
 
     /// <summary>Blanks [<paramref name="start"/>, <paramref name="end"/>) of one row with the ordinary erases' per-cell metadata cleanup.</summary>

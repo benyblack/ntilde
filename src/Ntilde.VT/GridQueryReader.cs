@@ -270,15 +270,21 @@ namespace Ntilde.VT
                 bool isLastRow = row == endRow;
                 bool wrapped = !isLastRow && buffer.IsRowWrappedAbsolute(row);
 
-                int endCol = wrapped
-                    ? SoftWrappedRowEnd(buffer, row, cols)
-                    : ContentRowEnd(
-                        buffer,
-                        row,
-                        firstCol,
-                        cols,
-                        isCursorRow && isLastRow ? cursorTextCol : (int?)null,
-                        ref rightPromptTrimmed);
+                int? rightPart = buffer.RightPromptColumn(row);
+                int endCol;
+                if (rightPart is int boundary && boundary >= firstCol)
+                {
+                    endCol = Math.Max(isCursorRow ? Math.Min(cursorTextCol, boundary) : firstCol,
+                        LastNonBlankColumn(buffer, row, firstCol, boundary) + 1);
+                    rightPromptTrimmed = true;
+                }
+                else
+                {
+                    int? cursorOnFinalRow = isCursorRow && isLastRow ? cursorTextCol : null;
+                    endCol = wrapped
+                        ? SoftWrappedRowEnd(buffer, row, cols)
+                        : ContentRowEnd(buffer, row, firstCol, cols, cursorOnFinalRow, ref rightPromptTrimmed);
+                }
 
                 for (int col = firstCol; col < endCol; col++)
                 {

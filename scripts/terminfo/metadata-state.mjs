@@ -50,9 +50,22 @@ function contexts(value) {
     check(value.untrusted === true && Array.isArray(value.stack) && value.stack.length <= 16 && Array.isArray(value.ended) && value.ended.length <= 8);
     return { untrusted: true, stack: value.stack.map(item => contextRecord(item, contextTextFields)), ended: value.ended.map(item => contextRecord(item, endedTextFields)) };
 }
+function promptParts(values, rows, cols) {
+    check(Array.isArray(values) && values.length <= rows * 4);
+    const positions = new Set(), kinds = new Set();
+    return values.map(part => {
+        shape(part, ['kind', 'row', 'col']);
+        check(['i', 'r', 'c', 's'].includes(part.kind) && integer(part.row, 0, rows - 1) && integer(part.col, 0, cols - 1));
+        const position = part.row * cols + part.col, kind = part.row + '/' + part.kind;
+        check(!positions.has(position) && !kinds.has(kind));
+        positions.add(position);
+        kinds.add(kind);
+        return { ...part };
+    });
+}
 function buffer(value) {
     shape(value, ['rows', 'cols', 'cursorRow', 'cursorCol', 'alternateScreen', 'scrollbackLines',
-        'historyGeneration', 'rowsEvicted', 'acceptingCommandInput', 'links'], ['commandStart', 'outputStart', 'requestedIconName', 'contexts']);
+        'historyGeneration', 'rowsEvicted', 'acceptingCommandInput', 'links'], ['commandStart', 'outputStart', 'requestedIconName', 'contexts', 'promptParts']);
     check(integer(value.rows, 3, 128) && integer(value.cols, 48, 256) && value.rows * value.cols <= 8192
         && integer(value.cursorRow, 0, value.rows - 1) && integer(value.cursorCol, 0, value.cols - 1)
         && integer(value.scrollbackLines, 0) && integer(value.historyGeneration, 0) && integer(value.rowsEvicted, 0));
@@ -61,6 +74,7 @@ function buffer(value) {
         historyGeneration: value.historyGeneration, rowsEvicted: value.rowsEvicted,
         acceptingCommandInput: flag(value.acceptingCommandInput), commandStart: mark(value.commandStart),
         outputStart: mark(value.outputStart), links: links(value.links, value.rows, value.cols),
+        ...(value.promptParts === undefined ? {} : { promptParts: promptParts(value.promptParts, value.rows, value.cols) }),
         // The raw OSC 0/1 icon name, retained only when the App reported it (older retained frames never carried it).
         ...(value.requestedIconName == null ? {} : { requestedIconName: text(value.requestedIconName) }),
         // The untrusted OSC 3008 contexts, retained only when the App reported them (older retained frames never carried them).

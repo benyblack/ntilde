@@ -109,6 +109,7 @@ public partial class TerminalBuffer
 
     private static void ClearSizedCell(TerminalRow row, int col)
     {
+        row.PromptParts?.Edit(col, col + 1, paint: false);
         row.Cells[col] = TerminalCell.Default;
         row.SetExtendedText(col, null);
         row.SetHyperlink(col, null);
@@ -136,11 +137,13 @@ public partial class TerminalBuffer
         // double-size line holds half of them. Every line the rectangle ends up on returns to single width; a line
         // it only wrapped away from keeps its attribute.
         for (int dy = 0; dy < height; dy++) ReturnRowToSingleWidthForSizedTextNoLock(_cursorRow + dy);
+        var initial = _viewport[_cursorRow].PromptParts?.InitialPaint;
         if (Modes.IsInsertMode) InsertTextSizingRectangle(width, height);
         int absTop = TextSizingAbsoluteRow(_cursorRow);
         EraseTextSizingRange(_cursorCol, _cursorCol + width, absTop, absTop + height);
         EraseOrdinaryWideSizingBoundaries(_cursorCol, absTop, width, height);
         int top = _cursorRow;
+        RestoreInitialPaintAfterCellPreparation(_viewport[top], initial);
         SyncPackedState();
         for (int dy = 0; dy < height; dy++)
         {
@@ -299,15 +302,6 @@ public partial class TerminalBuffer
             target.SetExtendedText(col, replacement.Text);
         }
         target.TouchRevision();
-    }
-
-    private void PrepareTextSizingOverwrite(int width)
-    {
-        FindTextSizingWritePosition(width);
-        // In insertion mode the shift retires split blocks and preserves intact ones.
-        if (Modes.IsInsertMode) return;
-        int row = TextSizingAbsoluteRow(_cursorRow);
-        EraseTextSizingRange(_cursorCol, _cursorCol + width, row, row + 1);
     }
 
     private void EraseTextSizingForShift(bool insert, int count) => EraseTextSizingForShift(_cursorRow, _cursorCol, insert, count);

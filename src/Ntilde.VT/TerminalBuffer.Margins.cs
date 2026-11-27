@@ -178,7 +178,7 @@ public partial class TerminalBuffer
     private void ScrollBandNoLock(int top, int bottom, int left, int right, int count, bool up, TerminalCell blank)
     {
         if (top > bottom || left > right || count < 1) return;
-        InvalidateClickPromptInRows(top, bottom);
+        InvalidateClickPromptInRows(top, bottom, left: left, right: right);
         int n = Math.Min(count, bottom - top + 1);
         int width = right - left + 1;
         EraseTextSizingRange(left, right + 1, TextSizingAbsoluteRow(top), TextSizingAbsoluteRow(bottom) + 1, blank);
@@ -216,6 +216,7 @@ public partial class TerminalBuffer
         {
             int source = up ? y + n : y - n;
             var row = _viewport[top + y];
+            row.PromptParts?.Edit(left, right + 1, paint: false);
             row.NoteColumnsWritten(right + 1);
             for (int x = 0; x < width; x++)
             {

@@ -25,6 +25,7 @@ public partial class TerminalBuffer
             if (!mark.IsAltScreen)
             {
                 _clickPrompt = mark;
+                _partPrimary = mark;
                 _clickPromptEnd = mark;
                 _promptClickMode = mode;
             }
@@ -191,26 +192,33 @@ public partial class TerminalBuffer
     }
 
     // The grid write lock is held while rows are moved or selectively erased.
-    internal void InvalidateClickPromptInRows(int top, int bottom)
+    internal void InvalidateClickPromptInRows(int top, int bottom, bool preserveParts = false, int left = 0, int right = int.MaxValue)
     {
-        if (!_clickPrompt.HasValue || _isAltScreen) return;
+        if (_isAltScreen || (!_clickPrompt.HasValue && !_partPrimary.HasValue)) return;
         lock (_trackedMarkGate)
         {
+            if (!preserveParts && _partPrimary is { } part && part.Column >= left && part.Column <= right
+                && ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, part, out int partRow) && partRow >= top && partRow <= bottom)
+            {
+                _partPrimary = null;
+                _promptPartCycle = null;
+            }
             if (_clickPrompt is { } primary
                 && ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int primaryRow)
                 && ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, _clickPromptEnd, out int endRow)
                 && primaryRow <= bottom && endRow >= top)
             {
-                ClearClickPromptLocked();
+                ClearClickPromptLocked(preserveParts: true);
             }
         }
     }
 
     private void TrimClickPromptAfterHeightShrink()
     {
-        if (!_clickPrompt.HasValue) return;
         lock (_trackedMarkGate)
         {
+            if (_partPrimary is { } part && !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, part, out _))
+                _partPrimary = null;
             if (_clickPrompt is not { } primary) return;
             if (!ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int primaryRow))
             {
@@ -232,10 +240,15 @@ public partial class TerminalBuffer
         lock (_trackedMarkGate) ClearClickPromptLocked();
     }
 
-    private void ClearClickPromptLocked()
+    private void ClearClickPromptLocked(bool preserveParts = false)
     {
         _clickPromptVersion++;
         _clickPrompt = null;
+        if (!preserveParts)
+        {
+            _partPrimary = null;
+            _promptPartCycle = null;
+        }
         _clickPromptEnd = default;
         _promptClickMode = PromptClickMode.Disabled;
         _secondaryClickPrompts.Clear();
@@ -245,9 +258,10 @@ public partial class TerminalBuffer
     {
         lock (_trackedMarkGate)
         {
-            return _clickPrompt is { } primary
-                ? (_clickPromptVersion, primary, _clickPromptEnd, _secondaryClickPrompts.ToArray())
-                : null;
+            if (_clickPrompt is { } primary)
+                return (_clickPromptVersion, primary, _clickPromptEnd, _secondaryClickPrompts.ToArray());
+            // A selective erase can retire Kitty clicks while a protected prompt part survives.
+            return _partPrimary is { } part ? (_clickPromptVersion, part, part, []) : null;
         }
     }
 
@@ -264,6 +278,8 @@ public partial class TerminalBuffer
             }
 
             _clickPromptVersion++;
+            if (_partPrimary.HasValue) _partPrimary = start;
+            if (!_clickPrompt.HasValue) return;
             _clickPrompt = start;
             _clickPromptEnd = start;
             if (end is { } retainedEnd) ExtendClickPromptLocked(retainedEnd);
