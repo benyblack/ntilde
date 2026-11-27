@@ -217,6 +217,38 @@ public class PromptClickTests
     }
 
     [Theory]
+    [InlineData(1, false, false)]
+    [InlineData(2, false, false)]
+    [InlineData(2, false, true)]
+    [InlineData(2, true, false)]
+    [InlineData(2, true, true)]
+    public void WidthReflowKeepsErasedPaddingOutsideTheRestoredPrompt(int mode, bool doubleWidth, bool reflowAgain)
+    {
+        int columns = doubleWidth ? 40 : 20;
+        var buffer = new TerminalBuffer(columns, 12);
+        var parser = new AnsiParser(buffer);
+        string size = doubleWidth ? "\x1b#6" : "";
+        parser.Process($"{size}\x1b]133;A;click_events={mode}\a" + new string('a', 20));
+        if (doubleWidth) parser.Process("\r\n" + size);
+        parser.Process(new string('b', 20));
+        if (doubleWidth) parser.Process("\r\n" + size);
+        parser.Process("last\x1b[2;6H\x1b[K");
+
+        buffer.Resize(columns / 2, 12);
+        if (reflowAgain)
+        {
+            buffer.Resize(doubleWidth ? columns : columns * 3, 12);
+            buffer.Resize(columns / 2, 12);
+        }
+        parser.Process("\x1b[5;1H\x1b[2K\x1b[H");
+
+        Assert.True(buffer.TryGetPromptClickRow(2, out int row, out _));
+        Assert.Equal(3, row);
+        Assert.False(buffer.TryGetPromptClickRow(3, out _, out _));
+        Assert.False(buffer.TryGetPromptClickRow(4, out _, out _));
+    }
+
+    [Theory]
     [InlineData("K")]
     [InlineData("J")]
     public void PartialTailErasureDoesNotReflowOldPromptPadding(string erase)

@@ -70,7 +70,8 @@ public sealed partial class ScrollbackPages
 
     internal long AppendRow(TerminalRow row)
         => AppendRow(row.Cells, row.IsWrapped,
-            new(row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap(), row.GetTextSizingMap(), row.LineSize),
+            new(row.GetExtendedTextMap(), row.GetHyperlinkMap(), row.GetUnderlineMap(), row.GetTextSizingMap(), row.LineSize,
+                row.PromptTextSpans),
             row.WrappedColumns, row.WrittenColumns);
 
     /// <summary>Editing any visible piece can erase a block whose anchor is in retained history.</summary>

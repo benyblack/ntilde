@@ -524,7 +524,8 @@ namespace Ntilde.VT
                 SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(_cursorCol, Cols, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                if (_cursorCol >= 0 && _cursorCol < Cols) row.NoteLineErasure(_cursorCol, Cols);
+                if (_cursorCol >= 0 && _cursorCol < Cols)
+                    row.NoteLineErasure(_cursorCol, Cols, _promptClickMode != PromptClickMode.Disabled);
                 for (int i = _cursorCol; i < Cols; i++)
                 {
                     row.Cells[i] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
@@ -551,7 +552,7 @@ namespace Ntilde.VT
                 SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(0, Math.Min(Cols, _cursorCol + 1), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                row.NoteLineErasure(0, Math.Min(Cols, _cursorCol + 1));
+                row.NoteLineErasure(0, Math.Min(Cols, _cursorCol + 1), _promptClickMode != PromptClickMode.Disabled);
                 for (int i = 0; i <= _cursorCol; i++)
                 {
                     if (i >= Cols) break;

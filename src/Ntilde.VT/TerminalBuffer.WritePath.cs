@@ -339,7 +339,7 @@ namespace Ntilde.VT
 
                             // Re-evaluate width of the merged cluster
                             int newWidth = GetGraphemeWidth(merged);
-                            row.NoteColumnsWritten(Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
+                            row.NoteColumnsWritten(Math.Min(Cols, attachCol + Math.Max(1, newWidth)), attachCol);
 
                             // ALWAYS enforce wide flag and continuation for width >= 2
                             if (newWidth >= 2)
@@ -459,7 +459,7 @@ namespace Ntilde.VT
                 if (Modes.IsInsertMode) InsertCharactersInternal(width);
 
                 var row = _viewport[_cursorRow];
-                row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + Math.Max(1, width)));
+                row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + Math.Max(1, width)), _cursorCol);
 
                 SyncPackedState();
 

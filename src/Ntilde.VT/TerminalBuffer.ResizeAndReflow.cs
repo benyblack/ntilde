@@ -308,6 +308,7 @@ namespace Ntilde.VT
                         row.RestoreSideTables(metadata.ExtendedText, metadata.Hyperlinks, metadata.Underlines, metadata.TextSizing);
                         row.LineSize = metadata.LineSize;
                         row.WrittenColumns = writtenColumns;
+                        row.PromptTextSpans = metadata.PromptTextSpans;
                         row.WrappedColumns = wrappedColumns;
                         newViewport[i] = row;
                         pulled++;

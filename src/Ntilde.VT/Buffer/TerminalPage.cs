@@ -39,6 +39,7 @@ namespace Ntilde.VT.Storage
         // Zero means full-row/legacy; otherwise the value is the content column count plus one.
         private int[]? _wrappedColumns;
         private int[]? _writtenColumns;
+        private PromptTextSpan[]?[]? _promptTextSpans;
         // Null while every row in the page is single width.
         private byte[]? _lineSizes;
 
@@ -120,6 +121,7 @@ namespace Ntilde.VT.Storage
             _isWrappedMask = 0;
             _wrappedColumns = null;
             _writtenColumns = null;
+            _promptTextSpans = null;
             _lineSizes = null;
             _extendedText = null;
             _hyperlinks = null;
@@ -139,6 +141,7 @@ namespace Ntilde.VT.Storage
             _isWrappedMask = 0;
             _wrappedColumns = null;
             _writtenColumns = null;
+            _promptTextSpans = null;
             _lineSizes = null;
             _extendedText = null;
             _hyperlinks = null;
@@ -201,6 +204,7 @@ namespace Ntilde.VT.Storage
         internal void SetWrittenColumns(int rowIndex, int columns)
         {
             if (columns < 0 || columns > Cols) throw new ArgumentOutOfRangeException(nameof(columns));
+            if (_promptTextSpans != null) _promptTextSpans[rowIndex] = null;
             if (columns == Cols && _writtenColumns == null) return;
             if (_writtenColumns == null)
             {
@@ -208,6 +212,15 @@ namespace Ntilde.VT.Storage
                 Array.Fill(_writtenColumns, Cols);
             }
             _writtenColumns[rowIndex] = columns;
+        }
+
+        internal PromptTextSpan[]? GetPromptTextSpans(int rowIndex) => _promptTextSpans?[rowIndex];
+
+        internal void SetPromptTextSpans(int rowIndex, PromptTextSpan[]? spans)
+        {
+            if (spans is null) return;
+            _promptTextSpans ??= new PromptTextSpan[]?[RowsInPage];
+            _promptTextSpans[rowIndex] = spans;
         }
 
         // ── Extended Text Metadata ───────────────────────────────────────────────
