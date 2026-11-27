@@ -14,6 +14,8 @@ test('the raw child replies, exact dimensions, refit, and cleanup rederive from 
     assert.equal(renderReport(report), readFileSync(join(publication, 'report.md'), 'utf8').replaceAll('\r\n', '\n'));
     assert.deepEqual(report.pinnedReplies.map(row => row.cases.map(item => item.terminal.observation.outcome)),
         Array.from({ length: 4 }, () => ['supported', 'supported']));
+    assert.deepEqual(report.pinnedReplies.map(row => row.cases.map(item => item.termlessReplay.observation.outcome)),
+        Array.from({ length: 4 }, () => ['supported', 'supported']));
     assert.deepEqual(report.ownedGeometry.stages.map(row => [row.grid.rows, row.grid.cols, row.font.fontSizeDip]),
         [[40, 140, 14], [26, 84, 14], [24, 79, 15], [40, 140, 14]]);
     assert.deepEqual(report.ownedGeometry.stages.map(row => row.replies.map(item => item.reply)), [
@@ -41,6 +43,17 @@ test('positive but stale or axis-swapped frames pass only the pinned criterion',
         const reply = verifyReply(frame.samples, step, new Set(), pixelDimensions(frame.metadata.cellGeometry, frame.window));
         assert.equal(reply.outcome, 'failed');
         assert.equal((await replayXtwinopsPixels(probe, reply)).observation.outcome, 'supported');
+    }
+});
+
+test('the pinned replies require complete positive height and width fields', async () => {
+    const [pane, cell] = readPinnedProbes();
+    const sentinel = '\x1b[?62;4;22c';
+    const exchanges = [[pane, '\x1b[14t', '\x1b[4;0;2380t'], [cell, '\x1b[16t', '\x1b[6;37;17']];
+    for (const [probe, request, reply] of exchanges) {
+        const terminal = await replayXtwinopsPixels(probe, { id: probe.id, request: request + '\x1b[c', raw: reply + sentinel });
+        assert.equal(terminal.observation.outcome, 'inconclusive');
+        assert.equal(terminal.observation.reason, 'invalid-reply');
     }
 });
 

@@ -55,6 +55,21 @@
                 "observed": "\u001b[4;1480;2380t"
               }
             ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[4;1480;2380t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;1480;2380t"
+              }
+            ]
           }
         },
         {
@@ -63,6 +78,21 @@
           "terminal": {
             "pass": true,
             "response": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[6;37;17t",
             "observation": {
               "outcome": "supported",
               "evidence": "query"
@@ -98,6 +128,21 @@
                 "observed": "\u001b[4;962;1428t"
               }
             ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[4;962;1428t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;962;1428t"
+              }
+            ]
           }
         },
         {
@@ -106,6 +151,21 @@
           "terminal": {
             "pass": true,
             "response": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[6;37;17t",
             "observation": {
               "outcome": "supported",
               "evidence": "query"
@@ -141,6 +201,21 @@
                 "observed": "\u001b[4;960;1422t"
               }
             ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[4;960;1422t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;960;1422t"
+              }
+            ]
           }
         },
         {
@@ -149,6 +224,21 @@
           "terminal": {
             "pass": true,
             "response": "\u001b[6;40;18t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;40;18t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[6;40;18t",
             "observation": {
               "outcome": "supported",
               "evidence": "query"
@@ -184,6 +274,21 @@
                 "observed": "\u001b[4;1480;2380t"
               }
             ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[4;1480;2380t",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 14 t returns a complete CSI 4;positive-height;positive-width t frame",
+                "observed": "\u001b[4;1480;2380t"
+              }
+            ]
           }
         },
         {
@@ -192,6 +297,21 @@
           "terminal": {
             "pass": true,
             "response": "\u001b[6;37;17t\u001b[?62;4;22c",
+            "observation": {
+              "outcome": "supported",
+              "evidence": "query"
+            },
+            "assertions": [
+              {
+                "kind": "positive",
+                "expected": "CSI 16 t returns a complete CSI 6;positive-height;positive-width t frame",
+                "observed": "\u001b[6;37;17t"
+              }
+            ]
+          },
+          "termlessReplay": {
+            "pass": true,
+            "response": "\u001b[6;37;17t",
             "observation": {
               "outcome": "supported",
               "evidence": "query"

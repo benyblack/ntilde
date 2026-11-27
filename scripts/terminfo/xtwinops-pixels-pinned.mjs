@@ -24,9 +24,32 @@ export function pinnedXtwinopsPixels(gzip) {
     return probes;
 }
 
-export async function replayXtwinopsPixels(probe, exchange) {
+function pinnedExchangeIndex(probe, exchange) {
     const index = caseIds.indexOf(probe.id);
     assert.ok(index >= 0 && exchange.id === probe.id);
+    return index;
+}
+
+export function replayXtwinopsPixelsTermless(probe, exchange) {
+    const index = pinnedExchangeIndex(probe, exchange);
+    let calls = 0;
+    const termless = probe.termless({
+        feedCapture(sequence) {
+            calls++;
+            assert.equal(sequence, requests[index]);
+            assert.equal(sequence + da, exchange.request);
+            const sentinel = /\x1b\[\?[0-9;]+c$/.exec(exchange.raw);
+            assert.ok(sentinel);
+            assert.equal(exchange.raw, exchange.reply + sentinel[0]);
+            return exchange.reply;
+        },
+    });
+    assert.equal(calls, 1);
+    return structuredClone(termless);
+}
+
+export async function replayXtwinopsPixels(probe, exchange) {
+    const index = pinnedExchangeIndex(probe, exchange);
     let calls = 0;
     const terminal = await probe.term({
         queryWithSentinelOutcome(sequence, pattern) {
@@ -35,7 +58,7 @@ export async function replayXtwinopsPixels(probe, exchange) {
             assert.equal(sequence + da, exchange.request);
             // The retained DA1 terminated the exchange. A match after it
             // cannot turn silence into a pinned success.
-            const sentinel = /\x1b\[\?[0-9;]+c$/.exec(exchange.raw);
+            const sentinel = /\x1b\[\?[0-9;]+c/.exec(exchange.raw);
             assert.ok(sentinel);
             const match = pattern.exec(exchange.raw.slice(0, sentinel.index));
             return { raw: exchange.raw, match, reason: match ? 'reply' : 'sentinel' };

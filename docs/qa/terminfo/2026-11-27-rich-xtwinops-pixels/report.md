@@ -4,7 +4,7 @@ One disposable direct-local Ntilde pane measured `device.xtwinops-14` and `devic
 
 ## Pinned child PTY replies
 
-The exact writes were `CSI 14 t` and `CSI 16 t`, each followed by the pinned DA1 sentinel. A separate pair of raw ordering replies fenced every exchange. The unchanged terminfo.dev 4.0.0 terminal callbacks require a complete reply with two positive dimensions in wire order (height, width).
+The exact writes were `CSI 14 t` and `CSI 16 t`, each followed by the pinned DA1 sentinel. A separate pair of raw ordering replies fenced every exchange. The unchanged terminfo.dev 4.0.0 terminal callbacks require a complete reply with two positive dimensions in wire order (height, width). The JSON also records the pinned termless callbacks replayed over the isolated PTY case replies.
 
 | Stage | CSI 14 t frame | Pinned verdict | CSI 16 t frame | Pinned verdict |
 | --- | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ The exact writes were `CSI 14 t` and `CSI 16 t`, each followed by the pinned DA1
 
 Pixel dimensions in this table are width × height. The parent read cell metrics and render scale from the App, took the independent kernel grid from `/bin/stty`, and recorded the native window bounds through Core Graphics. Each cell axis was converted to single-precision device pixels and clamped to one pixel before rounding. For the text area, the unrounded cell dimensions were multiplied by columns and rows in single precision before rounding. Both replies use nearest-even rounding. The Sixel geometry query supplied the 2000-pixel cap control.
 
-The parent verified the same pane, screen, cursor, buffer and presentation metadata, native window, and kernel grid around each query. The resize held font size and scale fixed. The font shortcut changed cell metrics in the same resized window at the same scale. Restoration recovered the original pane grid, exact cell metrics and pixel reports. The native window bounds were recorded independently at every stage.
+The parent verified the same pane, screen, cursor, buffer and presentation metadata, native window, and kernel grid around each query. The resize held font size and scale fixed. The font shortcut changed cell metrics in the same resized window at the same scale. Restoration recovered the original pane grid, exact cell metrics and pixel reports. The native window bounds were recorded independently at every stage. Restoring the grid produced an outer window of 2398 × 1616 px versus the initial 2400 × 1600 px.
 
 ## Font-change fix
 
