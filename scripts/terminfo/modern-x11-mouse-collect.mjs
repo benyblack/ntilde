@@ -376,7 +376,8 @@ async function verifyRestoredPane(run) {
 async function restoreClipboardPane(run) {
     let replay, failure;
     try {
-        replay = await (run.mimePaste ? observeMimePaste(run) : run.paste ? observePaste(run) : observeClipboard(run));
+        if (run.mimePaste) replay = await observeMimePaste(run);
+        else replay = await (run.paste ? observePaste(run) : observeClipboard(run));
         await verifyRestoredPane(run);
     } catch (error) { failure = error; }
     try {

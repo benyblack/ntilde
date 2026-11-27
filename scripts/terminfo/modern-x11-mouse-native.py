@@ -12,6 +12,7 @@ import time
 XID, INT, PTR = ct.c_ulong, ct.c_int, ct.c_void_p
 INTP, XIDP = ct.POINTER(INT), ct.POINTER(XID)
 UINT, UINTP = ct.c_uint, ct.POINTER(ct.c_uint)
+X11_LIBRARY = "libX11.so.6"
 
 
 class WindowAttributes(ct.Structure):
@@ -74,7 +75,7 @@ def request_peer(path, pid, request):
 
 class XDisplay:
     def __init__(self, server_pid):
-        x11 = ct.CDLL("libX11.so.6")
+        x11 = ct.CDLL(X11_LIBRARY)
         xtst = ct.CDLL("libXtst.so.6")
         xres = ct.CDLL("libXRes.so.1")
         self.close = bind(x11, "XCloseDisplay", INT, PTR)
@@ -154,7 +155,7 @@ class XDisplay:
         demand(len(visible) == 2 and parent in visible, "expected one App clipboard consent dialog")
         dialog = next(window["id"] for window in visible if window != parent)
         demand(self.client_pid(parent["id"]) == self.client_pid(dialog) == app_pid, "wrong consent window owner")
-        x11 = ct.CDLL("libX11.so.6")
+        x11 = ct.CDLL(X11_LIBRARY)
         transient = bind(x11, "XGetTransientForHint", INT, PTR, XID, XIDP)
         owner = XID()
         demand(transient(self.display, dialog, ct.byref(owner)) and owner.value == parent["id"],
@@ -330,7 +331,7 @@ class XDisplay:
     def clipboard_state(self, command):
         peer_id = command["peerWindow"]
         demand(self.client_pid(peer_id) == command["peerPid"], "wrong X11 GTK peer client")
-        x11 = ct.CDLL("libX11.so.6")
+        x11 = ct.CDLL(X11_LIBRARY)
         atom = bind(x11, "XInternAtom", XID, PTR, ct.c_char_p, INT)(self.display, b"CLIPBOARD", 0)
         owner = bind(x11, "XGetSelectionOwner", XID, PTR, XID)(self.display, atom)
         return {"selection": "CLIPBOARD", "ownerWindow": owner,
