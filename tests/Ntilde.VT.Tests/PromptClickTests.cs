@@ -149,6 +149,36 @@ public class PromptClickTests
         Assert.False(buffer.TryGetPromptClickRow(4, out _, out _));
     }
 
+    [Theory]
+    [InlineData("\x1b[2;1H\x1b[2K\x1b[3;1H\x1b[2K")]
+    [InlineData("\x1b[3;1H\x1b[K\x1b[2;1H\x1b[K")]
+    [InlineData("\x1b[2;80H\x1b[1K\x1b[3;80H\x1b[1K")]
+    public void FullLineErasureShrinksThePromptTailInEitherOrder(string erase)
+    {
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n\x1b]133;A;k=s\alower\r\nlast\x1b[H");
+        Assert.Equal(2, WireRow(2));
+
+        _parser.Process(erase + "\x1b[H");
+        Assert.Equal(1, WireRow(0));
+        Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
+        Assert.False(_buffer.TryGetPromptClickRow(2, out _, out _));
+    }
+
+    [Fact]
+    public void ReflowRetainsPromptExtentWithAWhitespaceOnlyLowerRow()
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A;click_events=2\a" + new string('a', 20) + " \x1b[H");
+
+        buffer.Resize(10, 12);
+        Assert.True(buffer.TryGetPromptClickRow(1, out int row, out _));
+        Assert.Equal(2, row);
+        Assert.True(buffer.TryGetPromptClickRow(2, out row, out _));
+        Assert.Equal(3, row);
+        Assert.False(buffer.TryGetPromptClickRow(3, out _, out _));
+    }
+
     private int WireRow(int visualRow)
     {
         Assert.True(_buffer.TryGetPromptClickRow(visualRow, out int row, out _));

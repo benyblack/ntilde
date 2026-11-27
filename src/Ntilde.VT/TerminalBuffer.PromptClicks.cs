@@ -70,10 +70,15 @@ public partial class TerminalBuffer
         lock (_trackedMarkGate)
         {
             if (_promptClickMode == PromptClickMode.Disabled) return;
-            int row = Scrollback.Count + _lastCharRow;
-            ExtendClickPromptLocked(new ShellIntegrationMark(row, _lastCharCol,
-                Scrollback.TotalRowsEvicted + row, IsAltScreen: false, Scrollback.Generation));
+            ExtendClickPromptLocked(CaptureClickPosition(_lastCharRow, _lastCharCol + 1));
         }
+    }
+
+    private ShellIntegrationMark CaptureClickPosition(int viewportRow, int column)
+    {
+        int row = Scrollback.Count + viewportRow;
+        return new ShellIntegrationMark(row, column, Scrollback.TotalRowsEvicted + row,
+            IsAltScreen: false, Scrollback.Generation);
     }
 
     private void ExtendClickPromptLocked(ShellIntegrationMark end)
@@ -86,6 +91,55 @@ public partial class TerminalBuffer
         {
             _clickPromptEnd = end;
         }
+    }
+
+    internal void EraseClickPromptLine(int mode)
+    {
+        if (_promptClickMode == PromptClickMode.Disabled) return;
+        bool wholeLine = mode == 2 || (mode == 0 && _cursorCol == 0)
+            || (mode == 1 && _cursorCol >= CursorRowLastColumnNoLock);
+        if (!wholeLine) return;
+
+        lock (_trackedMarkGate)
+        {
+            if (_clickPrompt is not { } primary
+                || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int primaryRow)
+                || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, _clickPromptEnd, out int endRow)
+                || _cursorRow < primaryRow || _cursorRow > endRow)
+            {
+                return;
+            }
+
+            long erased = CaptureClickPosition(_cursorRow, 0).AbsoluteRow;
+            _secondaryClickPrompts.RemoveAll(anchor => anchor.AbsoluteRow == erased);
+            if (_cursorRow != endRow) return;
+
+            // EL visits rows one at a time. Walk back over an erased tail only
+            // when its last row is removed, regardless of erase order.
+            _clickPromptEnd = primary;
+            for (int row = endRow - 1; row >= Math.Max(0, primaryRow); row--)
+            {
+                int column = LastPromptTextColumn(_viewport[row]);
+                if (column < 0) continue;
+                _clickPromptEnd = CaptureClickPosition(row, column + 1);
+                break;
+            }
+
+            // Marked empty continuation rows are also part of the editable extent.
+            if (_secondaryClickPrompts.Count > 0)
+                ExtendClickPromptLocked(_secondaryClickPrompts[^1]);
+        }
+    }
+
+    private static int LastPromptTextColumn(TerminalRow row)
+    {
+        for (int column = row.WrittenColumns - 1; column >= 0; column--)
+        {
+            var cell = row.Cells[column];
+            if (cell.Character is not (' ' or '\0') || cell.HasExtendedText)
+                return column;
+        }
+        return -1;
     }
 
     internal void EraseClickPromptTail(ShellIntegrationMark cursor)

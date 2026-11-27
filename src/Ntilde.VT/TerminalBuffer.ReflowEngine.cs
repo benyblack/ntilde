@@ -333,6 +333,11 @@ namespace Ntilde.VT
                         if (!isEmpty || row.LineSize != LineSize.SingleWidth || row.GetTextSizingMap() is { Count: > 0 } || row.GetUnderlineMap() is { Count: > 0 } || row.HasProtectedCells || i <= _cursorRow || i == _savedCursors.Main.Row || i == _savedCursors.Alt.Row) lastActiveVpRow = i;
                     }
 
+                    // A marked prompt can extend below the cursor into blank rows.
+                    if (_promptAnchors != null)
+                        foreach (var anchor in _promptAnchors)
+                            lastActiveVpRow = Math.Max(lastActiveVpRow, GetTrackedMarkPhysicalRow(anchor.Mark) - oldScrollbackCount);
+
                     int vpRowsToTake = Math.Max(lastActiveVpRow + 1,
                         _source.NativeSixelViewportRowsToFlow(oldScrollbackCount, Math.Min(oldRows, actualVpLen)));
                     int totalPhysRows = oldScrollbackCount + vpRowsToTake;

@@ -93,12 +93,16 @@ function fixtures(marker, cells) {
 
     const freshPrimary = lineText('fresh primary');
     const updatedLines = lines.map(([row, line]) => [row, row === secondary ? freshPrimary : line]);
+    const erasedLines = lines.map(([row, line]) => [row, row === secondary || row === cursor ? '' : line]);
+    const primaryInput = cells.primary.row;
+    const eraseContinuation = cup(secondary) + csi + '2K' + cup(cursor) + csi + '2K' + cup(primaryInput);
     return { primary, secondary, cursor, phases: [
         phase('disabled', draw(0), ['secondary']),
         phase('absolute', draw(1), inside),
         phase('relative', draw(2), clickNames),
-        phase('cursor-up', cup(cells.primary.row), ['secondary', 'continuation'], lines, cells.primary.row),
-        phase('new-prompt', cup(secondary) + osc('A') + csi + '2K' + freshPrimary + cup(cursor), ['secondary'], updatedLines),
+        phase('cursor-up', cup(primaryInput), ['secondary', 'continuation'], lines, primaryInput),
+        phase('erase-lines', eraseContinuation, ['secondary', 'continuation'], erasedLines, primaryInput),
+        phase('new-prompt', draw(2) + cup(secondary) + osc('A') + csi + '2K' + freshPrimary + cup(cursor), ['secondary'], updatedLines),
         phase('before-submit', draw(2), []),
         phase('after-submit', osc('C'), ['secondary']),
         phase('before-reset', draw(2), []),
