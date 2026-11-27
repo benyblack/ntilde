@@ -1,6 +1,6 @@
 """Collect two identity OSCs inside a fresh, network-isolated Linux container."""
 
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import hashlib
 import json
 import os
@@ -99,6 +99,18 @@ def private_peer(path, expected_pid=None):
         need(uid == os.getuid() and (expected_pid is None or expected_pid == pid), "foreign Unix peer")
         with peer.makefile("rwb") as stream:
             yield pid, stream
+
+
+@contextmanager
+def raw_peer(path, name, process):
+    with ExitStack() as opened:
+        def connect():
+            try:
+                return opened.enter_context(private_peer(path))
+            except (FileNotFoundError, ConnectionRefusedError):
+                return None
+
+        yield wait_for(connect, name + " raw PTY connection", process)
 
 
 def rpc(stream, request):
@@ -243,8 +255,7 @@ class Run:
         record = self.record[name]
         record["terminal"] = process_facts(proc.pid)
         record["terminal"]["sha256"] = digest(Path(record["terminal"]["exe"]))
-        wait_for(lambda: path if path.is_socket() else None, name + " raw PTY", proc)
-        with private_peer(path) as (child, stream):
+        with raw_peer(path, name, proc) as (child, stream):
             record["child"] = process_facts(child)
             record["tty"] = tty_facts(child)
             need(record["child"]["parent"] == proc.pid and record["child"]["argv"] == self.child_args(name, path),
