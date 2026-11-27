@@ -24,7 +24,7 @@
         "1b5b3c303b35323b394d",
         "1b5b3c303b35323b396d"
       ],
-      "finished": "1428038677075501",
+      "finished": "1428704479923264",
       "point": [
         418,
         202
@@ -38,7 +38,7 @@
         "1b5b3c303b35323b31344d",
         "1b5b3c303b35323b31346d"
       ],
-      "finished": "1428039593707918",
+      "finished": "1428705425703515",
       "point": [
         418,
         306
@@ -52,7 +52,7 @@
         "1b5b3c303b35323b32304d",
         "1b5b3c303b35323b32306d"
       ],
-      "finished": "1428040501124918",
+      "finished": "1428706366808557",
       "point": [
         418,
         418
@@ -66,7 +66,7 @@
         "1b5b3c303b35323b32364d",
         "1b5b3c303b35323b32366d"
       ],
-      "finished": "1428041434275877",
+      "finished": "1428707326964474",
       "point": [
         418,
         522
@@ -80,7 +80,7 @@
         "1b5b3c303b35323b33314d",
         "1b5b3c303b35323b33316d"
       ],
-      "finished": "1428042374050877",
+      "finished": "1428708242716641",
       "point": [
         418,
         634
@@ -276,6 +276,40 @@
       "matched": true
     },
     {
+      "phase": "erase-lines",
+      "position": "secondary",
+      "point": [
+        418,
+        418
+      ],
+      "column": 52,
+      "row": 20,
+      "childHex": [
+        "",
+        "",
+        ""
+      ],
+      "expectedHex": "",
+      "matched": true
+    },
+    {
+      "phase": "erase-lines",
+      "position": "continuation",
+      "point": [
+        418,
+        522
+      ],
+      "column": 52,
+      "row": 26,
+      "childHex": [
+        "",
+        "",
+        ""
+      ],
+      "expectedHex": "",
+      "matched": true
+    },
+    {
       "phase": "new-prompt",
       "position": "secondary",
       "point": [
@@ -328,41 +362,41 @@
     }
   ],
   "measurement": {
-    "manifestSha256": "89e20286e3362fcf379461b5a15430764a084f947f01c3d36fc73cdda4630836",
+    "manifestSha256": "0039ec3c867b42b1f63598d8a1e96758352102310d1df36225f8009a08d67b81",
     "schemaVersion": 1,
-    "runId": "9f01fdbc923b6b71d959774c78b3460a",
-    "appRevision": "4cb4adca507a29a9ac778add822bf731449cb3b7",
-    "scriptsRevision": "4cb4adca507a29a9ac778add822bf731449cb3b7",
-    "appSourceArchiveSha256": "cc1901ad34a0961112ecf1a3939ce41c4ed725a540fe1a19c806f81da9092392",
-    "hostLease": "3be8341287bbcf1906c7d96a335dcf6d",
+    "runId": "53a059abb71160d2242ad64b63238608",
+    "appRevision": "8c6f124bfba1a6da1af5d10a2b40dce8bbf83bb8",
+    "scriptsRevision": "8c6f124bfba1a6da1af5d10a2b40dce8bbf83bb8",
+    "appSourceArchiveSha256": "4c71c7f4cd2585edaadd10f341ed57cba3854b947646e8d95dae7c1f0dfcba3d",
+    "hostLease": "7d9ab19fb0c4292217c1523f9968f980",
     "dotnetSdk": "10.0.403",
     "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
     "archives": {
-      "owned-run.zip": "27e120b7cf1cdfd9c8e79c5d8ce6577b86ab1418abf529b521771d0858015d20"
+      "owned-run.zip": "b91b5e9a04d122d5fd2068411bf222d98a825d6de2c9c0e2a71ecba24e3c5e56"
     },
-    "startedAt": "2026-11-27T09:15:52.985Z",
-    "fixtureRemovedAt": "2026-11-27T09:16:12.170Z",
-    "leaseReleasedAt": "2026-11-27T09:16:12.171Z",
-    "sha256": "525ee4736fc125a7992e15ef46fb4c1a9a7625cd85687f23833e44673f25e419",
+    "startedAt": "2026-11-27T09:26:58.658Z",
+    "fixtureRemovedAt": "2026-11-27T09:27:19.896Z",
+    "leaseReleasedAt": "2026-11-27T09:27:19.897Z",
+    "sha256": "0144fc85a658522dbcba06972d296c563a9b83b7d7e55224a1ece80ac3e123ca",
     "source": {
       "policy": "owned-rich-x11-kitty-clicks-v1",
-      "sha256": "cba6104ad63c8d7b5d3a6cc6ad2258fef98c35f9f13103678a72feab40b04ddc"
+      "sha256": "6d08450456df2ba54610f69259411c4a9a78352b4b979c1afc55bbad3effa250"
     },
-    "hostLeaseReleasedAt": "2026-11-27T09:16:13.680Z",
+    "hostLeaseReleasedAt": "2026-11-27T09:27:21.427Z",
     "nodeVersion": "v24.22.2",
-    "appVersion": "0.14.0+4cb4adca507a29a9ac778add822bf731449cb3b7",
+    "appVersion": "0.14.0+8c6f124bfba1a6da1af5d10a2b40dce8bbf83bb8",
     "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
-    "appAssemblySha256": "e3e50c188a1ec4b7082df8e0053e0b182776653d64109c70da48001ac8c406c3",
+    "appAssemblySha256": "f2b773847ac8dcb3a765c93ce6de667610271c0a55ea72f51fce46962a566bba",
     "xtest": [
       2,
       2
     ],
-    "appPid": 17172,
-    "childPid": 17225,
-    "paneId": "94e0b12a-a11d-42ee-9ae1-16ccc6b7e409",
+    "appPid": 21386,
+    "childPid": 21439,
+    "paneId": "bb1b3daa-8bff-4afa-975a-7abc6043784b",
     "tty": "/dev/pts/0",
     "rows": 40,
     "columns": 149,
-    "marker": "x11-prompt-9f01fdbc923b6b71d959774c78b3460a"
+    "marker": "x11-prompt-53a059abb71160d2242ad64b63238608"
   }
 }
