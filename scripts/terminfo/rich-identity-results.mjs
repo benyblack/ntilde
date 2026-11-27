@@ -3,12 +3,12 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { runInNewContext } from 'node:vm';
 import { gunzipSync } from 'node:zlib';
 import { extractOwnedArchive } from '../terminfo-core-results.mjs';
 import { cursorReportQuery, parseCursorReportFrame } from './cursor-report.mjs';
 import { digest, pinnedJson } from './modern-inputs.mjs';
 import { pinnedBundle } from './unicode-publication-inputs.mjs';
+import { pinned176, pinned666 } from './rich-identity/pinned-callbacks.mjs';
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 const publication = join(qa, '2026-11-27-rich-identity');
@@ -54,14 +54,14 @@ export function probes(archive = readFileSync(bundle)) {
     const text = bytes.toString('utf8');
     const helpers = span(text, 'function probe(id, termless, term, termObservationEvidence) {', '\nfunction readHyperlinkMetadata(')
         + span(text, 'function unmeasuredCellResult(', '\nfunction sgrProbe(');
-    return Object.fromEntries(Object.entries(ids).map(([phase, id]) => {
+    const extracts = Object.entries(ids).map(([phase, id]) => {
         const definition = span(text, '    probe("' + id + '",', ',\n    probe("');
-        // NOSONAR: execute only the exact digest-verified upstream functions in an isolated context.
-        const probe = runInNewContext(helpers + '\n(' + definition + ')', Object.create(null), { timeout: 1000 });
-        assert.equal(probe.id, id);
-        assert.equal(probe.termless, null);
-        return [phase, probe];
-    }));
+        return 'export const ' + phase + ' = ' + definition + ';';
+    });
+    const header = '// Extracted from the digest-pinned terminfo.dev@4.0.0 bundle. Verified byte for byte during replay.\n';
+    const module = readFileSync(new URL('./rich-identity/pinned-callbacks.mjs', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
+    assert.equal(module, header + helpers + '\n' + extracts.join('\n') + '\n', 'pinned callback module differs');
+    return { pinned176, pinned666 };
 }
 
 export async function replayPinned(probe, writes, reply) {
@@ -133,6 +133,8 @@ function terminalRecord(run, name, phases) {
     assert.ok(record.ptyGone && record.workerSocketGone && !windows(record.afterTree).some(window => window.pid === terminal.pid),
         'missing PTY or window cleanup');
     assert.equal(run.exits[name].pid, terminal.pid);
+    const normalExits = name === 'foot' ? [0] : [0, -15];
+    assert.ok(normalExits.includes(run.exits[name].returncode), 'terminal did not shut down normally');
     assert.deepEqual(termios.before, termios.after, 'PTY settings were not restored');
     assert.ok(termios.before.length === 7 && termios.before[6].length > 0, 'empty PTY settings');
     assert.equal(admission.pid, terminal.pid);
@@ -140,9 +142,40 @@ function terminalRecord(run, name, phases) {
     return record;
 }
 
+function verifyX11State(window, sample, app) {
+    assert.equal(window.app_id, null, 'unexpected native app-ID on XWayland window');
+    assert.ok(window.window > 0 && window.window_properties.class === app.admission.window_properties.class);
+    assert.ok(sample.xprop.startsWith('_NET_WM_PID(CARDINAL) = ' + app.terminal.pid + '\n'), 'X11 window PID differs');
+    assert.equal(sample.xprop, app.samples.baseline.xprop, 'X11 host state changed');
+}
+
+function appPhase(app, phase, sample, writes, previousEnd) {
+    const window = sameWindow(sample, app.terminal, app.admission);
+    const { pane } = app;
+    assert.deepEqual([sample.pane.paneId, sample.pane.rows, sample.pane.cols], [pane.paneId, pane.rows, pane.cols],
+        'pane identity or geometry drifted');
+    let cursor = null;
+    let expectedColor = '';
+    if (!Object.hasOwn(ids, phase)) {
+        const control = phase === 'control';
+        const title = control ? 'identity-control' : 'identity-baseline';
+        const foreground = control ? '6565/4343/2121' : '1212/3434/5656';
+        expectedColor = '\x1b]10;rgb:' + foreground + '\x1b\\';
+        cursor = control ? [4, 7] : [3, 5];
+        assert.equal(sample.pane.oscTitle, title, 'raw title state changed');
+        assert.ok(sample.pane.tabText.includes(title), 'tab state observation failed');
+    }
+    const wire = exchange(sample, writes, previousEnd, cursor, expectedColor);
+    if (Object.hasOwn(spec, phase)) assert.equal(fromHex(sample.exchange.writes[0]), spec[phase], 'wrong effect fixture');
+    if (window.shell === 'xwayland') verifyX11State(window, sample, app);
+    const summary = { cpr: wire.reply?.raw ?? null, da: wire.barrier, rawHex: wire.raw, pane: sample.pane,
+        appId: window.app_id, shell: window.shell, x11: sample.xprop ?? null };
+    return { wire, summary };
+}
+
 async function verifyApp(run, plan, pinned) {
     const app = terminalRecord(run, 'app', appPhases);
-    const { pane, markerScreen, terminal, admission } = app;
+    const { pane, markerScreen, terminal } = app;
     assert.ok(pane.kind === 'local' && pane.isActive && pane.profileName === 'OSC identity QA'
         && pane.rows >= 4 && pane.cols >= 7, 'expected singleton local pane');
     assert.equal(markerScreen.lines[1], 'app-' + run.runId);
@@ -150,42 +183,23 @@ async function verifyApp(run, plan, pinned) {
     assert.equal(terminal.argv.at(-1), '--ntilde-terminfo-owner=' + run.runId);
     assert.ok(terminal.exe.endsWith('/sidecar/Ntilde'));
     for (const name of ['Ntilde', 'Ntilde.dll', 'libcoreclr.so', 'librusty_pty.so']) assert.match(app.files[name], sha256);
-
     assert.equal(terminal.sha256, app.files.Ntilde, 'mapped executable differs from publish tree');
+
     let previousEnd = 0n;
-    const results = { pinned: {}, samples: {} };
-    for (const phase of appPhases) {
+    const replies = {};
+    const samples = Object.fromEntries(appPhases.map(phase => {
         const sample = app.samples[phase];
-        const window = sameWindow(sample, terminal, admission);
-        assert.deepEqual([sample.pane.paneId, sample.pane.rows, sample.pane.cols], [pane.paneId, pane.rows, pane.cols],
-            'pane identity or geometry drifted');
-        const pinnedProbe = pinned[phase];
-        const isControl = phase === 'control';
-        const title = isControl ? 'identity-control' : 'identity-baseline';
-        const foreground = isControl ? '6565/4343/2121' : '1212/3434/5656';
-        const expectedColor = pinnedProbe ? '' : '\x1b]10;rgb:' + foreground + '\x1b\\';
-        const cursor = pinnedProbe ? null : isControl ? [4, 7] : [3, 5];
-        if (!pinnedProbe) {
-            assert.equal(sample.pane.oscTitle, title, 'raw title state changed');
-            assert.ok(sample.pane.tabText.includes(title), 'tab state observation failed');
-        }
-        const wire = exchange(sample, plan.app[phase], previousEnd, cursor, expectedColor);
+        const { wire, summary } = appPhase(app, phase, sample, plan.app[phase], previousEnd);
         previousEnd = wire.end;
-        if (pinnedProbe) {
-            assert.equal(plan.app[phase].at(-1), '\x1b[c', 'pinned exchange needs independent DA');
-            results.pinned[phase] = await replayPinned(pinnedProbe, sample.exchange.writes.slice(0, -1).map(fromHex), wire.reply);
-        }
-        if (Object.hasOwn(spec, phase)) assert.equal(fromHex(sample.exchange.writes[0]), spec[phase], 'wrong effect fixture');
-        results.samples[phase] = { cpr: wire.reply?.raw ?? null, da: wire.barrier, rawHex: wire.raw,
-            pane: sample.pane, appId: window.app_id, shell: window.shell, x11: sample.xprop ?? null };
-        if (window.shell === 'xwayland') {
-            assert.equal(window.app_id, null, 'unexpected native app-ID on XWayland window');
-            assert.ok(window.window > 0 && window.window_properties.class === admission.window_properties.class);
-            assert.ok(sample.xprop.startsWith('_NET_WM_PID(CARDINAL) = ' + terminal.pid + '\n'), 'X11 window PID differs');
-            assert.equal(sample.xprop, app.samples.baseline.xprop, 'X11 host state changed');
-        }
-    }
-    return results;
+        replies[phase] = wire.reply;
+        return [phase, summary];
+    }));
+    const pinnedResults = await Promise.all(Object.entries(pinned).map(async ([phase, probe]) => {
+        assert.equal(plan.app[phase].at(-1), '\x1b[c', 'pinned exchange needs independent DA');
+        const writes = app.samples[phase].exchange.writes.slice(0, -1).map(fromHex);
+        return [phase, await replayPinned(probe, writes, replies[phase])];
+    }));
+    return { pinned: Object.fromEntries(pinnedResults), samples };
 }
 
 function verifyFoot(run, plan) {

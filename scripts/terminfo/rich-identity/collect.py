@@ -18,6 +18,9 @@ import time
 
 SOURCE = Path(__file__).parent
 PYTHON = "/usr/bin/python3"
+PROC = Path("/proc")
+# XWayland publishes this conventional local socket. This path is inside the isolated container.
+X11_SOCKETS = Path("/tmp/.X11-unix")  # NOSONAR: verify the image-created sticky directory and socket ownership below.
 BASE_ID = "qa.foot.baseline"
 WANTED_ID = "terminfo-test"
 
@@ -63,7 +66,7 @@ def single(items):
 
 
 def process_facts(pid):
-    proc = Path("/proc", str(pid))
+    proc = PROC / str(pid)
     fields = (proc / "stat").read_text().rsplit(") ", 1)[1].split()
     need(fields[0] != "Z", "owned process is a zombie")
     return {"pid": pid, "parent": int(fields[1]), "session": int(fields[3]), "start": fields[19],
@@ -72,7 +75,7 @@ def process_facts(pid):
 
 
 def tty_facts(pid):
-    proc = Path("/proc", str(pid), "fd")
+    proc = PROC / str(pid) / "fd"
     terminal = os.readlink(proc / "0")
     need(re.fullmatch(r"/dev/pts/\d+", terminal) and os.readlink(proc / "1") == terminal,
          "child stdin and stdout are outside its PTY")
@@ -161,13 +164,16 @@ class Run:
         config = self.root / "sway.conf"
         config.write_text("xwayland enable\noutput * resolution 1280x800\nseat seat0 hide_cursor 10000\n")
         self.record["swayConfig"] = config.read_text()
+        x11_dir = X11_SOCKETS.lstat()
+        need(stat.S_ISDIR(x11_dir.st_mode) and x11_dir.st_uid == 0 and x11_dir.st_mode & stat.S_ISVTX
+             and not any(X11_SOCKETS.iterdir()), "expected a fresh image-owned X11 socket directory")
         runtime = Path(self.env["XDG_RUNTIME_DIR"])
         with self.launch("sway", ["/usr/bin/sway", "-c", str(config)], self.env) as sway:
             self.record["compositor"] = process_facts(sway.pid)
             self.record["compositor"]["sha256"] = digest(Path("/usr/bin/sway"))
             sock = wait_for(lambda: single(runtime.glob("sway-ipc.*.sock")), "Sway IPC", sway)
             display = wait_for(lambda: single(p for p in runtime.glob("wayland-*") if p.is_socket()), "Wayland display", sway)
-            x_socket = wait_for(lambda: single(Path("/tmp/.X11-unix").glob("X[0-9]*")), "Xwayland display", sway)
+            x_socket = wait_for(lambda: single(X11_SOCKETS.glob("X[0-9]*")), "Xwayland display", sway)
             self.env.update(SWAYSOCK=str(sock), WAYLAND_DISPLAY=display.name, DISPLAY=":" + x_socket.name[1:])
             with private_peer(sock, sway.pid), private_peer(display, sway.pid):
                 self.record["sockets"] = [socket_facts(p) for p in (sock, display, x_socket)]
@@ -194,7 +200,7 @@ class Run:
         subprocess.run(["tar", "-xf", "/inputs/sidecar.tar", "-C", sidecar], timeout=20, check=True)
         exe = sidecar / "Ntilde"
         self.record["app"]["files"] = self.app_hashes(sidecar)
-        versions = set(re.findall(rb"(?<![0-9.])[0-9]+\.[0-9]+\.[0-9]+\+[a-f0-9]{40}(?![a-f0-9])",
+        versions = set(re.findall(rb"(?<![\d.])\d{1,8}\.\d{1,8}\.\d{1,8}\+[a-f\d]{40}(?![a-f\d])",
                                   (sidecar / "Ntilde.dll").read_bytes()))
         need(len(versions) == 1, "missing unique App informational version")
         self.record["app"]["version"] = versions.pop().decode()
@@ -249,12 +255,12 @@ class Run:
                 need(record["child"] == process_facts(child) and record["tty"] == tty_facts(child), "PTY changed")
                 if name == "foot":
                     expected = WANTED_ID if phase in ("pinned176", "request176") else BASE_ID
-                    wait_for(lambda: self.find_window(window_id, proc.pid, expected), "foot app-ID " + phase, proc)
+                    wait_for(lambda expected=expected: self.find_window(window_id, proc.pid, expected), "foot app-ID " + phase, proc)
                 sample["tree"] = tree(self.env)
                 if name == "app":
                     self.observe_app(sample, proc, endpoint, pane, admission, phase)
             record["termios"] = rpc(stream, None)
-        wait_for(lambda: True if not Path("/proc", str(child)).exists() else None, name + " PTY child exit")
+        wait_for(lambda: True if not (PROC / str(child)).exists() else None, name + " PTY child exit")
         record["workerSocketGone"] = not path.exists()
 
     def find_window(self, window_id, pid, expected):
@@ -304,7 +310,7 @@ class Run:
 def main(output, run_id):
     need(os.getuid() != 0 and re.fullmatch(r"[a-f0-9]{32}", run_id), "expected an unprivileged leased collector")
     output.mkdir(mode=0o700)
-    root = Path(tempfile.mkdtemp(prefix="osc-"))
+    root = Path(tempfile.mkdtemp(prefix="osc-", dir=Path.home()))
     home = root / "home"
     runtime = root / "runtime"
     for parent in (home, runtime):
