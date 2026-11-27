@@ -152,6 +152,7 @@ namespace Ntilde.Shell
         {
             public int AbsRow;
             public SKPicture? CachedPicture;
+            public SelectionRowSnapshot? LigatureSelection;
             public RenderRowSnapshot? Snapshot;
             public bool HasBlinkInk { get; set; }
         }
@@ -547,6 +548,7 @@ namespace Ntilde.Shell
                 }
                 _wasAltScreenLastFrame = isAltScreen;
                 bool containsTextBlinkInk = false;
+                int ligatureSelectionIndex = 0;
 
                 for (int r = 0; r < bufferRows; r++)
                 {
@@ -571,11 +573,20 @@ namespace Ntilde.Shell
                     bool hasRenderableRow = rowSnapshot.Cols > 0 && rowSnapshot.Cells.Length >= rowSnapshot.Cols && rowSnapshot.RowId != 0;
                     if (hasRenderableRow)
                     {
+                        if (_enableLigatures && ligatureSelectionIndex < renderSnapshot.SelectionRows.Length)
+                        {
+                            var selected = renderSnapshot.SelectionRows.Array[ligatureSelectionIndex];
+                            if (selected.AbsRow == rowSnapshot.AbsRow)
+                            {
+                                item.LigatureSelection = selected;
+                                ligatureSelectionIndex++;
+                            }
+                        }
                         item.HasBlinkInk = ContainsBlinkInk(rowSnapshot);
                         containsTextBlinkInk |= item.HasBlinkInk;
                         // A pre-animation picture must not become the span baseline when blinking ends.
                         if (useRowCache && item.HasBlinkInk) _rowCache?.InvalidateRow(rowSnapshot.RowId);
-                        item.CachedPicture = useRowCache && !item.HasBlinkInk ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
+                        item.CachedPicture = useRowCache && !item.HasBlinkInk && item.LigatureSelection is null ? _rowCache?.Get(rowSnapshot.RowId, rowSnapshot.Revision) : null;
 
                         if (item.CachedPicture != null)
                         {
@@ -657,7 +668,8 @@ namespace Ntilde.Shell
                     {
                         var snapshot = item.Snapshot.Value;
                         // Span repaint clears and clips in single-width column space, so a double-size row is always drawn whole.
-                        bool shouldUseSpanRendering = !item.HasBlinkInk && snapshot.LineSize == LineSize.SingleWidth
+                        // A change can reshape adjacent cells throughout an ASCII run.
+                        bool shouldUseSpanRendering = !_enableLigatures && !item.HasBlinkInk && snapshot.LineSize == LineSize.SingleWidth
                             && rowSpans is { Count: > 0 } && ShouldUseSpanRenderingForRow(rowSpans, snapshot.Cols);
 
                         SKPicture? previousRowPicture = null;
@@ -753,7 +765,7 @@ namespace Ntilde.Shell
                         else if (buildsThisFrame < maxBuilds)
                         {
                             rowRenderCount++;
-                            if (useRowCache && !item.HasBlinkInk)
+                            if (useRowCache && !item.HasBlinkInk && item.LigatureSelection is null)
                             {
                                 // Record into a picture so it can be cached and replayed on future frames.
                                 var recSw = System.Diagnostics.Stopwatch.StartNew();
@@ -802,7 +814,8 @@ namespace Ntilde.Shell
                                     renderSnapshot.Theme,
                                     alpha,
                                     tf,
-                                    drawBackgrounds: true);
+                                    drawBackgrounds: true,
+                                    ligatureSelection: item.LigatureSelection);
                             }
                         }
                         else
@@ -822,7 +835,8 @@ namespace Ntilde.Shell
                                 renderSnapshot.Theme,
                                 alpha,
                                 tf,
-                                drawBackgrounds: true);
+                                drawBackgrounds: true,
+                                    ligatureSelection: item.LigatureSelection);
                         }
 
                         if (!shouldUseSpanRendering)
@@ -953,7 +967,8 @@ namespace Ntilde.Shell
                         spanColStart: colStart,
                         spanColEndExclusive: colEndExclusive,
                         foregroundOverride: foregroundOverride,
-                        overlayFill: overlayFill);
+                        overlayFill: overlayFill,
+                        ligatureSelection: frame.RowItems[r].LigatureSelection);
                 }
 
                 // Pass 4: Overlays (Selection / Search)
@@ -1418,7 +1433,8 @@ namespace Ntilde.Shell
             int spanColStart = 0,
             int spanColEndExclusive = int.MaxValue,
             SKColor? foregroundOverride = null,
-            SKColor? overlayFill = null)
+            SKColor? overlayFill = null,
+            SelectionRowSnapshot? ligatureSelection = null)
         {
             const float paddingLeft = 4f;
             int cellsRendered = 0;
@@ -1530,6 +1546,7 @@ namespace Ntilde.Shell
                     bool runNeedsComplexShaping = false;
                     bool runHasBoxDrawing = false;
                     bool runHasComplexShapingGlyph = false;
+                    bool runIsAscii = false;
                     int k = c;
 
                     while (k < snapshot.Cols)
@@ -1569,6 +1586,13 @@ namespace Ntilde.Shell
                             break;
 
                         string cellText = NormalizeTextElementForRender(next.Text ?? next.Character.ToString());
+                        bool cellIsAscii = _enableLigatures && !next.IsWide && cellText.Length == 1
+                            && cellText[0] is >= ' ' and <= '~';
+                        if (k == c) runIsAscii = cellIsAscii;
+                        else if (cellIsAscii != runIsAscii || (runIsAscii && ligatureSelection is { } selection
+                            && (k == selection.ColStart || k == selection.ColEnd + 1)))
+                            break;
+
                         bool cellHasBoxDrawing = ContainsBoxDrawing(cellText);
                         bool cellNeedsComplexShaping = _enableComplexShaping && ContainsRunesRequiringComplexShaping(cellText);
 
@@ -1654,7 +1678,11 @@ namespace Ntilde.Shell
                         appliedItalicTransform = true;
                     }
 
-                    if (runNeedsComplexShaping)
+                    if (runIsAscii && DrawAsciiLigatures(canvas, runText, c, baselineYDip, font, fgPaint, primaryTf))
+                    {
+                        cellsRendered += totalRunWidth;
+                    }
+                    else if (runNeedsComplexShaping)
                     {
                         FlushBatches(canvas);
                         int fallbackChar = FindFirstMissingGlyphCodePoint(runText, primaryTf);
