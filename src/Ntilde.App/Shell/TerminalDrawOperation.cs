@@ -836,7 +836,7 @@ namespace Ntilde.Shell
                                 alpha,
                                 tf,
                                 drawBackgrounds: true,
-                                    ligatureSelection: item.LigatureSelection);
+                                ligatureSelection: item.LigatureSelection);
                         }
 
                         if (!shouldUseSpanRendering)

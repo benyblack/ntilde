@@ -1,11 +1,24 @@
 using System;
 using System.IO;
 using Avalonia.Headless.XUnit;
+using Ntilde.Controls;
+using Ntilde.Shell;
 
 namespace Ntilde.Tests.RenderTests;
 
 public sealed class FontLigatureRenderTests
 {
+    [AvaloniaTheory]
+    [InlineData(true, null, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    public void Pane_applies_the_profile_override_or_global_setting(bool global, bool? profile, bool expected)
+    {
+        using var pane = new TerminalPane(new TerminalProfile { EnableLigatures = profile });
+        pane.ApplySettings(new TerminalSettings { EnableLigatures = global });
+        Assert.Equal(expected, pane.TermView.EnableLigatures);
+    }
+
     [AvaloniaTheory]
     [InlineData("=>", 0)]
     [InlineData("=>", 1)]

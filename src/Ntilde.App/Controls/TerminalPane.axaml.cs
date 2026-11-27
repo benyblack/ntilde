@@ -1088,6 +1088,7 @@ namespace Ntilde.Controls
             {
                 FontSize = Profile?.FontSize ?? settings.FontSize,
                 FontFamily = Profile?.FontFamily ?? settings.FontFamily,
+                EnableLigatures = Profile?.EnableLigatures ?? settings.EnableLigatures,
                 ThemeName = Profile?.ThemeName ?? settings.ThemeName,
                 CursorStyle = Profile?.CursorStyle ?? settings.CursorStyle,
                 CursorBlink = Profile?.CursorBlink ?? settings.CursorBlink,
