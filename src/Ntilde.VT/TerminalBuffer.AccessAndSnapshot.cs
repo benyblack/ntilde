@@ -525,7 +525,7 @@ namespace Ntilde.VT
                 EraseTextSizingRange(_cursorCol, Cols, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
                 if (_cursorCol >= 0 && _cursorCol < Cols)
-                    row.NoteLineErasure(_cursorCol, Cols, _promptClickMode != PromptClickMode.Disabled);
+                    row.NoteCellsErased(_cursorCol, Cols, _promptClickMode != PromptClickMode.Disabled);
                 for (int i = _cursorCol; i < Cols; i++)
                 {
                     row.Cells[i] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
@@ -535,7 +535,7 @@ namespace Ntilde.VT
                     row.SetProtected(i, false);
                 }
                 row.TouchRevision();
-                UpdateClickPromptAfterRowEdit();
+                UpdateClickPromptAfterRowEdit(_cursorRow);
             }
             finally
             {
@@ -553,7 +553,7 @@ namespace Ntilde.VT
                 SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(0, Math.Min(Cols, _cursorCol + 1), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                row.NoteLineErasure(0, Math.Min(Cols, _cursorCol + 1), _promptClickMode != PromptClickMode.Disabled);
+                row.NoteCellsErased(0, Math.Min(Cols, _cursorCol + 1), _promptClickMode != PromptClickMode.Disabled);
                 for (int i = 0; i <= _cursorCol; i++)
                 {
                     if (i >= Cols) break;
@@ -564,7 +564,7 @@ namespace Ntilde.VT
                     row.SetProtected(i, false);
                 }
                 row.TouchRevision();
-                UpdateClickPromptAfterRowEdit();
+                UpdateClickPromptAfterRowEdit(_cursorRow);
             }
             finally
             {
@@ -580,7 +580,7 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 ClearRowInternal(_cursorRow);
-                UpdateClickPromptAfterRowEdit();
+                UpdateClickPromptAfterRowEdit(_cursorRow);
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             OnInvalidate?.Invoke();
@@ -634,7 +634,7 @@ namespace Ntilde.VT
                 var row = _viewport[_cursorRow];
                 bool erasesCells = _cursorCol < end;
                 if (erasesCells)
-                    row.NoteLineErasure(_cursorCol, end, _promptClickMode != PromptClickMode.Disabled);
+                    row.NoteCellsErased(_cursorCol, end, _promptClickMode != PromptClickMode.Disabled);
 
                 for (int i = 0; i < count; i++)
                 {
@@ -648,7 +648,7 @@ namespace Ntilde.VT
                     row.SetProtected(col, false);
                 }
                 row.TouchRevision();
-                if (erasesCells) UpdateClickPromptAfterRowEdit();
+                if (erasesCells) UpdateClickPromptAfterRowEdit(_cursorRow);
             }
             finally
             {

@@ -181,7 +181,6 @@ namespace Ntilde.VT
             try
             {
                 WriteContentCore(text);
-                if (_promptClickMode != PromptClickMode.Disabled) ExtendClickPromptThroughText();
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             Invalidate();
@@ -206,6 +205,7 @@ namespace Ntilde.VT
                 WriteGraphemeInternal(remaining.Slice(0, length));
                 remaining = remaining.Slice(length);
             }
+            if (_promptClickMode != PromptClickMode.Disabled) ExtendClickPromptThroughText();
         }
 
         /// <summary>
@@ -827,7 +827,7 @@ namespace Ntilde.VT
                 row.Cells[c] = empty;
             }
             row.TouchRevision();
-            if (endCol > _cursorCol) UpdateClickPromptAfterRowEdit();
+            if (endCol > _cursorCol) UpdateClickPromptAfterRowEdit(_cursorRow);
         }
 
         public void DeleteCharacters(int count)
@@ -911,7 +911,7 @@ namespace Ntilde.VT
                 row.Cells[c] = empty;
             }
             row.TouchRevision();
-            if (count > 0) UpdateClickPromptAfterRowEdit();
+            if (count > 0) UpdateClickPromptAfterRowEdit(_cursorRow);
         }
     }
 }

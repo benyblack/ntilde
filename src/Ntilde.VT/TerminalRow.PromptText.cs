@@ -50,7 +50,7 @@ public partial class TerminalRow
         }
     }
 
-    internal void NoteLineErasure(int from, int to, bool trackPromptText)
+    internal void NoteCellsErased(int from, int to, bool trackPromptText, bool noteLayout = true)
     {
         if (trackPromptText || PromptTextSpans != null)
         {
@@ -65,7 +65,7 @@ public partial class TerminalRow
             }
             PromptTextSpans = retained.ToArray();
         }
-        NoteColumnsWritten(to);
+        if (noteLayout) NoteColumnsWritten(to);
     }
 
     internal void NoteColumnShift(int start, int edge, int delta, bool trackPromptText)

@@ -149,6 +149,7 @@ public partial class TerminalBuffer
 
         int absolute = TextSizingAbsoluteRow(rowIndex);
         int col = from;
+        bool erased = false;
         while (col < to)
         {
             if (IsProtectedOrInProtectedBlock(rowIndex, col)) { col++; continue; }
@@ -157,10 +158,14 @@ public partial class TerminalBuffer
             EraseTextSizingRange(start, col, absolute, absolute + 1, blank);
             // DECERA counts what it erases as authored; ED does too, but a selective display erase over default-colored blanks adds
             // nothing the row did not already hold, and must not extend the extent reflow uses to tell typed spaces from wide padding.
-            BlankRun(row, start, col, blank, noteExtent: !edShortcut || !blank.IsDefaultBackground);
+            row.NoteCellsErased(start, col, _promptClickMode != PromptClickMode.Disabled,
+                noteLayout: !edShortcut || !blank.IsDefaultBackground);
+            BlankRun(row, start, col, blank);
+            erased = true;
         }
         if (edShortcut && blank.IsDefaultBackground && to == Cols) TrimErasedTailExtent(rowIndex, from);
         row.TouchRevision();
+        if (!edShortcut && erased) UpdateClickPromptAfterRowEdit(rowIndex);
     }
 
     /// <summary>
@@ -178,9 +183,8 @@ public partial class TerminalBuffer
     }
 
     /// <summary>Blanks [<paramref name="start"/>, <paramref name="end"/>) of one row with the ordinary erases' per-cell metadata cleanup.</summary>
-    private static void BlankRun(TerminalRow row, int start, int end, TerminalCell blank, bool noteExtent)
+    private static void BlankRun(TerminalRow row, int start, int end, TerminalCell blank)
     {
-        if (noteExtent) row.NoteColumnsWritten(end);
         for (int c = start; c < end; c++)
         {
             row.Cells[c] = blank;

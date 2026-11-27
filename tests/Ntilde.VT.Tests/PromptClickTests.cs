@@ -208,6 +208,33 @@ public class PromptClickTests
         Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void SizedTextWritesKeepTheirRowsClickableAfterTheCursorMoves(int scale)
+    {
+        _parser.Process($"\x1b]133;A;click_events=2\aPS1>\r\n\x1b]66;s={scale};lower\a\x1b[H");
+        Assert.Equal(2, WireRow(1));
+        if (scale == 2) Assert.Equal(3, WireRow(2));
+        Assert.False(_buffer.TryGetPromptClickRow(scale + 1, out _, out _));
+    }
+
+    [Theory]
+    [InlineData("z")]
+    [InlineData("{")]
+    public void RectangularErasureRetiresTheClearedPromptRows(string final)
+    {
+        // Enable real selective processing away from the rectangle.
+        _parser.Process("\x1b[1\"qprotected\x1b[0\"q\x1b[H");
+        _parser.Process("\x1b]133;A;click_events=2\aPS1>\r\n\x1b]133;A;k=s\aPS2>\r\nlast\x1b[H");
+        Assert.Equal(2, WireRow(2));
+
+        _parser.Process("\x1b[2;1;3;80$" + final + "\x1b[H");
+        Assert.Equal(1, WireRow(0));
+        Assert.False(_buffer.TryGetPromptClickRow(1, out _, out _));
+        Assert.False(_buffer.TryGetPromptClickRow(2, out _, out _));
+    }
+
     [Fact]
     public void ReflowKeepsTheRetainedInputWhenATrailingBlankRowIsTrimmed()
     {

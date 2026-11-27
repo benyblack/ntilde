@@ -68,11 +68,15 @@ public partial class TerminalBuffer
     // Called at the end of a printable run with the grid write lock held.
     private void ExtendClickPromptThroughText()
     {
-        if (_lastCharCol < 0 || _isAltScreen) return;
+        if (_lastCharCol >= 0) ExtendClickPromptToEnd(_lastCharRow, _lastCharCol + 1);
+    }
+
+    private void ExtendClickPromptToEnd(int row, int column)
+    {
+        if (_promptClickMode == PromptClickMode.Disabled || _isAltScreen) return;
         lock (_trackedMarkGate)
         {
-            if (_promptClickMode == PromptClickMode.Disabled) return;
-            ExtendClickPromptLocked(CaptureClickPosition(_lastCharRow, _lastCharCol + 1));
+            ExtendClickPromptLocked(CaptureClickPosition(row, column));
         }
     }
 
@@ -95,7 +99,7 @@ public partial class TerminalBuffer
         }
     }
 
-    private void UpdateClickPromptAfterRowEdit()
+    private void UpdateClickPromptAfterRowEdit(int row)
     {
         if (_promptClickMode == PromptClickMode.Disabled) return;
         lock (_trackedMarkGate)
@@ -103,16 +107,16 @@ public partial class TerminalBuffer
             if (_clickPrompt is not { } primary
                 || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, primary, out int primaryRow)
                 || !ShellMarkAnchorResolver.TryResolveLiveRowLocked(this, _clickPromptEnd, out int endRow)
-                || _cursorRow < primaryRow || _cursorRow > endRow)
+                || row < primaryRow || row > endRow)
             {
                 return;
             }
 
-            int columns = _viewport[_cursorRow].PromptTextColumns;
-            var edited = CaptureClickPosition(_cursorRow, columns);
+            int columns = _viewport[row].PromptTextColumns;
+            var edited = CaptureClickPosition(row, columns);
             if (columns == 0)
                 _secondaryClickPrompts.RemoveAll(anchor => anchor.AbsoluteRow == edited.AbsoluteRow);
-            if (_cursorRow != endRow) return;
+            if (row != endRow) return;
             if (columns == 0)
                 RestoreClickPromptEndBeforeRow(primary, primaryRow, endRow);
             else

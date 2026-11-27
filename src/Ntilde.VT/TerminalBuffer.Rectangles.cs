@@ -24,6 +24,7 @@ public partial class TerminalBuffer
             for (int rowIndex = top; rowIndex <= bottom; rowIndex++)
             {
                 EraseRectangularRow(_viewport[rowIndex], left, right, blank);
+                UpdateClickPromptAfterRowEdit(rowIndex);
             }
         }
         finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
@@ -35,7 +36,7 @@ public partial class TerminalBuffer
     {
         if (left > 0 && row.Cells[left].IsWideContinuation && row.Cells[left - 1].IsWide) left--;
         if (right + 1 < Cols && row.Cells[right].IsWide && row.Cells[right + 1].IsWideContinuation) right++;
-        row.NoteColumnsWritten(right + 1);
+        row.NoteCellsErased(left, right + 1, _promptClickMode != PromptClickMode.Disabled);
         for (int col = left; col <= right; col++)
         {
             row.Cells[col] = blank;
