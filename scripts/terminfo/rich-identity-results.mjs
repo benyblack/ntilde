@@ -12,7 +12,7 @@ import { pinned176, pinned666 } from './rich-identity/pinned-callbacks.mjs';
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 const publication = join(qa, '2026-11-27-rich-identity');
-const manifestSha = '96fd269b8e45c036b8edf8fad3412088dee7fb337dc14dea385399c61f9e05f7';
+const manifestSha = '8f24b09803ad2a21b44ed8f296ea05c2e1f818dfa38da3ea091d680abaf9651c';
 const bundle = join(qa, '2026-11-16-shell-integration-aggregates', 'terminfo-dev-4.0.0.bundle.mjs.gz');
 const baselineSha = 'd4418484f935ac1a534eaf0b0368d2e5bb174974ae92f2c9c9a4ff2f8905a82b';
 const richSha = '483c7e141c43ac483e8698afe608473680a4ac77c1e4921ea8416ddef2d0caa0';
@@ -53,9 +53,9 @@ export function probes(archive = readFileSync(bundle)) {
     assert.equal(digest(bytes), pinnedBundle, 'pinned probe bundle digest');
     const text = bytes.toString('utf8');
     const helpers = span(text, 'function probe(id, termless, term, termObservationEvidence) {', '\nfunction readHyperlinkMetadata(')
-        + span(text, 'function unmeasuredCellResult(', '\nfunction sgrProbe(');
+        + '\n' + span(text, 'function unmeasuredCellResult(', '\nfunction sgrProbe(');
     const extracts = Object.entries(ids).map(([phase, id]) => {
-        const definition = span(text, '    probe("' + id + '",', ',\n    probe("');
+        const definition = span(text, '    probe("' + id + '",', ',\n    probe("').trimStart();
         return 'export const ' + phase + ' = ' + definition + ';';
     });
     const header = '// Extracted from the digest-pinned terminfo.dev@4.0.0 bundle. Verified byte for byte during replay.\n';
@@ -154,6 +154,7 @@ function appPhase(app, phase, sample, writes, previousEnd) {
     const { pane } = app;
     assert.deepEqual([sample.pane.paneId, sample.pane.rows, sample.pane.cols], [pane.paneId, pane.rows, pane.cols],
         'pane identity or geometry drifted');
+    assert.deepEqual([sample.pane.width, sample.pane.height], [app.arranged.width, app.arranged.height], 'App viewport size drifted');
     let cursor = null;
     let expectedColor = '';
     if (!Object.hasOwn(ids, phase)) {
@@ -178,6 +179,9 @@ async function verifyApp(run, plan, pinned) {
     const { pane, markerScreen, terminal } = app;
     assert.ok(pane.kind === 'local' && pane.isActive && pane.profileName === 'OSC identity QA'
         && pane.rows >= 4 && pane.cols >= 7, 'expected singleton local pane');
+    assert.deepEqual([app.arranged.width, app.arranged.height], [1280, 800], 'missing compositor-sized App viewport');
+    assert.deepEqual([app.arranged.paneId, app.arranged.rows, app.arranged.cols], [pane.paneId, pane.rows, pane.cols],
+        'arranged App pane geometry differs');
     assert.equal(markerScreen.lines[1], 'app-' + run.runId);
     assert.deepEqual([markerScreen.rows, markerScreen.cols], [pane.rows, pane.cols]);
     assert.equal(terminal.argv.at(-1), '--ntilde-terminfo-owner=' + run.runId);

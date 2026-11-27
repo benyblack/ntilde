@@ -37,7 +37,7 @@
     }
   },
   "measured": {
-    "runId": "09460fd214874ef8c50f7e8064ee7f19",
+    "runId": "26ef9abb1b7d36d70b9cd3b698befa87",
     "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
     "appVersion": "0.14.0+7824244ebd715d9f14ade754ce3fbb352ec7643d",
     "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
@@ -53,21 +53,21 @@
     },
     "appSourceArchiveSha256": "2f27642f518c0748cdac8b67a23b5da72713c8de77c2b2aba30f040439d2bc78",
     "sidecarSha256": "ce9c4bbbb1cf9338b562c2490d5f29b4f5ab10a0345f4fa1b91901e09684e480",
-    "scriptsRevision": "59e082e1cbf96dfe16e329b4f313530cfa114348",
+    "scriptsRevision": "9607235f19b8c2d1cb3d41617a9aa3c947cf98e0",
     "files": {
-      "terminfo-rich-identity-owned.mjs": "92c7742faa9fe532806ad6fbe72617953e7c585f2032b8fffa4bddea2f08bf5f",
+      "terminfo-rich-identity-owned.mjs": "e7e528a3af03d466c953b21d1be103885a8b56cc7e60adb5775ac73ba86aada7",
       "desktop-lock.mjs": "96076ef3a4afb7cc5c1bef8c6ac6f22ee86745270637e40b4792d58ce34dd9cf",
-      "collect.py": "58d447c6f90b611bfb4482e3a554356a22fe55f005b0c41b74506c400831d2ff",
+      "collect.py": "33f8668164657de7df289cfe29df1c49774e2304e75b49bf823167a0aa4dad1b",
       "pty_child.py": "b0774393600e9b82cc86aa8298a4584b1d3630f73ff5bac85fdc3456b62d6efe",
       "vte_reference.py": "06802615d3b1bb7b58075caa3ea00da423614f4acf8237ee2bc0ac299236e246",
       "plan.json": "08e3e134969669dd69529abef4e75c30cafa90c0781bb2afdce3455dbfbe6fda",
-      "Dockerfile": "ae445d9e62428fc13a2080ab7b2b4097f535de87c3dfa93998c89cabe54703cf"
+      "Dockerfile": "4718252c12c6d6b194b2f94b10eadaeecb960dd6d8d78f44832112ad184d3c42"
     },
     "container": {
-      "image": "sha256:2e4ebe26520b6d76bcc1279a7e2c5417ac53ecc3b985a13fdb1458b9bc5eb1e5",
-      "name": "ntilde-identity-09460fd214874ef8c50f7e8064ee7f19",
-      "runId": "09460fd214874ef8c50f7e8064ee7f19",
-      "id": "f78711dcf22e6cf83b83b99f3f5b5a07ebc616105e11d88c0649ae269246c4f9",
+      "image": "sha256:1d990cca0cbe0a4cdcc970050077b9f7227c89de734556629be0dde9fc0b6762",
+      "name": "ntilde-identity-26ef9abb1b7d36d70b9cd3b698befa87",
+      "runId": "26ef9abb1b7d36d70b9cd3b698befa87",
+      "id": "70ce60b938dec9d5ee30e53bfe80b0afdf38dc8aaf1b26a6ac86ad998efe3f2a",
       "isolation": {
         "network": "none",
         "user": "1000:1000",
@@ -82,39 +82,39 @@
           }
         ]
       },
-      "startedAt": "2026-11-27T12:15:01.393Z",
+      "startedAt": "2026-11-27T12:31:32.551Z",
       "status": "exited",
       "exitCode": 0,
-      "removedAt": "2026-11-27T12:15:12.054Z"
+      "removedAt": "2026-11-27T12:31:39.801Z"
     },
     "lease": [
       {
-        "at": "2026-11-27T12:15:01.032Z",
-        "pid": 82623,
+        "at": "2026-11-27T12:31:32.376Z",
+        "pid": 90589,
         "event": "acquired",
-        "lease": "09460fd214874ef8c50f7e8064ee7f19",
+        "lease": "26ef9abb1b7d36d70b9cd3b698befa87",
         "entrypoint": "terminfo-rich-identity-owned.mjs",
-        "waitedMs": 20
+        "waitedMs": 7
       },
       {
-        "at": "2026-11-27T12:15:01.051Z",
-        "pid": 82623,
+        "at": "2026-11-27T12:31:32.411Z",
+        "pid": 90589,
         "event": "launch-attempt",
-        "lease": "09460fd214874ef8c50f7e8064ee7f19",
+        "lease": "26ef9abb1b7d36d70b9cd3b698befa87",
         "entrypoint": "terminfo-rich-identity-owned.mjs"
       },
       {
-        "at": "2026-11-27T12:15:12.055Z",
-        "pid": 82623,
+        "at": "2026-11-27T12:31:39.802Z",
+        "pid": 90589,
         "event": "cleanup-verified",
-        "lease": "09460fd214874ef8c50f7e8064ee7f19",
+        "lease": "26ef9abb1b7d36d70b9cd3b698befa87",
         "by": "owned-container-removed"
       },
       {
-        "at": "2026-11-27T12:15:12.223Z",
-        "pid": 82623,
+        "at": "2026-11-27T12:31:39.880Z",
+        "pid": 90589,
         "event": "released",
-        "lease": "09460fd214874ef8c50f7e8064ee7f19",
+        "lease": "26ef9abb1b7d36d70b9cd3b698befa87",
         "entrypoint": "terminfo-rich-identity-owned.mjs",
         "launch": "attempted"
       }
@@ -148,10 +148,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5b313b31521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": null,
             "tabText": "OSC identity QA",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -163,10 +165,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5b313b31521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": null,
             "tabText": "OSC identity QA",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -178,10 +182,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -193,10 +199,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -208,10 +216,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -223,10 +233,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -238,10 +250,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -253,10 +267,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -268,10 +284,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a363536352f343334332f323132311b5c1b5b343b37521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": "identity-control",
             "tabText": "identity-control",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,
@@ -283,10 +301,12 @@
           "da": "\u001b[?62;4;22c",
           "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
           "pane": {
-            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "paneId": "0e3938bf-adc8-481f-99c3-77e29f88a04a",
             "oscTitle": "identity-baseline",
             "tabText": "identity-baseline",
-            "rows": 38,
+            "width": 1280,
+            "height": 800,
+            "rows": 40,
             "cols": 159
           },
           "appId": null,

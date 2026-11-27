@@ -44,6 +44,7 @@ const corruptions = [
     ['remove the independent color control', run => {
         run.app.samples.control.exchange.chunks[0].hex = run.app.samples.baseline.exchange.chunks[0].hex;
     }, /foreground state control/],
+    ['admit the App before its layout is arranged', run => { run.app.arranged.height = 773; }, /missing compositor-sized App viewport/],
     ['substitute a different disposable window', run => { run.app.admission.id++; }, /disposable window changed/],
     ['ignore a foot set', run => {
         const pending = [run.foot.samples.request176.tree];
