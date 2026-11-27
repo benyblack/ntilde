@@ -437,6 +437,7 @@ namespace Ntilde.VT
                 _cursorCol = col;
                 ScrollTop = 0;
                 ScrollBottom = Rows - 1;
+                lock (_trackedMarkGate) _promptPartCycle = null;
                 ResetHorizontalMarginsNoLock(); // DECSTR restores full-width margins; DECLRMM itself is kept
                 Modes.IsOriginMode = false;
                 Modes.IsAutoWrapMode = true;

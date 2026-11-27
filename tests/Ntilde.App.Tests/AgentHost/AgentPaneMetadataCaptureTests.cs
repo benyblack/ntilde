@@ -13,6 +13,21 @@ public sealed class AgentPaneMetadataCaptureTests
     }
 
     [Fact]
+    public void PromptPartReadbackKeepsTheBoundaryAndCommandAnchorDistinct()
+    {
+        var buffer = new TerminalBuffer(80, 4);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A\a$ \x1b]133;B\aabc\x1b[2;18H\x1b]133;P;k=r\aRIGHT");
+        var observed = Read(buffer);
+        Assert.Equal((0, 2), (observed.CommandStart!.Row, observed.CommandStart.Col));
+        var part = Assert.Single(observed.PromptParts);
+        Assert.Equal(("r", 1, 17), (part.Kind, part.Row, part.Col));
+        parser.Process("\x1b]133;C\a");
+        Assert.Empty(Read(buffer).PromptParts);
+        Assert.Single(observed.PromptParts);
+    }
+
+    [Fact]
     public void Icon_name_observation_is_parser_state_independent_of_title_and_screen()
     {
         var buffer = new TerminalBuffer(80, 4); var parser = new AnsiParser(buffer);

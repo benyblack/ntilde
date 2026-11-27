@@ -108,6 +108,18 @@ namespace Ntilde.VT
                     OnPromptReady?.Invoke();
                     break;
 
+                case "P" when !vsCodeDialect:
+                    // Only the prompt-part grammar belongs here. In particular,
+                    // P;Cwd=... is a property of the separate OSC 633 dialect.
+                    string? kind = parts switch
+                    {
+                        ["P"] => "i",
+                        ["P", "k=i" or "k=r" or "k=c" or "k=s"] => parts[1][2..],
+                        _ => null
+                    };
+                    if (kind != null) _buffer.RecordPromptPart(kind, CaptureCursorMark());
+                    break;
+
                 case "B":
                     ClearVsCodeCommandLine();
                     _awaitingVsCodeCommand = vsCodeDialect;

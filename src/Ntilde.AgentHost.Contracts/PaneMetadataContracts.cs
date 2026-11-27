@@ -67,6 +67,8 @@ public sealed record PaneBufferMetadata
     [JsonPropertyName("acceptingCommandInput")] public required bool AcceptingCommandInput { get; init; }
     [JsonPropertyName("commandStart")] public PaneShellMark? CommandStart { get; init; }
     [JsonPropertyName("outputStart")] public PaneShellMark? OutputStart { get; init; }
+    /// <summary>Active OSC 133 P boundaries in zero-based viewport coordinates.</summary>
+    [JsonPropertyName("promptParts")] public PanePromptPart[] PromptParts { get; init; } = [];
     [JsonPropertyName("links")] public required PaneHyperlinkRun[] Links { get; init; }
     /// <summary>
     /// Parser-retained OSC 3008 contexts: untrusted descriptive data written by whatever controls the terminal. Omitted when the parser
@@ -122,6 +124,13 @@ public sealed record PaneEndedContext
     [JsonPropertyName("exit"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Exit { get; init; }
     [JsonPropertyName("status"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Status { get; init; }
     [JsonPropertyName("signal"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Signal { get; init; }
+}
+
+public sealed record PanePromptPart
+{
+    [JsonPropertyName("kind")] public required string Kind { get; init; }
+    [JsonPropertyName("row")] public required int Row { get; init; }
+    [JsonPropertyName("col")] public required int Col { get; init; }
 }
 
 /// <summary>Raw tracked anchor; consumers must check generation, screen and retained history before resolving it.</summary>

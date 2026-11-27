@@ -12,6 +12,7 @@ export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
 export const capturedVendorEnvironmentSourcePolicy = 'readonly-owned-source-graph-rich-vendor-environment-v1';
 export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph-v79';
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
+export const capturedPromptPartsSourcePolicy = 'readonly-owned-source-graph-prompt-parts-v1';
 export const capturedOsc633MetadataSourcePolicy = 'readonly-owned-source-graph-v86';
 export const capturedSixelReportsSourcePolicy = 'readonly-owned-source-graph-v85';
 export const capturedFontLigaturesSourcePolicy = 'readonly-owned-source-graph-font-ligatures-v1';
@@ -23,6 +24,7 @@ export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 const focusedSourcePolicies = [
     ['fontLigaturesOwnedSourceSha256', capturedFontLigaturesSourcePolicy],
+    ['promptPartsOwnedSourceSha256', capturedPromptPartsSourcePolicy],
     ['osc633MetadataOwnedSourceSha256', capturedOsc633MetadataSourcePolicy],
     ['sixelReportsOwnedSourceSha256', capturedSixelReportsSourcePolicy],
     ['osc66OwnedSourceSha256', capturedOsc66SourcePolicy],
@@ -1033,6 +1035,13 @@ export const capturedOsc633MetadataSourceFiles = Object.freeze({
     osc633MetadataContractsSourceSha256: 'osc633-metadata-contracts.mjs',
     osc633MetadataOwnedSourceSha256: 'osc633-metadata-owned.mjs',
     osc633MetadataWorkerSourceSha256: 'osc633-metadata-worker.mjs',
+});
+
+export const capturedPromptPartsSourceFiles = Object.freeze({
+    ...capturedOsc633MetadataSourceFiles,
+    promptPartsContractsSourceSha256: 'prompt-parts-contracts.mjs',
+    promptPartsOwnedSourceSha256: 'prompt-parts-owned.mjs',
+    promptPartsWorkerSourceSha256: 'prompt-parts-worker.mjs',
 });
 
 export const capturedSixelReportsSourceFiles = Object.freeze({

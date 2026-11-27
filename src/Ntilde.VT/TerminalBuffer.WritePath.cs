@@ -342,7 +342,7 @@ namespace Ntilde.VT
 
                             // Re-evaluate width of the merged cluster
                             int newWidth = GetGraphemeWidth(merged);
-                            row.NoteGlyphWritten(attachCol, Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
+                            row.NoteGlyphWritten(attachCol, Math.Min(Cols, attachCol + Math.Max(1, newWidth)), extendsGlyph: true);
 
                             // ALWAYS enforce wide flag and continuation for width >= 2
                             if (newWidth >= 2)

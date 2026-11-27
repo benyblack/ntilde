@@ -236,6 +236,7 @@ public partial class TerminalBuffer
     {
         _clickPromptVersion++;
         _clickPrompt = null;
+        _promptPartCycle = null;
         _clickPromptEnd = default;
         _promptClickMode = PromptClickMode.Disabled;
         _secondaryClickPrompts.Clear();
