@@ -52,7 +52,7 @@ def fenced(write_hex, size):
 OSC52_REPLY = re.compile(rb"\x1b\]52;c;[A-Za-z0-9+/=]*(?:\x07|\x1b\\)")
 
 
-def clipboard_query(write_hex, cpr_hex, retry_deadline):
+def clipboard_query(write_hex, cpr_hex, retry_deadline, full_window=False):
     """Retain the entire stream, including the cursor-position control."""
     quiet()
     request, cpr = bytes.fromhex(write_hex), bytes.fromhex(cpr_hex)
@@ -73,7 +73,7 @@ def clipboard_query(write_hex, cpr_hex, retry_deadline):
         last_read_at = stamp()
         if len(reply) > 1024:
             raise ValueError("oversized OSC 52 query reply: " + reply.hex())
-        if cpr in reply and OSC52_REPLY.search(reply):
+        if not full_window and cpr in reply and OSC52_REPLY.search(reply):
             break
     return {"writeHex": request.hex(), "rawHex": reply.hex(), "started": str(started),
             "finished": stamp(), "lastReadAt": last_read_at}
@@ -132,7 +132,8 @@ class Reader:
         if kind == "modes":
             return fenced(command["writeHex"], command["size"])
         if kind == "clipboard-query":
-            return clipboard_query(command["writeHex"], command["cprHex"], command.get("retryDeadline"))
+            return clipboard_query(command["writeHex"], command["cprHex"], command.get("retryDeadline"),
+                                   command.get("fullWindow", False))
         if kind == "restore":
             quiet()
             termios.tcsetattr(0, termios.TCSANOW, self.original)

@@ -63,7 +63,7 @@ def text_transaction():
     if request == {"kind": "read"}:
         clipboard.read_text_async(None, read_done)
     elif request.get("kind") == "seed" and re.fullmatch((r"(?:ntilde-(?:osc52-(?:baseline|seed)|paste-baseline)-[a-f0-9]{32}"
-                       r"|terminfo-paste-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})"), request.get("text", "")):
+                       r"|terminfo-(?:paste|osc52)-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})"), request.get("text", "")):
         text = request["text"]
         set_content(clipboard, Gdk.ContentProvider.new_for_value(text))
         complete(text)
