@@ -1,17 +1,18 @@
 {
   "schemaVersion": 1,
-  "runId": "415a1d98e8bb910104d7133427793f86",
+  "runId": "4b59d0c72432614171aa4a061e5251a5",
   "appRevision": "db411becbe33922691e29d78b0ab7dc443d26b14",
-  "scriptsRevision": "490f882b272bfe7a6349e7bc96174b9ba365327e",
+  "scriptsRevision": "9670c3fad322c0f90d65217540ecebcb737d8146",
   "runtime": "linux-arm64",
   "dotnetSdk": "10.0.403",
   "platform": "Ubuntu 24.04 LTS arm64 (Docker Desktop)",
   "archives": {
-    "owned-run.zip": "663217006a3ed5df596ea77cadacec8ae7c1cda280bc5c0b9e7c25c57b2032c4",
+    "owned-run.zip": "94978e0aafa18f7dc65d8c86e5fef831ad84c38de3839cdf9463c7fcbce4344f",
     "attempt-1.zip": "6200a759acb46419cfe228f5921a75c4bc4eaa56408e3de162a63f771c16f912",
     "attempt-2.zip": "dcbf17637a888c72f85d2161e2a9da5791989aa279cbdc7de571171e8b562d90",
     "attempt-3.zip": "bd60982d09c207a8a4912e86ee92d2a580d884624934613f998b010be66f6758",
-    "attempt-4.zip": "87efd4fe2a5c5f78053ef686d3f62ae44ba14000d521c17aa6e7f82895ea8301"
+    "attempt-4.zip": "87efd4fe2a5c5f78053ef686d3f62ae44ba14000d521c17aa6e7f82895ea8301",
+    "attempt-5.zip": "663217006a3ed5df596ea77cadacec8ae7c1cda280bc5c0b9e7c25c57b2032c4"
   },
   "attempts": [
     {
@@ -37,6 +38,12 @@
       "runId": "10b9dc2c0417978e0382d6c94c681a34",
       "scriptsRevision": "feb81bd580edf71f8a0dc47a54a9d77ede89e828",
       "reason": "This completed run verified both effects and restored the fixture. The final collector tightened frame termination to reject any trailing ordinary paste bytes."
+    },
+    {
+      "archive": "attempt-5.zip",
+      "runId": "415a1d98e8bb910104d7133427793f86",
+      "scriptsRevision": "490f882b272bfe7a6349e7bc96174b9ba365327e",
+      "reason": "This completed run verified the verdicts and cleanup before the SonarCloud dispatch and X11 library cleanup changed the measured collector source."
     }
   ]
 }

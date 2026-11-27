@@ -4783,25 +4783,25 @@
         "extensions.osc5522-clipboard"
       ],
       "evidence": {
-        "files": 9,
-        "bytes": 388979,
-        "sha256": "9273286e9b5b7fa22dfa2cbe7cf233bb5f9f47563e22df5b109b9de0ecd4e6fc"
+        "files": 10,
+        "bytes": 465399,
+        "sha256": "f4de79a3c4682c4bf5e91c17ab43f4165ee16e3ccf094cc8ab8aeea12a851e95"
       },
       "receipt": null,
       "run": {
-        "ownedRunId": "415a1d98e8bb910104d7133427793f86",
-        "measuredAt": "2026-11-27T08:24:39.063Z",
+        "ownedRunId": "4b59d0c72432614171aa4a061e5251a5",
+        "measuredAt": "2026-11-27T08:33:27.244Z",
         "appRevision": "db411becbe33922691e29d78b0ab7dc443d26b14",
         "appVersion": "0.14.0",
         "appVersionSource": "operator-recorded source archive and publish command",
         "executableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
-        "scriptsRevision": "490f882b272bfe7a6349e7bc96174b9ba365327e",
+        "scriptsRevision": "9670c3fad322c0f90d65217540ecebcb737d8146",
         "collectorAdapterId": "ntilde-owned-x11-osc5522-clipboard-v1",
         "collectorAdapterBundleSha256": null,
         "gradingAdapterId": null,
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "owned-modern-x11-osc5522-clipboard-v1",
-        "sourceSnapshotManifestSha256": "26e6d0192a2b641ad15d7663f72c590e609a3fe2572a1b3893de4c92ba5f0b62"
+        "sourceSnapshotManifestSha256": "4afb93a31d9320e968e28038bb2817d88015f98f6a6e26edce56a5700236ddcb"
       },
       "stock": {
         "basis": "carried-forward",
