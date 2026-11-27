@@ -122,7 +122,7 @@ Stock-unsupported cases with qualified reassessments: `extensions.osc5522-clipbo
 | `dsl` | 1 | v1 | passed | 82 | `7394fe6d` | v80 | 4 | `18e14e03` |
 | `osc5522-clipboard` | 1 | v1 | passed | n/a | `db411bec` | owned-modern-x11-osc5522-clipboard-v1 | 14 | `287a8a7a` |
 | `osc52-read` | 1 | v1 | passed | n/a | `7824244e` | owned-modern-x11-osc52-read-v1 | 7 | `23e435f5` |
-| `osc555` | 1 | v1 | passed | 1 | `373abd87` | osc555-v1 | 11 | `a7cf9f28` |
+| `osc555` | 1 | v1 | passed | 1 | `373abd87` | osc555-v1 | 11 | `d43d7d56` |
 
 Each suite is rederived by its publication test (`node --test scripts/terminfo/<suite>-publication.test.mjs`), which rebuilds the retained report from the retained journals through the live grading module and compares it byte for byte. Declarations and unit tests alone are not counted as qualification.
 
