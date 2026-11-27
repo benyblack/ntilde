@@ -74,13 +74,7 @@ namespace Ntilde.VT
 
         internal bool HasWrapPadding => _wrappedColumns.HasValue;
 
-        internal void NoteColumnsWritten(int endExclusive, int start = 0)
-        {
-            NoteLayoutColumnsWritten(endExclusive);
-            if (PromptTextSpans is { } spans) NotePromptTextWritten(spans, start, System.Math.Min(endExclusive, Cells.Length));
-        }
-
-        private void NoteLayoutColumnsWritten(int endExclusive)
+        internal void NoteColumnsWritten(int endExclusive)
         {
             if (endExclusive > _writtenColumns) _writtenColumns = System.Math.Min(endExclusive, Cells.Length);
             if (_wrappedColumns is int width && endExclusive > width)

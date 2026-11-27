@@ -153,7 +153,7 @@ public partial class TerminalBuffer
         row.SetUnderline(col, style.Underline);
         row.SetProtected(col, style.IsProtected);
         row.SetTextSizing(col, piece);
-        row.NoteColumnsWritten(col + 1);
+        row.NoteGlyphWritten(col, col + 1);
         row.TouchRevision();
     }
 }

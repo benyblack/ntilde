@@ -30,7 +30,7 @@ public partial class TerminalRow
             }
             PromptTextSpans = retained.ToArray();
         }
-        NoteLayoutColumnsWritten(to);
+        NoteColumnsWritten(to);
     }
 
     internal void NoteColumnShift(int start, int edge, int delta, bool trackPromptText)
@@ -50,7 +50,13 @@ public partial class TerminalRow
         PromptTextSpans = spans;
     }
 
-    private void NotePromptTextWritten(PromptTextSpan[] spans, int start, int end)
+    internal void NoteGlyphWritten(int start, int end)
+    {
+        NoteColumnsWritten(end);
+        if (PromptTextSpans is { } spans) MergePromptText(spans, start, System.Math.Min(end, Cells.Length));
+    }
+
+    private void MergePromptText(PromptTextSpan[] spans, int start, int end)
     {
         if (end <= start) return;
         foreach (var span in spans)

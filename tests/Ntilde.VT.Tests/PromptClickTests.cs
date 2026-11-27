@@ -288,6 +288,25 @@ public class PromptClickTests
     }
 
     [Theory]
+    [InlineData("\x1b[4:3mZ\x1b[0m")]
+    [InlineData("\x1b]8;;https://example.test\x1b\\Z\x1b]8;;\x1b\\")]
+    [InlineData("\x1b[1\"qZ\x1b[0\"q")]
+    [InlineData("Z\u0301")]
+    public void MetadataOnRewrittenTextDoesNotMakeErasedColumnsClickable(string text)
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A;click_events=2\a" + new string('a', 20) + new string('b', 20)
+            + "last\x1b[2;1H\x1b[20X\x1b[2;16H" + text + "\x1b[H");
+        buffer.Resize(10, 12);
+        Assert.True(buffer.TryGetPromptClickRow(3, out _, out _));
+
+        parser.Process("\x1b[5;1H\x1b[2K\x1b[4;1H\x1b[2K\x1b[H");
+        Assert.True(buffer.TryGetPromptClickRow(1, out _, out _));
+        Assert.False(buffer.TryGetPromptClickRow(2, out _, out _));
+    }
+
+    [Theory]
     [InlineData("K")]
     [InlineData("J")]
     public void PartialTailErasureDoesNotReflowOldPromptPadding(string erase)

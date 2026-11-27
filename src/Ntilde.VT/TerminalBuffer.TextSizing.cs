@@ -168,7 +168,7 @@ public partial class TerminalBuffer
     private void StoreTextSizingRow(TextSizingBlock block, int dy)
     {
         var row = _viewport[_cursorRow];
-        row.NoteColumnsWritten(_cursorCol + block.Width);
+        row.NoteGlyphWritten(_cursorCol, _cursorCol + block.Width);
         for (int dx = 0; dx < block.Width; dx++)
         {
             int col = _cursorCol + dx;
