@@ -275,9 +275,10 @@ async function launch() {
         } });
         if (focusedScope) {
             const suite = await import(pathToFileURL(pathFor(root, focusedScope.entry)).href);
+            const selected = suite.selectScope?.(requestedScope) ?? suite;
             globalThis[focusedSuiteKey] = focusedScope.policy === blinkPolicy
                 ? { scope: suite.scope, workerFile: suite.workerFile, prefix: 'mblink-', Collection: suite.BlinkCollection, completeReceipt: suite.completeBlinkReceipt }
-                : suite.selectScope ? suite.selectScope(requestedScope) : suite;
+                : selected;
         }
         await import(pathToFileURL(pathFor(root, 'terminfo-owned-runner.mjs')).href);
         if (interrupted) process.exitCode = 1;

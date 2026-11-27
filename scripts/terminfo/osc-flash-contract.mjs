@@ -23,7 +23,7 @@ export function frameDifference(baseline, image) {
     const a = baseline.pixels, b = image.pixels;
     for (let i = 0; i < a.length; i += 4) {
         if (a.readUInt32BE(i) !== b.readUInt32BE(i)) changed++;
-        if (Math.max(...[0, 1, 2].map(c => Math.abs(a[i + c] - b[i + c]))) >= 8) visible++;
+        if (Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])) >= 8) visible++;
     }
     return { changed, visible, pixels: image.width * image.height };
 }
@@ -51,4 +51,3 @@ export function classify(frames, sent, fenced) {
     }
     return { state: 'steady', maxGapMs, ...observed };
 }
-

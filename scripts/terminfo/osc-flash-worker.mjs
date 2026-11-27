@@ -41,7 +41,7 @@ async function collect(runId, send) {
         await send('seal', { attempt: capture.lastAttempt });
     } catch (error) {
         try { await output(restore); }
-        catch (cleanup) { throw new AggregateError([error, cleanup], 'Flash measurement and restoration failed'); }
+        catch (error_) { throw new AggregateError([error, error_], 'Flash measurement and restoration failed'); }
         throw error;
     } finally { capture.dispose(); }
 }
@@ -63,4 +63,3 @@ async function main(path) {
     }
 }
 await main(process.argv[2]);
-

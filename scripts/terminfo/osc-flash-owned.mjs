@@ -154,4 +154,3 @@ function completeReceipt(output, scratch) {
     save(output, receiptFile, JSON.stringify(receipt, null, 2) + '\n');
     return { verdict: series.map(({ name, state }) => ({ name, state })) };
 }
-

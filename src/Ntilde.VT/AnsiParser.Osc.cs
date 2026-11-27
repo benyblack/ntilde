@@ -65,11 +65,12 @@ namespace Ntilde.VT
             string code = split < 0 ? osc : osc.Substring(0, split);
             string data = split < 0 ? string.Empty : osc.Substring(split + 1);
             if (HandleColorOsc(code, data)) return;
-            if (split <= 0)
+            if (osc == "555")
             {
-                if (osc == "555") OnVisualFlash?.Invoke();
+                OnVisualFlash?.Invoke();
                 return;
             }
+            if (split <= 0) return;
 
             switch (code)
             {
