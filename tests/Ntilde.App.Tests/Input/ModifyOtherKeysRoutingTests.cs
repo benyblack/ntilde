@@ -168,7 +168,10 @@ public sealed class ModifyOtherKeysRoutingTests
     public void LevelThree_ReportsTheKeyOnceAndPreservesLaterText(Key key, KeyModifiers modifiers, string text, string frame)
     {
         var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        var observed = new List<string>();
+        view.TextInputObserved += observed.Add;
         Assert.True(view.Down(key, modifiers, symbol: text).Handled);
+        Assert.Equal(new[] { text }, observed);
         view.Text(text);
         view.Text(text);
         Assert.True(view.Down(key, modifiers, symbol: text).Handled);
@@ -179,6 +182,7 @@ public sealed class ModifyOtherKeysRoutingTests
         Assert.False(view.Down(Key.ImeProcessed, KeyModifiers.None).Handled);
         view.Text("é");
         Assert.Equal(new[] { frame, text, frame, "日本語", frame, text, "é" }, sent);
+        Assert.Equal(new[] { text, text, text, "日本語", text, text, "é" }, observed);
     }
 
     [AvaloniaTheory]
@@ -205,6 +209,20 @@ public sealed class ModifyOtherKeysRoutingTests
         Assert.Empty(sent);
         view.Text(text);
         Assert.Equal(new[] { text }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(KeyModifiers.Control)]
+    [InlineData(KeyModifiers.Alt)]
+    public void LevelThree_ModifiedShortcutsDoNotAppendCommandText(KeyModifiers modifiers)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        var observed = new List<string>();
+        view.TextInputObserved += observed.Add;
+        Assert.True(view.Down(Key.A, modifiers, PhysicalKey.A, "a").Handled);
+        view.Text("a");
+        Assert.Single(sent);
+        Assert.Empty(observed);
     }
 
     [AvaloniaFact]

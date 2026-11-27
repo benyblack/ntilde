@@ -325,6 +325,7 @@ namespace Ntilde.Shell
             if (key == Key.C && (modifiers & KeyModifiers.Control) != 0 && HasSelection() && !UseMacOSClipboardChords) return false;
             string? sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical, keySymbol);
             if (sequence == null) return false;
+            string? ordinaryText = level == 3 ? TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol) : null;
             if (TerminalInputModeEncoder.MayProduceTextInput(key, keySymbol))
             {
                 // Shift+Space and Alt chords can still produce text on some backends after a
@@ -333,11 +334,14 @@ namespace Ntilde.Shell
                 _pendingKittyTextSuppression = true;
                 _pendingKittyTextKey = KeyIdentity(key, physical);
                 _pendingKittyTextFlags = 0;
-                if (level == 3)
-                    _pendingModifyOtherKeysText = TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol);
+                _pendingModifyOtherKeysText = ordinaryText;
                 _kittyTextInputGeneration++;
             }
             SendKeyInput(key, modifiers, physical, sequence, identity, trackKittyEvents: false);
+            // Some backends omit TextInput after a handled key. Observe the typed character
+            // with its report so paired callbacks and key-only delivery agree.
+            if (ordinaryText != null && modifiers is (KeyModifiers.None or KeyModifiers.Shift) && !_generatedInputInProgress)
+                TextInputObserved?.Invoke(ordinaryText);
             return true;
         }
 

@@ -135,6 +135,21 @@ public sealed class MainWindowGeneratedInputTests : IClassFixture<TestAppDataRoo
     }
 
     [AvaloniaFact]
+    public async Task Level_three_generated_text_reports_do_not_notify_human_typing_observers()
+    {
+        var (window, pane, session) = Create();
+        new AnsiParser(pane.Buffer!).Process("\u001b[>4;3m");
+        int observed = 0;
+        pane.TermView.TextInputObserved += _ => observed++;
+        var result = await Dispatch(window, pane, new() { PaneId = pane.PaneId, Kind = "keyDown", Key = "a", KeySymbol = "a", Text = "a" });
+        Assert.NotNull(result);
+        Assert.True(result.Handled);
+        Assert.True(result.TextHandled);
+        Assert.Equal("\u001b[27;1;97~", Assert.Single(session.SentInput));
+        Assert.Equal(0, observed);
+    }
+
+    [AvaloniaFact]
     public async Task In_numeric_keypad_mode_the_key_down_is_unhandled_and_its_text_is_delivered_exactly_once()
     {
         var (window, pane, session) = Create();
