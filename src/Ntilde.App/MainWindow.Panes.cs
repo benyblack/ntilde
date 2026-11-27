@@ -325,7 +325,7 @@ namespace Ntilde
             {
                 if (!focusedConsumesText) return false; // the text broadcast delivers it
                 sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical)
-                    ?? (key == Key.Space ? " " : PrintableKeySymbol(keySymbol));
+                    ?? TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, PrintableKeySymbol(keySymbol));
                 return sequence != null;
             }
 
@@ -374,7 +374,7 @@ namespace Ntilde
         /// happens and siblings must be served by the key broadcast instead.
         /// </summary>
         internal static bool FocusedPaneConsumesText(Key key, KeyModifiers modifiers, PhysicalKey physical, TerminalBuffer? buffer, int kittyFlags)
-            => kittyFlags == 0 && !ProducesNoTextInput(key, modifiers)
+            => kittyFlags == 0 && buffer?.Modes.IsVt52 == false && !ProducesNoTextInput(key, modifiers)
                 && TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, buffer?.Modes.ModifyOtherKeys.Level ?? 0, physical) != null;
 
         /// <summary>One broadcast receiver: its modes, its effective kitty flags, and its input sink.</summary>
@@ -444,13 +444,18 @@ namespace Ntilde
                         focusedConsumesText, out string? sequence) && !string.IsNullOrEmpty(sequence))
                     receiver.Send(sequence);
             }
-            if (focusedConsumesText) gate.MarkFannedOut(key, physical);
+            if (focusedConsumesText)
+            {
+                string? pairedText = focusedBuffer?.Modes.ModifyOtherKeys.Level == 3
+                    ? TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol) : null;
+                gate.MarkFannedOut(key, physical, pairedText);
+            }
         }
 
         /// <summary>The text half: skipped once for a gesture the keydown half already delivered.</summary>
         internal static void FanOutBroadcastText(string text, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
         {
-            if (string.IsNullOrEmpty(text) || gate.TryConsumeText()) return;
+            if (string.IsNullOrEmpty(text) || gate.TryConsumeText(text)) return;
             foreach (BroadcastReceiver receiver in receivers) receiver.Send(text);
         }
 

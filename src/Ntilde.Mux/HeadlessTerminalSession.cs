@@ -164,6 +164,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         float cellHeight = InitialCellMetric(options.CellHeightPx, 20);
         _parser = new AnsiParser(_buffer, options.ForceConPtyFiltering)
         {
+            AllowModifyOtherKeysLevelThree = false,
             ImageDecoder = null,
             RetainSixelSources = true,
             AllowNonSixelImages = false,

@@ -39,15 +39,17 @@ internal static partial class TerminalInputModeEncoder
     ///   as BS (<c>CSI 27;6;8~</c>) and plain Ctrl+Backspace legacy, as xterm's backarrow toggle
     ///   gives.
     ///
+    /// Level 3 also reports unmodified and Shift-only printable keys. Named controls keep their level-2 routing.
+    ///
     /// Deliberate deviations, each falling back to the existing legacy/text path:
-    /// - Shift alone on a printable key is never encoded. xterm level 2 sends Shift+A as
+    /// - Shift alone on a printable key stays text at levels 1 and 2. xterm level 2 sends Shift+A as
     ///   <c>CSI 27;2;65~</c> but Vim, tmux and Emacs strip a Shift that is already in the
     ///   character, so text is equivalent for them, and it keeps IME, dead-key and non-Latin
     ///   layout text on TextInput (the virtual key below is a US-layout key).
     /// - Ctrl+Alt is not encoded: on Windows it is how AltGr arrives, and AltGr composes text
     ///   (the same carve-out the legacy and kitty encoders make). Meta/Super/Cmd chords are not
     ///   encoded either, so macOS Cmd shortcuts stay with the UI.
-    /// - Only levels 1 and 2. Keypad, cursor, editing and function keys are not "other keys"
+    /// - Keypad, cursor, editing and function keys are not "other keys"
     ///   in xterm and keep their PC-style encodings at every level.
     /// - Only the <c>CSI 27 ; m ; code ~</c> form. xterm's <c>formatOtherKeys: 1</c> form
     ///   (<c>CSI code ; m u</c>) is not offered: it is a resource, not something the protocol
@@ -60,45 +62,50 @@ internal static partial class TerminalInputModeEncoder
     /// </summary>
     internal static string? EncodeModifyOtherKeys(Key key, KeyModifiers modifiers, int level, PhysicalKey physical = PhysicalKey.None)
     {
-        if (level is not (1 or 2)) return null;
+        if (level is < 1 or > 3) return null;
         if ((modifiers & KeyModifiers.Meta) != 0) return null;
 
         bool shift = (modifiers & KeyModifiers.Shift) != 0;
         bool alt = (modifiers & KeyModifiers.Alt) != 0;
         bool ctrl = (modifiers & KeyModifiers.Control) != 0;
         if (ctrl && alt) return null;
-        if (!shift && !alt && !ctrl) return null;
         // Keypad keys are not "other" keys in xterm. Avalonia can report a physical keypad key
         // under an ordinary logical key (keypad Enter as Enter, keypad comma as OemComma, keypad
         // equals as OemPlus), so the physical position decides, not the logical key.
         if (IsPhysicalKeypadKey(physical)) return null;
 
         int m = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
-        bool levelTwo = level == 2;
+        if (level == 3 && !ctrl && !alt)
+        {
+            int printable = GetUsLayoutCharacter(key, shift);
+            if (printable >= 0) return FormatModifyOtherKey(printable, m);
+        }
+        if (modifiers == KeyModifiers.None) return null;
+        bool levelTwoOrHigher = level >= 2;
 
         switch (key)
         {
             case Key.Enter:
-                return !levelTwo && alt ? null : FormatModifyOtherKey(13, m);
+                return !levelTwoOrHigher && alt ? null : FormatModifyOtherKey(13, m);
             case Key.Tab:
                 if (shift && !ctrl && !alt) return null; // CSI Z (back-tab) at every level
-                if (!levelTwo) return ctrl && !shift && !alt ? FormatModifyOtherKey(9, m) : null;
+                if (!levelTwoOrHigher) return ctrl && !shift && !alt ? FormatModifyOtherKey(9, m) : null;
                 return FormatModifyOtherKey(9, m);
             case Key.Back:
-                if (!levelTwo) return null;
+                if (!levelTwoOrHigher) return null;
                 if (ctrl) return shift ? FormatModifyOtherKey(8, m) : null;
                 return FormatModifyOtherKey(127, m);
             case Key.Escape:
-                return levelTwo ? FormatModifyOtherKey(27, m) : null;
+                return levelTwoOrHigher ? FormatModifyOtherKey(27, m) : null;
             case Key.Space:
-                return levelTwo ? FormatModifyOtherKey(' ', m) : null;
+                return levelTwoOrHigher ? FormatModifyOtherKey(' ', m) : null;
         }
 
         int code = GetUsLayoutCharacter(key, shift);
         if (code < 0) return null;
         if (shift && !ctrl && !alt) return null; // the shifted character is its own text
 
-        if (!levelTwo)
+        if (!levelTwoOrHigher)
         {
             // Level 1: Alt never participates; Ctrl chords X11 maps to a control character
             // keep that byte.
@@ -106,6 +113,14 @@ internal static partial class TerminalInputModeEncoder
         }
 
         return FormatModifyOtherKey(code, m);
+    }
+
+    // A symbolless generated key still has a known printable US character. A real backend
+    // symbol identifies the correlated text even when its layout differs from the US table.
+    internal static string? OrdinaryKeyText(Key key, KeyModifiers modifiers, string? symbol)
+    {
+        int code = GetUsLayoutCharacter(key, (modifiers & KeyModifiers.Shift) != 0);
+        return code < 0 ? null : string.IsNullOrEmpty(symbol) ? ((char)code).ToString() : symbol;
     }
 
     private static bool IsPhysicalKeypadKey(PhysicalKey physical)
@@ -130,6 +145,7 @@ internal static partial class TerminalInputModeEncoder
         if (key is >= Key.D0 and <= Key.D9) return shift ? ")!@#$%^&*("[key - Key.D0] : '0' + (key - Key.D0);
         return key switch
         {
+            Key.Space => ' ',
             Key.OemTilde => shift ? '~' : '`',
             Key.OemMinus => shift ? '_' : '-',
             Key.OemPlus => shift ? '+' : '=',

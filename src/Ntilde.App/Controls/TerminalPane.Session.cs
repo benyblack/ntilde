@@ -226,6 +226,7 @@ namespace Ntilde.Controls
             Parser.KittyKeyboardEnabled = _settings?.EnableKittyKeyboardProtocol ?? true;
             Buffer?.Modes.KittyKeyboard.SetSupportedFlags(muxBacked ? KittyKeyboardState.FlagDisambiguateEscapeCodes : KittyKeyboardState.SupportedFlags);
             // The GUI encodes modifyOtherKeys; a mux daemon may lower this before its snapshot (#829).
+            Parser.AllowModifyOtherKeysLevelThree = !muxBacked;
             Buffer?.Modes.ModifyOtherKeys.SetSupported(true);
 
             // Native kitty graphics on Windows (ConPTY pass-through opt-in): a freshly-created

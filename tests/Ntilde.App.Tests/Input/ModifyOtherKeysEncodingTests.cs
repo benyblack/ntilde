@@ -134,7 +134,7 @@ public sealed class ModifyOtherKeysEncodingTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(3)]
+    [InlineData(4)]
     [InlineData(-1)]
     public void UnsupportedLevels_EncodeNothing(int level)
     {

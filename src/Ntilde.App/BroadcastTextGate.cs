@@ -16,6 +16,8 @@ namespace Ntilde
     {
         private (PhysicalKey Physical, Key Logical)? _armed;
 
+        private string? _expectedText;
+
         /// <summary>True while a fanned-out gesture's trailing text is still expected.</summary>
         public bool IsArmed => _armed.HasValue;
 
@@ -23,14 +25,18 @@ namespace Ntilde
         public void KeyDown() => _armed = null;
 
         /// <summary>The key broadcast already delivered this gesture to every sibling.</summary>
-        public void MarkFannedOut(Key key, PhysicalKey physical) => _armed = Identity(key, physical);
+        public void MarkFannedOut(Key key, PhysicalKey physical, string? expectedText = null)
+        {
+            _armed = Identity(key, physical);
+            _expectedText = expectedText;
+        }
 
         /// <summary>True, once, when a text callback belongs to a gesture already broadcast.</summary>
-        public bool TryConsumeText()
+        public bool TryConsumeText(string? text = null)
         {
             if (!_armed.HasValue) return false;
             _armed = null;
-            return true;
+            return _expectedText == null || _expectedText == text;
         }
 
         /// <summary>The matching release ends the gesture, as it does for the view's suppression.</summary>

@@ -24,6 +24,7 @@ namespace Ntilde.Shell
                 // Flag 8 replaces text with key reports. Without flag 16, text-only IME
                 // commits have no associated-text payload and are deliberately suppressed.
                 bool suppress = _pendingKittyTextSuppression ?? ReportAllKeysActive;
+                suppress &= _pendingModifyOtherKeysText == null || _pendingModifyOtherKeysText == e.Text;
                 ClearPendingKittyTextInput();
                 if (suppress)
                 {
@@ -101,6 +102,7 @@ namespace Ntilde.Shell
         }
 
         private bool? _pendingKittyTextSuppression;
+        private string? _pendingModifyOtherKeysText;
         private (PhysicalKey Physical, Key Logical)? _pendingKittyTextKey;
         private int _kittyTextInputGeneration;
         private bool ReportAllKeysActive => (EffectiveKittyKeyboardFlags & Ntilde.VT.KittyKeyboardState.FlagReportAllKeys) != 0;
@@ -121,6 +123,7 @@ namespace Ntilde.Shell
         private void ClearPendingKittyTextInput()
         {
             _pendingKittyTextSuppression = null;
+            _pendingModifyOtherKeysText = null;
             _pendingKittyTextKey = null;
             _pendingKittyTextFlags = null;
             _pendingAssociatedKey = null;
@@ -330,6 +333,8 @@ namespace Ntilde.Shell
                 _pendingKittyTextSuppression = true;
                 _pendingKittyTextKey = KeyIdentity(key, physical);
                 _pendingKittyTextFlags = 0;
+                if (level == 3)
+                    _pendingModifyOtherKeysText = TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol);
                 _kittyTextInputGeneration++;
             }
             SendKeyInput(key, modifiers, physical, sequence, identity, trackKittyEvents: false);

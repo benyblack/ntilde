@@ -161,6 +161,38 @@ public sealed class ModifyOtherKeysRoutingTests
         Assert.Equal(new[] { "\x1b[27;2;32~", "x" }, sent);
     }
 
+    [AvaloniaTheory]
+    [InlineData(Key.A, KeyModifiers.None, "a", "\x1b[27;1;97~")]
+    [InlineData(Key.OemSemicolon, KeyModifiers.None, ";", "\x1b[27;1;59~")]
+    [InlineData(Key.D1, KeyModifiers.Shift, "!", "\x1b[27;2;33~")]
+    public void LevelThree_ReportsTheKeyOnceAndPreservesLaterText(Key key, KeyModifiers modifiers, string text, string frame)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.True(view.Down(key, modifiers).Handled);
+        view.Text(text);
+        view.Text(text);
+        Assert.True(view.Down(key, modifiers).Handled);
+        view.Text("日本語");
+        Assert.True(view.Down(key, modifiers).Handled);
+        view.Up(key, modifiers);
+        view.Text(text);
+        Assert.False(view.Down(Key.ImeProcessed, KeyModifiers.None).Handled);
+        view.Text("é");
+        Assert.Equal(new[] { frame, text, frame, "日本語", frame, text, "é" }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(Key.Up, PhysicalKey.ArrowUp, "\x1b[A")]
+    [InlineData(Key.F5, PhysicalKey.F5, "\x1b[15~")]
+    [InlineData(Key.Enter, PhysicalKey.NumPadEnter, "\r")]
+    [InlineData(Key.Tab, PhysicalKey.Tab, "\t")]
+    public void LevelThree_PreservesSpecialKeyRoutes(Key key, PhysicalKey physical, string expected)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.True(view.Down(key, KeyModifiers.None, physical).Handled);
+        Assert.Equal(new[] { expected }, sent);
+    }
+
     [AvaloniaFact]
     public void ShiftedLetters_StayOnTextInput()
     {

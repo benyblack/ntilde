@@ -156,6 +156,23 @@ public sealed class ModifyOtherKeysBroadcastTextGateTests
     }
 
     [Fact]
+    public void LevelThreeFocusedPane_BroadcastsOneReportOrTextPerSiblingAndPreservesAnImeCommit()
+    {
+        var focused = LevelTwo();
+        focused.Modes.ModifyOtherKeys.SetLevel(3);
+        var (sent, receivers) = Siblings("", "\x1b[>4;3m");
+        var gate = new BroadcastTextGate();
+
+        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, null, focused, 0, receivers, gate);
+        MainWindow.FanOutBroadcastText("a", receivers, gate);
+        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, null, focused, 0, receivers, gate);
+        MainWindow.FanOutBroadcastText("日本語", receivers, gate);
+
+        Assert.Equal(new[] { "a", "a", "日本語" }, sent[0]);
+        Assert.Equal(new[] { "\x1b[27;1;97~", "\x1b[27;1;97~", "日本語" }, sent[1]);
+    }
+
+    [Fact]
     public void BackendsThatSuppressTheText_DoNotLoseTheNextGesturesText()
     {
         var (sent, receivers) = Siblings("");
