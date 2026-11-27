@@ -123,12 +123,13 @@ export class Collection {
         } finally { append(output, this.actionsFile, action); }
     }
 
-    async capture(budget) {
+    async capture(budget, { settling = false } = {}) {
         const screen = await this.before.capture(budget), paneId = this.before.paneId;
         this.after.paneId ??= paneId;
-        const metadata = copyPaneMetadata(await this.before.request('readPaneMetadata', { paneId }, budget));
+        const wire = await this.before.request('readPaneMetadata', { paneId }, budget);
+        const metadata = settling ? wire : copyPaneMetadata(wire);
         const after = await this.after.capture(budget);
-        requireSixel(snapshotHash(screen) === snapshotHash(after), 'App pane changed during paired read');
+        requireSixel(settling || snapshotHash(screen) === snapshotHash(after), 'App pane changed during paired read');
         return { paneId, screen, metadata, sha256: snapshotHash(screen), afterSha256: snapshotHash(after) };
     }
 

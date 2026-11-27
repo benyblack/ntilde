@@ -11,7 +11,7 @@ import { gridOf, sameScale, smallerGrid, verifyControl } from './sixel-reports-c
 import { Collection as SixelCollection, requireResize, verifySeal } from './sixel-reports-owned.mjs';
 import { pristineImageBaseline, validateImageOwnership } from './static-images.mjs';
 import { journal, json, read } from './static-images-receipt.mjs';
-import { readOwnedOutputMode } from './terminal-output.mjs';
+import { readOwnedOutputMode, validateOutputGeometry } from './terminal-output.mjs';
 import { initialFontSize, nonce, pixelDimensions, planFor, prefix, requireGeometry, scope, verifyReply } from './xtwinops-pixels-contracts.mjs';
 
 export { prefix, scope };
@@ -108,19 +108,25 @@ function verifyStage(frame, step, frames, runId, used) {
 export class Collection extends SixelCollection {
     constructor(run) { super(run, { plan: planFor(run.runId), actionsFile }); }
 
-    async observation(budget, ownership, expectedFont) {
+    async observation(budget, ownership, expectedFont, unsettled = []) {
         for (;;) {
-            const frame = await this.capture(budget);
+            const frame = await this.capture(budget, { settling: true });
             const terminalOutput = readOwnedOutputMode(ownership.tty, budget());
             const at = new Date().toISOString();
             const rows = frame.screen.rows, cols = frame.screen.cols;
-            if (frame.metadata.fontGeometry?.fontSizeDip === expectedFont
+            const cell = frame.metadata.cellGeometry;
+            if (frame.sha256 === frame.afterSha256 && cell?.viewRows === rows && cell?.viewCols === cols
+                && frame.metadata.fontGeometry?.fontSizeDip === expectedFont
                 && same(gridOf(frame.metadata.buffer), { rows, cols })
                 && new RegExp('(?:^|[;\\s])' + rows + ' rows;\\s+' + cols + ' columns;').test(terminalOutput.description)) {
+                frame.metadata = copyPaneMetadata(frame.metadata);
+                validateOutputGeometry(terminalOutput.description, rows, cols);
                 const windows = JSON.parse(native(windowScript, [ownership.app.pid], budget));
                 requireGeometry(windows.length === 1, 'expected one on-screen owned native window');
                 return { ...frame, window: windows[0], settledOwnership: { ...ownership, at, terminalOutput } };
             }
+            unsettled.push({ at, screen: { rows, cols }, buffer: gridOf(frame.metadata.buffer), cell,
+                font: frame.metadata.fontGeometry, terminalOutput });
             await delay(Math.min(40, budget())); // NOSONAR: wait for App and kernel after a UI action.
         }
     }
@@ -137,7 +143,7 @@ export class Collection extends SixelCollection {
         this.aborted = true;
         if (!this.resizeAttempted) return {};
         const original = this.frames[0], { fontSizeDip } = original.metadata.fontGeometry;
-        const current = await this.capture(budget);
+        const current = await this.capture(budget, { settling: true });
         const font = current.metadata.fontGeometry?.fontSizeDip;
         if (font === fontSizeDip + 1) {
             const ownership = original.ownership;
@@ -164,7 +170,8 @@ export class Collection extends SixelCollection {
                 }
                 if (step.write) Object.assign(frame, { requestBytes: request.requestBytes, sample: request.sample });
                 if (step.sample) frame.samples = request.samples;
-                Object.assign(frame, await this.observation(budget, ownership, expectedFont));
+                frame.unsettled = [];
+                Object.assign(frame, await this.observation(budget, ownership, expectedFont, frame.unsettled));
             }
             verifyStage(frame, step, this.frames, this.run.runId, this.used);
         } catch (error) {
