@@ -183,7 +183,7 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock?.basis === 'carried-forward');
-    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard']);
+    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard', 'osc52-read']);
     for (const suite of carried) assert.match(suite.stock.note, /carried, not re-measured|carried forward from/, suite.suite);
     const runIds = stored.suites.filter(suite => suite.stock?.basis !== 'carried-forward').map(suite => suite.stock?.runId).filter(Boolean);
     assert.equal(new Set(runIds).size, runIds.length, 'two suites must not claim the same stock run as freshly collected');
@@ -354,8 +354,8 @@ test('OSC cell-size qualification adds two effect-supported ids while preserving
 test('current effect totals preserve the separate unsupported and measured-other claims without inflating pinned scores', () => {
     const stored = committed(), { totals } = stored;
     // Sixel retains the old unsupported result and the fixed supported result, so its effect roll-up is mixed.
-    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc113-reset-pointer-fg', 'extensions.osc114-reset-pointer-bg', 'extensions.osc720-scroll-up', 'modes.deccolm', 'modes.decsclm']);
-    assert.equal(totals.effectUnsupportedIds, 5);
+    assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc113-reset-pointer-fg', 'extensions.osc114-reset-pointer-bg', 'extensions.osc52-read', 'extensions.osc720-scroll-up', 'modes.deccolm', 'modes.decsclm']);
+    assert.equal(totals.effectUnsupportedIds, 6);
     assert.equal(totals.effectOtherIds, 1);
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.reflow'));
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.iterm2-images'));
@@ -376,7 +376,24 @@ test('current effect totals preserve the separate unsupported and measured-other
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 18, effectMeasuredUnsupported: 5, effectMeasuredOther: 1, effectNotMeasured: 12, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 18, effectMeasuredUnsupported: 6, effectMeasuredOther: 1, effectNotMeasured: 11, notPinnedSupported: 72 });
+});
+
+test('OSC 52 read denial adds measured unsupported read capability without changing support counts', () => {
+    const stored = committed(), id = 'extensions.osc52-read';
+    const clipboard = row(stored, id);
+    assert.deepEqual([clipboard.stockOutcome, clipboard.pinned.best, clipboard.effect.verdict],
+        ['inconclusive', 'inconclusive', 'unsupported']);
+    assert.equal(clipboard.claims.length, 1);
+    assert.equal(clipboard.claims[0].suite, 'osc52-read');
+    assert.equal(clipboard.claims[0].status, 'qualified');
+
+    const without = totalsOf(stored.benchmark.filter(item => item.id !== id), baseline());
+    assert.equal(stored.totals.uniqueBenchmarkIds, without.uniqueBenchmarkIds + 1);
+    assert.equal(stored.totals.suiteClaims, without.suiteClaims + 1);
+    assert.equal(stored.totals.effectUnsupportedIds, without.effectUnsupportedIds + 1);
+    assert.equal(stored.totals.effectSupportedIds, without.effectSupportedIds);
+    assert.equal(stored.totals.pinnedSupportedIds, without.pinnedSupportedIds);
 });
 
 test('OSC 5522 adds an owned verdict to the historical unsupported row without regrading stock', () => {
@@ -480,11 +497,11 @@ test('every publication test is a registered suite or finding, or is explicitly 
 
 test('the generated summary defines unsupported and not-measured separately and lists the unsupported id without counting it as supported', () => {
     const text = renderSummary(committed());
-    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 5 \|/);
-    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc113-reset-pointer-fg`, `extensions\.osc114-reset-pointer-bg`, `extensions\.osc720-scroll-up`, `modes\.deccolm`, `modes\.decsclm`\./);
-    assert.match(text, /\| of which measured, effect unsupported \| 5 \|/);
+    assert.match(text, /\| Effect contract unsupported \(measured, retained, not supported\) \| 6 \|/);
+    assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc113-reset-pointer-fg`, `extensions\.osc114-reset-pointer-bg`, `extensions\.osc52-read`, `extensions\.osc720-scroll-up`, `modes\.deccolm`, `modes\.decsclm`\./);
+    assert.match(text, /\| of which measured, effect unsupported \| 6 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 12 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 11 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);
@@ -714,7 +731,7 @@ test('the two SIXEL raster measurements retain their revision-specific verdicts 
     const failing = await buildInventory({ rederivation: entry => ({ status: entry.suite === 'static-images' ? 'failed' : 'passed', command: 'x', testSha256: testDigest(entry) }) });
     assert.equal(row(failing, 'extensions.sixel').claims[0].status, 'declared-not-rederived');
     assert.equal(failing.totals.uniqueBenchmarkIds, stored.totals.uniqueBenchmarkIds - 1);
-    assert.equal(failing.totals.effectUnsupportedIds, 5, 'the OSC 720, the two pointer-color, the DECCOLM and the DECSCLM measured negatives remain');
+    assert.equal(failing.totals.effectUnsupportedIds, stored.totals.effectUnsupportedIds);
 });
 
 test('the Kitty animation qualification keeps the supported effect, the inconclusive pinned callbacks and the stock grade as separate rederived claims', async () => {

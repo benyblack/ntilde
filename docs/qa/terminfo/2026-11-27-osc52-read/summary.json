@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "archives": {
+    "owned-run.zip": "b04b9201e4e5050f8baea5a36e1e38bf1b581bd8d9b130e6c2fe2d28f3f9f141",
+    "attempt-1.zip": "1eb07657437438fa5c1bae7a5cc63f48c20f6e5582342dcdf9459d3a0b783d4b",
+    "attempt-2.zip": "d2109fabe70d7a8b87c6e0eb564138f05eb89931d436e78f0c41b1fbfc197b17"
+  },
+  "attempts": [
+    {
+      "archive": "attempt-1.zip",
+      "runId": "2d19aa875ec313ec56ef4212626ee776",
+      "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
+      "scriptsRevision": "7cbdbe73405091af0e624527f176565cd987fb17",
+      "reason": "This run also verified empty denial and both clipboard readbacks. The collector was rerun after changing how it selects the observer, so the published measurement matches the final collector source."
+    },
+    {
+      "archive": "attempt-2.zip",
+      "runId": "d55d923e724cda2a115b71234060f533",
+      "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
+      "scriptsRevision": "a8e95282ca51f4c57e72944a69c5915b371e2a17",
+      "reason": "This run verified the same empty denial, surviving nonce and restored baseline before the SonarCloud fix changed the measured reply parser."
+    }
+  ],
+  "runId": "35af2056ab207bb9481cf9830b01748b",
+  "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
+  "scriptsRevision": "36b9cc07dfde9fbfc7f89e393a5a7673f3fc6940",
+  "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
+  "runtime": "linux-arm64",
+  "dotnetSdk": "10.0.403",
+  "x11Packages": {
+    "libgtk-4-1": "4.14.5+ds-0ubuntu0.10",
+    "libx11-6": "2:1.8.7-1ubuntu0.1",
+    "libxres1": "2:1.2.1-1build1",
+    "libxtst6": "2:1.2.3-1.1ubuntu0.1",
+    "python3-gi": "3.48.2-1",
+    "xvfb": "2:21.1.12-1ubuntu1.9"
+  },
+  "ownedRunId": "35af2056ab207bb9481cf9830b01748b",
+  "measuredAt": "2026-11-27T12:27:35.033Z",
+  "context": {
+    "appVersion": "0.14.0",
+    "appVersionSource": "operator-recorded source archive and publish command",
+    "executableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
+    "assemblySha256": "348a96098481a1613d678dbba5f1db7e130ad947e1c1e03ea5ee682166ce52c4",
+    "adapter": "ntilde-owned-x11-osc52-read-v1",
+    "sourceSnapshotPolicy": "owned-modern-x11-osc52-read-v1",
+    "sourceSnapshotManifestSha256": "221d4ec016e735aee81f9854992b6f02af9d2e64779d3d0f8b33f28da59f9ca7"
+  },
+  "stockCollector": {
+    "rerun": false,
+    "probeHash": "16a690f34c0e",
+    "note": "Historical stock grade carried forward from the frozen baseline."
+  },
+  "stockCollectorRunId": "02be5c606e0e7d79ab8e11f142d21ae0"
+}
