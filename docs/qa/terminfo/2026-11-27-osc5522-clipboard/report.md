@@ -27,9 +27,9 @@ Reusing that credential within 15 seconds opened the App-owned Clipboard access 
 
 ## Retained evidence and reproduction
 
-App `0.14.0` came from `db411becbe33922691e29d78b0ab7dc443d26b14` with .NET SDK `10.0.403`. Collector `9670c3fad322c0f90d65217540ecebcb737d8146` ran with Node `v24.22.2` on Ubuntu 24.04 LTS arm64 (Docker Desktop). App PID 9951 owned local pane `e534f05e-7b86-4553-9c40-afd3bcc54a61` and child PID 10006 on `/dev/pts/0`. XRes verified the App and independent GTK clients on Xvfb PID 9948.
+App `0.14.0` came from `db411becbe33922691e29d78b0ab7dc443d26b14` with .NET SDK `10.0.403`. Collector `906ec9748703cfc3d813a1b7d10be1b6dca8768c` ran with Node `v24.22.2` on Ubuntu 24.04 LTS arm64 (Docker Desktop). App PID 13994 owned local pane `2fc08f39-926f-4fd0-9fac-cce43e7595b7` and child PID 14049 on `/dev/pts/0`. XRes verified the App and independent GTK clients on Xvfb PID 13991.
 
-The archive retains the raw mode and OSC exchanges, XTEST events, both independent MIME readbacks, consent window ownership and focus restoration, App binary hashes and measured collector sources. The prepared two-MIME clipboard baseline and incoming modes were read back before the worker restored termios and exited. The App, eight GTK peers and Xvfb exited. The X11 socket and fixture tree were gone before the lease released at 2026-11-27T08:33:54.029Z. [Owned run](owned-run.zip) · [Manifest](manifest.json) · [Derived report](report.json).
+The archive retains the raw mode and OSC exchanges, XTEST events, both independent MIME readbacks, consent window ownership and focus restoration, App binary hashes and measured collector sources. The prepared two-MIME clipboard baseline and incoming modes were read back before the worker restored termios and exited. The App, eight GTK peers and Xvfb exited. The X11 socket and fixture tree were gone before the lease released at 2026-11-27T08:43:39.418Z. [Owned run](owned-run.zip) · [Manifest](manifest.json) · [Derived report](report.json).
 
 [Earlier attempt `796553d53da0d7c5c79ff39dda75389b`](attempt-1.zip). The first verifier assumed the seal repeated the arm timestamp. The worker records that timestamp on the arm receipt. The initial query returned reset and cleanup completed.
 
@@ -40,6 +40,14 @@ The archive retains the raw mode and OSC exchanges, XTEST events, both independe
 [Earlier attempt `10b9dc2c0417978e0382d6c94c681a34`](attempt-4.zip). This completed run verified both effects and restored the fixture. The final collector tightened frame termination to reject any trailing ordinary paste bytes.
 
 [Earlier attempt `415a1d98e8bb910104d7133427793f86`](attempt-5.zip). This completed run verified the verdicts and cleanup before the SonarCloud dispatch and X11 library cleanup changed the measured collector source.
+
+[Earlier attempt `4b59d0c72432614171aa4a061e5251a5`](attempt-6.zip). This completed run preceded the GTK text-path repair and the consent observer changes requested in review.
+
+[Earlier attempt `1eb5b5bd25ed630a1a34ff9ba89dbcfe`](attempt-7.zip). X11 reported BadWindow while the consent dialog was disappearing. The collector declined the run because it could not verify clipboard restoration. Process, socket and lease cleanup completed.
+
+[Earlier attempt `ecc816d235459242ee0b455ef965ca85`](attempt-8.zip). The first run with an atomic X11 window snapshot passed. The final collector also waits for the dialog to appear and bounds token refusal through the child reply.
+
+[Earlier attempt `ca9127d1b9297746741a4a8f7be6c18a`](attempt-9.zip). A second run verified the window snapshot fix before the final consent observation guard changed.
 
 Rederive offline with Node 24 and Python 3.
 
@@ -53,6 +61,6 @@ For a fresh Linux run, install Node 24, Python 3 with PyGObject and GTK4, Xvfb, 
 # Build from App revision db411becbe33922691e29d78b0ab7dc443d26b14.
 scripts/build.sh publish src/Ntilde.App -c Release -r linux-arm64 --self-contained true -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar
 chmod -R go-w /absolute/private/sidecar
-# Launch from collector revision 9670c3fad322c0f90d65217540ecebcb737d8146.
+# Launch from collector revision 906ec9748703cfc3d813a1b7d10be1b6dca8768c.
 node scripts/terminfo-modern-x11-owned.mjs /absolute/private/sidecar/Ntilde 0.14.0 --osc5522-clipboard
 ~~~
