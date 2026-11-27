@@ -61,21 +61,24 @@ function dimensions(match, widthFirst) {
     return match ? { width: Number(match[widthFirst ? 1 : 2]), height: Number(match[widthFirst ? 2 : 1]) } : null;
 }
 
+const replyFrames = [
+    { target: 'area', pattern: /^\x1b\[4;([1-9]\d*);([1-9]\d*)t$/ },
+    { target: 'cell', pattern: /^\x1b\[6;([1-9]\d*);([1-9]\d*)t$/ },
+    { target: 'cappedArea', pattern: /^\x1b\[\?2;0;([1-9]\d*);([1-9]\d*)S$/, widthFirst: true },
+];
+
 export function verifyReply(samples, step, used, expected) {
     requireGeometry(samples?.length === 1 && samples[0].requestBytes === step.queries[0], 'query bytes or order changed');
     const raw = rawText(samples[0].sample, used);
     const sentinel = /\x1b\[\?[0-9;]+c$/.exec(raw)?.[0];
     requireGeometry(sentinel, 'the pinned DA1 sentinel is missing');
     const reply = raw.slice(0, -sentinel.length);
-    const area = step.index === 0, cell = step.index === 1;
-    const pattern = area ? /^\x1b\[4;([1-9]\d*);([1-9]\d*)t$/
-        : cell ? /^\x1b\[6;([1-9]\d*);([1-9]\d*)t$/ : /^\x1b\[\?2;0;([1-9]\d*);([1-9]\d*)S$/;
-    const match = pattern.exec(reply);
-    const observed = dimensions(match, !area && !cell);
-    const target = area ? expected.area : cell ? expected.cell : expected.cappedArea;
+    const { target, pattern, widthFirst } = replyFrames[step.index];
+    const observed = dimensions(pattern.exec(reply), widthFirst);
+    let outcome = 'inconclusive';
+    if (observed !== null) outcome = same(observed, expected[target]) ? 'passed' : 'failed';
     return {
         ...(step.index < 2 ? { id: caseIds[step.index] } : {}),
-        request: step.queries[0], raw, reply, expected: target, observed,
-        outcome: observed === null ? 'inconclusive' : same(observed, target) ? 'passed' : 'failed',
+        request: step.queries[0], raw, reply, expected: expected[target], observed, outcome,
     };
 }

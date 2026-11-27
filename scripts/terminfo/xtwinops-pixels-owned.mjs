@@ -12,9 +12,9 @@ import { Collection as SixelCollection, requireResize, verifySeal } from './sixe
 import { pristineImageBaseline, validateImageOwnership } from './static-images.mjs';
 import { journal, json, read } from './static-images-receipt.mjs';
 import { readOwnedOutputMode, validateOutputGeometry } from './terminal-output.mjs';
-import { initialFontSize, nonce, pixelDimensions, planFor, prefix, requireGeometry, scope, verifyReply } from './xtwinops-pixels-contracts.mjs';
+import { initialFontSize, nonce, pixelDimensions, planFor, requireGeometry, scope, verifyReply } from './xtwinops-pixels-contracts.mjs';
 
-export { prefix, scope };
+export { prefix, scope } from './xtwinops-pixels-contracts.mjs';
 export const workerFile = 'xtwinops-pixels-worker.mjs';
 export const allowGeneratedInput = true;
 export const imageOwnership = true;
@@ -118,7 +118,7 @@ export class Collection extends SixelCollection {
             if (frame.sha256 === frame.afterSha256 && cell?.viewRows === rows && cell?.viewCols === cols
                 && frame.metadata.fontGeometry?.fontSizeDip === expectedFont
                 && same(gridOf(frame.metadata.buffer), { rows, cols })
-                && new RegExp('(?:^|[;\\s])' + rows + ' rows;\\s+' + cols + ' columns;').test(terminalOutput.description)) {
+                && new RegExp(String.raw`(?:^|[;\s])${rows} rows;\s+${cols} columns;`).test(terminalOutput.description)) {
                 frame.metadata = copyPaneMetadata(frame.metadata);
                 validateOutputGeometry(terminalOutput.description, rows, cols);
                 const windows = JSON.parse(native(windowScript, [ownership.app.pid], budget));
