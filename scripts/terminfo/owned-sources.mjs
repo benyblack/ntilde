@@ -21,7 +21,9 @@ export const capturedUnicodeBoundarySourcePolicy = 'readonly-owned-source-graph-
 export const capturedUnicodeWidthSourcePolicy = 'readonly-owned-source-graph-v81';
 export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
+export const capturedMok3SourcePolicy = 'readonly-owned-source-graph-modify-other-keys-3-v1';
 const focusedSourcePolicies = [
+    ['mok3OwnedSourceSha256', capturedMok3SourcePolicy],
     ['fontLigaturesOwnedSourceSha256', capturedFontLigaturesSourcePolicy],
     ['osc633MetadataOwnedSourceSha256', capturedOsc633MetadataSourcePolicy],
     ['sixelReportsOwnedSourceSha256', capturedSixelReportsSourcePolicy],
@@ -1042,6 +1044,13 @@ export const capturedSixelReportsSourceFiles = Object.freeze({
     sixelReportsWorkerSourceSha256: 'sixel-reports-worker.mjs',
 });
 
+export const capturedMok3SourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    mok3ContractsSourceSha256: 'modify-other-keys-3-contracts.mjs',
+    mok3OwnedSourceSha256: 'modify-other-keys-3-owned.mjs',
+    mok3WorkerSourceSha256: 'modify-other-keys-3-worker.mjs',
+});
+
 export const capturedFontLigaturesSourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     fontLigaturesContractsSourceSha256: 'font-ligatures-contracts.mjs',
@@ -1138,6 +1147,7 @@ export function readSourceSnapshot(root) {
         [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
         [capturedSixelReportsSourcePolicy]: capturedSixelReportsSourceFiles,
         [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,
+        [capturedMok3SourcePolicy]: capturedMok3SourceFiles,
         [capturedFontLigaturesSourcePolicy]: capturedFontLigaturesSourceFiles,
         [capturedKittyGraphicsSourcePolicy]: capturedKittyGraphicsSourceFiles,
         [capturedUnicodeBoundarySourcePolicy]: capturedUnicodeBoundarySourceFiles,
