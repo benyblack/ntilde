@@ -14,7 +14,7 @@ export const contractsVersion = 1;
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(qa, '2026-11-27-modify-other-keys-3');
 const hashes = {
-    fixed: 'da7f6c0cd926c2a7caef52c4ea8837a0e58df83d5a9d72a9da04700882070fd5',
+    fixed: '91be0547313026ab2de52efbd2a71ad46deebe42309ea517d006e46793c160a7',
     baseline: 'c5ed87beb967bd995da845287c92782e0702d0fdb56652cea402f23edef0c7bc',
 };
 

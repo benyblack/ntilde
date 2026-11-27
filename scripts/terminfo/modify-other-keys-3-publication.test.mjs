@@ -15,9 +15,16 @@ test('both receipts replay, both pinned paths are inconclusive, and the child di
     assert.equal(item.pinned.terminal.observation.outcome, 'inconclusive');
     assert.equal(item.pinned.termless.response, '{"declaredModifyOtherKeys":false}');
     const rows = item.contractResult.observations;
+    assert.equal(rows.length, 24);
+    for (const [id, bytes] of [['level3-missing-symbol-text', '61'], ['level3-missing-symbol-key-only', '']]) {
+        const row = rows.find(item => item.id === id);
+        assert.equal(row.event.keySymbol, undefined);
+        assert.deepEqual([row.handled, row.actualHex], [false, bytes]);
+    }
     for (const [key, plain, frame] of [['a', 'a', '97'], ['digit2', '2', '50'], ['semicolon', ';', '59'], ['space', ' ', '32']]) {
         const level2 = rows.find(r => r.id === 'level2-' + key), level3 = rows.find(r => r.id === 'level3-' + key);
         assert.deepEqual(level2.event, level3.event);
+        assert.equal(level3.event.keySymbol, plain);
         assert.equal(level2.actualHex, Buffer.from(plain).toString('hex'));
         assert.equal(level3.actualHex, Buffer.from('\x1b[27;1;' + frame + '~').toString('hex'));
         assert.deepEqual([level2.handled, level3.handled, level3.textHandled], [false, true, true]);

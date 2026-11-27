@@ -5,24 +5,24 @@
   "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "probeHash": "16a690f34c0e",
   "measurement": {
-    "runId": "78b3dbd7ec1be90575890efad4f1fb07",
-    "appRevision": "d569b5180b86ec8369b6668f4d8d7b3cadc68c45",
-    "scriptsRevision": "d569b5180b86ec8369b6668f4d8d7b3cadc68c45",
+    "runId": "3de926c0f4933155116483a55b4f7ad4",
+    "appRevision": "f840fcd41c8a4e2a1635334b3eb92fb7469415c0",
+    "scriptsRevision": "f840fcd41c8a4e2a1635334b3eb92fb7469415c0",
     "platform": "macOS 27.0.1, arm64",
     "sourcePolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
     "receiptSchema": 1,
-    "version": "0.14.0+d569b5180b86ec8369b6668f4d8d7b3cadc68c45",
+    "version": "0.14.0+f840fcd41c8a4e2a1635334b3eb92fb7469415c0",
     "nodeVersion": "v24.22.3",
-    "startedAt": "2026-11-27T14:42:56.900Z",
-    "releasedAt": "2026-11-27T14:43:02.074Z",
+    "startedAt": "2026-11-27T14:46:31.831Z",
+    "releasedAt": "2026-11-27T14:46:37.266Z",
     "geometry": {
       "rows": 40,
       "cols": 140
     },
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "399661da59425c82fc61a31a126390124a82c3b1c5267ef2347eab0931091523",
-    "sourceSnapshotManifestSha256": "79068a92d8f26c4c0b80aeda6044db6d5d465da608df499628ad332e8ff42a75",
-    "archiveSha256": "504fd3c7227368a8753ff8250584288d4cdb7a5204d54dd16d59cc64c0a968fc"
+    "assemblySha256": "67fc28c24453213ba7c56435c317e530dbbabd4ba2d5c89005717ccad5d90786",
+    "sourceSnapshotManifestSha256": "c6c7f0647c7570931e221421fabe3351fbf7e89ce2c6db138ffeef5cfcbb58f0",
+    "archiveSha256": "d676bc8788a68c2c6ed7126167bbf9625070b12035a233a2f3afc61a8b2d019a"
   },
   "baseline": {
     "measurement": {
@@ -197,7 +197,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "a",
-              "text": "a"
+              "text": "a",
+              "keySymbol": "a"
             },
             "level": 2,
             "expectedHex": "61",
@@ -213,7 +214,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "digit2",
-              "text": "2"
+              "text": "2",
+              "keySymbol": "2"
             },
             "level": 2,
             "expectedHex": "32",
@@ -229,7 +231,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "semicolon",
-              "text": ";"
+              "text": ";",
+              "keySymbol": ";"
             },
             "level": 2,
             "expectedHex": "3b",
@@ -245,7 +248,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "space",
-              "text": " "
+              "text": " ",
+              "keySymbol": " "
             },
             "level": 2,
             "expectedHex": "20",
@@ -261,7 +265,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "a",
-              "text": "a"
+              "text": "a",
+              "keySymbol": "a"
             },
             "level": 3,
             "expectedHex": "1b5b32373b313b39377e",
@@ -277,7 +282,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "digit2",
-              "text": "2"
+              "text": "2",
+              "keySymbol": "2"
             },
             "level": 3,
             "expectedHex": "1b5b32373b313b35307e",
@@ -293,7 +299,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "semicolon",
-              "text": ";"
+              "text": ";",
+              "keySymbol": ";"
             },
             "level": 3,
             "expectedHex": "1b5b32373b313b35397e",
@@ -309,7 +316,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "space",
-              "text": " "
+              "text": " ",
+              "keySymbol": " "
             },
             "level": 3,
             "expectedHex": "1b5b32373b313b33327e",
@@ -324,7 +332,8 @@
             "event": {
               "modifiers": 0,
               "kind": "keyDown",
-              "key": "a"
+              "key": "a",
+              "keySymbol": "a"
             },
             "level": 3,
             "expectedHex": "1b5b32373b313b39377e",
@@ -340,7 +349,8 @@
               "modifiers": 1,
               "kind": "keyDown",
               "key": "a",
-              "text": "A"
+              "text": "A",
+              "keySymbol": "A"
             },
             "level": 3,
             "expectedHex": "1b5b32373b323b36357e",
@@ -376,6 +386,37 @@
             "expectedHex": "1b5b32373b333b39377e",
             "actualHex": "1b5b32373b333b39377e",
             "handled": true,
+            "textHandled": null,
+            "matches": true
+          },
+          {
+            "id": "level3-missing-symbol-text",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a",
+              "text": "a"
+            },
+            "level": 3,
+            "expectedHex": "61",
+            "actualHex": "61",
+            "handled": false,
+            "textHandled": true,
+            "matches": true
+          },
+          {
+            "id": "level3-missing-symbol-key-only",
+            "role": "control",
+            "event": {
+              "modifiers": 0,
+              "kind": "keyDown",
+              "key": "a"
+            },
+            "level": 3,
+            "expectedHex": "",
+            "actualHex": "",
+            "handled": false,
             "textHandled": null,
             "matches": true
           },
@@ -446,7 +487,8 @@
               "modifiers": 0,
               "kind": "keyDown",
               "key": "a",
-              "text": "a"
+              "text": "a",
+              "keySymbol": "a"
             },
             "level": 3,
             "expectedHex": "1b5b32373b313b39377e",
