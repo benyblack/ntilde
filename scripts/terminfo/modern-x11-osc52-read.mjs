@@ -7,7 +7,7 @@ export const id = 'extensions.osc52-read';
 export const queryHex = '1b5d35323b633b3f07';
 export const uuidPattern = /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/;
 const baselinePattern = /^ntilde-osc52-baseline-[a-f\d]{32}$/;
-const frame = /^\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)$/;
+const replyPrefix = '\x1b]52;c;';
 const read = { kind: 'read' };
 const hex = text => Buffer.from(text, 'latin1').toString('hex');
 
@@ -25,6 +25,13 @@ function fixtureRead(step, record, previous, source, text) {
     return checked;
 }
 
+function payloadOf(reply) {
+    if (!reply.startsWith(replyPrefix)) return null;
+    if (reply.endsWith('\x07')) return reply.slice(replyPrefix.length, -1);
+    if (reply.endsWith('\x1b\\')) return reply.slice(replyPrefix.length, -2);
+    return null;
+}
+
 function classify(rawHex, cprHex, trial) {
     const raw = Buffer.from(rawHex, 'hex').toString('latin1');
     const cpr = Buffer.from(cprHex, 'hex').toString('latin1');
@@ -35,9 +42,8 @@ function classify(rawHex, cprHex, trial) {
     const reply = parts.join('');
     const replyHex = hex(reply);
     if (!reply) return { kind: 'silence', replyHex };
-    const match = frame.exec(reply);
-    if ((parts[0] && parts[1]) || !match || match[0] !== reply) return { kind: 'malformed', replyHex };
-    const encoded = match[1];
+    const encoded = payloadOf(reply);
+    if ((parts[0] && parts[1]) || encoded === null) return { kind: 'malformed', replyHex };
     const decoded = Buffer.from(encoded, 'base64');
     if (decoded.toString('base64') !== encoded) return { kind: 'malformed', replyHex };
     if (!encoded) return { kind: 'empty-denial', replyHex };
