@@ -131,6 +131,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'osc66-publication.test.mjs': 'standalone owned OSC 66 cursor and rendered ink evidence for a stock-supported case',
     'kitty-graphics-publication.test.mjs': 'standalone owned Kitty transmit and display pixels for two cases already supported by the stock baseline',
     'rich-x11-kitty-keyboard-publication.test.mjs': 'standalone owned Rich TUI keyboard effects for five stock-supported negotiation cases',
+    'rich-x11-kitty-clicks-publication.test.mjs': 'standalone owned Rich TUI prompt click effect for a case without a runnable pinned probe',
     'unicode-boundary-publication.test.mjs': 'standalone owned Unicode assessment of three cases already supported by the stock baseline',
     'unicode-width-publication.test.mjs': 'standalone owned Unicode assessment of five cases already supported by the stock baseline',
     'cell-size-publication.test.mjs': 'frozen pre-integration source-policy v63 cell-size result; current integrated v64 remeasurement is the active suite claim',

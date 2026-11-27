@@ -37,8 +37,18 @@ namespace Ntilde.VT
             }
         }
 
+        private int _writtenColumns;
+
         /// <summary>Conservative extent of authored cells; keeps typed spaces distinct from unused padding.</summary>
-        public int WrittenColumns { get; internal set; }
+        public int WrittenColumns
+        {
+            get => _writtenColumns;
+            internal set
+            {
+                _writtenColumns = value;
+                PromptTextSpans = null;
+            }
+        }
 
         internal void SetSoftWrap(int columns)
         {
@@ -66,7 +76,7 @@ namespace Ntilde.VT
 
         internal void NoteColumnsWritten(int endExclusive)
         {
-            if (endExclusive > WrittenColumns) WrittenColumns = System.Math.Min(endExclusive, Cells.Length);
+            if (endExclusive > _writtenColumns) _writtenColumns = System.Math.Min(endExclusive, Cells.Length);
             if (_wrappedColumns is int width && endExclusive > width)
                 _wrappedColumns = endExclusive < Cells.Length ? endExclusive : null;
         }

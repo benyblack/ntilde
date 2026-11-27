@@ -69,7 +69,7 @@ export function exchange(record, plan, previous) {
     return record.finished;
 }
 
-function verifyAction(step, expected, previous, identity, key, tag) {
+export function verifyAction(step, expected, previous, identity, key, tag) {
     const { native } = step;
     const { point, beforeMask, afterMask, kind } = expected;
     need(same(native.request, expected) && native.serverPid === identity.serverPid

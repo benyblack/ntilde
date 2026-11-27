@@ -174,6 +174,7 @@ namespace Ntilde.VT.Storage
             row.CopyTo(currentPage.GetRowSpan(rowIndex));
             currentPage.SetRowWrapped(rowIndex, isWrapped, wrappedColumns);
             currentPage.SetWrittenColumns(rowIndex, writtenColumns ?? wrappedColumns ?? _cols);
+            currentPage.SetPromptTextSpans(rowIndex, metadata.PromptTextSpans);
             if (extendedText != null && extendedText.Count > 0)
                 currentPage.SetExtendedTextFromMap(rowIndex, extendedText);
             if (hyperlinks != null && hyperlinks.Count > 0)
@@ -220,6 +221,12 @@ namespace Ntilde.VT.Storage
         {
             var (page, row) = FindPage(logicalIndex);
             return page.GetWrittenColumns(row);
+        }
+
+        internal PromptTextSpan[]? GetPromptTextSpans(int logicalIndex)
+        {
+            var (page, row) = FindPage(logicalIndex);
+            return page.GetPromptTextSpans(row);
         }
 
         public int? GetWrappedColumns(int logicalIndex)
@@ -398,7 +405,8 @@ namespace Ntilde.VT.Storage
             wrappedColumns = page.GetWrappedColumns(rowIndex);
             writtenColumns = page.GetWrittenColumns(rowIndex);
             metadata = new(page.GetExtendedTextMap(rowIndex), page.GetHyperlinkMap(rowIndex),
-                page.GetUnderlineMap(rowIndex), page.GetTextSizingMap(rowIndex), page.GetLineSize(rowIndex));
+                page.GetUnderlineMap(rowIndex), page.GetTextSizingMap(rowIndex), page.GetLineSize(rowIndex),
+                page.GetPromptTextSpans(rowIndex));
             page.ClearRowMetadata(rowIndex);
 
             page.UsedRows--;

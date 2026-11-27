@@ -101,6 +101,10 @@ public partial class TerminalBuffer
         EraseTextSizingRange(x, x + replacement.Width, y, y + replacement.Height);
         EraseOrdinaryWideSizingBoundaries(x, y, replacement.Width, replacement.Height);
         StoreAttachedTextSizing(replacement, x, y, style);
+        int top = y - TextSizingAbsoluteRow(0);
+        int bottom = top + replacement.Height - 1;
+        if (bottom >= 0 && _promptClickMode != PromptClickMode.Disabled)
+            ExtendClickPromptThroughRows(CaptureClickPosition(top, 0).AbsoluteRow, bottom, x + replacement.Width);
         if (followsEnd)
         {
             _cursorCol = x;
@@ -153,7 +157,7 @@ public partial class TerminalBuffer
         row.SetUnderline(col, style.Underline);
         row.SetProtected(col, style.IsProtected);
         row.SetTextSizing(col, piece);
-        row.NoteColumnsWritten(col + 1);
+        row.NoteGlyphWritten(col, col + 1);
         row.TouchRevision();
     }
 }

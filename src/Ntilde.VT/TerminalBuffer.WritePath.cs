@@ -189,6 +189,8 @@ namespace Ntilde.VT
         private void WriteContentCore(string text)
         {
             FlushGrapheme(); // Ensure any single char buffered by WriteChar is handled
+            long firstPromptRow = _promptClickMode != PromptClickMode.Disabled
+                ? CaptureClickPosition(_cursorRow, 0).AbsoluteRow : -1;
 
             // Every printable character of all output comes through here, so the segmentation used
             // to dominate allocation: StringInfo.GetTextElementEnumerator boxes an enumerator and
@@ -205,6 +207,8 @@ namespace Ntilde.VT
                 WriteGraphemeInternal(remaining.Slice(0, length));
                 remaining = remaining.Slice(length);
             }
+            if (firstPromptRow >= 0 && _lastCharCol >= 0)
+                ExtendClickPromptThroughRows(firstPromptRow, _lastCharRow, _lastCharCol + 1);
         }
 
         /// <summary>
@@ -338,7 +342,7 @@ namespace Ntilde.VT
 
                             // Re-evaluate width of the merged cluster
                             int newWidth = GetGraphemeWidth(merged);
-                            row.NoteColumnsWritten(Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
+                            row.NoteGlyphWritten(attachCol, Math.Min(Cols, attachCol + Math.Max(1, newWidth)));
 
                             // ALWAYS enforce wide flag and continuation for width >= 2
                             if (newWidth >= 2)
@@ -458,7 +462,7 @@ namespace Ntilde.VT
                 if (Modes.IsInsertMode) InsertCharactersInternal(width);
 
                 var row = _viewport[_cursorRow];
-                row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + Math.Max(1, width)));
+                row.NoteGlyphWritten(_cursorCol, Math.Min(Cols, _cursorCol + Math.Max(1, width)));
 
                 SyncPackedState();
 
@@ -592,6 +596,7 @@ namespace Ntilde.VT
 
             if (!isFullScreenScroll || _isAltScreen)
             {
+                InvalidateClickPromptInRows(ScrollTop, ScrollBottom);
                 int top = TextSizingAbsoluteRow(ScrollTop);
                 int bottom = TextSizingAbsoluteRow(ScrollBottom + 1);
                 EraseTextSizingAcrossBoundary(top);
@@ -714,6 +719,7 @@ namespace Ntilde.VT
                 return;
             }
 
+            InvalidateClickPromptInRows(ScrollTop, ScrollBottom);
             int sizedTop = TextSizingAbsoluteRow(ScrollTop);
             int sizedBottom = TextSizingAbsoluteRow(ScrollBottom + 1);
             EraseTextSizingAcrossBoundary(sizedTop);
@@ -798,7 +804,7 @@ namespace Ntilde.VT
                 EraseTextSizingForShift(insert: true, Math.Max(0, endCol - _cursorCol));
             }
             row.WrappedColumns = null;
-            row.WrittenColumns = Cols;
+            row.NoteColumnShift(_cursorCol, edge, endCol - _cursorCol, _promptClickMode != PromptClickMode.Disabled);
 
             // A glyph pushed against the right edge loses its continuation off the end; its anchor must not stay protected there.
             // (A glyph that is already an edge anchor keeps its record: nothing was cut.)
@@ -824,6 +830,7 @@ namespace Ntilde.VT
                 row.Cells[c] = empty;
             }
             row.TouchRevision();
+            if (endCol > _cursorCol) UpdateClickPromptAfterRowEdit(_cursorRow);
         }
 
         public void DeleteCharacters(int count)
@@ -868,7 +875,7 @@ namespace Ntilde.VT
             // the anchor's record must go with the half that is deleted, or the two would read as one protected glyph.
             if (_cursorCol > 0 && row.Cells[_cursorCol].IsWideContinuation && row.Cells[_cursorCol - 1].IsWide) row.SetProtected(_cursorCol - 1, false);
             row.WrappedColumns = null;
-            row.WrittenColumns = Cols;
+            row.NoteColumnShift(_cursorCol, edge, -count, _promptClickMode != PromptClickMode.Disabled);
 
             // Shift characters to left
             for (int c = _cursorCol; c < endCol; c++)
@@ -907,6 +914,7 @@ namespace Ntilde.VT
                 row.Cells[c] = empty;
             }
             row.TouchRevision();
+            if (count > 0) UpdateClickPromptAfterRowEdit(_cursorRow);
         }
     }
 }

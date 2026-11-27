@@ -147,6 +147,8 @@ public partial class TerminalBuffer
             _cursorRow = top + dy;
             StoreTextSizingRow(block, dy);
         }
+        if (_promptClickMode != PromptClickMode.Disabled)
+            ExtendClickPromptThroughRows(CaptureClickPosition(top, 0).AbsoluteRow, _cursorRow, _cursorCol + width);
         FinishTextSizingWrite(top, width, text);
     }
 
@@ -168,7 +170,7 @@ public partial class TerminalBuffer
     private void StoreTextSizingRow(TextSizingBlock block, int dy)
     {
         var row = _viewport[_cursorRow];
-        row.NoteColumnsWritten(_cursorCol + block.Width);
+        row.NoteGlyphWritten(_cursorCol, _cursorCol + block.Width);
         for (int dx = 0; dx < block.Width; dx++)
         {
             int col = _cursorCol + dx;
@@ -397,26 +399,30 @@ public partial class TerminalBuffer
             ? new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground)
             : TerminalCell.Default);
         bool changedHistory = false;
+        bool trackPrompt = !alternate && !_isAltScreen && _promptClickMode != PromptClickMode.Disabled;
         int limit = historyCount + rows.Length;
         for (int row = Math.Max(0, y); row < Math.Min(limit, y + block.Height); row++)
         {
+            bool erased = false;
             for (int col = Math.Max(0, x); col < Math.Min(Cols, x + block.Width); col++)
             {
                 if (row < historyCount)
                 {
-                    _scrollback.ClearTextSizingCell(row, col, blank, block);
+                    _scrollback.ClearTextSizingCell(row, col, blank, block, trackPrompt);
                     changedHistory = true;
                     continue;
                 }
-                EraseSizedRowCell(rows[row - historyCount], col, block, blank);
+                erased |= EraseSizedRowCell(rows[row - historyCount], col, block, blank, trackPrompt);
             }
+            if (trackPrompt && erased) UpdateClickPromptAfterRowEdit(row - historyCount);
         }
         if (changedHistory) InvalidateTextSizingHistory();
         if (_textSizingBlocks?.Remove(block) == true) _textSizingStorage -= block.StorageCost;
     }
-    private static void EraseSizedRowCell(TerminalRow? target, int col, TextSizingBlock block, TerminalCell blank)
+    private static bool EraseSizedRowCell(TerminalRow? target, int col, TextSizingBlock block, TerminalCell blank, bool trackPrompt)
     {
-        if (target == null || !ReferenceEquals(target.GetTextSizing(col)?.Block, block)) return;
+        if (target == null || !ReferenceEquals(target.GetTextSizing(col)?.Block, block)) return false;
+        target.NoteCellsErased(col, col + 1, trackPrompt, noteLayout: false);
         target.Cells[col] = blank;
         target.SetExtendedText(col, null);
         target.SetHyperlink(col, null);
@@ -424,6 +430,7 @@ public partial class TerminalBuffer
         target.SetProtected(col, false);
         target.SetTextSizing(col, null);
         target.TouchRevision();
+        return true;
     }
 
 }

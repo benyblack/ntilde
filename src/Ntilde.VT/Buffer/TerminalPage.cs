@@ -39,6 +39,7 @@ namespace Ntilde.VT.Storage
         // Zero means full-row/legacy; otherwise the value is the content column count plus one.
         private int[]? _wrappedColumns;
         private int[]? _writtenColumns;
+        private PromptTextSpan[]?[]? _promptTextSpans;
         // Null while every row in the page is single width.
         private byte[]? _lineSizes;
 
@@ -120,6 +121,7 @@ namespace Ntilde.VT.Storage
             _isWrappedMask = 0;
             _wrappedColumns = null;
             _writtenColumns = null;
+            _promptTextSpans = null;
             _lineSizes = null;
             _extendedText = null;
             _hyperlinks = null;
@@ -139,6 +141,7 @@ namespace Ntilde.VT.Storage
             _isWrappedMask = 0;
             _wrappedColumns = null;
             _writtenColumns = null;
+            _promptTextSpans = null;
             _lineSizes = null;
             _extendedText = null;
             _hyperlinks = null;
@@ -201,6 +204,8 @@ namespace Ntilde.VT.Storage
         internal void SetWrittenColumns(int rowIndex, int columns)
         {
             if (columns < 0 || columns > Cols) throw new ArgumentOutOfRangeException(nameof(columns));
+            if (GetPromptTextSpans(rowIndex) is { Length: > 0 } spans && spans[^1].End > columns)
+                SetPromptTextSpans(rowIndex, PromptTextSpan.Clip(spans, columns));
             if (columns == Cols && _writtenColumns == null) return;
             if (_writtenColumns == null)
             {
@@ -208,6 +213,23 @@ namespace Ntilde.VT.Storage
                 Array.Fill(_writtenColumns, Cols);
             }
             _writtenColumns[rowIndex] = columns;
+        }
+
+        internal PromptTextSpan[]? GetPromptTextSpans(int rowIndex) => _promptTextSpans?[rowIndex];
+
+        internal void SetPromptTextSpans(int rowIndex, PromptTextSpan[]? spans)
+        {
+            if (spans is null && _promptTextSpans is null) return;
+            _promptTextSpans ??= new PromptTextSpan[]?[RowsInPage];
+            _promptTextSpans[rowIndex] = spans;
+        }
+
+        internal void NoteGlyphWritten(int rowIndex, int start, int end)
+        {
+            int columns = Math.Max(GetWrittenColumns(rowIndex), end);
+            SetWrittenColumns(rowIndex, columns);
+            if (GetPromptTextSpans(rowIndex) is { } spans)
+                SetPromptTextSpans(rowIndex, PromptTextSpan.Merge(spans, start, end, columns));
         }
 
         // ── Extended Text Metadata ───────────────────────────────────────────────
@@ -287,6 +309,7 @@ namespace Ntilde.VT.Storage
             SetRowWrapped(rowIndex, false);
             SetLineSize(rowIndex, LineSize.SingleWidth);
             SetWrittenColumns(rowIndex, Cols);
+            SetPromptTextSpans(rowIndex, null);
             if (_extendedText != null) _extendedText[rowIndex] = null;
             if (_hyperlinks != null) _hyperlinks[rowIndex] = null;
             if (_underlines != null) _underlines[rowIndex] = null;

@@ -93,30 +93,9 @@ namespace Ntilde.VT
         {
             visualRow = -1;
 
-            // Coordinate-space epoch first: after a scrollback reset (CSI 3J, RIS, clear-buffer,
-            // reflow) a stale AbsoluteRow resolves to a perfectly plausible row, so no arithmetic
-            // check downstream can catch it.
-            if (mark.Generation != buffer.Scrollback.Generation)
+            if (!TryResolveLiveRowLocked(buffer, mark, out int liveRow))
             {
                 return false;
-            }
-
-            // The alt screen has no scrollback and no shared row numbering, and Command Assist is
-            // hidden there anyway.
-            if (mark.IsAltScreen || buffer.IsAltScreenActive)
-            {
-                return false;
-            }
-
-            long derivedRow = mark.AbsoluteRow - buffer.Scrollback.TotalRowsEvicted;
-            if (derivedRow < 0)
-            {
-                return false; // the marked line aged out of history
-            }
-
-            if (derivedRow >= buffer.InternalTotalLines)
-            {
-                return false; // past the end of the buffer: not a row that exists
             }
 
             // An offset larger than the history that exists names a viewport nobody can be
@@ -132,14 +111,48 @@ namespace Ntilde.VT
             // Viewport top in the buffer's current addressing space, mirroring
             // TerminalBuffer.GetVisualCursorRow: the live edge starts at Scrollback.Count, and
             // scrolling back moves the top up by scrollOffset rows.
-            long viewportTop = buffer.Scrollback.Count - (long)scrollOffset;
-            long row = derivedRow - viewportTop;
+            long row = (long)liveRow + scrollOffset;
             if (row < 0 || row >= visibleRows)
             {
                 return false; // scrolled out of the viewport
             }
 
             visualRow = (int)row;
+            return true;
+        }
+
+        /// <summary>Resolves a retained mark relative to the live screen. History rows are negative.</summary>
+        /// <remarks>The caller holds the buffer lock.</remarks>
+        internal static bool TryResolveLiveRowLocked(TerminalBuffer buffer, ShellIntegrationMark mark, out int liveRow)
+        {
+            liveRow = 0;
+            // Coordinate-space epoch first: after a scrollback reset (CSI 3J, RIS, clear-buffer,
+            // reflow) a stale AbsoluteRow resolves to a perfectly plausible row, so no arithmetic
+            // check downstream can catch it.
+            if (mark.Generation != buffer.Scrollback.Generation)
+            {
+                return false;
+            }
+
+            // The alt screen has no scrollback and no shared row numbering, and Command Assist is
+            // hidden there anyway.
+            if (mark.IsAltScreen || buffer.IsAltScreenActive)
+            {
+                return false;
+            }
+
+            long storedRow = mark.AbsoluteRow - buffer.Scrollback.TotalRowsEvicted;
+            if (storedRow < 0)
+            {
+                return false; // the marked line aged out of history
+            }
+
+            if (storedRow >= buffer.InternalTotalLines)
+            {
+                return false; // past the end of the buffer: not a row that exists
+            }
+
+            liveRow = (int)storedRow - buffer.Scrollback.Count;
             return true;
         }
     }

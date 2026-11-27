@@ -44,4 +44,8 @@ The [OSC 5522 assessment](../2026-11-27-osc5522-clipboard/report.md) replays the
 
 The [font ligature assessment](../2026-11-27-rich-font-ligatures/report.md) records the owned glyph and partial-selection comparisons for two operators with a pinned Fira Code face. The pinned collector has no probe for this case.
 
+## Kitty shell prompt clicks
+
+The [Kitty prompt click assessment](../2026-11-27-rich-kitty-clicks/report.md) records exact child PTY frames for both coordinate modes and the primary and secondary prompt rows. The owned Linux X11 App effect is supported. The case is unprobed in the pinned bundle and has no stock grade.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.

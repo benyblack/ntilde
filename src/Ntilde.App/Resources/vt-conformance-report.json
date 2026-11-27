@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "158b5b8dabd3cbf85b1277edacee3ce921ee551b26525fca24477be49ba618be",
+  "matrixSha256": "f9a2c0f4f39e905c9806e34bf665ec6cc8c14e3ce0a64abbb938c0e8ee42f3b4",
   "summary": {
     "totalRows": 158,
     "supportedCount": 75,
@@ -3941,7 +3941,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BCommand Assist",
-      "knownDeviations": "Supports A/B/C/D markers; C\u0027s command from base64, plain text or kitty\u0027s \u0060cmdline_url\u0060 (fish 4); other semantic prompt extensions not audited",
+      "knownDeviations": "Supports A/B/C/D markers; C\u0027s command from base64, plain text or kitty\u0027s \u0060cmdline_url\u0060 (fish 4); a direct-local App pane supports Kitty A;click_events=1/2 and A;k=s for SGR prompt clicks. See the [owned prompt click assessment](qa/terminfo/2026-11-27-rich-kitty-clicks/report.md).",
       "sourceLine": 245
     },
     {

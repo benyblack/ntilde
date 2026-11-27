@@ -121,6 +121,7 @@ namespace Ntilde.VT
                             Array.Copy(_viewport, evictedFromTop, newVp, 0, newRows);
                             _viewport = newVp;
                             _cursorRow -= evictedFromTop;
+                            if (droppedFromBottom > 0) TrimClickPromptAfterHeightShrink();
 
                             long newlyEvicted = _scrollback.TotalRowsEvicted - prevEvicted;
                             if (newlyEvicted > 0)
@@ -307,6 +308,7 @@ namespace Ntilde.VT
                         row.RestoreSideTables(metadata.ExtendedText, metadata.Hyperlinks, metadata.Underlines, metadata.TextSizing);
                         row.LineSize = metadata.LineSize;
                         row.WrittenColumns = writtenColumns;
+                        row.PromptTextSpans = metadata.PromptTextSpans;
                         row.WrappedColumns = wrappedColumns;
                         newViewport[i] = row;
                         pulled++;

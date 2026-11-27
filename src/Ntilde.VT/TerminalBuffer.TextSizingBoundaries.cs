@@ -14,7 +14,7 @@ public partial class TerminalBuffer
         }
         var row = GetRowAbsolute(y);
         if (row == null) return;
-        if (row.WrittenColumns <= x + oldWidth) row.WrittenColumns = Math.Min(row.WrittenColumns, x);
+        if (row.WrittenColumns <= x + oldWidth) row.TrimWrittenColumns(x);
         row.SetSoftWrap(x);
         row.TouchRevision();
     }
@@ -29,7 +29,7 @@ public partial class TerminalBuffer
             else
             {
                 var target = _viewport[row - historyCount];
-                if (target.WrittenColumns <= x + width) target.WrittenColumns = Math.Min(target.WrittenColumns, x);
+                if (target.WrittenColumns <= x + width) target.TrimWrittenColumns(x);
                 target.TouchRevision();
             }
         }

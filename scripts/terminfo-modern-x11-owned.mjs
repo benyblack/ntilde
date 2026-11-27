@@ -30,6 +30,10 @@ function copySources(scratch, output, keyboard) {
         selected.push('rich-x11-kitty-keyboard.mjs');
         policy = 'owned-rich-x11-kitty-keyboard-v1';
     }
+    if (keyboard === '--rich-kitty-clicks') {
+        selected.push('rich-x11-kitty-clicks.mjs');
+        policy = 'owned-rich-x11-kitty-clicks-v1';
+    }
     const nativeClipboardSources = new Set(['peer-linux.py', 'frames.py']);
     if (['--osc52-clipboard', '--clipboard-paste', '--osc5522-clipboard'].includes(keyboard)) selected.push('modern-x11-osc52-write.mjs');
     if (keyboard?.startsWith('--osc52-') || ['--clipboard-paste', '--osc5522-clipboard'].includes(keyboard)) selected.push(...nativeClipboardSources);
@@ -66,9 +70,9 @@ function captureLease(lease, output) {
 
 function validateInvocation() {
     const [target, appVersion, selection, ...extra] = process.argv.slice(2);
-    if (![undefined, '--modify-other-keys', '--application-keypad', '--focus-tracking', '--osc52-write', '--osc52-clipboard', '--clipboard-paste', '--osc5522-clipboard', '--rich-kitty-keyboard'].includes(selection) || extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
+    if (![undefined, '--modify-other-keys', '--application-keypad', '--focus-tracking', '--osc52-write', '--osc52-clipboard', '--clipboard-paste', '--osc5522-clipboard', '--rich-kitty-keyboard', '--rich-kitty-clicks'].includes(selection) || extra.length || !target || !isAbsolute(target) || !/^\d[\dA-Za-z.+_-]*$/.test(appVersion ?? '')
         || process.platform !== 'linux' || Number(process.versions.node.split('.')[0]) < 24) {
-        throw new Error('Usage on Linux with Node 24+: node scripts/terminfo-modern-x11-owned.mjs /absolute/private/publish/Ntilde APP_VERSION [--modify-other-keys|--application-keypad|--focus-tracking|--osc52-write|--osc52-clipboard|--clipboard-paste|--osc5522-clipboard|--rich-kitty-keyboard]');
+        throw new Error('Usage on Linux with Node 24+: node scripts/terminfo-modern-x11-owned.mjs /absolute/private/publish/Ntilde APP_VERSION [--modify-other-keys|--application-keypad|--focus-tracking|--osc52-write|--osc52-clipboard|--clipboard-paste|--osc5522-clipboard|--rich-kitty-keyboard|--rich-kitty-clicks]');
     }
     const executable = realpathSync(target);
     const info = lstatSync(executable);

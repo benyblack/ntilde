@@ -524,7 +524,8 @@ namespace Ntilde.VT
                 SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(_cursorCol, Cols, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                if (_cursorCol >= 0 && _cursorCol < Cols) row.NoteColumnsWritten(Cols);
+                if (_cursorCol >= 0 && _cursorCol < Cols)
+                    row.NoteCellsErased(_cursorCol, Cols, _promptClickMode != PromptClickMode.Disabled);
                 for (int i = _cursorCol; i < Cols; i++)
                 {
                     row.Cells[i] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
@@ -534,6 +535,7 @@ namespace Ntilde.VT
                     row.SetProtected(i, false);
                 }
                 row.TouchRevision();
+                UpdateClickPromptAfterRowEdit(_cursorRow);
             }
             finally
             {
@@ -551,7 +553,7 @@ namespace Ntilde.VT
                 SnapCursorToLineSizeNoLock();
                 EraseTextSizingRange(0, Math.Min(Cols, _cursorCol + 1), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                row.NoteColumnsWritten(Math.Min(Cols, _cursorCol + 1));
+                row.NoteCellsErased(0, Math.Min(Cols, _cursorCol + 1), _promptClickMode != PromptClickMode.Disabled);
                 for (int i = 0; i <= _cursorCol; i++)
                 {
                     if (i >= Cols) break;
@@ -562,6 +564,7 @@ namespace Ntilde.VT
                     row.SetProtected(i, false);
                 }
                 row.TouchRevision();
+                UpdateClickPromptAfterRowEdit(_cursorRow);
             }
             finally
             {
@@ -577,6 +580,7 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 ClearRowInternal(_cursorRow);
+                UpdateClickPromptAfterRowEdit(_cursorRow);
             }
             finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             OnInvalidate?.Invoke();
@@ -625,10 +629,12 @@ namespace Ntilde.VT
             {
                 if (_cursorRow < 0 || _cursorRow >= Rows) return;
                 SnapCursorToLineSizeNoLock();
-                EraseTextSizingRange(_cursorCol, (int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count)), TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
+                int end = (int)Math.Min(Cols, (long)_cursorCol + Math.Max(0, count));
+                EraseTextSizingRange(_cursorCol, end, TextSizingAbsoluteRow(_cursorRow), TextSizingAbsoluteRow(_cursorRow) + 1);
                 var row = _viewport[_cursorRow];
-                if (count > 0 && _cursorCol >= 0 && _cursorCol < Cols)
-                    row.NoteColumnsWritten((int)Math.Min(Cols, (long)_cursorCol + count));
+                bool erasesCells = _cursorCol < end;
+                if (erasesCells)
+                    row.NoteCellsErased(_cursorCol, end, _promptClickMode != PromptClickMode.Disabled);
 
                 for (int i = 0; i < count; i++)
                 {
@@ -642,6 +648,7 @@ namespace Ntilde.VT
                     row.SetProtected(col, false);
                 }
                 row.TouchRevision();
+                if (erasesCells) UpdateClickPromptAfterRowEdit(_cursorRow);
             }
             finally
             {
@@ -672,6 +679,7 @@ namespace Ntilde.VT
                     return;
                 }
 
+                InvalidateClickPromptInRows(top, bottom);
                 int sizedTop = TextSizingAbsoluteRow(top);
                 int sizedEnd = TextSizingAbsoluteRow(bottom + 1);
                 EraseTextSizingAcrossBoundary(sizedTop);
@@ -745,6 +753,7 @@ namespace Ntilde.VT
                     return;
                 }
 
+                InvalidateClickPromptInRows(top, bottom);
                 int sizedTop = TextSizingAbsoluteRow(top);
                 int sizedEnd = TextSizingAbsoluteRow(bottom + 1);
                 EraseTextSizingRange(0, Cols, sizedTop, sizedTop + n);
@@ -864,10 +873,7 @@ namespace Ntilde.VT
                 // more, so the command-input window closes on the way in. It does NOT reopen on the
                 // way out: the shell repaints its prompt when the alt screen is torn down and that
                 // repaint re-emits B, so the gate reopens on evidence rather than on assumption.
-                lock (_trackedMarkGate)
-                {
-                    _isAcceptingCommandInput = false;
-                }
+                CloseCommandInputWindow();
 
                 _viewport = _altScreen;    // Switch to alt screen
 
