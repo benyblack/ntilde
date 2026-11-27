@@ -9,6 +9,7 @@ export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
 export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
 export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
+export const capturedTermFeaturesSourcePolicy = 'readonly-owned-source-graph-rich-term-features-v1';
 export const capturedVendorEnvironmentSourcePolicy = 'readonly-owned-source-graph-rich-vendor-environment-v1';
 export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph-v79';
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
@@ -32,6 +33,7 @@ const focusedSourcePolicies = [
     ['modernBlinkSourceSha256', capturedBlinkSourcePolicy],
     ['modernViewportSourceSha256', capturedViewportSourcePolicy],
     ['modernOscTitlesSourceSha256', capturedOscTitlesSourcePolicy],
+    ['richTermFeaturesSourceSha256', capturedTermFeaturesSourcePolicy],
     ['richVendorEnvironmentSourceSha256', capturedVendorEnvironmentSourcePolicy],
     ['modernChildEnvironmentSourceSha256', capturedChildEnvironmentSourcePolicy],
     ['modernOscCwdSourceSha256', capturedOscCwdSourcePolicy],
@@ -1122,6 +1124,14 @@ export const capturedChildEnvironmentSourceFiles = Object.freeze({
     ...childEnvironmentSourceFiles,
 });
 
+export const capturedTermFeaturesSourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    ...childEnvironmentSourceFiles,
+    richTermFeaturesSourceSha256: 'rich-term-features.mjs',
+    richTermFeaturesOwnedSourceSha256: 'rich-term-features-owned.mjs',
+    richTermFeaturesWorkerSourceSha256: 'rich-term-features-worker.mjs',
+});
+
 export const capturedVendorEnvironmentSourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     ...childEnvironmentSourceFiles,
@@ -1145,6 +1155,7 @@ export function readSourceSnapshot(root) {
         [capturedBlinkSourcePolicy]: capturedBlinkSourceFiles,
         [capturedViewportSourcePolicy]: capturedViewportSourceFiles,
         [capturedOscTitlesSourcePolicy]: capturedOscTitlesSourceFiles,
+        [capturedTermFeaturesSourcePolicy]: capturedTermFeaturesSourceFiles,
         [capturedVendorEnvironmentSourcePolicy]: capturedVendorEnvironmentSourceFiles,
         [capturedChildEnvironmentSourcePolicy]: capturedChildEnvironmentSourceFiles,
         [capturedOscCwdSourcePolicy]: capturedOscCwdSourceFiles,

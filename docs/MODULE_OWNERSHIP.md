@@ -78,7 +78,7 @@ invariant changes.
   composed generic mechanism, with `Cw` gated by the host OSC 52 answer (the XTGETTCAP `Ms`
   gate) and every code backed by its own implementation and tests
   ([contract](qa/terminfo/iterm-feature-reporting.md)). The environment-variable half
-  (`TERM_FEATURES`) stays unset on every spawn path; unsolicited `Capabilities` forms and every
+  (`TERM_FEATURES`) follows parent presence or absence on the [measured direct-local path](qa/terminfo/2026-11-27-rich-term-features/report.md); unsolicited `Capabilities` forms and every
   other `1337;` payload stay silent.
 - **RIS clearing belongs to VT.** Screen selection and default-pen/runtime-color
   reset precede the existing full clear under one write cut. Main and retained

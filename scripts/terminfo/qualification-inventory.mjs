@@ -134,6 +134,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'osc66-publication.test.mjs': 'standalone owned OSC 66 cursor and rendered ink evidence for a stock-supported case',
     'kitty-graphics-publication.test.mjs': 'standalone owned Kitty transmit and display pixels for two cases already supported by the stock baseline',
     'rich-x11-kitty-keyboard-publication.test.mjs': 'standalone owned Rich TUI keyboard effects for five stock-supported negotiation cases',
+    'rich-term-features-publication.test.mjs': 'standalone direct-local TERM_FEATURES inheritance and capability-reply assessment',
     'rich-vendor-environment-publication.test.mjs': 'standalone Rich TUI applicability assessment for four manual vendor cases without runnable pinned probes',
     'rich-x11-kitty-clicks-publication.test.mjs': 'standalone owned Rich TUI prompt click effect for a case without a runnable pinned probe',
     'unicode-boundary-publication.test.mjs': 'standalone owned Unicode assessment of three cases already supported by the stock baseline',
