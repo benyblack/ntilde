@@ -98,10 +98,39 @@ public class PaneParserWiringTests
 
 
 
+    [AvaloniaFact]
+    public void Visual_flash_uses_the_live_setting_and_never_delivers_a_bell()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        var settings = new TerminalSettings { BellAudioEnabled = false, BellVisualEnabled = false };
+        pane.ApplySettings(settings);
+        int bells = 0;
+        pane.BellReceived += _ => bells++;
+        var parser = pane.Parser!;
+        parser.Process("\x1b]555\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(pane.TermView.IsBellFlashActive);
+
+        settings.BellVisualEnabled = true;
+        pane.ApplySettings(settings);
+        parser.Process(string.Concat(Enumerable.Repeat("\x1b]555\x1b\\", 1024)));
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(pane.TermView.IsBellFlashActive);
+        Assert.Equal(0, bells);
+        settings.BellVisualEnabled = false;
+        pane.ApplySettings(settings);
+        Assert.False(pane.TermView.IsBellFlashActive);
+        parser.Process("\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(1, bells);
+    }
+
     /// Every parser hook the pane wires, with its current handler count.
     private static (string Name, int Count)[] HookCounts(AnsiParser parser) =>
     [
         (nameof(parser.OnBell), HandlerCount(parser.OnBell)),
+        (nameof(parser.OnVisualFlash), HandlerCount(parser.OnVisualFlash)),
         (nameof(parser.OnClipboardWrite), HandlerCount(parser.OnClipboardWrite)),
         (nameof(parser.OnWorkingDirectoryChanged), HandlerCount(parser.OnWorkingDirectoryChanged)),
         (nameof(parser.OnTitleChanged), HandlerCount(parser.OnTitleChanged)),
