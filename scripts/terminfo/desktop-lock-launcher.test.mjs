@@ -200,6 +200,17 @@ test('the launcher releases only through the broker after the runner returns, an
     assert.ok(!/process\.env\.[A-Z_]*(?:LOCK|LEASE)/.test(launcher.replaceAll('NTILDE_TERMINFO_DESKTOP_LOCK_WAIT_SECONDS', '')));
 });
 
+test('the Rich identity launcher holds the lease through verified container removal', () => {
+    const launcher = readFileSync(real('../terminfo-rich-identity-owned.mjs'), 'utf8');
+    const at = text => { const index = launcher.indexOf(text); assert.ok(index >= 0, text); return index; };
+    assert.ok(at('await acquireDesktopLease({') < at("await runContainer('ntilde-identity-'"));
+    assert.ok(at('lease.noteLaunchAttempt()') < at("docker(['create'"));
+    assert.ok(at("docker(['rm', id])") < at("need(!remaining, 'owned collector container remains')"));
+    assert.ok(at("need(!remaining, 'owned collector container remains')") < at("lease.attestCleanup('owned-container-removed')"));
+    assert.ok(at('if (!lease.launchAttempted || lease.cleanupVerified)') < at('lease.release()'));
+    assert.ok(at("lease.attestCleanup('owned-container-removed')") < at('lease.release()'));
+});
+
 test('the common-core driver acquires before creating output and persists every launch intent before the launch it guards', () => {
     const driver = readFileSync(real('./common-core-driver.ts'), 'utf8');
     const at = text => { const index = driver.indexOf(text); assert.ok(index > 0, text); return index; };
