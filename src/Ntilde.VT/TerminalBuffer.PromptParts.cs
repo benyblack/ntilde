@@ -12,18 +12,18 @@ internal sealed class RowPromptParts(object cycle)
     internal readonly record struct Boundary(string Kind, int Column);
     internal List<Boundary> Boundaries { get; } = new(4);
 
-    internal int? InitialPaintColumn { get; set; }
+    internal Boundary? InitialPaint { get; set; }
 
     internal void Set(string kind, int column)
     {
         Boundaries.RemoveAll(b => b.Kind == kind || b.Column == column);
         Boundaries.Add(new(kind, column));
-        InitialPaintColumn = column;
+        InitialPaint = new(kind, column);
     }
 
     internal void Shift(int start, int edge, int delta)
     {
-        InitialPaintColumn = null;
+        InitialPaint = null;
         for (int i = Boundaries.Count - 1; i >= 0; i--)
         {
             var boundary = Boundaries[i];
@@ -42,8 +42,8 @@ internal sealed class RowPromptParts(object cycle)
         {
             var b = Boundaries[i];
             if (b.Column < start || b.Column >= end) continue;
-            if (!paint || b.Column != start || InitialPaintColumn != start) Boundaries.RemoveAt(i);
-            if (InitialPaintColumn == b.Column) InitialPaintColumn = null;
+            if (!paint || b.Column != start || InitialPaint?.Column != start) Boundaries.RemoveAt(i);
+            if (InitialPaint?.Column == b.Column) InitialPaint = null;
         }
     }
 }
@@ -60,8 +60,15 @@ public partial class TerminalBuffer
     // If input later crosses that cell, it overwrites the boundary.
     private void EndInitialPartPaint(RowPromptParts parts)
     {
-        parts.InitialPaintColumn = null;
+        parts.InitialPaint = null;
         _pendingPartPaint = null;
+    }
+
+    // IRM shifts the old text and OSC 66 retires an old block before painting the new glyph.
+    // A just-emitted marker belongs to the incoming glyph at this position.
+    private static void RestoreInitialPaintAfterCellPreparation(TerminalRow row, RowPromptParts.Boundary? initial)
+    {
+        if (initial is { } boundary) row.PromptParts?.Set(boundary.Kind, boundary.Column);
     }
 
     internal void RecordPromptPart(string kind, ShellIntegrationMark mark)

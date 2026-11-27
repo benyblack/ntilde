@@ -32,9 +32,10 @@ export function planFor(id) {
         write('directory-control', osc('633;P;Cwd=' + expectedCwd(id) + '/control')),
         write('input', top + mark('A;click_events=2') + mark('P') + '$ ' + mark('B') + 'cmd' + '\x1b[22G'),
         write('right', '\x1b]133;P;k=r\x1b\\'),
-        write('paint', 'RHS'),
+        write('paint', '\x1b[4hRHS\x1b[4l'),
         write('inserted', '\x1b[1;7H\x1b[2@'),
         write('deleted', '\x1b[2P'),
+        write('sized-old', '\x1b[17G' + osc('66;w=3;O')),
         write('relocated', '\x1b[17G' + mark('P;k=r') + 'new'),
         write('continuation', '\x1b[2;4H' + mark('P;k=c') + 'PS2'),
         write('kitty', '\x1b[3;2H' + mark('A;k=s') + 'KIT'),
@@ -54,6 +55,7 @@ export function planFor(id) {
         write('protected', top + mark('A') + mark('P') + '$ ' + mark('B') + 'cmd\x1b[14G'
             + mark('P;k=r') + '\x1b[1"qR\x1b[0"qX\x1b[1"q' + tag(id) + '\x1b[0"q'),
         write('selective-all', '\x1b[?2J'),
+        write('alignment', '\x1b#8' + tag(id)),
         write('finish', restore(id)),
         { stage: 'seal' },
     ];
@@ -63,7 +65,10 @@ export function checkRestoredParts(state) {
     requireMetadata(same(state.metadata.buffer.promptParts, []), 'initial/final prompt parts did not verify');
 }
 export function checkFixture(stage, { screen, metadata }, id) {
-    requireMetadata(screen.lines[4] === nonce(id) && screen.lines.slice(5).every(line => line === '')
+    const alignment = stage === 'alignment';
+    const fill = alignment ? 'E'.repeat(screen.cols) : '';
+    const binding = alignment ? nonce(id).padEnd(screen.cols, 'E') : nonce(id);
+    requireMetadata(screen.lines[4] === binding && screen.lines.slice(5).every(line => line === fill)
         && metadata.buffer.cursorRow === screen.cursorRow && metadata.buffer.cursorCol === screen.cursorCol
         && Array.isArray(metadata.buffer.promptParts), 'missing pane binding, cursor or part observation at ' + stage);
 }
@@ -76,7 +81,7 @@ export function deriveEffects(id, frames) {
         cwd: metadata.workingDirectory, cursor: [screen.cursorRow, screen.cursorCol],
     }]));
     const o = observations, base = expectedCwd(id), a = o.input.commandStart;
-    const controlStages = ['input', 'right', 'paint', 'inserted', 'deleted', 'relocated', 'continuation', 'kitty', 'erased', 'repaint', 'overwrite', 'empty-right', 'typed-through'];
+    const controlStages = ['input', 'right', 'paint', 'inserted', 'deleted', 'sized-old', 'relocated', 'continuation', 'kitty', 'erased', 'repaint', 'overwrite', 'empty-right', 'typed-through'];
     const controls = a?.row === 0 && a.col === 2 && a.absoluteRow === 0 && !a.alternateScreen
         && o.input.accepting && o.input.command === null && o.input.outputStart === null
         && o['p-setup'].cwd === base && o['directory-control'].cwd === base + '/control'
@@ -87,6 +92,8 @@ export function deriveEffects(id, frames) {
         && reads.get('paint').screen.lines[0].slice(21, 24) === 'RHS'
         && reads.get('inserted').screen.lines[0].slice(23, 26) === 'RHS'
         && reads.get('deleted').screen.lines[0].slice(21, 24) === 'RHS'
+        && reads.get('sized-old').screen.lines[0][16] === 'O'
+        && reads.get('alignment').screen.lines[0] === 'E'.repeat(reads.get('alignment').screen.cols)
         && reads.get('relocated').screen.lines[0].slice(16, 19) === 'new'
         && reads.get('continuation').screen.lines[1] === '   PS2'
         && reads.get('kitty').screen.lines[2] === ' KIT'
@@ -104,13 +111,13 @@ export function deriveEffects(id, frames) {
     const primary = part('i', 0, 0), right = part('r', 0, 21), moved = part('r', 0, 16), continuation = part('c', 1, 3);
     const expected = {
         'p-termless': [], 'p-terminal': [], input: [primary], right: [primary, right], paint: [primary, right],
-        inserted: [primary, part('r', 0, 23)], deleted: [primary, right],
+        inserted: [primary, part('r', 0, 23)], deleted: [primary, right], 'sized-old': [primary, right],
         relocated: [primary, moved], continuation: [primary, moved, continuation], kitty: [primary, moved, continuation],
         erased: [primary, continuation], repaint: [primary, moved, continuation], overwrite: [primary, continuation],
         'empty-right': [primary, part('r', 0, 7), continuation], 'typed-through': [primary, continuation],
         submitted: [], orphan: [], 'next-cycle': [part('r', 0, 10)], 'new-prompt': [], 'pre-reset': [part('s', 2, 10)],
         'band-scroll': [], 'before-ris': [part('s', 2, 10)], reset: [],
-        protected: [primary, part('r', 0, 13)], 'selective-all': [part('r', 0, 13)],
+        protected: [primary, part('r', 0, 13)], 'selective-all': [part('r', 0, 13)], alignment: [],
     };
     const matched = Object.entries(expected).every(([stage, parts]) => same(o[stage].parts, parts))
         && controlStages.every(stage => same(o[stage].commandStart, a) && o[stage].outputStart === null

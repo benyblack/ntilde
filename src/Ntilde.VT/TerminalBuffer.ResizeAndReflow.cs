@@ -43,11 +43,7 @@ namespace Ntilde.VT
             try
             {
                 if (newCols == Cols && newRows == Rows) return;
-                lock (_trackedMarkGate)
-                {
-                    _promptPartCycle = null; // Wait for fresh P coordinates after a resize.
-                    _partPrimary = _clickPrompt; // Only this anchor participates in reflow.
-                }
+                lock (_trackedMarkGate) _promptPartCycle = null; // Wait for fresh P coordinates after a resize.
                 PrepareTextSizingResize(newCols, newRows);
 
                 if (newCols == oldCols)

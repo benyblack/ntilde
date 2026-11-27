@@ -153,6 +153,38 @@ public class Osc133PromptPartPolicyTests
         Assert.Empty(buffer.ReadPromptParts());
     }
 
+    [Theory]
+    [InlineData("", "\x1b[4hRHS\x1b[4l")]
+    [InlineData("\x1b]66;w=3;O\a", "RHS")]
+    [InlineData("\x1b]66;w=3;O\a", "\x1b]66;w=3;R\a")]
+    public void InitialPaintKeepsItsStartWhenPreparingTheTargetCells(string oldText, string paint)
+    {
+        var buffer = new TerminalBuffer(36, 6);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A\a$ \x1b]133;B\acmd\x1b[11G" + oldText);
+        parser.Process("\x1b[11G\x1b]133;P;k=r\a" + paint + "\x1b[6G");
+        Assert.Equal(new PromptPart("r", 0, 10), Assert.Single(buffer.ReadPromptParts()));
+        Assert.True(GridQueryReader.TryReadCommandLine(buffer, buffer.CommandStartMark!.Value, out var line));
+        Assert.Equal("cmd", line.Text);
+    }
+
+    [Fact]
+    public void ResizeMapsThePartPrimaryAfterSelectiveEraseHasRetiredKittyClicks()
+    {
+        var buffer = new TerminalBuffer(12, 5);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b[2;2H\x1b]133;A;click_events=2\a$ \x1b]133;B\a\x1b[8G\x1b]133;P;k=r\a\x1b[1\"qR\x1b[0\"q");
+        parser.Process("\x1b[?2J");
+        Assert.Equal(new PromptPart("r", 1, 7), Assert.Single(buffer.ReadPromptParts()));
+        buffer.Resize(24, 5);
+        Assert.Empty(buffer.ReadPromptParts());
+        parser.Process("\x1b[2;11H\x1b]133;P;k=r\aR");
+        Assert.Equal(new PromptPart("r", 1, 10), Assert.Single(buffer.ReadPromptParts()));
+        Assert.False(buffer.TryGetPromptClickRow(1, out _, out _));
+        parser.Process("\x1b#8\x1b]133;P;k=r\a");
+        Assert.Empty(buffer.ReadPromptParts());
+    }
+
     [Fact]
     public void KittySecondaryAndContourContinuationAreIndependentAndResizeAwaitsRedraw()
     {

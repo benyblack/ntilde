@@ -454,14 +454,23 @@ namespace Ntilde.VT
                 if (_cursorCol + width > rightEdge + 1) _cursorCol = Math.Max(0, rightEdge + 1 - width);
             }
 
-            if (_textSizingBlocks != null) PrepareTextSizingOverwrite(Math.Max(1, width));
+            if (_textSizingBlocks != null) FindTextSizingWritePosition(Math.Max(1, width));
 
             // Write to buffer
             if (_cursorRow >= 0 && _cursorRow < Rows && _cursorCol >= 0 && _cursorCol < Cols)
             {
-                if (Modes.IsInsertMode) InsertCharactersInternal(width);
-
                 var row = _viewport[_cursorRow];
+                if (Modes.IsInsertMode || _textSizingBlocks != null)
+                {
+                    var initial = row.PromptParts?.InitialPaint;
+                    if (Modes.IsInsertMode) InsertCharactersInternal(width);
+                    else
+                    {
+                        int absolute = TextSizingAbsoluteRow(_cursorRow);
+                        EraseTextSizingRange(_cursorCol, _cursorCol + Math.Max(1, width), absolute, absolute + 1);
+                    }
+                    RestoreInitialPaintAfterCellPreparation(row, initial);
+                }
                 row.NoteGlyphWritten(_cursorCol, Math.Min(Cols, _cursorCol + Math.Max(1, width)));
 
                 SyncPackedState();

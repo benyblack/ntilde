@@ -382,6 +382,11 @@ namespace Ntilde.VT
             try
             {
                 EraseTextSizingRange(0, Cols, TextSizingAbsoluteRow(0), TextSizingAbsoluteRow(Rows));
+                lock (_trackedMarkGate)
+                {
+                    _promptPartCycle = null;
+                    _partPrimary = null;
+                }
                 // DECALN: Fill screen with 'E'
                 var cell = new TerminalCell('E', Theme.Foreground, Theme.Background, false, false, true, true);
 
