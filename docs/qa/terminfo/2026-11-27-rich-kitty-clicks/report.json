@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 1,
+  "scope": "XTEST pointer events through the production App view to one direct-local child PTY.",
+  "id": "input.kitty-click-events",
+  "pinned": {
+    "package": "terminfo.dev@4.0.0",
+    "bundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "verdict": "unprobed",
+    "stock": null,
+    "criterion": "Not measured: enable shell-integration click events, perform a click, and record the resulting SGR mouse event."
+  },
+  "effect": "supported",
+  "anchors": {
+    "primary": 13,
+    "secondary": 20,
+    "cursor": 26
+  },
+  "deliveryControls": {
+    "above": {
+      "column": 52,
+      "row": 9,
+      "frames": [
+        "",
+        "1b5b3c303b35323b394d",
+        "1b5b3c303b35323b396d"
+      ],
+      "finished": "1425267048532527",
+      "point": [
+        418,
+        202
+      ]
+    },
+    "primary": {
+      "column": 52,
+      "row": 14,
+      "frames": [
+        "",
+        "1b5b3c303b35323b31344d",
+        "1b5b3c303b35323b31346d"
+      ],
+      "finished": "1425268247347403",
+      "point": [
+        418,
+        306
+      ]
+    },
+    "secondary": {
+      "column": 52,
+      "row": 20,
+      "frames": [
+        "",
+        "1b5b3c303b35323b32304d",
+        "1b5b3c303b35323b32306d"
+      ],
+      "finished": "1425269437103237",
+      "point": [
+        418,
+        418
+      ]
+    },
+    "continuation": {
+      "column": 52,
+      "row": 26,
+      "frames": [
+        "",
+        "1b5b3c303b35323b32364d",
+        "1b5b3c303b35323b32366d"
+      ],
+      "finished": "1425270498308362",
+      "point": [
+        418,
+        522
+      ]
+    },
+    "below": {
+      "column": 52,
+      "row": 31,
+      "frames": [
+        "",
+        "1b5b3c303b35323b33314d",
+        "1b5b3c303b35323b33316d"
+      ],
+      "finished": "1425271584923529",
+      "point": [
+        418,
+        634
+      ]
+    }
+  },
+  "samples": [
+    {
+      "phase": "disabled",
+      "position": "secondary",
+      "point": [
+        418,
+        418
+      ],
+      "column": 52,
+      "row": 20,
+      "childHex": [
+        "",
+        "",
+        ""
+      ],
+      "expectedHex": "",
+      "matched": true
+    },
+    {
+      "phase": "absolute",
+      "position": "primary",
+      "point": [
+        418,
+        306
+      ],
+      "column": 52,
+      "row": 14,
+      "childHex": [
+        "",
+        "",
+        "1b5b3c303b35323b31344d"
+      ],
+      "expectedHex": "1b5b3c303b35323b31344d",
+      "matched": true
+    },
+    {
+      "phase": "absolute",
+      "position": "secondary",
+      "point": [
+        418,
+        418
+      ],
+      "column": 52,
+      "row": 20,
+      "childHex": [
+        "",
+        "",
+        "1b5b3c303b35323b32304d"
+      ],
+      "expectedHex": "1b5b3c303b35323b32304d",
+      "matched": true
+    },
+    {
+      "phase": "absolute",
+      "position": "continuation",
+      "point": [
+        418,
+        522
+      ],
+      "column": 52,
+      "row": 26,
+      "childHex": [
+        "",
+        "",
+        "1b5b3c303b35323b32364d"
+      ],
+      "expectedHex": "1b5b3c303b35323b32364d",
+      "matched": true
+    },
+    {
+      "phase": "relative",
+      "position": "above",
+      "point": [
+        418,
+        202
+      ],
+      "column": 52,
+      "row": 9,
+      "childHex": [
+        "",
+        "",
+        ""
+      ],
+      "expectedHex": "",
+      "matched": true
+    },
+    {
+      "phase": "relative",
+      "position": "primary",
+      "point": [
+        418,
+        306
+      ],
+      "column": 52,
+      "row": 14,
+      "childHex": [
+        "",
+        "",
+        "1b5b3c303b35323b324d"
+      ],
+      "expectedHex": "1b5b3c303b35323b324d",
+      "matched": true
+    },
+    {
+      "phase": "relative",
+      "position": "secondary",
+      "point": [
+        418,
+        418
+      ],
+      "column": 52,
+      "row": 20,
+      "childHex": [
+        "",
+        "",
+        "1b5b3c303b35323b314d"
+      ],
+      "expectedHex": "1b5b3c303b35323b314d",
+      "matched": true
+    },
+    {
+      "phase": "relative",
+      "position": "continuation",
+      "point": [
+        418,
+        522
+      ],
+      "column": 52,
+      "row": 26,
+      "childHex": [
+        "",
+        "",
+        "1b5b3c303b35323b374d"
+      ],
+      "expectedHex": "1b5b3c303b35323b374d",
+      "matched": true
+    },
+    {
+      "phase": "relative",
+      "position": "below",
+      "point": [
+        418,
+        634
+      ],
+      "column": 52,
+      "row": 31,
+      "childHex": [
+        "",
+        "",
+        ""
+      ],
+      "expectedHex": "",
+      "matched": true
+    },
+    {
+      "phase": "new-prompt",
+      "position": "secondary",
+      "point": [
+        418,
+        418
+      ],
+      "column": 52,
+      "row": 20,
+      "childHex": [
+        "",
+        "",
+        ""
+      ],
+      "expectedHex": "",
+      "matched": true
+    },
+    {
+      "phase": "after-submit",
+      "position": "secondary",
+      "point": [
+        418,
+        418
+      ],
+      "column": 52,
+      "row": 20,
+      "childHex": [
+        "",
+        "",
+        ""
+      ],
+      "expectedHex": "",
+      "matched": true
+    },
+    {
+      "phase": "reset",
+      "position": "secondary",
+      "point": [
+        418,
+        418
+      ],
+      "column": 52,
+      "row": 20,
+      "childHex": [
+        "",
+        "",
+        ""
+      ],
+      "expectedHex": "",
+      "matched": true
+    }
+  ],
+  "measurement": {
+    "manifestSha256": "d20c59dd0e78dca0c5f40579708968296d926f8dbd8e66f32941480d2ad20504",
+    "schemaVersion": 1,
+    "runId": "6e9be450e8dd7df0354909f3f43e14de",
+    "appRevision": "94ed40c8ad167b03dc705b9a84ef05911c3c5f12",
+    "scriptsRevision": "669a96426e55653bdce753655a46e14f09963442",
+    "appSourceArchiveSha256": "8816874a3708d1d974df6898a290e51bcc97e2487f1d7c3507e746825fc6aa93",
+    "hostLease": "8213cd9c29210e64043cb146434803a5",
+    "dotnetSdk": "10.0.403",
+    "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
+    "archives": {
+      "owned-run.zip": "4151d813d329e6748587647fb49fec45a58c35b33ad0f5d2414a916558e23402"
+    },
+    "startedAt": "2026-11-27T08:29:39.269Z",
+    "fixtureRemovedAt": "2026-11-27T08:30:02.147Z",
+    "leaseReleasedAt": "2026-11-27T08:30:02.149Z",
+    "sha256": "4bf430f3bbcaed4f050a789efb5a9d07008543d9706490521e6abecd50b42479",
+    "source": {
+      "policy": "owned-rich-x11-kitty-clicks-v1",
+      "sha256": "7dde3cfa0d21ecdfac98405a7cf2fa88e26eb8756eb30e46a7813e70f5bd3fe7"
+    },
+    "hostLeaseReleasedAt": "2026-11-27T08:30:03.706Z",
+    "nodeVersion": "v24.22.2",
+    "appVersion": "0.14.0+94ed40c8ad167b03dc705b9a84ef05911c3c5f12",
+    "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
+    "appAssemblySha256": "f905b3585da2b5ebaa146f8929b7d477d566c2bc77db7f5e902195fbd6338533",
+    "xtest": [
+      2,
+      2
+    ],
+    "appPid": 8353,
+    "childPid": 8406,
+    "paneId": "eb1a652c-ae90-4258-9c77-57bc85a23e78",
+    "tty": "/dev/pts/0",
+    "rows": 40,
+    "columns": 149,
+    "marker": "x11-prompt-6e9be450e8dd7df0354909f3f43e14de"
+  }
+}

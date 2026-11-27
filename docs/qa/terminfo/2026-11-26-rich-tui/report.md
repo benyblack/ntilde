@@ -36,4 +36,8 @@ The [two-case OSC 633 assessment](../2026-11-26-osc633-metadata/report.md) quali
 
 The [aggregate reassessment](../2026-11-26-osc633-aggregate-reassessment/report.md) combines rederived A–D and E/P evidence from two App revisions. The bounded owned aggregate is supported, and the exact aggregate probe remains inconclusive.
 
+## Kitty shell prompt clicks
+
+The [Kitty prompt click assessment](../2026-11-27-rich-kitty-clicks/report.md) records exact child PTY frames for both coordinate modes and the primary and secondary prompt rows. The owned Linux X11 App effect is supported. The case is unprobed in the pinned bundle and has no stock grade.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.
