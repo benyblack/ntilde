@@ -1,0 +1,394 @@
+{
+  "schemaVersion": 1,
+  "pinnedPackage": "terminfo.dev@4.0.0",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "cases": {
+    "extensions.osc176-app-id": {
+      "pinned": {
+        "pass": false,
+        "response": "1;1",
+        "note": "Cursor response does not measure OSC 176 Wayland app-id",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        }
+      },
+      "stock": "inconclusive",
+      "contract": "ntilde-wayland-osc176-app-id-v1",
+      "effect": "inapplicable"
+    },
+    "extensions.osc666-termprop": {
+      "pinned": {
+        "pass": false,
+        "response": "1;1",
+        "note": "Cursor response does not measure OSC 666 terminal property",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        }
+      },
+      "stock": "inconclusive",
+      "contract": "ntilde-vte-osc666-termprop-v1",
+      "fixtureEffect": "inapplicable",
+      "registeredPropertyEffect": "inconclusive",
+      "observerGap": "Ntilde exposes no VTE termprop getter or equivalent registered property state."
+    }
+  },
+  "measured": {
+    "runId": "09460fd214874ef8c50f7e8064ee7f19",
+    "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
+    "appVersion": "0.14.0+7824244ebd715d9f14ade754ce3fbb352ec7643d",
+    "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
+    "appAssemblySha256": "6ff3113473b39bc3128f6545b98012b81df3a10503db892e921e1ac13fbdbadc",
+    "environment": {
+      "uname": [
+        "Linux",
+        "7.0.14-linuxkit",
+        "#1 SMP PREEMPT Fri Oct 16 11:55:50 UTC 2026",
+        "aarch64"
+      ],
+      "packages": "foot\t1.21.0-2\nlibvte-2.91-0:arm64\t0.80.1-1\nsway\t1.10.1-2\nxwayland\t2:24.1.6-1\n"
+    },
+    "appSourceArchiveSha256": "2f27642f518c0748cdac8b67a23b5da72713c8de77c2b2aba30f040439d2bc78",
+    "sidecarSha256": "ce9c4bbbb1cf9338b562c2490d5f29b4f5ab10a0345f4fa1b91901e09684e480",
+    "scriptsRevision": "59e082e1cbf96dfe16e329b4f313530cfa114348",
+    "files": {
+      "terminfo-rich-identity-owned.mjs": "92c7742faa9fe532806ad6fbe72617953e7c585f2032b8fffa4bddea2f08bf5f",
+      "desktop-lock.mjs": "96076ef3a4afb7cc5c1bef8c6ac6f22ee86745270637e40b4792d58ce34dd9cf",
+      "collect.py": "58d447c6f90b611bfb4482e3a554356a22fe55f005b0c41b74506c400831d2ff",
+      "pty_child.py": "b0774393600e9b82cc86aa8298a4584b1d3630f73ff5bac85fdc3456b62d6efe",
+      "vte_reference.py": "06802615d3b1bb7b58075caa3ea00da423614f4acf8237ee2bc0ac299236e246",
+      "plan.json": "08e3e134969669dd69529abef4e75c30cafa90c0781bb2afdce3455dbfbe6fda",
+      "Dockerfile": "ae445d9e62428fc13a2080ab7b2b4097f535de87c3dfa93998c89cabe54703cf"
+    },
+    "container": {
+      "image": "sha256:2e4ebe26520b6d76bcc1279a7e2c5417ac53ecc3b985a13fdb1458b9bc5eb1e5",
+      "name": "ntilde-identity-09460fd214874ef8c50f7e8064ee7f19",
+      "runId": "09460fd214874ef8c50f7e8064ee7f19",
+      "id": "f78711dcf22e6cf83b83b99f3f5b5a07ebc616105e11d88c0649ae269246c4f9",
+      "isolation": {
+        "network": "none",
+        "user": "1000:1000",
+        "mounts": [
+          {
+            "destination": "/sources",
+            "writable": false
+          },
+          {
+            "destination": "/inputs/sidecar.tar",
+            "writable": false
+          }
+        ]
+      },
+      "startedAt": "2026-11-27T12:15:01.393Z",
+      "status": "exited",
+      "exitCode": 0,
+      "removedAt": "2026-11-27T12:15:12.054Z"
+    },
+    "lease": [
+      {
+        "at": "2026-11-27T12:15:01.032Z",
+        "pid": 82623,
+        "event": "acquired",
+        "lease": "09460fd214874ef8c50f7e8064ee7f19",
+        "entrypoint": "terminfo-rich-identity-owned.mjs",
+        "waitedMs": 20
+      },
+      {
+        "at": "2026-11-27T12:15:01.051Z",
+        "pid": 82623,
+        "event": "launch-attempt",
+        "lease": "09460fd214874ef8c50f7e8064ee7f19",
+        "entrypoint": "terminfo-rich-identity-owned.mjs"
+      },
+      {
+        "at": "2026-11-27T12:15:12.055Z",
+        "pid": 82623,
+        "event": "cleanup-verified",
+        "lease": "09460fd214874ef8c50f7e8064ee7f19",
+        "by": "owned-container-removed"
+      },
+      {
+        "at": "2026-11-27T12:15:12.223Z",
+        "pid": 82623,
+        "event": "released",
+        "lease": "09460fd214874ef8c50f7e8064ee7f19",
+        "entrypoint": "terminfo-rich-identity-owned.mjs",
+        "launch": "attempted"
+      }
+    ],
+    "app": {
+      "pinned": {
+        "pinned176": {
+          "pass": false,
+          "response": "1;1",
+          "note": "Cursor response does not measure OSC 176 Wayland app-id",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query"
+          }
+        },
+        "pinned666": {
+          "pass": false,
+          "response": "1;1",
+          "note": "Cursor response does not measure OSC 666 terminal property",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "query"
+          }
+        }
+      },
+      "samples": {
+        "pinned176": {
+          "cpr": "\u001b[1;1R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5b313b31521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": null,
+            "tabText": "OSC identity QA",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "pinned666": {
+          "cpr": "\u001b[1;1R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5b313b31521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": null,
+            "tabText": "OSC identity QA",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "baseline": {
+          "cpr": "\u001b[3;5R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": "identity-baseline",
+            "tabText": "identity-baseline",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "request176": {
+          "cpr": "\u001b[3;5R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": "identity-baseline",
+            "tabText": "identity-baseline",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "reset176": {
+          "cpr": "\u001b[3;5R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": "identity-baseline",
+            "tabText": "identity-baseline",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "unregistered666": {
+          "cpr": "\u001b[3;5R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": "identity-baseline",
+            "tabText": "identity-baseline",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "request666": {
+          "cpr": "\u001b[3;5R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": "identity-baseline",
+            "tabText": "identity-baseline",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "reset666": {
+          "cpr": "\u001b[3;5R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": "identity-baseline",
+            "tabText": "identity-baseline",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "control": {
+          "cpr": "\u001b[4;7R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5d31303b7267623a363536352f343334332f323132311b5c1b5b343b37521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": "identity-control",
+            "tabText": "identity-control",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        },
+        "restore": {
+          "cpr": "\u001b[3;5R",
+          "da": "\u001b[?62;4;22c",
+          "rawHex": "1b5d31303b7267623a313231322f333433342f353635361b5c1b5b333b35521b5b3f36323b343b323263",
+          "pane": {
+            "paneId": "5550a625-b52a-41b4-a179-04758b954db1",
+            "oscTitle": "identity-baseline",
+            "tabText": "identity-baseline",
+            "rows": 38,
+            "cols": 159
+          },
+          "appId": null,
+          "shell": "xwayland",
+          "x11": "_NET_WM_PID(CARDINAL) = 54\nWM_CLASS(STRING) = \"Ntilde\", \"Ntilde\"\n_NET_WM_NAME(UTF8_STRING) = \"Ntilde\"\n"
+        }
+      }
+    },
+    "foot": {
+      "baseline": {
+        "appId": "qa.foot.baseline",
+        "rawHex": "1b5b333b35521b5b3f36323b343b32323b323863"
+      },
+      "pinned176": {
+        "appId": "terminfo-test",
+        "rawHex": "1b5b313b31521b5b3f36323b343b32323b323863"
+      },
+      "resetBel": {
+        "appId": "qa.foot.baseline",
+        "rawHex": "1b5b313b31521b5b3f36323b343b32323b323863"
+      },
+      "request176": {
+        "appId": "terminfo-test",
+        "rawHex": "1b5b313b31521b5b3f36323b343b32323b323863"
+      },
+      "reset176": {
+        "appId": "qa.foot.baseline",
+        "rawHex": "1b5b313b31521b5b3f36323b343b32323b323863"
+      }
+    },
+    "vte": {
+      "version": [
+        0,
+        80,
+        1
+      ],
+      "registered": [
+        "vte.container.name",
+        "vte.container.runtime",
+        "vte.container.uid",
+        "vte.cwd",
+        "vte.cwf",
+        "vte.icon.color",
+        "vte.icon.image",
+        "vte.progress.hint",
+        "vte.progress.value",
+        "vte.shell.postexec",
+        "vte.shell.precmd",
+        "vte.shell.preexec",
+        "xterm.title"
+      ],
+      "samples": {
+        "baseline": {
+          "feed": "",
+          "containerName": null,
+          "changes": []
+        },
+        "pinned666": {
+          "feed": "1b5d3636363b746573742d70726f703d76616c756507",
+          "containerName": null,
+          "changes": []
+        },
+        "unregistered666": {
+          "feed": "1b5d3636363b746573742d70726f703d76616c75651b5c",
+          "containerName": null,
+          "changes": []
+        },
+        "wrongTerminator": {
+          "feed": "1b5d3636363b7674652e636f6e7461696e65722e6e616d653d6e74696c64652d716107",
+          "containerName": null,
+          "changes": []
+        },
+        "request666": {
+          "feed": "1b5d3636363b7674652e636f6e7461696e65722e6e616d653d6e74696c64652d71611b5c",
+          "containerName": "ntilde-qa",
+          "changes": [
+            "vte.container.name"
+          ]
+        },
+        "query666": {
+          "feed": "1b5d3636363b7674652e636f6e7461696e65722e6e616d653f1b5c",
+          "containerName": "ntilde-qa",
+          "changes": []
+        },
+        "reset666": {
+          "feed": "1b5d3636363b7674652e636f6e7461696e65722e6e616d651b5c",
+          "containerName": null,
+          "changes": [
+            "vte.container.name"
+          ]
+        }
+      }
+    },
+    "appIdEffect": "inapplicable",
+    "appWindow": {
+      "id": 6,
+      "pid": 54,
+      "xid": 4194323
+    },
+    "footWindow": {
+      "id": 5,
+      "pid": 16
+    }
+  }
+}

@@ -48,4 +48,8 @@ The [font ligature assessment](../2026-11-27-rich-font-ligatures/report.md) reco
 
 The [Kitty prompt click assessment](../2026-11-27-rich-kitty-clicks/report.md) records exact child PTY frames for both coordinate modes and the primary and secondary prompt rows. The owned Linux X11 App effect is supported. The case is unprobed in the pinned bundle and has no stock grade.
 
+## OSC 176 app ID and OSC 666 terminal properties
+
+The [two-case identity and property assessment](../2026-11-27-rich-identity/report.md) replays both inconclusive cursor probes and records the native foot app-ID and registered VTE property controls. The native app-ID effect is inapplicable to the measured Ntilde XWayland window. The registered property effect remains inconclusive on Ntilde.
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.
