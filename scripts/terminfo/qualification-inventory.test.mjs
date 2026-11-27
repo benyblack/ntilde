@@ -183,7 +183,7 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock?.basis === 'carried-forward');
-    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard', 'osc52-read']);
+    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard', 'prompt-parts', 'osc52-read']);
     for (const suite of carried) assert.match(suite.stock.note, /carried, not re-measured|carried forward from/, suite.suite);
     const runIds = stored.suites.filter(suite => suite.stock?.basis !== 'carried-forward').map(suite => suite.stock?.runId).filter(Boolean);
     assert.equal(new Set(runIds).size, runIds.length, 'two suites must not claim the same stock run as freshly collected');
@@ -368,15 +368,15 @@ test('current effect totals preserve the separate unsupported and measured-other
         assert.equal(font.effect.verdict, 'supported');
     }
     assert.equal(row(stored, 'extensions.osc710-font-normal'), undefined);
-    assert.equal(totals.effectSupportedIds, 152);
+    assert.equal(totals.effectSupportedIds, 153);
     assert.equal(totals.pinnedSupportedIds, 98);
     assert.equal(totals.pinnedAndEffectSupportedIds, 98);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 54);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 150);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 55);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 151);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 18, effectMeasuredUnsupported: 6, effectMeasuredOther: 1, effectNotMeasured: 11, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 17, effectMeasuredUnsupported: 6, effectMeasuredOther: 1, effectNotMeasured: 10, notPinnedSupported: 72 });
 });
 
 test('OSC 52 read denial adds measured unsupported read capability without changing support counts', () => {

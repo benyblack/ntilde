@@ -1,0 +1,572 @@
+{
+  "suiteId": "ntilde-owned-contour-prompt-parts-v1",
+  "contractsVersion": 1,
+  "scope": "One disposable direct-local macOS App pane, fenced PTY writes, paired pane metadata and session status.",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "probeHash": "16a690f34c0e",
+  "upstreamCollectorRevision": "cf7d8759c7e637aa8dba1e429f3dddd1c0124158",
+  "measurement": {
+    "runId": "4533aab52a5c45bc8e1545623e81b09e",
+    "appRevision": "f2756e52dac1fb92d97d2c99a7cfda6783e225da",
+    "scriptsRevision": "80c69b8856b5196772ccd6c3709a24bf46bcba6a",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-prompt-parts-v1",
+    "receiptSchema": 1,
+    "version": "0.14.0+f2756e52dac1fb92d97d2c99a7cfda6783e225da",
+    "nodeVersion": "v24.22.3",
+    "startedAt": "2026-11-27T14:14:31.174Z",
+    "releasedAt": "2026-11-27T14:14:33.707Z",
+    "geometry": {
+      "rows": 41,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "623c7494884e66ed5d6bba2a3e4ace78db7f2a848981bec13b36e6c78f8ddd21",
+    "sourceSnapshotManifestSha256": "0adae6e9789f5dde8a003922016573f9e2581bbb73fb56d01a59892bf6788256",
+    "archiveSha256": "d90202ad48f52c8e275768c839c01b29234da446eaf27df48ae20fff719fc18a"
+  },
+  "cases": [
+    {
+      "caseId": "extensions.osc133-p",
+      "pinned": {
+        "termless": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        },
+        "terminal": {
+          "pass": false,
+          "note": "Marker was consumed; shell prompt integration was not observed",
+          "observation": {
+            "outcome": "inconclusive",
+            "evidence": "consumed",
+            "reason": "insufficient-evidence",
+            "note": "Marker was consumed; shell prompt integration was not observed"
+          }
+        },
+        "evidence": {
+          "termlessFeed": "\u001b]133;P;Cwd=/tmp\u0007X",
+          "cell": "X",
+          "terminalWrites": [
+            "\u001b[1;1H\u001b[2K",
+            "\u001b]133;P;Cwd=/tmp\u0007X"
+          ],
+          "query": "\u001b[6n",
+          "reply": "\u001b[1;2R"
+        }
+      },
+      "contractResult": {
+        "contractId": "ntilde-osc133-active-prompt-part-v1",
+        "controls": true,
+        "outcome": "supported",
+        "observations": {
+          "start": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": null,
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "bind": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "p-setup": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "p-termless": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cursor": [
+              0,
+              1
+            ]
+          },
+          "p-terminal": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cursor": [
+              0,
+              1
+            ]
+          },
+          "directory-control": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              1
+            ]
+          },
+          "input": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              21
+            ]
+          },
+          "right": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 21
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              21
+            ]
+          },
+          "paint": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 21
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              24
+            ]
+          },
+          "relocated": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 16
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              19
+            ]
+          },
+          "continuation": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 16
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              1,
+              6
+            ]
+          },
+          "kitty": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 16
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              2,
+              4
+            ]
+          },
+          "erased": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              16
+            ]
+          },
+          "repaint": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 16
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              19
+            ]
+          },
+          "overwrite": {
+            "parts": [
+              {
+                "kind": "i",
+                "row": 0,
+                "col": 0
+              },
+              {
+                "kind": "c",
+                "row": 1,
+                "col": 3
+              }
+            ],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": null,
+            "accepting": true,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              17
+            ]
+          },
+          "submitted": {
+            "parts": [],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": {
+              "row": 1,
+              "col": 0,
+              "absoluteRow": 1,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "accepting": false,
+            "status": "running",
+            "command": "cmd",
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              5
+            ]
+          },
+          "orphan": {
+            "parts": [],
+            "commandStart": {
+              "row": 0,
+              "col": 2,
+              "absoluteRow": 0,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "outputStart": {
+              "row": 1,
+              "col": 0,
+              "absoluteRow": 1,
+              "generation": 2,
+              "alternateScreen": false
+            },
+            "accepting": false,
+            "status": "running",
+            "command": "cmd",
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              5
+            ]
+          },
+          "next-cycle": {
+            "parts": [
+              {
+                "kind": "r",
+                "row": 0,
+                "col": 10
+              }
+            ],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              11
+            ]
+          },
+          "new-prompt": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              1,
+              0
+            ]
+          },
+          "pre-reset": {
+            "parts": [
+              {
+                "kind": "s",
+                "row": 2,
+                "col": 10
+              }
+            ],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              2,
+              11
+            ]
+          },
+          "reset": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e/control",
+            "cursor": [
+              0,
+              0
+            ]
+          },
+          "finish": {
+            "parts": [],
+            "commandStart": null,
+            "outputStart": null,
+            "accepting": false,
+            "status": "awaitingInput",
+            "command": null,
+            "cwd": "/qa-prompt-parts-4533aab52a5c45bc8e1545623e81b09e",
+            "cursor": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "stock": {
+        "outcome": "inconclusive",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "rerun": false
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "pinned",
+        "evidence": "stored-cells+cpr+pane-metadata"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      }
+    }
+  ]
+}
