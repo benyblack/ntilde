@@ -1,4 +1,5 @@
 using HarfBuzzSharp;
+using Ntilde.VT;
 using SkiaSharp;
 using SkiaSharp.HarfBuzz;
 
@@ -6,13 +7,38 @@ namespace Ntilde.Shell;
 
 public sealed partial class TerminalDrawOperation
 {
+    private bool _shapeAsciiLigatures;
+
+    private static bool SupportsAsciiSubstitutions(SKTypeface? face)
+    {
+        const uint gsub = 0x47535542, morx = 0x6D6F7278, mort = 0x6D6F7274;
+        return face is { IsFixedPitch: true }
+            && (face.GetTableSize(gsub) > 0 || face.GetTableSize(morx) > 0 || face.GetTableSize(mort) > 0);
+    }
+
+    private static bool MayShapeAsciiLigatures(RenderRowSnapshot row)
+    {
+        bool previous = false;
+        for (int col = 0; col < row.Cols; col++)
+        {
+            ref readonly var cell = ref row.Cells[col];
+            char character = cell.Text is { Length: 1 } text ? text[0] : cell.Character;
+            bool eligible = (cell.Text is null or { Length: 1 }) && character is >= '!' and <= '~'
+                && !cell.IsWide && !cell.IsWideContinuation && !cell.IsHidden && cell.TextSizing is null;
+            if (previous && eligible)
+                return true;
+            previous = eligible;
+        }
+        return false;
+    }
+
     private readonly record struct LigatureRow(int StartCol, float Top, float Height, float Baseline);
 
     /// <summary>Draws substituted clusters and clips the following ordinary draw to the other cells.</summary>
     private bool DrawAsciiLigatures(SKCanvas canvas, string text, LigatureRow row,
         SKFont font, SKPaint paint, SKTypeface primary)
     {
-        if (!primary.IsFixedPitch || !HasAdjacentInk(text))
+        if (!HasAdjacentInk(text))
             return false;
 
         using var buffer = new HarfBuzzSharp.Buffer();

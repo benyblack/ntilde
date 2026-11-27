@@ -20,6 +20,40 @@ public sealed class FontLigatureRenderTests
     }
 
     [AvaloniaTheory]
+    [InlineData("Fixtures", "FiraCode-Regular.ttf", true)]
+    [InlineData("Assets", "JetBrainsMonoNL-Regular.ttf", false)]
+    public void Dirty_span_baseline_tracks_ligature_capability_and_row_content(string directory, string face, bool requiresFullRepaint)
+    {
+        string font = Path.Combine(AppContext.BaseDirectory, directory, "Fonts", face);
+        using var cached = new DrawPathHarness(20, 4, fontPath: font) { EnableLigatures = true };
+        using var uncached = new DrawPathHarness(20, 4, withRowCache: false, fontPath: font) { EnableLigatures = true };
+        var cache = Assert.IsType<Ntilde.Rendering.RowImageCache>(cached.RowCache);
+
+        cached.Parser.Process("\x1b[?25lL=>R");
+        cached.DrawFrame();
+        long rowId;
+        cached.Buffer.Lock.EnterReadLock();
+        try
+        {
+            rowId = Assert.IsType<Ntilde.VT.TerminalRow>(cached.Buffer.GetRowAbsolute(0)).Id;
+        }
+        finally
+        {
+            cached.Buffer.Lock.ExitReadLock();
+        }
+        Assert.True(cache.TryGetLatestByRowId(rowId, out _, out _, out bool firstRequiresFullRepaint));
+        Assert.Equal(requiresFullRepaint, firstRequiresFullRepaint);
+
+        cached.Parser.Process("\x1b[1;2H\x1b[2X");
+        cached.DrawFrame();
+        uncached.Parser.Process("\x1b[?25lL  R");
+        uncached.DrawFrame();
+        Assert.Equal(uncached.Pixels(), cached.Pixels());
+        Assert.True(cache.TryGetLatestByRowId(rowId, out _, out _, out bool secondRequiresFullRepaint));
+        Assert.False(secondRequiresFullRepaint);
+    }
+
+    [AvaloniaTheory]
     [InlineData("=>", 0)]
     [InlineData("=>", 1)]
     [InlineData("!=", 0)]

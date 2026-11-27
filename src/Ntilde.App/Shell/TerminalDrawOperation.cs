@@ -547,6 +547,8 @@ namespace Ntilde.Shell
                     _rowCache.RequestClear();
                 }
                 _wasAltScreenLastFrame = isAltScreen;
+                var tf = _skTypeface?.Typeface ?? SKTypeface.FromFamilyName(_typeface.FontFamily.Name);
+                _shapeAsciiLigatures = _enableLigatures && SupportsAsciiSubstitutions(tf);
                 bool containsTextBlinkInk = false;
                 int ligatureSelectionIndex = 0;
 
@@ -573,7 +575,7 @@ namespace Ntilde.Shell
                     bool hasRenderableRow = rowSnapshot.Cols > 0 && rowSnapshot.Cells.Length >= rowSnapshot.Cols && rowSnapshot.RowId != 0;
                     if (hasRenderableRow)
                     {
-                        if (_enableLigatures && ligatureSelectionIndex < renderSnapshot.SelectionRows.Length)
+                        if (_shapeAsciiLigatures && ligatureSelectionIndex < renderSnapshot.SelectionRows.Length)
                         {
                             var selected = renderSnapshot.SelectionRows.Array[ligatureSelectionIndex];
                             if (selected.AbsRow == rowSnapshot.AbsRow)
@@ -637,7 +639,6 @@ namespace Ntilde.Shell
                 int maxBuilds = MaxPictureBuildsPerFrame; // always unlimited
 
                 // Pass 3: Text
-                var tf = _skTypeface?.Typeface ?? SKTypeface.FromFamilyName(_typeface.FontFamily.Name);
                 LogPrimaryFontDiagnostics(tf);
                 using var font = (_skFont?.Font != null)
                     ? new SKFont(_skFont.Font.Typeface, _skFont.Font.Size)
@@ -668,14 +669,17 @@ namespace Ntilde.Shell
                     {
                         var snapshot = item.Snapshot.Value;
                         // Span repaint clears and clips in single-width column space, so a double-size row is always drawn whole.
-                        // A change can reshape adjacent cells throughout an ASCII run.
-                        bool shouldUseSpanRendering = !_enableLigatures && !item.HasBlinkInk && snapshot.LineSize == LineSize.SingleWidth
+                        // Existing and newly formed ligatures can affect cells beyond a dirty span.
+                        bool mayShape = _shapeAsciiLigatures && MayShapeAsciiLigatures(snapshot);
+                        bool shouldUseSpanRendering = !mayShape && item.LigatureSelection is null
+                            && !item.HasBlinkInk && snapshot.LineSize == LineSize.SingleWidth
                             && rowSpans is { Count: > 0 } && ShouldUseSpanRenderingForRow(rowSpans, snapshot.Cols);
 
                         SKPicture? previousRowPicture = null;
                         if (shouldUseSpanRendering)
                         {
-                            if (!(_rowCache?.TryGetLatestByRowId(snapshot.RowId, out previousRowPicture, out _) ?? false))
+                            if (_rowCache is null || !_rowCache.TryGetLatestByRowId(snapshot.RowId, out previousRowPicture, out _, out bool previousRequiresFullRepaint)
+                                || previousRequiresFullRepaint)
                             {
                                 shouldUseSpanRendering = false;
                             }
@@ -788,7 +792,7 @@ namespace Ntilde.Shell
                                     drawBackgrounds: true);
 
                                 var picture = recorder.EndRecording();
-                                _rowCache!.Add(snapshot.RowId, snapshot.Revision, picture);
+                                _rowCache!.Add(snapshot.RowId, snapshot.Revision, picture, requiresFullRepaint: mayShape);
                                 canvas.DrawPicture(picture, 0, rowTopY);
                                 IncrementOtherDrawCall();
                                 IncrementPictureBuild();
@@ -1586,7 +1590,7 @@ namespace Ntilde.Shell
                             break;
 
                         string cellText = NormalizeTextElementForRender(next.Text ?? next.Character.ToString());
-                        bool cellIsAscii = _enableLigatures && !next.IsWide && cellText.Length == 1
+                        bool cellIsAscii = _shapeAsciiLigatures && !next.IsWide && cellText.Length == 1
                             && cellText[0] is >= ' ' and <= '~';
                         if (k == c) runIsAscii = cellIsAscii;
                         else if (cellIsAscii != runIsAscii || (runIsAscii && ligatureSelection is { } selection
