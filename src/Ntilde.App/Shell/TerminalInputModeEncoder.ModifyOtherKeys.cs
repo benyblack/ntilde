@@ -80,7 +80,6 @@ internal static partial class TerminalInputModeEncoder
         {
             if (level < 3) return level == 2 && key == Key.Space && modifiers == KeyModifiers.Shift ? printable : -1;
             // Lock state and layout are already reflected in the symbol. Leave composition to TextInput.
-            if (string.IsNullOrEmpty(keySymbol)) return printable;
             return TryKeyScalar(keySymbol, out var rune) ? rune.Value : -1;
         }
         // Level 1 leaves Alt and X11 control aliases on the legacy path.
@@ -102,8 +101,8 @@ internal static partial class TerminalInputModeEncoder
         };
     }
 
-    // A symbolless generated key still has a known printable US character. A real backend
-    // symbol identifies the correlated text even when its layout differs from the US table.
+    // The backend symbol identifies the correlated text even when its layout differs from the US table.
+    // Modified shortcuts without a printable symbol retain the existing logical-key policy.
     internal static string? OrdinaryKeyText(Key key, KeyModifiers modifiers, string? symbol)
     {
         int code = GetUsLayoutCharacter(key, (modifiers & KeyModifiers.Shift) != 0);

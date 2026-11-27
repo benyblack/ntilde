@@ -20,6 +20,7 @@ function row(id, level, event, bytes, handled, role = control, { setup = set(lev
 }
 
 const down = (key, modifiers, text) => ({ kind: 'keyDown', key, modifiers, ...(text === undefined ? {} : { text }) });
+const withSymbol = (key, modifiers, symbol, text) => ({ ...down(key, modifiers, text), keySymbol: symbol });
 const declaration = { ...row('declaration', 0, { kind: 'keyUp', key: 'a' }, '', false, control, { setup: modifyOtherKeysXtgettcapQuery }),
     controlPrefixHex: hex(xtgettcapNotAdvertised) };
 const plain = [
@@ -41,17 +42,19 @@ function experiments(baseline) {
         declaration,
         row('level0-ctrl-a', 0, down('a', 2), '\x01', true),
         row('level1-ctrl-a', 1, down('a', 2), '\x01', true),
-        ...plain.map(([key, text]) => row('level2-' + key, 2, down(key, 0, text), text, false)),
-        ...plain.map(([key, text, frame]) => row('level3-' + key, 3, down(key, 0, text), frame, true, effect)),
-        row('level3-key-only', 3, down('a', 0), '\x1b[27;1;97~', true, effect),
-        row('level3-shift-a', 3, down('a', 1, 'A'), '\x1b[27;2;65~', true, effect),
+        ...plain.map(([key, text]) => row('level2-' + key, 2, withSymbol(key, 0, text, text), text, false)),
+        ...plain.map(([key, text, frame]) => row('level3-' + key, 3, withSymbol(key, 0, text, text), frame, true, effect)),
+        row('level3-key-only', 3, withSymbol('a', 0, 'a'), '\x1b[27;1;97~', true, effect),
+        row('level3-shift-a', 3, withSymbol('a', 1, 'A', 'A'), '\x1b[27;2;65~', true, effect),
         row('level3-ctrl-a', 3, down('a', 2), '\x1b[27;5;97~', true, effect),
         row('level3-alt-a', 3, down('a', 4), '\x1b[27;3;97~', true, effect),
+        row('level3-missing-symbol-text', 3, down('a', 0, 'a'), 'a', false),
+        row('level3-missing-symbol-key-only', 3, down('a', 0), '', false),
         row('level3-standalone-text', 3, { kind: 'text', text: '7' }, '7', true),
         row('level3-key-up', 3, { kind: 'keyUp', key: 'a' }, '', false),
         row('level3-return', 3, down('return', 0), '\r', true),
         row('level3-kitty-ctrl-a', 3, down('a', 2), '\x1b[97;5u', true, control, { setup: set(3) + '\x1b[>1u', kittyKeyboardFlags: 1 }),
-        row('level3-kitty-pop', 3, down('a', 0, 'a'), '\x1b[27;1;97~', true, control, { setup: set(3) + '\x1b[>1u\x1b[<u' }),
+        row('level3-kitty-pop', 3, withSymbol('a', 0, 'a', 'a'), '\x1b[27;1;97~', true, control, { setup: set(3) + '\x1b[>1u\x1b[<u' }),
         row('return-to-level2', 2, down('a', 0, 'a'), 'a', false, control, { setup: set(3) + set(2) }),
         restored,
     ];

@@ -14,6 +14,9 @@ public sealed record GeneratePaneInputParams
     /// <summary>Keypad 0–9, decimal, separator, add, subtract, multiply, divide or enter; or one bounded ordinary main-block key.</summary>
     [JsonPropertyName("key")]
     public string? Key { get; init; }
+    /// <summary>Optional framework symbol for a plain or Shift-only ordinary key-down. It must match the declared US key and modifiers.</summary>
+    [JsonPropertyName("keySymbol")]
+    public string? KeySymbol { get; init; }
     /// <summary>
     /// Exactly one keypad character for a routed TextInput event. On <c>text</c> it is the whole event. On <c>keyDown</c> it is a second
     /// routed TextInput raised right after that key-down within the same synchronous dispatch, the text some backends emit for a key
@@ -115,6 +118,8 @@ public static class GeneratePaneInputValidation
     public static bool IsValid(GeneratePaneInputParams p)
     {
         if (p.PaneId == Guid.Empty || p.Modifiers < 0 || p.Modifiers > 15) return false;
+        if (p.KeySymbol != null && (p.Kind != "keyDown" || p.Modifiers is not (0 or 1)
+            || p.KeySymbol != OrdinaryPairedText(p.Key, p.Modifiers == 1))) return false;
         return p.Kind switch
         {
             "keyDown" => HasNoPointerFields(p) && IsKey(p.Key) && (p.Text == null || IsValidPairedText(p)),

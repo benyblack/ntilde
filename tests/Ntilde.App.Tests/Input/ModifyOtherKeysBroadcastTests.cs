@@ -163,9 +163,9 @@ public sealed class ModifyOtherKeysBroadcastTextGateTests
         var (sent, receivers) = Siblings("", "\x1b[>4;3m");
         var gate = new BroadcastTextGate();
 
-        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, null, focused, 0, receivers, gate);
+        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, "a", focused, 0, receivers, gate);
         MainWindow.FanOutBroadcastText("a", receivers, gate);
-        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, null, focused, 0, receivers, gate);
+        MainWindow.FanOutBroadcastKey(Key.A, KeyModifiers.None, PhysicalKey.A, "a", focused, 0, receivers, gate);
         MainWindow.FanOutBroadcastText("日本語", receivers, gate);
 
         Assert.Equal(new[] { "a", "a", "日本語" }, sent[0]);

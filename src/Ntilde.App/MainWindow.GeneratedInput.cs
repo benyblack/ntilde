@@ -162,6 +162,7 @@ public partial class MainWindow
                 RoutedEvent = input.Kind == "keyDown" ? InputElement.KeyDownEvent : InputElement.KeyUpEvent,
                 Key = key,
                 PhysicalKey = physical,
+                KeySymbol = input.KeySymbol,
                 KeyModifiers = modifiers,
                 Source = view
             };

@@ -99,6 +99,10 @@ public sealed class AgentHostGeneratedInputProtocolTests
     [InlineData("\"kind\":\"keyDown\",\"key\":\"return\",\"text\":\"\\r\"")]
     [InlineData("\"kind\":\"keyDown\",\"key\":\"backspace\",\"text\":\"\\u007f\"")]
     [InlineData("\"kind\":\"keyUp\",\"key\":\"a\",\"text\":\"a\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"keySymbol\":\"A\"")]
+    [InlineData("\"kind\":\"keyUp\",\"key\":\"a\",\"keySymbol\":\"a\"")]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"modifiers\":2,\"keySymbol\":\"a\"")]
+    [InlineData("\"kind\":\"text\",\"text\":\"7\",\"keySymbol\":\"7\"")]
     public async Task Invalid_or_uncorrelatable_ordinary_events_never_reach_the_executor(string fields)
     {
         var s = Setup(); using var service = s.Service;
@@ -116,6 +120,7 @@ public sealed class AgentHostGeneratedInputProtocolTests
     [InlineData("\"kind\":\"keyDown\",\"key\":\"digit1\",\"text\":\"1\"", "digit1", "1", 0)]
     [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"modifiers\":2", "a", null, 2)]
     [InlineData("\"kind\":\"keyUp\",\"key\":\"a\",\"modifiers\":2", "a", null, 2)]
+    [InlineData("\"kind\":\"keyDown\",\"key\":\"a\",\"keySymbol\":\"A\",\"text\":\"A\",\"modifiers\":1", "a", "A", 1)]
     public async Task Valid_correlated_ordinary_events_reach_the_executor(string fields, string key, string? text, int modifiers)
     {
         var s = Setup(); using var service = s.Service;

@@ -168,12 +168,12 @@ public sealed class ModifyOtherKeysRoutingTests
     public void LevelThree_ReportsTheKeyOnceAndPreservesLaterText(Key key, KeyModifiers modifiers, string text, string frame)
     {
         var (view, _, _, _, sent) = Create("\x1b[>4;3m");
-        Assert.True(view.Down(key, modifiers).Handled);
+        Assert.True(view.Down(key, modifiers, symbol: text).Handled);
         view.Text(text);
         view.Text(text);
-        Assert.True(view.Down(key, modifiers).Handled);
+        Assert.True(view.Down(key, modifiers, symbol: text).Handled);
         view.Text("日本語");
-        Assert.True(view.Down(key, modifiers).Handled);
+        Assert.True(view.Down(key, modifiers, symbol: text).Handled);
         view.Up(key, modifiers);
         view.Text(text);
         Assert.False(view.Down(Key.ImeProcessed, KeyModifiers.None).Handled);
@@ -192,6 +192,19 @@ public sealed class ModifyOtherKeysRoutingTests
         Assert.True(view.Down(Key.A, modifiers, PhysicalKey.A, symbol).Handled);
         view.Text(symbol);
         Assert.Equal(new[] { report }, sent);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(KeyModifiers.None, "A")]
+    [InlineData(KeyModifiers.Shift, "a")]
+    [InlineData(KeyModifiers.None, "あ")]
+    public void LevelThree_LeavesMissingSymbolsForTheBackendText(KeyModifiers modifiers, string text)
+    {
+        var (view, _, _, _, sent) = Create("\x1b[>4;3m");
+        Assert.False(view.Down(Key.A, modifiers, PhysicalKey.A).Handled);
+        Assert.Empty(sent);
+        view.Text(text);
+        Assert.Equal(new[] { text }, sent);
     }
 
     [AvaloniaFact]
