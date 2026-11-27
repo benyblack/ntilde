@@ -1,0 +1,541 @@
+{
+  "schemaVersion": 1,
+  "scope": "macOS direct-local App profile executing Node in a native PTY before shell startup",
+  "manifestSha256": "a5d61116014c890483df75a272608c171bf824fa04b2d62722aca61bd8b4e9e5",
+  "appRevision": "7824244ebd715d9f14ade754ce3fbb352ec7643d",
+  "scriptsRevision": "a33b9bfacde48e6c35b7dbe7b70290661b3d5d12",
+  "revisionSource": "recorded build and collector checkouts with retained executable and source hashes",
+  "pinned": {
+    "package": "terminfo.dev@4.0.0",
+    "bundlePath": "2026-11-16-shell-integration-aggregates/terminfo-dev-4.0.0.bundle.mjs.gz",
+    "bundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+    "requirementsSha256": "483c7e141c43ac483e8698afe608473680a4ac77c1e4921ea8416ddef2d0caa0",
+    "stockSha256": "d4418484f935ac1a534eaf0b0368d2e5bb174974ae92f2c9c9a4ff2f8905a82b"
+  },
+  "runs": [
+    {
+      "runId": "b9c0a789d71ceeaec3c58b62042948a5",
+      "control": "clean",
+      "host": {
+        "product": "macOS",
+        "version": "27.0.1",
+        "build": "26A434",
+        "arch": "arm64"
+      },
+      "startedAt": "2026-11-27T12:09:34.957Z",
+      "appVersion": "0.14.0",
+      "appVersionSource": "operator supplied; not independently verified",
+      "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "appBinarySha256": {
+        "Ntilde.dll": "ec888063f678ef1b54f14ed52f186cead83eadf6b2e20810db9e0c85f2651f34",
+        "Ntilde.Pty.dll": "85c6c6cc2ce7f2fd3dddeb3cbf97e971ba0ab364c2ddb0492ee6e9b9976a9013",
+        "librusty_pty.dylib": "47fdd6110108758f62179abb4fd20e62d7c0a088b3152b07f58decb465e96584"
+      },
+      "nodeVersion": "v24.22.2",
+      "nodeSha256": "ab0fc8db86abad289091b6bad2d60b2d64f0e6900bfbbf9f7dc195d1ecbfb28e",
+      "sourcePolicy": "readonly-owned-source-graph-rich-vendor-environment-v1",
+      "collectorSnapshotSha256": "f90efe731bc07f8069b179b88435554f802d3b4173c732f26a86a4fd72756103",
+      "receiptSchema": 1,
+      "childOutputSha256": "4c3f21b870cc98c6ec0d09648012c7dd00af93d6f2304cf27a630dc55e1b738a",
+      "appData": "/Users/behnam/.ntilde-qa/nt-RywuMZ/appdata",
+      "pane": {
+        "runId": "b9c0a789d71ceeaec3c58b62042948a5",
+        "appPid": 77115,
+        "workerPid": 77140,
+        "tty": "/dev/ttys000",
+        "paneId": "bba00c43-cb05-44a6-8cda-5577fd720686",
+        "kind": "local",
+        "rows": 41,
+        "cols": 140,
+        "isActive": true,
+        "profileName": "terminfo disposable worker b9c0a789d71ceeaec3c58b62042948a5",
+        "at": "2026-11-27T12:09:36.740Z"
+      },
+      "app": {
+        "pid": 77115,
+        "ppid": 77104,
+        "uid": 501,
+        "tty": "??",
+        "executable": "/Users/behnam/.ntilde-qa-sidecars/rich-vendor-environment-7824244/Ntilde"
+      },
+      "child": {
+        "pid": 77140,
+        "ppid": 77115,
+        "uid": 501,
+        "tty": "ttys000",
+        "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+      },
+      "terminalRestoredAt": "2026-11-27T12:09:36.755Z",
+      "cleanedUpAt": "2026-11-27T12:09:36.853Z",
+      "fixtureRemoved": true,
+      "sourceSnapshotRemovedAt": "2026-11-27T12:09:36.901Z",
+      "leaseReleasedAt": "2026-11-27T12:09:36.931Z",
+      "archive": "clean-run.zip",
+      "archiveSha256": "47b6ac402fe6b70ee2ab3b38b3a1402324a2417d84425088f73ae008acb53278"
+    },
+    {
+      "runId": "ef2bc4be6e1e7427997bab8c73b52dd6",
+      "control": "inherited",
+      "host": {
+        "product": "macOS",
+        "version": "27.0.1",
+        "build": "26A434",
+        "arch": "arm64"
+      },
+      "startedAt": "2026-11-27T12:09:37.256Z",
+      "appVersion": "0.14.0",
+      "appVersionSource": "operator supplied; not independently verified",
+      "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+      "appBinarySha256": {
+        "Ntilde.dll": "ec888063f678ef1b54f14ed52f186cead83eadf6b2e20810db9e0c85f2651f34",
+        "Ntilde.Pty.dll": "85c6c6cc2ce7f2fd3dddeb3cbf97e971ba0ab364c2ddb0492ee6e9b9976a9013",
+        "librusty_pty.dylib": "47fdd6110108758f62179abb4fd20e62d7c0a088b3152b07f58decb465e96584"
+      },
+      "nodeVersion": "v24.22.2",
+      "nodeSha256": "ab0fc8db86abad289091b6bad2d60b2d64f0e6900bfbbf9f7dc195d1ecbfb28e",
+      "sourcePolicy": "readonly-owned-source-graph-rich-vendor-environment-v1",
+      "collectorSnapshotSha256": "f90efe731bc07f8069b179b88435554f802d3b4173c732f26a86a4fd72756103",
+      "receiptSchema": 1,
+      "childOutputSha256": "ab1b3f21ba5ae7facb68d6b7f59a1ca6bf62d9a24750a81f62935420da933929",
+      "appData": "/Users/behnam/.ntilde-qa/nt-FB1A01/appdata",
+      "pane": {
+        "runId": "ef2bc4be6e1e7427997bab8c73b52dd6",
+        "appPid": 77181,
+        "workerPid": 77206,
+        "tty": "/dev/ttys000",
+        "paneId": "579e75fc-6952-45a6-a7a4-cec1cd72bfed",
+        "kind": "local",
+        "rows": 41,
+        "cols": 140,
+        "isActive": true,
+        "profileName": "terminfo disposable worker ef2bc4be6e1e7427997bab8c73b52dd6",
+        "at": "2026-11-27T12:09:38.129Z"
+      },
+      "app": {
+        "pid": 77181,
+        "ppid": 77174,
+        "uid": 501,
+        "tty": "??",
+        "executable": "/Users/behnam/.ntilde-qa-sidecars/rich-vendor-environment-7824244/Ntilde"
+      },
+      "child": {
+        "pid": 77206,
+        "ppid": 77181,
+        "uid": 501,
+        "tty": "ttys000",
+        "executable": "/opt/homebrew/Cellar/node@24/24.22.2_2/bin/node"
+      },
+      "terminalRestoredAt": "2026-11-27T12:09:38.149Z",
+      "cleanedUpAt": "2026-11-27T12:09:38.281Z",
+      "fixtureRemoved": true,
+      "sourceSnapshotRemovedAt": "2026-11-27T12:09:38.340Z",
+      "leaseReleasedAt": "2026-11-27T12:09:38.383Z",
+      "archive": "inherited-run.zip",
+      "archiveSha256": "d8e0245ab0b6a8f1e036338fa38d9ce5683adbe7a3018b386e9b6343713881a9"
+    }
+  ],
+  "controls": {
+    "TERM_PROGRAM": {
+      "clean": {
+        "input": {
+          "state": "absent",
+          "value": null
+        },
+        "child": {
+          "state": "present",
+          "value": "Ntilde"
+        },
+        "origin": "app-provided"
+      },
+      "inherited": {
+        "input": {
+          "state": "present",
+          "value": "ntilde-qa-vendor-term-program"
+        },
+        "child": {
+          "state": "present",
+          "value": "Ntilde"
+        },
+        "origin": "app-provided"
+      }
+    },
+    "NTILDE_QA_ENVIRONMENT_CONTROL": {
+      "clean": {
+        "input": {
+          "state": "present",
+          "value": "ntilde-qa-neutral-clean"
+        },
+        "child": {
+          "state": "present",
+          "value": "ntilde-qa-neutral-clean"
+        },
+        "origin": "inherited"
+      },
+      "inherited": {
+        "input": {
+          "state": "present",
+          "value": "ntilde-qa-neutral-inherited"
+        },
+        "child": {
+          "state": "present",
+          "value": "ntilde-qa-neutral-inherited"
+        },
+        "origin": "inherited"
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "device.env-lc-terminal",
+      "producer": "iTerm2",
+      "applicability": "not-applicable",
+      "variables": {
+        "LC_TERMINAL": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-lc-terminal"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-lc-terminal"
+            },
+            "origin": "inherited"
+          }
+        },
+        "LC_TERMINAL_VERSION": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-lc-terminal-version"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-lc-terminal-version"
+            },
+            "origin": "inherited"
+          }
+        }
+      },
+      "frozen": {
+        "id": "device.env-lc-terminal",
+        "sequence": "$LC_TERMINAL",
+        "description": "The <code>LC_TERMINAL</code> environment variable was introduced by iTerm2 as a way to identify the terminal across SSH sessions. Because <code>LC_*</code> variables are forwarded by default in OpenSSH's <code>SendEnv</code> configuration, <code>LC_TERMINAL</code> survives the hop from local shell into a remote host where <code>TERM_PROGRAM</code> would otherwise be lost.\n\niTerm2 sets <code>LC_TERMINAL=iTerm2</code> and <code>LC_TERMINAL_VERSION</code> to the build number. Other terminals occasionally adopt the convention to advertise themselves through SSH in the same way.",
+        "criterion": "Manual verification required — no automated probe available.",
+        "catalogueProbeStatus": "manual",
+        "pinnedVerdict": "unprobed",
+        "stock": null
+      }
+    },
+    {
+      "id": "device.env-kitty",
+      "producer": "Kitty",
+      "applicability": "not-applicable",
+      "variables": {
+        "KITTY_PID": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-kitty-pid"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-kitty-pid"
+            },
+            "origin": "inherited"
+          }
+        },
+        "KITTY_WINDOW_ID": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-kitty-window-id"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-kitty-window-id"
+            },
+            "origin": "inherited"
+          }
+        },
+        "KITTY_INSTALLATION_DIR": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-kitty-installation-dir"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-kitty-installation-dir"
+            },
+            "origin": "inherited"
+          }
+        }
+      },
+      "frozen": {
+        "id": "device.env-kitty",
+        "sequence": "$KITTY_PID, $KITTY_WINDOW_ID, $KITTY_INSTALLATION_DIR",
+        "description": "The kitty terminal sets a family of <code>KITTY_*</code> environment variables to expose runtime information to child processes. <code>KITTY_PID</code> holds the kitty process ID, <code>KITTY_WINDOW_ID</code> identifies the OS window, and <code>KITTY_INSTALLATION_DIR</code> points at kitty's installation tree (used by kitty's shell integration to locate helper scripts).\n\nApplications can detect a kitty session by checking for any of these variables, and kitten utilities rely on them to communicate back to the parent terminal.",
+        "criterion": "Manual verification required — no automated probe available.",
+        "catalogueProbeStatus": "manual",
+        "pinnedVerdict": "unprobed",
+        "stock": null
+      }
+    },
+    {
+      "id": "device.env-wezterm",
+      "producer": "WezTerm",
+      "applicability": "not-applicable",
+      "variables": {
+        "WEZTERM_PANE": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-pane"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-pane"
+            },
+            "origin": "inherited"
+          }
+        },
+        "WEZTERM_EXECUTABLE": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-executable"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-executable"
+            },
+            "origin": "inherited"
+          }
+        },
+        "WEZTERM_EXECUTABLE_DIR": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-executable-dir"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-executable-dir"
+            },
+            "origin": "inherited"
+          }
+        },
+        "WEZTERM_CONFIG_DIR": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-config-dir"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-config-dir"
+            },
+            "origin": "inherited"
+          }
+        },
+        "WEZTERM_UNIX_SOCKET": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-unix-socket"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wezterm-unix-socket"
+            },
+            "origin": "inherited"
+          }
+        }
+      },
+      "frozen": {
+        "id": "device.env-wezterm",
+        "sequence": "$WEZTERM_PANE, $WEZTERM_EXECUTABLE",
+        "description": "WezTerm sets a family of <code>WEZTERM_*</code> environment variables in every spawned shell. <code>WEZTERM_PANE</code> contains the numeric pane ID, <code>WEZTERM_EXECUTABLE</code> points at the wezterm binary, and additional variables expose the config directory and unix socket used by the <code>wezterm cli</code> tool.\n\nApplications can detect a WezTerm session by checking for these variables, and the wezterm CLI uses them to target the correct pane when invoked from within the terminal.",
+        "criterion": "Manual verification required — no automated probe available.",
+        "catalogueProbeStatus": "manual",
+        "pinnedVerdict": "unprobed",
+        "stock": null
+      }
+    },
+    {
+      "id": "device.env-wt-session",
+      "producer": "Windows Terminal",
+      "applicability": "not-applicable",
+      "variables": {
+        "WT_SESSION": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wt-session"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wt-session"
+            },
+            "origin": "inherited"
+          }
+        },
+        "WT_PROFILE_ID": {
+          "clean": {
+            "input": {
+              "state": "absent",
+              "value": null
+            },
+            "child": {
+              "state": "absent",
+              "value": null
+            },
+            "origin": "absent"
+          },
+          "inherited": {
+            "input": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wt-profile-id"
+            },
+            "child": {
+              "state": "present",
+              "value": "ntilde-qa-vendor-wt-profile-id"
+            },
+            "origin": "inherited"
+          }
+        }
+      },
+      "frozen": {
+        "id": "device.env-wt-session",
+        "sequence": "$WT_SESSION",
+        "description": "The <code>WT_SESSION</code> environment variable is set by Windows Terminal to a GUID that uniquely identifies the current terminal session. A companion variable, <code>WT_PROFILE_ID</code>, identifies the Windows Terminal profile that launched the shell.\n\nApplications use <code>WT_SESSION</code> as the canonical way to detect Windows Terminal, since older versions did not set <code>TERM_PROGRAM</code> and the <code>TERM</code> value on Windows is typically inherited from the underlying console host rather than chosen by Windows Terminal itself.",
+        "criterion": "Manual verification required — no automated probe available.",
+        "catalogueProbeStatus": "manual",
+        "pinnedVerdict": "unprobed",
+        "stock": null
+      }
+    }
+  ]
+}

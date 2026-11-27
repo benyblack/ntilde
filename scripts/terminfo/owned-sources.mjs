@@ -9,6 +9,7 @@ export const capturedV10SourcePolicy = 'readonly-owned-source-graph-v3';
 export const capturedV11SourcePolicy = 'readonly-owned-source-graph-v4';
 export const capturedViewportSourcePolicy = 'readonly-owned-source-graph-v76';
 export const capturedOscTitlesSourcePolicy = 'readonly-owned-source-graph-v77';
+export const capturedVendorEnvironmentSourcePolicy = 'readonly-owned-source-graph-rich-vendor-environment-v1';
 export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph-v79';
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
 export const capturedOsc633MetadataSourcePolicy = 'readonly-owned-source-graph-v86';
@@ -31,6 +32,7 @@ const focusedSourcePolicies = [
     ['modernBlinkSourceSha256', capturedBlinkSourcePolicy],
     ['modernViewportSourceSha256', capturedViewportSourcePolicy],
     ['modernOscTitlesSourceSha256', capturedOscTitlesSourcePolicy],
+    ['richVendorEnvironmentSourceSha256', capturedVendorEnvironmentSourcePolicy],
     ['modernChildEnvironmentSourceSha256', capturedChildEnvironmentSourcePolicy],
     ['modernOscCwdSourceSha256', capturedOscCwdSourcePolicy],
 ];
@@ -1109,11 +1111,23 @@ export const capturedOscCwdSourceFiles = Object.freeze({
     modernOscCwdTabHeadersSourceSha256: 'modern-osc7-cwd-tab-headers.cs',
 });
 
-export const capturedChildEnvironmentSourceFiles = Object.freeze({
-    ...capturedV81SourceFiles,
+const childEnvironmentSourceFiles = {
     modernChildEnvironmentSourceSha256: 'modern-child-environment.mjs',
     modernChildEnvironmentOwnedSourceSha256: 'modern-child-environment-owned.mjs',
     modernChildEnvironmentWorkerSourceSha256: 'modern-child-environment-worker.mjs',
+};
+
+export const capturedChildEnvironmentSourceFiles = Object.freeze({
+    ...capturedV81SourceFiles,
+    ...childEnvironmentSourceFiles,
+});
+
+export const capturedVendorEnvironmentSourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    ...childEnvironmentSourceFiles,
+    richVendorEnvironmentSourceSha256: 'rich-vendor-environment.mjs',
+    richVendorEnvironmentOwnedSourceSha256: 'rich-vendor-environment-owned.mjs',
+    richVendorEnvironmentWorkerSourceSha256: 'rich-vendor-environment-worker.mjs',
 });
 
 /** Bind the private temporary root, selected inventory and manifest environment pin before trusting any captured source. */
@@ -1131,6 +1145,7 @@ export function readSourceSnapshot(root) {
         [capturedBlinkSourcePolicy]: capturedBlinkSourceFiles,
         [capturedViewportSourcePolicy]: capturedViewportSourceFiles,
         [capturedOscTitlesSourcePolicy]: capturedOscTitlesSourceFiles,
+        [capturedVendorEnvironmentSourcePolicy]: capturedVendorEnvironmentSourceFiles,
         [capturedChildEnvironmentSourcePolicy]: capturedChildEnvironmentSourceFiles,
         [capturedOscCwdSourcePolicy]: capturedOscCwdSourceFiles,
     }[sourceSnapshotPolicy] ?? capturedV82SourceFiles;
