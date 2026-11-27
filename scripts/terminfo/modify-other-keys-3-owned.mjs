@@ -53,6 +53,11 @@ function verifySources(output, context) {
     assertRetainedSourceClosure(dir, capturedMok3SourceFiles);
 }
 
+function grade(observations) {
+    if (observations.some(row => row.role === 'control' && !row.matches)) return 'inconclusive';
+    return observations.every(row => row.matches) ? 'supported' : 'unsupported';
+}
+
 export function deriveRun(output) {
     assert.ok(!['failure.json', 'cleanup-failure.json', 'mok3-failure.json', 'input-raw-failure.json'].some(file => existsSync(join(output, file))));
     const context = json(output, 'context.json'), proof = json(output, 'ownership-proof.json'), settings = json(output, 'initial-settings.json');
@@ -84,8 +89,7 @@ export function deriveRun(output) {
         return { id: item.id, role: item.role, event: item.event, level: item.modes.modifyOtherKeysLevel,
             expectedHex: row.expectedHex, actualHex: row.actualHex, handled: app.handled, textHandled: app.textHandled ?? null, matches };
     });
-    const outcome = observations.some(row => row.role === 'control' && !row.matches) ? 'inconclusive'
-        : observations.every(row => row.matches) ? 'supported' : 'unsupported';
+    const outcome = grade(observations);
     const files = Object.fromEntries([journalFile, 'context.json', 'ownership-proof.json', 'initial-settings.json', 'source-snapshot.json']
         .map(name => [name, hash(read(output, name))]));
     assert.equal(files['initial-settings.json'], context.initialSettingsSha256);

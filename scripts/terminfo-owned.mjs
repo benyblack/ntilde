@@ -77,6 +77,11 @@ function pathFor(root, file) {
 }
 const policy = 'readonly-owned-source-graph-v80';
 const blinkPolicy = 'readonly-owned-source-graph-v75';
+function collectionForScope(suite, selected) {
+    if (selected.policy === blinkPolicy) return { scope: suite.scope, workerFile: suite.workerFile, prefix: 'mblink-', Collection: suite.BlinkCollection, completeReceipt: suite.completeBlinkReceipt };
+    return selected.baseline ? { ...suite, scope: suite.baselineScope } : suite;
+}
+
 const blinkSources = {
     modernBlinkSourceSha256: 'modern-blink.mjs',
     modernBlinkNativeSourceSha256: 'modern-blink-native.mjs',
@@ -272,9 +277,7 @@ async function launch() {
         } });
         if (focusedScope) {
             const suite = await import(pathToFileURL(pathFor(root, focusedScope.entry)).href);
-            globalThis[focusedSuiteKey] = focusedScope.policy === blinkPolicy
-                ? { scope: suite.scope, workerFile: suite.workerFile, prefix: 'mblink-', Collection: suite.BlinkCollection, completeReceipt: suite.completeBlinkReceipt }
-                : focusedScope.baseline ? { ...suite, scope: suite.baselineScope } : suite;
+            globalThis[focusedSuiteKey] = collectionForScope(suite, focusedScope);
         }
         await import(pathToFileURL(pathFor(root, 'terminfo-owned-runner.mjs')).href);
         if (interrupted) process.exitCode = 1;

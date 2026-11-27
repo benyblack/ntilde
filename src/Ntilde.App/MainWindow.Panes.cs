@@ -323,10 +323,7 @@ namespace Ntilde
             int level = kittyFlags == 0 && buffer?.Modes is { IsVt52: false } modes ? modes.ModifyOtherKeys.Level : 0;
             if (!ProducesNoTextInput(key, modifiers))
             {
-                if (!focusedConsumesText && level != 3) return false; // legacy receivers wait for text
-                sequence = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical, keySymbol);
-                if (sequence == null && focusedConsumesText)
-                    sequence = key == Key.Space ? " " : TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol);
+                sequence = BroadcastPrintableKey(key, modifiers, physical, keySymbol, level, focusedConsumesText);
                 return sequence != null;
             }
 
@@ -355,6 +352,15 @@ namespace Ntilde
             // Ctrl+\, Ctrl+], Ctrl+_ and the digit row), so a broadcast Ctrl+\ reaches every pane.
             sequence = TerminalInputModeEncoder.EncodeLegacyControlKey(key, modifiers);
             return sequence != null;
+        }
+
+        private static string? BroadcastPrintableKey(Key key, KeyModifiers modifiers, PhysicalKey physical,
+            string? keySymbol, int level, bool focusedConsumesText)
+        {
+            if (!focusedConsumesText && level != 3) return null;
+            string? encoded = TerminalInputModeEncoder.EncodeModifyOtherKeys(key, modifiers, level, physical, keySymbol);
+            if (encoded != null || !focusedConsumesText) return encoded;
+            return key == Key.Space ? " " : TerminalInputModeEncoder.OrdinaryKeyText(key, modifiers, keySymbol);
         }
 
         /// <summary>

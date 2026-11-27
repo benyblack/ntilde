@@ -93,8 +93,8 @@ internal static partial class TerminalInputModeEncoder
             case Key.Enter:
                 return !levelTwoOrHigher && alt ? null : FormatModifyOtherKey(13, m);
             case Key.Tab:
-                if (shift && !ctrl && !alt) return null; // CSI Z (back-tab) at every level
-                if (!levelTwoOrHigher) return ctrl && !shift && !alt ? FormatModifyOtherKey(9, m) : null;
+                if (modifiers == KeyModifiers.Shift) return null; // CSI Z (back-tab) at every level
+                if (level == 1 && modifiers != KeyModifiers.Control) return null;
                 return FormatModifyOtherKey(9, m);
             case Key.Back:
                 if (!levelTwoOrHigher) return null;
