@@ -114,7 +114,7 @@ public class PaneParserWiringTests
 
         settings.BellVisualEnabled = true;
         pane.ApplySettings(settings);
-        parser.Process(string.Concat(Enumerable.Repeat("\x1b]555\x1b\\", 1024)));
+        parser.Process("\x1b]555\x1b\\");
         Dispatcher.UIThread.RunJobs();
         Assert.True(pane.TermView.IsBellFlashActive);
         Assert.Equal(0, bells);
@@ -124,6 +124,40 @@ public class PaneParserWiringTests
         parser.Process("\a");
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(1, bells);
+    }
+
+    [AvaloniaFact]
+    public void Burst_posts_one_flash_to_the_dispatcher_and_a_retired_parser_cannot_flash_its_replacement()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        var parser = pane.Parser!;
+        var settings = new TerminalSettings { BellAudioEnabled = false, BellVisualEnabled = true };
+        pane.ApplySettings(settings);
+
+        parser.Process("\x1b]555\a");
+        bool sawFirstFlash = false;
+        Dispatcher.UIThread.Post(() =>
+        {
+            sawFirstFlash = pane.TermView.IsBellFlashActive;
+            settings.BellVisualEnabled = false;
+            pane.ApplySettings(settings);
+            settings.BellVisualEnabled = true;
+            pane.ApplySettings(settings);
+        });
+        // Any extra dispatcher work from the burst would start a fresh flash after this settings toggle.
+        parser.Process(string.Concat(Enumerable.Repeat("\x1b]555\a", 1024)));
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(sawFirstFlash);
+        Assert.False(pane.TermView.IsBellFlashActive);
+
+        parser.Process("\x1b]555\a");
+        pane.CreateAndWireParser();
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(pane.TermView.IsBellFlashActive);
+        pane.Parser!.Process("\x1b]555\a");
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(pane.TermView.IsBellFlashActive);
     }
 
     /// Every parser hook the pane wires, with its current handler count.

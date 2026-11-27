@@ -126,7 +126,7 @@ test('only controlled pixels are measured, by the cursor, runtime-color reset, s
     assert.deepEqual(pixelClaims, [['cursor.hide', 'cursor'], ['cursor.shape', 'cursor'], ['extensions.iterm2-images', 'static-images'], ['extensions.kitty-graphics.animation', 'kitty-animation'], ['extensions.kitty-graphics.unicode-placeholders', 'kitty-placeholders'], ['extensions.osc104-reset-palette', 'color-reset'], ['extensions.osc110-reset-fg', 'color-reset'],
         ['extensions.osc111-reset-bg', 'color-reset'], ['extensions.osc112-reset-cursor', 'color-reset'],
         ['extensions.osc117-reset-highlight-bg', 'selection-colors'], ['extensions.osc119-reset-highlight-fg', 'selection-colors'],
-        ['extensions.osc17-highlight-bg', 'selection-colors'], ['extensions.osc19-highlight-fg', 'selection-colors'], ['extensions.sixel', 'static-images'], ['extensions.sixel', 'sixel-native-fidelity']]);
+        ['extensions.osc17-highlight-bg', 'selection-colors'], ['extensions.osc19-highlight-fg', 'selection-colors'], ['extensions.osc555-flash', 'osc555'], ['extensions.sixel', 'static-images'], ['extensions.sixel', 'sixel-native-fidelity']]);
     assert.deepEqual(measuredLayersOf('owned-stored-physical-cursor-and-cpr', ''), ['stored-state', 'cursor-position-report']);
     assert.deepEqual(measuredLayersOf('owned-stored-cursor-and-controlled-pixels', ''), ['stored-state', 'controlled-pixels']);
     assert.deepEqual(measuredLayersOf('owned-cells', 'graded from parent-journaled readScreen cells'), ['stored-state']);
@@ -183,7 +183,7 @@ test('stock baseline: retained outcome map, explicit identity, stock counts kept
         assert.equal(suite.stock.suiteComplete ?? false, false);
     }
     const carried = stored.suites.filter(suite => suite.stock?.basis === 'carried-forward');
-    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard', 'osc52-read']);
+    assert.deepEqual(carried.map(suite => suite.suite), ['char-edit', 'attr-rect', 'erase-chars-history', 'selective-erase', 'osc633-metadata', 'osc633-vscode-reassessment', 'osc5522-clipboard', 'osc52-read', 'osc555']);
     for (const suite of carried) assert.match(suite.stock.note, /carried, not re-measured|carried forward from/, suite.suite);
     const runIds = stored.suites.filter(suite => suite.stock?.basis !== 'carried-forward').map(suite => suite.stock?.runId).filter(Boolean);
     assert.equal(new Set(runIds).size, runIds.length, 'two suites must not claim the same stock run as freshly collected');
@@ -368,15 +368,15 @@ test('current effect totals preserve the separate unsupported and measured-other
         assert.equal(font.effect.verdict, 'supported');
     }
     assert.equal(row(stored, 'extensions.osc710-font-normal'), undefined);
-    assert.equal(totals.effectSupportedIds, 152);
+    assert.equal(totals.effectSupportedIds, 153);
     assert.equal(totals.pinnedSupportedIds, 98);
     assert.equal(totals.pinnedAndEffectSupportedIds, 98);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 54);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 150);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 55);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 151);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 18, effectMeasuredUnsupported: 6, effectMeasuredOther: 1, effectNotMeasured: 11, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 17, effectMeasuredUnsupported: 6, effectMeasuredOther: 1, effectNotMeasured: 10, notPinnedSupported: 72 });
 });
 
 test('OSC 52 read denial adds measured unsupported read capability without changing support counts', () => {
@@ -501,7 +501,7 @@ test('the generated summary defines unsupported and not-measured separately and 
     assert.match(text, /Effect unsupported, pinned inconclusive \(by design\): `extensions\.osc113-reset-pointer-fg`, `extensions\.osc114-reset-pointer-bg`, `extensions\.osc52-read`, `extensions\.osc720-scroll-up`, `modes\.deccolm`, `modes\.decsclm`\./);
     assert.match(text, /\| of which measured, effect unsupported \| 6 \|/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /`extensions\.osc633-a`.*`extensions\.osc633-d`/);
-    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 11 \|/);
+    assert.match(text, /\| of which not measured \(no qualified effect evidence\) \| 10 \|/);
     assert.match(text, /is \*\*not\*\* counted as effect-supported, pinned-supported or as any stock, Core or common-harness improvement/);
     assert.match(text.split('Effect supported but pinned inconclusive:')[1].split('\n')[0], /extensions\.reflow/);
     assert.match(text, /\| `extensions\.reflow` \| inconclusive \| inconclusive \| supported \| stored-state \+ actual-scrollback \| ascii-reflow \| ascii-reflow: pinned-inconclusive-by-design \|/);

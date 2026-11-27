@@ -60,4 +60,8 @@ The [vendor environment assessment](../2026-11-27-rich-vendor-environment/report
 
 The [two-case identity and property assessment](../2026-11-27-rich-identity/report.md) replays both inconclusive cursor probes and records the native foot app-ID and registered VTE property controls. The native app-ID effect is inapplicable to the measured Ntilde XWayland window. The registered property effect remains inconclusive on Ntilde.
 
+## OSC 555 visual flash
+
+The macOS pane flashed for both the pinned BEL terminator and foot's ST terminator, then returned to its original pixels. Disabling visual flash suppressed both. The cursor-only probe grades inconclusive. [Owned frames, controls and reproduction](../2026-11-27-osc555-flash/report.md)
+
 Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.

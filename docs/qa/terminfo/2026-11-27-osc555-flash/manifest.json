@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "runs": {
+    "baseline": {
+      "measurement": {
+        "runId": "0cb13c313e79db8818057edadda85669",
+        "appRevision": "6d16bd84bdac25cd8b51a0fa7a4554d74702401d",
+        "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1
+      },
+      "archives": {
+        "owned-run.zip": "29e620e22f74e4a8e10755d79d9685e25e1d6acfdb5d2d3b1cb11e33228521f9"
+      }
+    },
+    "enabled": {
+      "measurement": {
+        "runId": "87f41059d5bfa75a973f476329555682",
+        "appRevision": "657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+        "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1
+      },
+      "archives": {
+        "owned-run.zip": "9828a1fc48e519a631edbb1f97eca0934e54064b800a8a937ae749ffcd636907"
+      }
+    },
+    "disabled": {
+      "measurement": {
+        "runId": "7d72880f8bc22ef660e0b2ee5ec88a95",
+        "appRevision": "657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+        "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1
+      },
+      "archives": {
+        "owned-run.zip": "4bd737181756fd8afe6d5e5d6e1998075ebabaff10ea699fda06bf3c203d3b75"
+      }
+    }
+  }
+}

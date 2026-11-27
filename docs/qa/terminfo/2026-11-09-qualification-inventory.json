@@ -40,15 +40,15 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 159,
-    "suiteClaims": 163,
+    "uniqueBenchmarkIds": 160,
+    "suiteClaims": 164,
     "idsWithMultipleClaims": [
       "extensions.osc-633-vscode",
       "extensions.sixel",
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 152,
+    "effectSupportedIds": 153,
     "effectUnsupportedIds": 6,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 98,
@@ -76,6 +76,7 @@
       "extensions.osc19-highlight-fg",
       "extensions.osc22-pointer",
       "extensions.osc3008-context",
+      "extensions.osc555-flash",
       "extensions.osc633-a",
       "extensions.osc633-b",
       "extensions.osc633-c",
@@ -116,7 +117,7 @@
       "modes.deccolm",
       "modes.decsclm"
     ],
-    "effectSupportedOfStockInconclusive": 150,
+    "effectSupportedOfStockInconclusive": 151,
     "effectUnsupportedOfStockInconclusive": 6,
     "pinnedSupportedOfStockInconclusive": 96,
     "reassessedStockUnsupportedIds": [
@@ -134,10 +135,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 18,
+      "effectUnqualified": 17,
       "effectMeasuredUnsupported": 6,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 11,
+      "effectNotMeasured": 10,
       "notPinnedSupported": 72
     }
   },
@@ -4867,6 +4868,59 @@
         "command": "node --test scripts/terminfo/osc52-read-publication.test.mjs",
         "testSha256": "b280fe148d39f4b23e61258d71b8148723ee1e7aad5fe3c2c6d3a2735f3ad5c5"
       }
+    },
+    {
+      "suite": "osc555",
+      "suiteId": "ntilde-owned-osc555-visual-flash-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-27-osc555-flash/",
+      "doc": "2026-11-27-osc555-flash/report.md",
+      "caseCount": 1,
+      "caseIds": [
+        "extensions.osc555-flash"
+      ],
+      "evidence": {
+        "files": 10,
+        "bytes": 5760737,
+        "sha256": "d61707ba9f6a6bcddb8e743f6b1196c074b2f5bd4854906fba0a4fb7d112d6e3"
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "runId": "87f41059d5bfa75a973f476329555682",
+        "cellReceipt": null,
+        "suiteEvidence": null
+      },
+      "run": {
+        "ownedRunId": "87f41059d5bfa75a973f476329555682",
+        "measuredAt": "2026-11-27T14:14:11.817Z",
+        "appRevision": "657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+        "appVersion": "0.14.0+657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+        "collectorAdapterId": "ntilde-owned-osc555-visual-flash-v1",
+        "collectorAdapterBundleSha256": null,
+        "gradingAdapterId": null,
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-osc555-v1",
+        "sourceSnapshotManifestSha256": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea"
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": null,
+        "counts": null,
+        "suiteComplete": null,
+        "probeHash": null,
+        "rawSha256": null,
+        "sourceRevision": null,
+        "note": "Outcome carried forward from 2026-11-09-stock-baseline.json."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/osc-flash-publication.test.mjs",
+        "testSha256": "51160683770cb72e5bd06b35a88720b3e0ef11edfb5fdddb8b843766ef3bf9f7"
+      }
     }
   ],
   "benchmark": [
@@ -8468,6 +8522,61 @@
             "generated-input-child-bytes"
           ],
           "evidenceTag": "generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "extensions.osc555-flash",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "osc555",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "osc555",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "extensions.osc555-flash",
+          "suite": "osc555",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": "Cursor response does not measure OSC 555 screen flash"
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": "Cursor response does not measure OSC 555 screen flash"
+          },
+          "measuredLayers": [
+            "stored-state",
+            "app-resolved-color",
+            "cursor-position-report",
+            "controlled-pixels"
+          ],
+          "evidenceTag": "stored-cells-and-resolved-colors-and-cpr-and-controlled-pixels"
         }
       ]
     },

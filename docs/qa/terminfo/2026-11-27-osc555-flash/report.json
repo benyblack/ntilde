@@ -1,0 +1,531 @@
+{
+  "suiteId": "ntilde-owned-osc555-visual-flash-v1",
+  "contractsVersion": 1,
+  "scope": "Timed App live-mode TerminalView rasterizations of a disposable direct-local macOS pane.",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "runs": {
+    "baseline": {
+      "measurement": {
+        "runId": "0cb13c313e79db8818057edadda85669",
+        "appRevision": "6d16bd84bdac25cd8b51a0fa7a4554d74702401d",
+        "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1,
+        "version": "0.14.0+6d16bd84bdac25cd8b51a0fa7a4554d74702401d",
+        "nodeVersion": "v24.22.2",
+        "startedAt": "2026-11-27T14:13:52.280Z",
+        "releasedAt": "2026-11-27T14:13:56.976Z",
+        "geometry": {
+          "rows": 41,
+          "cols": 140
+        },
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "assemblySha256": "0f387e51c95dd0bfdbdebf7c027734b0b95dcea113df99d49beb80a27e1c7e76",
+        "sourceSnapshotManifestSha256": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea",
+        "archiveSha256": "29e620e22f74e4a8e10755d79d9685e25e1d6acfdb5d2d3b1cb11e33228521f9"
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "runId": "0cb13c313e79db8818057edadda85669",
+        "suiteId": "ntilde-owned-osc555-visual-flash-v1",
+        "paneId": "4f59af14-2933-4034-b5d5-3fb1c8121554",
+        "files": {
+          "flash.jsonl": "4c43504cee833d290fe64cffa0d5351f4324baf8250ef66bd7cd3bc538c41077",
+          "context.json": "cce59320cadaed6eb54981c6f85140b215a6fb163d0c137a0d19ca17c3154b36",
+          "source-snapshot.json": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea",
+          "initial-settings.json": "dbefc350a4d87b96bf6fa05fb4128abd3b20c6dd008e3f21b7f97b8b26aff296",
+          "ownership-proof.json": "9b21ad1296cd7518bf3cca2b303317bbb23d299fa9b5cd766f62dd7b5fc9b16f"
+        },
+        "fixtureRemoved": true
+      },
+      "trace": {
+        "writes": [
+          "\u001b[1;1H\u001b[2K",
+          "\u001b]555\u0007"
+        ],
+        "query": "\u001b[6n",
+        "reply": "\u001b[1;1R"
+      },
+      "captures": [
+        {
+          "name": "control",
+          "state": "flashed",
+          "before": 3,
+          "during": 4,
+          "restored": 13,
+          "frameCount": 20,
+          "fenceAfterMs": 1.2107906341552734,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -9.684749603271484,
+              "end": -1.8456249237060547,
+              "file": "flash-control-3.png"
+            },
+            "during": {
+              "changed": 229200,
+              "visible": 229200,
+              "pixels": 229200,
+              "start": 8.001832962036133,
+              "end": 22.541500091552734,
+              "file": "flash-control-4.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 186.60008335113525,
+              "end": 194.06012535095215,
+              "file": "flash-control-13.png"
+            }
+          }
+        },
+        {
+          "name": "pinned",
+          "state": "inconclusive",
+          "reason": "flash interval or pane-wide contrast unresolved",
+          "maxGapMs": 80.24141693115234,
+          "before": 4,
+          "during": 6,
+          "restored": 12,
+          "frameCount": 18,
+          "fenceAfterMs": 2.8274993896484375,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -27.582250595092773,
+              "end": -16.068124771118164,
+              "file": "flash-pinned-4.png"
+            },
+            "during": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 13.897250175476074,
+              "end": 23.509666442871094,
+              "file": "flash-pinned-6.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 187.86304187774658,
+              "end": 198.17599964141846,
+              "file": "flash-pinned-12.png"
+            }
+          }
+        },
+        {
+          "name": "foot",
+          "state": "steady",
+          "maxGapMs": 28.424375534057617,
+          "before": 5,
+          "during": 7,
+          "restored": 17,
+          "frameCount": 25,
+          "fenceAfterMs": 0.6500415802001953,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -18.891040802001953,
+              "end": -11.133874893188477,
+              "file": "flash-foot-5.png"
+            },
+            "during": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 13.762999534606934,
+              "end": 25.30037498474121,
+              "file": "flash-foot-7.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 182.827374458313,
+              "end": 192.69387435913086,
+              "file": "flash-foot-17.png"
+            }
+          }
+        }
+      ],
+      "pinned": {
+        "pass": false,
+        "response": "1;1",
+        "note": "Cursor response does not measure OSC 555 screen flash",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        }
+      }
+    },
+    "enabled": {
+      "measurement": {
+        "runId": "87f41059d5bfa75a973f476329555682",
+        "appRevision": "657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+        "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1,
+        "version": "0.14.0+657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+        "nodeVersion": "v24.22.2",
+        "startedAt": "2026-11-27T14:14:11.817Z",
+        "releasedAt": "2026-11-27T14:14:16.496Z",
+        "geometry": {
+          "rows": 41,
+          "cols": 140
+        },
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "assemblySha256": "89691b0f4b5492ce0063de6c47a324a1d8b81d7c5fdcfdafe5cc12f04857871d",
+        "sourceSnapshotManifestSha256": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea",
+        "archiveSha256": "9828a1fc48e519a631edbb1f97eca0934e54064b800a8a937ae749ffcd636907"
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "runId": "87f41059d5bfa75a973f476329555682",
+        "suiteId": "ntilde-owned-osc555-visual-flash-v1",
+        "paneId": "c6d6d4dd-bccf-473b-96b0-45b7042172e5",
+        "files": {
+          "flash.jsonl": "b44e5e8281f6fca64e6ec934b6d139efdee33e51548d98917afe0e2558ead028",
+          "context.json": "629017beef400e23a9196a12b802b29ca68c67350b4d195ef40ee7355b29b45f",
+          "source-snapshot.json": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea",
+          "initial-settings.json": "e750844b8a4948cf8bbd55dd57a21de7dfc9df510328e78b865485d2a2a9cbb9",
+          "ownership-proof.json": "bfcf059b623c55c8397a408271b7b1db3cc472a56a59bf3168b2781c8839cc71"
+        },
+        "fixtureRemoved": true
+      },
+      "trace": {
+        "writes": [
+          "\u001b[1;1H\u001b[2K",
+          "\u001b]555\u0007"
+        ],
+        "query": "\u001b[6n",
+        "reply": "\u001b[1;1R"
+      },
+      "captures": [
+        {
+          "name": "control",
+          "state": "flashed",
+          "before": 3,
+          "during": 5,
+          "restored": 15,
+          "frameCount": 22,
+          "fenceAfterMs": 0.7447080612182617,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -23.152292251586914,
+              "end": -13.573625564575195,
+              "file": "flash-control-3.png"
+            },
+            "during": {
+              "changed": 229200,
+              "visible": 229200,
+              "pixels": 229200,
+              "start": 16.952082633972168,
+              "end": 25.04804039001465,
+              "file": "flash-control-5.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 188.8888750076294,
+              "end": 196.106915473938,
+              "file": "flash-control-15.png"
+            }
+          }
+        },
+        {
+          "name": "pinned",
+          "state": "flashed",
+          "before": 2,
+          "during": 4,
+          "restored": 14,
+          "frameCount": 22,
+          "fenceAfterMs": 2.1336669921875,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -21.165791511535645,
+              "end": -13.457541465759277,
+              "file": "flash-pinned-2.png"
+            },
+            "during": {
+              "changed": 229200,
+              "visible": 229200,
+              "pixels": 229200,
+              "start": 17.421292304992676,
+              "end": 25.655750274658203,
+              "file": "flash-pinned-4.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 180.89725017547607,
+              "end": 187.81737518310547,
+              "file": "flash-pinned-14.png"
+            }
+          }
+        },
+        {
+          "name": "foot",
+          "state": "flashed",
+          "before": 5,
+          "during": 7,
+          "restored": 17,
+          "frameCount": 24,
+          "fenceAfterMs": 0.3585844039916992,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -16.44566535949707,
+              "end": -9.729832649230957,
+              "file": "flash-foot-5.png"
+            },
+            "during": {
+              "changed": 229200,
+              "visible": 229200,
+              "pixels": 229200,
+              "start": 15.930084228515625,
+              "end": 22.872417449951172,
+              "file": "flash-foot-7.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 175.64220905303955,
+              "end": 182.47399997711182,
+              "file": "flash-foot-17.png"
+            }
+          }
+        }
+      ],
+      "pinned": {
+        "pass": false,
+        "response": "1;1",
+        "note": "Cursor response does not measure OSC 555 screen flash",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        }
+      }
+    },
+    "disabled": {
+      "measurement": {
+        "runId": "7d72880f8bc22ef660e0b2ee5ec88a95",
+        "appRevision": "657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+        "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-osc555-v1",
+        "receiptSchema": 1,
+        "version": "0.14.0+657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+        "nodeVersion": "v24.22.2",
+        "startedAt": "2026-11-27T14:15:06.956Z",
+        "releasedAt": "2026-11-27T14:15:11.265Z",
+        "geometry": {
+          "rows": 41,
+          "cols": 140
+        },
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "assemblySha256": "89691b0f4b5492ce0063de6c47a324a1d8b81d7c5fdcfdafe5cc12f04857871d",
+        "sourceSnapshotManifestSha256": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea",
+        "archiveSha256": "4bd737181756fd8afe6d5e5d6e1998075ebabaff10ea699fda06bf3c203d3b75"
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "runId": "7d72880f8bc22ef660e0b2ee5ec88a95",
+        "suiteId": "ntilde-owned-osc555-visual-flash-v1",
+        "paneId": "2f0f40d8-c987-47d9-877f-9345d7ccfa37",
+        "files": {
+          "flash.jsonl": "904ace1488fdc3c99dd9dd64f67a5f543f5f7fb9c51286d084f6112414e0a44f",
+          "context.json": "b824ad2f9cce4109c615ee87bab1bd0b69a09f1a367bc8d803c1065d2ebf533d",
+          "source-snapshot.json": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea",
+          "initial-settings.json": "edce18758bba7320b89ba6e3c7f45932135273dbfd8a68596ec546a6e04132d4",
+          "ownership-proof.json": "3fd5ee0072d011dbea256dafd40300d2df8078a2f7bbd883cb0a1f61dbb56bad"
+        },
+        "fixtureRemoved": true
+      },
+      "trace": {
+        "writes": [
+          "\u001b[1;1H\u001b[2K",
+          "\u001b]555\u0007"
+        ],
+        "query": "\u001b[6n",
+        "reply": "\u001b[1;1R"
+      },
+      "captures": [
+        {
+          "name": "control",
+          "state": "steady",
+          "maxGapMs": 25.83133316040039,
+          "before": 3,
+          "during": 5,
+          "restored": 16,
+          "frameCount": 24,
+          "fenceAfterMs": 0.6889581680297852,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -24.530207633972168,
+              "end": -17.96191692352295,
+              "file": "flash-control-3.png"
+            },
+            "during": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 10.323542594909668,
+              "end": 16.88337516784668,
+              "file": "flash-control-5.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 183.26520824432373,
+              "end": 190.25708389282227,
+              "file": "flash-control-16.png"
+            }
+          }
+        },
+        {
+          "name": "pinned",
+          "state": "steady",
+          "maxGapMs": 37.437957763671875,
+          "before": 6,
+          "during": 7,
+          "restored": 18,
+          "frameCount": 27,
+          "fenceAfterMs": 1.180999755859375,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -11.559290885925293,
+              "end": -5.708374977111816,
+              "file": "flash-pinned-6.png"
+            },
+            "during": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 3.599583625793457,
+              "end": 8.855667114257812,
+              "file": "flash-pinned-7.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 182.20354175567627,
+              "end": 187.9647922515869,
+              "file": "flash-pinned-18.png"
+            }
+          }
+        },
+        {
+          "name": "foot",
+          "state": "steady",
+          "maxGapMs": 21.010958671569824,
+          "before": 6,
+          "during": 7,
+          "restored": 19,
+          "frameCount": 28,
+          "fenceAfterMs": 0.25266551971435547,
+          "samples": {
+            "before": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": -11.958792686462402,
+              "end": -6.343334197998047,
+              "file": "flash-foot-6.png"
+            },
+            "during": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 2.953540802001953,
+              "end": 8.08799934387207,
+              "file": "flash-foot-7.png"
+            },
+            "restored": {
+              "changed": 0,
+              "visible": 0,
+              "pixels": 229200,
+              "start": 179.3122901916504,
+              "end": 185.65416526794434,
+              "file": "flash-foot-19.png"
+            }
+          }
+        }
+      ],
+      "pinned": {
+        "pass": false,
+        "response": "1;1",
+        "note": "Cursor response does not measure OSC 555 screen flash",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "caseId": "extensions.osc555-flash",
+      "pinned": {
+        "pass": false,
+        "response": "1;1",
+        "note": "Cursor response does not measure OSC 555 screen flash",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        }
+      },
+      "termless": null,
+      "contractResult": {
+        "outcome": "supported"
+      },
+      "stock": {
+        "outcome": "inconclusive",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "rerun": false
+      },
+      "conclusion": {
+        "outcome": "inconclusive",
+        "grading": "pinned",
+        "evidence": "stored-cells-and-resolved-colors-and-cpr-and-controlled-pixels"
+      },
+      "divergence": {
+        "kind": "pinned-inconclusive-by-design",
+        "pinnedOutcome": "inconclusive",
+        "contractOutcome": "supported"
+      }
+    }
+  ]
+}

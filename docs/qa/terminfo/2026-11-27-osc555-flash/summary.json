@@ -1,0 +1,32 @@
+{
+  "ownedRunId": "87f41059d5bfa75a973f476329555682",
+  "measuredAt": "2026-11-27T14:14:11.817Z",
+  "appRevision": "657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+  "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+  "context": {
+    "adapter": "ntilde-owned-osc555-visual-flash-v1",
+    "appVersion": "0.14.0+657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+    "appVersionSource": "operator supplied; not independently verified",
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "sourceSnapshotPolicy": "readonly-owned-source-graph-osc555-v1",
+    "sourceSnapshotManifestSha256": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea"
+  },
+  "receipt": {
+    "schemaVersion": 1,
+    "runId": "87f41059d5bfa75a973f476329555682",
+    "suiteId": "ntilde-owned-osc555-visual-flash-v1",
+    "paneId": "c6d6d4dd-bccf-473b-96b0-45b7042172e5",
+    "files": {
+      "flash.jsonl": "b44e5e8281f6fca64e6ec934b6d139efdee33e51548d98917afe0e2558ead028",
+      "context.json": "629017beef400e23a9196a12b802b29ca68c67350b4d195ef40ee7355b29b45f",
+      "source-snapshot.json": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea",
+      "initial-settings.json": "e750844b8a4948cf8bbd55dd57a21de7dfc9df510328e78b865485d2a2a9cbb9",
+      "ownership-proof.json": "bfcf059b623c55c8397a408271b7b1db3cc472a56a59bf3168b2781c8839cc71"
+    },
+    "fixtureRemoved": true
+  },
+  "stockCollector": {
+    "rerun": false,
+    "note": "Outcome carried forward from 2026-11-09-stock-baseline.json."
+  }
+}
