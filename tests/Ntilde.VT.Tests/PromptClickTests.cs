@@ -248,6 +248,18 @@ public class PromptClickTests
         Assert.Equal(1, WireRow(3));
     }
 
+    [Fact]
+    public void ReflowKeepsPromptBoundsOrderedAcrossDoubleHeightHalves()
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        new AnsiParser(buffer).Process("\x1b#3abcdefghij\x1b[1;7H\x1b]133;A;click_events=2\aXYZ\x1b[2;1H\x1b#4ls");
+
+        buffer.Resize(10, 12);
+        Assert.False(buffer.TryGetPromptClickRow(1, out _, out _));
+        Assert.True(buffer.TryGetPromptClickRow(2, out int row, out _));
+        Assert.Equal(1, row);
+    }
+
     private int WireRow(int visualRow)
     {
         Assert.True(_buffer.TryGetPromptClickRow(visualRow, out int row, out _));

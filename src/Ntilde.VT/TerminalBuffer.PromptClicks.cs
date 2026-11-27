@@ -227,17 +227,23 @@ public partial class TerminalBuffer
         lock (_trackedMarkGate)
         {
             if (_clickPromptVersion != version) return;
-            if (primary is null)
+            if (primary is not { } start)
             {
                 ClearClickPromptLocked();
                 return;
             }
 
             _clickPromptVersion++;
-            _clickPrompt = primary;
-            _clickPromptEnd = end ?? primary.Value;
+            _clickPrompt = start;
+            _clickPromptEnd = start;
+            if (end is { } retainedEnd) ExtendClickPromptLocked(retainedEnd);
             _secondaryClickPrompts.Clear();
-            _secondaryClickPrompts.AddRange(secondary);
+            foreach (var anchor in secondary)
+            {
+                if (anchor.AbsoluteRow < start.AbsoluteRow) continue;
+                _secondaryClickPrompts.Add(anchor);
+                ExtendClickPromptLocked(anchor);
+            }
         }
     }
 
