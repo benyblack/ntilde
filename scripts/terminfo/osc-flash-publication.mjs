@@ -13,7 +13,7 @@ import { digest, focusedMeasurement, pinnedBundle, readJson, readManifest, withO
 
 const root = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(root, '2026-11-27-osc555-flash');
-const manifestSha = '9cd6893b38b316adbe32bbb6e0f3dae271b8e888cbe0fd51f47d50fc9fd3c2df';
+const manifestSha = '208779d3c8e5bda122521a25bfc452aa59baf247b1d068f0a57c2ef3120c1b44';
 const upstream = '2026-11-16-static-images/terminfo-dev-4.0.0.bundle.mjs.gz';
 
 function pinnedRegistration() {
@@ -34,7 +34,7 @@ function pinnedRegistration() {
 function runReport(directory, manifest, label, previews) {
     const { entries, series, context, receipt } = deriveFlash(directory);
     assert.deepEqual(receipt, readJson(directory, 'flash-receipt.json'));
-    assert.equal(context.collectionScope.visual, label !== 'disabled');
+    assert.equal(context.collectionScope.visual, ['baseline', 'enabled'].includes(label));
     const sources = join(directory, 'sources'), snapshot = readJson(directory, 'source-snapshot.json');
     assert.equal(context.sourceSnapshotPolicy, capturedFlashSourcePolicy);
     assert.equal(snapshot.policy, capturedFlashSourcePolicy);
@@ -58,9 +58,18 @@ function runReport(directory, manifest, label, previews) {
             if (label === 'enabled' && trial.name === 'pinned' && frame) previews[phase] = readFileSync(join(directory, frame.file));
             return [phase, frame ? { ...frame, start: frame.start - sent, end: frame.end - sent } : null];
         }));
-        return { ...trial, frameCount: frames.length, fenceAfterMs: fenced - sent, samples };
+        return { ...trial, frameCount: frames.length, changedFrames: frames.filter(f => f.changed > 0).length, fenceAfterMs: fenced - sent, samples };
     });
     return { measurement, receipt, trace, captures };
+}
+
+// One predeclared timing repeat. An observed change in either disabled run
+// blocks admission even if the other run captured an uninterrupted steady pane.
+export function combineDisabled(first, repeat) {
+    assert.equal(first.name, repeat.name);
+    const pair = [first, repeat];
+    return pair.every(trial => trial.changedFrames === 0) && pair.some(trial => trial.state === 'steady')
+        ? 'steady' : 'inconclusive';
 }
 
 export function effectVerdict(enabled, disabled) {
@@ -73,17 +82,22 @@ export async function buildPublication() {
     const runs = {}, probe = pinnedRegistration();
     assert.equal(probe.id, caseIds[0]);
     assert.equal(probe.termless, null);
-    for (const label of ['baseline', 'enabled', 'disabled']) {
+    for (const label of ['baseline', 'enabled', 'disabled', 'disabled-repeat']) {
         const run = withOwnedArchive(join(publication, label), manifest.runs[label], (dir, m) => runReport(dir, m, label, previews));
         const { writes, query, reply } = run.trace;
         run.pinned = await replayPinned(probe, [...writes, query], parseCursorReport(reply)); // NOSONAR: replay each archived exchange.
         runs[label] = run;
     }
-    assert.equal(runs.enabled.measurement.assemblySha256, runs.disabled.measurement.assemblySha256);
-    assert.equal(runs.enabled.measurement.executableSha256, runs.disabled.measurement.executableSha256);
-    assert.equal(runs.enabled.measurement.appRevision, runs.disabled.measurement.appRevision);
-    assert.equal(new Set(Object.values(runs).map(run => run.measurement.runId)).size, 3);
-    const result = effectVerdict(...['enabled', 'disabled'].map(label => runs[label].captures.map(c => c.state)));
+    for (const run of [runs.disabled, runs['disabled-repeat']]) {
+        for (const key of ['appRevision', 'assemblySha256', 'executableSha256']) {
+            assert.equal(runs.enabled.measurement[key], run.measurement[key]);
+        }
+    }
+    assert.equal(new Set(Object.values(runs).map(run => run.measurement.sourceSnapshotManifestSha256)).size, 1);
+    assert.equal(new Set(Object.values(runs).map(run => run.measurement.runId)).size, 4);
+    const enabled = runs.enabled.captures.map(trial => trial.state);
+    const disabled = runs.disabled.captures.map((trial, index) => combineDisabled(trial, runs['disabled-repeat'].captures[index]));
+    const result = effectVerdict(enabled, disabled);
     const stock = readJson(root, '2026-11-09-stock-baseline.json');
     assert.equal(stock.source.pinnedBundleSha256, pinnedBundle);
     const { measurement: m, receipt, pinned } = runs.enabled;
@@ -92,7 +106,9 @@ export async function buildPublication() {
     const summary = { ownedRunId: m.runId, measuredAt: m.startedAt, appRevision: m.appRevision, scriptsRevision: m.scriptsRevision,
         context, receipt, stockCollector: { rerun: false, note: 'Outcome carried forward from 2026-11-09-stock-baseline.json.' } };
     const report = { suiteId, contractsVersion, scope: 'Timed App live-mode TerminalView rasterizations of a disposable direct-local macOS pane.',
-        pinnedBundleSha256: pinnedBundle, runs, cases: [{ caseId: caseIds[0], pinned, termless: null, contractResult: { outcome: result },
+        pinnedBundleSha256: pinnedBundle, runs, cases: [{ caseId: caseIds[0], pinned, termless: null,
+            contractResult: { outcome: result, enabledBelTerminated: enabled[1], enabledStTerminated: enabled[2],
+                disabledBelTerminated: disabled[1], disabledStTerminated: disabled[2] },
             stock: { outcome: stock.outcomes[caseIds[0]], runId: stock.source.stockCollectorRunId, rerun: false },
             conclusion: { outcome: pinned.observation.outcome, grading: 'pinned', evidence: 'stored-cells-and-resolved-colors-and-cpr-and-controlled-pixels' },
             ...(result === pinned.observation.outcome ? {} : { divergence: { kind: 'pinned-inconclusive-by-design',

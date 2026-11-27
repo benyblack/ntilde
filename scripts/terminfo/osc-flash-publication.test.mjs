@@ -5,21 +5,25 @@ import test from 'node:test';
 import { deriveFlash } from './osc-flash-owned.mjs';
 import { readJson, withOwnedArchive } from './unicode-publication-inputs.mjs';
 import { classify } from './osc-flash-contract.mjs';
-import { effectVerdict, publication, publish } from './osc-flash-publication.mjs';
+import { combineDisabled, effectVerdict, publication, publish } from './osc-flash-publication.mjs';
 
-test('all three owned receipts, the exact pinned callback and every published frame rederive', async () => {
+test('all four owned receipts, the exact pinned callback and every published frame rederive', async () => {
     const { cases: [result], runs } = await publish(true);
     assert.equal(result.termless, null);
     assert.equal(result.pinned.observation.outcome, 'inconclusive');
-    assert.equal(result.contractResult.outcome, 'supported');
+    assert.equal(result.contractResult.outcome, 'inconclusive');
     assert.equal(result.stock.outcome, 'inconclusive');
     const states = name => runs[name].captures.map(c => c.state);
     assert.deepEqual(states('baseline'), ['flashed', 'inconclusive', 'steady']);
     assert.deepEqual(states('enabled'), ['flashed', 'flashed', 'flashed']);
-    assert.deepEqual(states('disabled'), ['steady', 'steady', 'steady']);
+    assert.deepEqual(states('disabled'), ['steady', 'inconclusive', 'steady']);
+    assert.deepEqual(states('disabled-repeat'), ['steady', 'inconclusive', 'inconclusive']);
 });
 
 test('a late or sparse capture, an unrelated pixel change, and a missing control cannot qualify the flash', () => {
+    const steady = { name: 'pinned', state: 'steady', changedFrames: 0 };
+    assert.equal(combineDisabled({ ...steady, state: 'inconclusive' }, steady), 'steady');
+    assert.equal(combineDisabled({ ...steady, state: 'inconclusive', changedFrames: 1 }, steady), 'inconclusive');
     const frames = Array.from({ length: 24 }, (_, i) => ({
         start: 10 * i, end: 10 * i + 3, pixels: 1000, changed: 0, visible: 0,
     }));

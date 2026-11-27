@@ -1,27 +1,27 @@
 {
-  "ownedRunId": "87f41059d5bfa75a973f476329555682",
-  "measuredAt": "2026-11-27T14:14:11.817Z",
-  "appRevision": "657b67f024eea39e5a20f25ab1a9d8fccc9965db",
-  "scriptsRevision": "a0c8318b6eca2b4fb6ea7cd09c30c65a061ef397",
+  "ownedRunId": "ab0003607c9aa2c3616d93b9c40792a2",
+  "measuredAt": "2026-11-27T14:31:59.652Z",
+  "appRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
+  "scriptsRevision": "373abd87d97fe57dda1891f146e0c6d8a9865dfb",
   "context": {
     "adapter": "ntilde-owned-osc555-visual-flash-v1",
-    "appVersion": "0.14.0+657b67f024eea39e5a20f25ab1a9d8fccc9965db",
+    "appVersion": "0.14.0+373abd87d97fe57dda1891f146e0c6d8a9865dfb",
     "appVersionSource": "operator supplied; not independently verified",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-osc555-v1",
-    "sourceSnapshotManifestSha256": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea"
+    "sourceSnapshotManifestSha256": "633e47184c3890c75321fe46ff4cc71bebf7b8fe15efd6d63eb6e1f346bd8fd3"
   },
   "receipt": {
     "schemaVersion": 1,
-    "runId": "87f41059d5bfa75a973f476329555682",
+    "runId": "ab0003607c9aa2c3616d93b9c40792a2",
     "suiteId": "ntilde-owned-osc555-visual-flash-v1",
-    "paneId": "c6d6d4dd-bccf-473b-96b0-45b7042172e5",
+    "paneId": "cde7712f-d35b-4efd-8991-6441e4c89e1e",
     "files": {
-      "flash.jsonl": "b44e5e8281f6fca64e6ec934b6d139efdee33e51548d98917afe0e2558ead028",
-      "context.json": "629017beef400e23a9196a12b802b29ca68c67350b4d195ef40ee7355b29b45f",
-      "source-snapshot.json": "e2bdad246f3637bab7e28a74e2af6090de1f97a92d225f163ae9512cf0216dea",
-      "initial-settings.json": "e750844b8a4948cf8bbd55dd57a21de7dfc9df510328e78b865485d2a2a9cbb9",
-      "ownership-proof.json": "bfcf059b623c55c8397a408271b7b1db3cc472a56a59bf3168b2781c8839cc71"
+      "flash.jsonl": "d938cf99db290ceab19a34f087511299db60e8e7ed5041f0f5c1d50ad69f4d78",
+      "context.json": "94f452702ec4af8db18fa504f4efc2c2887317915bf48b99a4c7a7b95dfe83bd",
+      "source-snapshot.json": "633e47184c3890c75321fe46ff4cc71bebf7b8fe15efd6d63eb6e1f346bd8fd3",
+      "initial-settings.json": "c23a98e4e655d517615cc274cbf23480a3038cfa676346e4fa4fb7af153043f9",
+      "ownership-proof.json": "748e16d935b693cd61c2560b8cc30572ed328bdf43563c0e2c0ca6926788dcd9"
     },
     "fixtureRemoved": true
   },

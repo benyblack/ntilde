@@ -356,7 +356,7 @@ test('current effect totals preserve the separate unsupported and measured-other
     // Sixel retains the old unsupported result and the fixed supported result, so its effect roll-up is mixed.
     assert.deepEqual(totals.effectUnsupportedPinnedInconclusiveIds, ['extensions.osc113-reset-pointer-fg', 'extensions.osc114-reset-pointer-bg', 'extensions.osc52-read', 'extensions.osc720-scroll-up', 'modes.deccolm', 'modes.decsclm']);
     assert.equal(totals.effectUnsupportedIds, 6);
-    assert.equal(totals.effectOtherIds, 1);
+    assert.equal(totals.effectOtherIds, 2);
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.reflow'));
     assert.ok(totals.effectSupportedPinnedInconclusiveIds.includes('extensions.iterm2-images'));
     assert.equal(totals.effectSupportedIds, stored.benchmark.filter(item => item.effect.verdict === 'supported').length);
@@ -368,15 +368,15 @@ test('current effect totals preserve the separate unsupported and measured-other
         assert.equal(font.effect.verdict, 'supported');
     }
     assert.equal(row(stored, 'extensions.osc710-font-normal'), undefined);
-    assert.equal(totals.effectSupportedIds, 153);
+    assert.equal(totals.effectSupportedIds, 152);
     assert.equal(totals.pinnedSupportedIds, 98);
     assert.equal(totals.pinnedAndEffectSupportedIds, 98);
-    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 55);
-    assert.equal(totals.effectSupportedOfStockInconclusive, 151);
+    assert.equal(totals.effectSupportedPinnedInconclusiveIds.length, 54);
+    assert.equal(totals.effectSupportedOfStockInconclusive, 150);
     assert.equal(totals.pinnedSupportedOfStockInconclusive, 96);
     assert.deepEqual(stored.stockBaseline.counts, baseline().counts);
     assert.equal(baseline().outcomes['extensions.reflow'], 'inconclusive');
-    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 17, effectMeasuredUnsupported: 6, effectMeasuredOther: 1, effectNotMeasured: 10, notPinnedSupported: 72 });
+    assert.deepEqual(totals.remainingAgainstStockInconclusive, { effectUnqualified: 18, effectMeasuredUnsupported: 6, effectMeasuredOther: 2, effectNotMeasured: 10, notPinnedSupported: 72 });
 });
 
 test('OSC 52 read denial adds measured unsupported read capability without changing support counts', () => {
@@ -522,7 +522,7 @@ test('the generated summary states its baseline and keeps the diagnostic out of 
     // 384 KiB: the Unicode placeholder suite entry (no stock run, its own receipt binding) joins the merged inventory.
     // 400 KiB: the DECSCLM suite entry (receipt schema 82, its run and receipt bindings) joins the merged inventory.
     // 404 KiB includes the owned OSC 5522 reassessment and its carried stock provenance.
-    // 408 KiB includes the OSC 555 pane measurement, receipt and pinned/effect divergence.
+    // 408 KiB includes the OSC 555 pane measurement, receipt and control-limited verdict.
     assert.ok(lfLength(Buffer.from(text)) < 40 * 1024 && lfLength(readFileSync(join(defaultQaRoot, inventoryFiles.json))) < 408 * 1024, 'the generated files stay reviewable');
 });
 
