@@ -1,0 +1,98 @@
+{
+  "suiteId": "ntilde-owned-x11-osc52-read-v1",
+  "contractsVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "scope": "One disposable direct-local Linux X11 pane, default CLIPBOARD and one read-only OSC 52 c query.",
+  "measurement": {
+    "startedAt": "2026-11-27T12:27:35.033Z",
+    "fixtureRemovedAt": "2026-11-27T12:27:40.855Z",
+    "leaseReleasedAt": "2026-11-27T12:27:40.859Z",
+    "sha256": "ae508d31fcce3dd6c1f1a115ba8cf1687f47ddbb01adf695980e721828999a13",
+    "source": {
+      "policy": "owned-modern-x11-osc52-read-v1",
+      "sha256": "221d4ec016e735aee81f9854992b6f02af9d2e64779d3d0f8b33f28da59f9ca7"
+    },
+    "nodeVersion": "v24.22.2",
+    "display": ":0",
+    "window": 2097171,
+    "serverPid": 7488,
+    "appPid": 7491,
+    "workerPid": 7546,
+    "pane": {
+      "paneId": "5ad2782f-79a8-472e-b1b4-f59e6d534606",
+      "profileName": "X11 OSC 52 Read 35af2056ab207bb9481cf9830b01748b",
+      "rows": 40,
+      "cols": 149,
+      "kind": "local",
+      "isActive": true
+    },
+    "tty": "/dev/pts/0",
+    "peerPids": [
+      7558,
+      7643,
+      7727,
+      7810,
+      7901,
+      7984,
+      8067
+    ],
+    "clipboardWriteEnabled": false
+  },
+  "cases": [
+    {
+      "caseId": "extensions.osc52-read",
+      "pinned": {
+        "pass": false,
+        "response": "\u001b]52;c;\u001b\\",
+        "observation": {
+          "outcome": "inconclusive",
+          "reason": "insufficient-evidence",
+          "evidence": "query"
+        }
+      },
+      "contractResult": {
+        "outcome": "unsupported",
+        "kind": "empty-denial"
+      },
+      "denial": {
+        "contract": "ntilde-owned-x11-osc52-read-denial-v1",
+        "outcome": "supported",
+        "kind": "empty-denial"
+      },
+      "conclusion": {
+        "outcome": "unsupported",
+        "grading": "ntilde-owned-x11-osc52-read-v1",
+        "evidence": "cpr-fenced-pty-and-independent-x11-clipboard",
+        "note": "The complete, empty OSC 52 c reply establishes read denial while the seeded clipboard value survives the query."
+      },
+      "stock": {
+        "outcome": "inconclusive",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "target": {
+          "kind": "app",
+          "id": "ntilde",
+          "version": "0.12.0",
+          "os": "macos",
+          "osVersion": "27.0.1",
+          "outerTerminal": null,
+          "mux": null,
+          "config": null,
+          "permissions": null
+        }
+      },
+      "id": "extensions.osc52-read",
+      "exchange": {
+        "kind": "empty-denial",
+        "replyHex": "1b5d35323b633b1b5c",
+        "queryHex": "1b5d35323b633b3f07",
+        "writeHex": "1b5d35323b633b3f071b5b366e",
+        "rawHex": "1b5d35323b633b1b5c1b5b313b343852",
+        "cprHex": "1b5b313b343852"
+      },
+      "baseline": "ntilde-osc52-baseline-461724c48e09575959090bb20dfeb5ba",
+      "before": "terminfo-osc52-13619d00-af2c-4ed7-b284-90294c84c41a",
+      "after": "terminfo-osc52-13619d00-af2c-4ed7-b284-90294c84c41a",
+      "restored": "ntilde-osc52-baseline-461724c48e09575959090bb20dfeb5ba"
+    }
+  ]
+}

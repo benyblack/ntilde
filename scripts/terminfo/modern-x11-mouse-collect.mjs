@@ -115,7 +115,7 @@ function profileSettings(run) {
         DefaultProfileId: profileId, SessionPersistence: 'Off', ShellExitPolicy: 'Never', PaneClosePolicy: 'Always',
         AlternateScroll: false, AutomaticUpdateChecks: false, QuakeModeEnabled: false,
         CommandAssistEnabled: false, CommandAssistShellIntegrationEnabled: false, CommandAssistPowerShellIntegrationEnabled: false,
-        AgentAccessObserveEnabled: true, AgentAccessActEnabled: false, AllowOsc52ClipboardWrite: run.clipboard && !run.paste,
+        AgentAccessObserveEnabled: true, AgentAccessActEnabled: false, AllowOsc52ClipboardWrite: run.clipboard && !run.paste && !run.osc52Read,
     };
 }
 
@@ -341,27 +341,31 @@ async function observeMimePaste(run) {
     return clipboard.replay;
 }
 
+async function clipboardQuery(run, sample, owner, plan) {
+    checkLineage(run);
+    const pane = await listPane(run);
+    need(equal(pane, run.record.identity.pane), 'wrong current clipboard query pane');
+    await verifyMarker(run, pane);
+    const state = () => clipboardState(run, owner.peerPid, owner.peerWindow);
+    sample.before = await state();
+    need(sample.before.focus === run.record.identity.window.id
+        && sample.before.ownerPid === owner.ownerPid && sample.before.ownerWindow === owner.ownerWindow,
+    'clipboard seed lost ownership before OSC 52 query');
+    sample.exchange = await worker(run, { kind: 'clipboard-query', ...plan });
+    checkLineage(run);
+    sample.after = await state();
+}
+
 async function observeClipboard(run) {
-    const clipboard = run.keyboard === '--osc52-clipboard'
-        ? await import('./modern-x11-osc52-clipboard.mjs') : await import('./modern-x11-osc52-write.mjs');
+    let clipboard;
+    if (run.osc52Read) clipboard = await import('./modern-x11-osc52-read.mjs');
+    else if (run.keyboard === '--osc52-clipboard') clipboard = await import('./modern-x11-osc52-clipboard.mjs');
+    else clipboard = await import('./modern-x11-osc52-write.mjs');
     await clipboard.observeClipboard(run.record, {
         peer: (...args) => clipboardPeer(run, ...args),
         key: step => recordAction(run, step, { kind: 'keyboard', chord: 'a' }, clipboard.id, 'zh'),
         write: plan => modes(run, 'osc52', { osc52: plan }),
-        query: async (sample, owner, plan) => {
-            checkLineage(run);
-            const pane = await listPane(run);
-            need(equal(pane, run.record.identity.pane), 'wrong current clipboard query pane');
-            await verifyMarker(run, pane);
-            const state = () => clipboardState(run, owner.peerPid, owner.peerWindow);
-            sample.before = await state();
-            need(sample.before.focus === run.record.identity.window.id
-                && sample.before.ownerPid === owner.ownerPid && sample.before.ownerWindow === owner.ownerWindow,
-            'clipboard seed lost ownership before OSC 52 query');
-            sample.exchange = await worker(run, { kind: 'clipboard-query', ...plan });
-            checkLineage(run);
-            sample.after = await state();
-        },
+        query: (...args) => clipboardQuery(run, ...args),
     });
     return clipboard.replayClipboard;
 }
@@ -451,10 +455,14 @@ function configure(run) {
     const runId = run.lease.leaseId;
     run.mimePaste = run.keyboard === '--osc5522-clipboard';
     run.paste = run.mimePaste || run.keyboard === '--clipboard-paste';
-    run.clipboard = run.paste || run.keyboard === '--osc52-write' || run.keyboard === '--osc52-clipboard';
+    run.osc52Read = run.keyboard === '--osc52-read';
+    run.clipboard = run.paste || run.osc52Read || run.keyboard === '--osc52-write' || run.keyboard === '--osc52-clipboard';
     let markerPrefix = run.keyboard ? 'x11-key-' : 'x11-mouse-';
     let profilePrefix = run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ';
-    if (run.paste) {
+    if (run.osc52Read) {
+        markerPrefix = 'x11-osc52-read-';
+        profilePrefix = 'X11 OSC 52 Read ';
+    } else if (run.paste) {
         markerPrefix = run.mimePaste ? 'x11-osc5522-' : 'x11-paste-';
         profilePrefix = run.mimePaste ? 'X11 OSC 5522 ' : 'X11 Clipboard Paste ';
     } else if (run.clipboard) {

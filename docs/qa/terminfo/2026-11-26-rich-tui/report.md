@@ -36,6 +36,10 @@ The [two-case OSC 633 assessment](../2026-11-26-osc633-metadata/report.md) quali
 
 The [aggregate reassessment](../2026-11-26-osc633-aggregate-reassessment/report.md) combines rederived A–D and E/P evidence from two App revisions. The bounded owned aggregate is supported, and the exact aggregate probe remains inconclusive.
 
+## OSC 52 clipboard read
+
+The [OSC 52 read assessment](../2026-11-27-osc52-read/report.md) captures a complete empty reply and verifies that an independently seeded disposable clipboard survived the query. The pinned read callback grades inconclusive. The owned read capability grades unsupported, and the separate denial contract grades supported.
+
 ## OSC 5522 clipboard paste
 
 The [OSC 5522 assessment](../2026-11-27-osc5522-clipboard/report.md) replays the pinned mode query and measures a separate paste-token transfer on a disposable X11 clipboard. The pinned query and the owned paste both grade supported. The historical stock grade is unsupported.

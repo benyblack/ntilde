@@ -55,10 +55,14 @@ export function focusedMeasurement(directory, manifest, context, receipt, screen
     };
 }
 
-export function writeUnicodeReport(directory, report, markdown, check, require) {
-    for (const [name, text] of [['report.json', serialize(report)], ['report.md', markdown]]) {
+export function writePublicationFiles(directory, files, check, require) {
+    for (const [name, text] of Object.entries(files)) {
         const path = join(directory, name);
         if (check) require(readFileSync(path, 'utf8').replaceAll('\r\n', '\n') === text, 'published ' + name + ' differs');
         else writeFileSync(path, text);
     }
+}
+
+export function writeUnicodeReport(directory, report, markdown, check, require) {
+    writePublicationFiles(directory, { 'report.json': serialize(report), 'report.md': markdown }, check, require);
 }
