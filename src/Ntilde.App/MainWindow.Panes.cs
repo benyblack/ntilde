@@ -304,12 +304,10 @@ namespace Ntilde
         /// siblings need the C0 byte. A pane with kitty flags in effect keeps the legacy bytes:
         /// kitty wins over modifyOtherKeys there, and broadcast does not speak kitty.
         ///
-        /// Text-producing chords normally reach siblings through the separate text broadcast, so
-        /// they are not encoded here - unless the focused pane consumes the keydown itself
-        /// (<paramref name="focusedConsumesText"/>, e.g. Shift+Space at level 2), which suppresses
-        /// that TextInput. Then each sibling gets its own form here: the modifyOtherKeys sequence
-        /// if its level claims the chord, otherwise the chord's text. Alt chords stay unbroadcast
-        /// at every level, as before.
+        /// A level-3 receiver gets its eligible printable report on keydown even when the
+        /// focused pane uses TextInput. Other receivers get the corresponding text callback.
+        /// When <paramref name="focusedConsumesText"/> is true, every sibling receives its
+        /// report or plain character on keydown. Alt chords stay unbroadcast.
         /// </remarks>
         internal static bool TryMapBroadcastKey(Key key, KeyModifiers modifiers, PhysicalKey physical, string? keySymbol,
             TerminalBuffer? buffer, int kittyFlags, bool focusedConsumesText, out string? sequence)
@@ -432,10 +430,9 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// The keydown half of tab broadcast: each receiver gets the bytes its own modes ask for
-        /// (#829). When the focused pane consumes a text-capable chord itself, the gesture is
-        /// delivered here and <paramref name="gate"/> is armed so its trailing TextInput, which some
-        /// backends still raise after a handled keydown, is not broadcast again.
+        /// Sends each receiver the keydown bytes its own modes request. For a text-capable
+        /// chord, <paramref name="gate"/> records each receiver served here so a matching
+        /// text callback reaches only the remaining receivers.
         /// </summary>
         internal static void FanOutBroadcastKey(Key key, KeyModifiers modifiers, PhysicalKey physical, string? keySymbol,
             TerminalBuffer? focusedBuffer, int focusedKittyFlags, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
@@ -458,7 +455,7 @@ namespace Ntilde
             }
         }
 
-        /// <summary>The text half: skipped once for a gesture the keydown half already delivered.</summary>
+        /// <summary>Sends text to the receivers that still need the gesture.</summary>
         internal static void FanOutBroadcastText(string text, IReadOnlyList<BroadcastReceiver> receivers, BroadcastTextGate gate)
         {
             if (string.IsNullOrEmpty(text)) return;

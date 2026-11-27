@@ -4,14 +4,10 @@ using Ntilde.VT;
 namespace Ntilde
 {
     /// <summary>
-    /// One-shot coordination between tab broadcast's keydown and text paths (#829). When the
-    /// focused pane consumes a text-capable chord itself (Shift+Space at modifyOtherKeys level 2),
-    /// the key broadcast fans the gesture out to the siblings during keydown. Some backends still
-    /// raise TextInput after a handled keydown - the case the focused view's own one-shot
-    /// suppression exists for - and the window's text broadcast tunnel would then send it again.
-    /// This gate mirrors that view-side lifetime: armed by the fan-out, consumed by the first
-    /// following text callback, and expired by the gesture's key release or the next keydown, so
-    /// a later unrelated text commit is never swallowed.
+    /// Tracks which siblings already received a text-capable gesture during keydown. This can
+    /// be every sibling when the focused pane consumes the key, or just the level-3 receivers.
+    /// The next text callback consumes the decision. The matching key release or a new
+    /// keydown expires it.
     /// </summary>
     internal sealed class BroadcastTextGate
     {
