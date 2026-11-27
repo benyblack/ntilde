@@ -65,9 +65,7 @@ def text_transaction():
     elif request.get("kind") == "seed" and re.fullmatch((r"(?:ntilde-(?:osc52-(?:baseline|seed)|paste-baseline)-[a-f0-9]{32}"
                        r"|terminfo-paste-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})"), request.get("text", "")):
         text = request["text"]
-        if not clipboard.set_content(Gdk.ContentProvider.new_for_value(text)):
-            raise RuntimeError("Native CLIPBOARD seed refused")
-        display.sync()
+        set_content(clipboard, Gdk.ContentProvider.new_for_value(text))
         complete(text)
     else:
         raise ValueError("Invalid isolated CLIPBOARD text request")
@@ -151,14 +149,18 @@ class ClipboardReader:
         loop.quit()
 
 
+def set_content(clipboard, provider):
+    if not clipboard.set_content(provider):
+        raise RuntimeError("Native clipboard write refused")
+    clipboard.get_display().sync()
+
+
 def publish(clipboard, data):
     providers = [Gdk.ContentProvider.new_for_bytes(mime, GLib.Bytes.new(value)) for mime, value in data.items()]
     if os.environ.get(SELECTION_KEY) == "primary":
         # Exercise a TARGETS list beyond the old 144-atom rejection.
         providers += [Gdk.ContentProvider.new_for_bytes("application/x-ntilde-extra-" + str(i), GLib.Bytes.new(b"owned target fixture")) for i in range(200)]
-    if not clipboard.set_content(Gdk.ContentProvider.new_union(providers)):
-        raise RuntimeError("Native clipboard write refused")
-    clipboard.get_display().sync()
+    set_content(clipboard, Gdk.ContentProvider.new_union(providers))
 
 
 def republish_when_requested():
