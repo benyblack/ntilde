@@ -62,62 +62,44 @@ internal static partial class TerminalInputModeEncoder
     /// </summary>
     internal static string? EncodeModifyOtherKeys(Key key, KeyModifiers modifiers, int level, PhysicalKey physical = PhysicalKey.None, string? keySymbol = null)
     {
-        if (level is < 1 or > 3) return null;
-        if ((modifiers & KeyModifiers.Meta) != 0) return null;
-
-        bool shift = (modifiers & KeyModifiers.Shift) != 0;
-        bool alt = (modifiers & KeyModifiers.Alt) != 0;
-        bool ctrl = (modifiers & KeyModifiers.Control) != 0;
-        if (ctrl && alt) return null;
-        // Keypad keys are not "other" keys in xterm. Avalonia can report a physical keypad key
-        // under an ordinary logical key (keypad Enter as Enter, keypad comma as OemComma, keypad
-        // equals as OemPlus), so the physical position decides, not the logical key.
+        const KeyModifiers altGr = KeyModifiers.Control | KeyModifiers.Alt;
+        if (level is < 1 or > 3 || (modifiers & KeyModifiers.Meta) != 0 || (modifiers & altGr) == altGr) return null;
+        // A physical keypad key can arrive under an ordinary logical key, e.g. keypad comma as OemComma.
         if (IsPhysicalKeypadKey(physical)) return null;
 
-        int m = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
-        if (level == 3 && !ctrl && !alt)
+        int printable = GetUsLayoutCharacter(key, (modifiers & KeyModifiers.Shift) != 0);
+        int code = printable >= 0
+            ? ModifyOtherPrintableCode(key, modifiers, level, printable, keySymbol)
+            : ModifyOtherControlCode(key, modifiers, level);
+        return code < 0 ? null : FormatModifyOtherKey(code, GetXtermModifierParameter(modifiers));
+    }
+
+    private static int ModifyOtherPrintableCode(Key key, KeyModifiers modifiers, int level, int printable, string? keySymbol)
+    {
+        if (modifiers is KeyModifiers.None or KeyModifiers.Shift)
         {
-            int printable = GetUsLayoutCharacter(key, shift);
-            if (printable >= 0)
-            {
-                if (string.IsNullOrEmpty(keySymbol)) return FormatModifyOtherKey(printable, m);
-                // Lock state and layout are already reflected in the symbol. Leave composition to TextInput.
-                return TryKeyScalar(keySymbol, out var rune) ? FormatModifyOtherKey(rune.Value, m) : null;
-            }
+            if (level < 3) return level == 2 && key == Key.Space && modifiers == KeyModifiers.Shift ? printable : -1;
+            // Lock state and layout are already reflected in the symbol. Leave composition to TextInput.
+            if (string.IsNullOrEmpty(keySymbol)) return printable;
+            return TryKeyScalar(keySymbol, out var rune) ? rune.Value : -1;
         }
-        if (modifiers == KeyModifiers.None) return null;
-        bool levelTwoOrHigher = level >= 2;
+        // Level 1 leaves Alt and X11 control aliases on the legacy path.
+        if (level == 1 && ((modifiers & KeyModifiers.Alt) != 0 || IsX11ControlAlias(printable))) return -1;
+        return printable;
+    }
 
-        switch (key)
+    private static int ModifyOtherControlCode(Key key, KeyModifiers modifiers, int level)
+    {
+        if (modifiers == KeyModifiers.None) return -1;
+        return key switch
         {
-            case Key.Enter:
-                return !levelTwoOrHigher && alt ? null : FormatModifyOtherKey(13, m);
-            case Key.Tab:
-                if (modifiers == KeyModifiers.Shift) return null; // CSI Z (back-tab) at every level
-                if (level == 1 && modifiers != KeyModifiers.Control) return null;
-                return FormatModifyOtherKey(9, m);
-            case Key.Back:
-                if (!levelTwoOrHigher) return null;
-                if (ctrl) return shift ? FormatModifyOtherKey(8, m) : null;
-                return FormatModifyOtherKey(127, m);
-            case Key.Escape:
-                return levelTwoOrHigher ? FormatModifyOtherKey(27, m) : null;
-            case Key.Space:
-                return levelTwoOrHigher ? FormatModifyOtherKey(' ', m) : null;
-        }
-
-        int code = GetUsLayoutCharacter(key, shift);
-        if (code < 0) return null;
-        if (shift && !ctrl && !alt) return null; // the shifted character is its own text
-
-        if (!levelTwoOrHigher)
-        {
-            // Level 1: Alt never participates; Ctrl chords X11 maps to a control character
-            // keep that byte.
-            if (alt || IsX11ControlAlias(code)) return null;
-        }
-
-        return FormatModifyOtherKey(code, m);
+            Key.Enter when level >= 2 || (modifiers & KeyModifiers.Alt) == 0 => 13,
+            Key.Tab when modifiers != KeyModifiers.Shift && (level >= 2 || modifiers == KeyModifiers.Control) => 9,
+            Key.Back when level >= 2 && (modifiers & KeyModifiers.Control) == 0 => 127,
+            Key.Back when level >= 2 && (modifiers & KeyModifiers.Shift) != 0 => 8,
+            Key.Escape when level >= 2 => 27,
+            _ => -1
+        };
     }
 
     // A symbolless generated key still has a known printable US character. A real backend
