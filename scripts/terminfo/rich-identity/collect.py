@@ -135,11 +135,12 @@ def title_snapshot(endpoint, app, pane):
 
 
 class Run:
-    def __init__(self, root, output, run_id, env):
+    def __init__(self, root, output, run_id, env, app_revision):
         self.root = root
         self.output = output
         self.env = env
         self.run_id = run_id
+        self.app_revision = app_revision
         self.record = {"schemaVersion": 1, "runId": run_id, "coordinator": process_facts(os.getpid()),
                        "environment": {"uname": list(os.uname()[:1] + os.uname()[2:]),
                                        "packages": command(["dpkg-query", "-W", "sway", "xwayland", "foot", "libvte-2.91-0"], env)},
@@ -207,7 +208,9 @@ class Run:
         versions = set(re.findall(rb"(?<![\d.])\d{1,8}\.\d{1,8}\.\d{1,8}\+[a-f\d]{40}(?![a-f\d])",
                                   (sidecar / "Ntilde.dll").read_bytes()))
         need(len(versions) == 1, "missing unique App informational version")
-        self.record["app"]["version"] = versions.pop().decode()
+        version = versions.pop().decode()
+        need(version.endswith("+" + self.app_revision), "App embedded revision differs from the verified source archive")
+        self.record["app"]["version"] = version
         data = self.root / "appdata"
         data.mkdir()
         args = self.child_args("app", path)
@@ -323,8 +326,9 @@ class Run:
         self.record["vte"] = read(self.output / "vte.json")
 
 
-def main(output, run_id):
+def main(output, run_id, app_revision):
     need(os.getuid() != 0 and re.fullmatch(r"[a-f0-9]{32}", run_id), "expected an unprivileged leased collector")
+    need(re.fullmatch(r"[a-f0-9]{40}", app_revision), "expected a Git App source revision")
     output.mkdir(mode=0o700)
     root = Path(tempfile.mkdtemp(prefix="osc-", dir=Path.home()))
     home = root / "home"
@@ -335,7 +339,7 @@ def main(output, run_id):
            "XDG_CACHE_HOME": str(home / ".cache"), "XDG_DATA_HOME": str(home / ".local/share"),
            "XDG_SESSION_TYPE": "wayland", "PATH": "/usr/bin:/bin", "LANG": "C.UTF-8",
            "WLR_BACKENDS": "headless", "WLR_RENDERER": "pixman", "WLR_LIBINPUT_NO_DEVICES": "1"}
-    run = Run(root, output, run_id, env)
+    run = Run(root, output, run_id, env, app_revision)
     try:
         run.desktop()
     except Exception as exc:
@@ -348,4 +352,4 @@ def main(output, run_id):
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), sys.argv[2])
+    main(Path(sys.argv[1]), sys.argv[2], sys.argv[3])

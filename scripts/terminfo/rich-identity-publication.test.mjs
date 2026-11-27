@@ -80,3 +80,11 @@ test('offline replay refuses a changed collector or incomplete desktop lease', (
     writeFileSync(audit, JSON.stringify(events.slice(0, -1)));
     await assert.rejects(verifyRun(directory), /incomplete desktop lease cleanup/);
 }));
+
+test('offline replay refuses a different App build revision', () => withMeasurement(async directory => {
+    const path = join(directory, 'identity.json');
+    const identity = JSON.parse(readFileSync(path));
+    identity.appSourceRevision = 'a'.repeat(40);
+    writeFileSync(path, JSON.stringify(identity));
+    await assert.rejects(verifyRun(directory), /App embedded revision differs/);
+}));

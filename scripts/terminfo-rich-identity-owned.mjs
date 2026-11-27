@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { once } from 'node:events';
 import { createReadStream, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,16 +19,25 @@ function need(condition, message) {
     if (!condition) throw new Error(message);
 }
 
-async function hash(path) {
+async function hashStream(stream) {
     const sha = createHash('sha256');
-    for await (const chunk of createReadStream(path)) sha.update(chunk);
+    for await (const chunk of stream) sha.update(chunk);
     return sha.digest('hex');
+}
+
+const hash = path => hashStream(createReadStream(path));
+
+async function appSourceHash(archive, revision) {
+    const git = spawn('git', ['archive', '--format=tar', revision], { cwd: repo, stdio: ['ignore', 'pipe', 'inherit'] });
+    const [actual, expected, [exit]] = await Promise.all([hash(archive), hashStream(git.stdout), once(git, 'close')]);
+    need(exit === 0 && actual === expected, 'App source archive differs from the exact Git archive of ' + revision);
+    return actual;
 }
 
 const docker = async (args, timeout = 15000) => (await exec('docker', args, { timeout, maxBuffer: 4 * 1024 * 1024 })).stdout.trim();
 const printJson = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx' });
 
-async function runContainer(name, output, image, sources, sidecar, lease) {
+async function runContainer(name, output, image, sources, sidecar, lease, appSourceRevision) {
     let id, primary;
     const state = { image, name, runId: lease.leaseId };
     try {
@@ -37,7 +47,7 @@ async function runContainer(name, output, image, sources, sidecar, lease) {
             '--init', '--user', '1000:1000', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
             '--mount', 'type=bind,source=' + sources + ',target=/sources,readonly',
             '--mount', 'type=bind,source=' + sidecar + ',target=/inputs/sidecar.tar,readonly',
-            image, '/usr/bin/python3', '-I', '-B', '/sources/collect.py', containerOutput, lease.leaseId]);
+            image, '/usr/bin/python3', '-I', '-B', '/sources/collect.py', containerOutput, lease.leaseId, appSourceRevision]);
         need(/^[a-f0-9]{64}$/.test(id), 'invalid owned Docker ID');
         state.id = id;
         const [info] = JSON.parse(await docker(['inspect', id]));
@@ -105,15 +115,15 @@ async function snapshotSources(sources, revision) {
 }
 
 async function main() {
-    const [stageDirectory, imageName, ...extra] = process.argv.slice(2);
-    need(stageDirectory && imageName && extra.length === 0,
-        'usage: node scripts/terminfo-rich-identity-owned.mjs PRIVATE-STAGE IMAGE');
+    const [stageDirectory, imageName, appSourceRevision, ...extra] = process.argv.slice(2);
+    need(stageDirectory && imageName && /^[a-f0-9]{40}$/.test(appSourceRevision ?? '') && extra.length === 0,
+        'usage: node scripts/terminfo-rich-identity-owned.mjs PRIVATE-STAGE IMAGE APP-SOURCE-COMMIT');
     const stage = realpathSync(stageDirectory);
     const sidecar = join(stage, 'sidecar.tar');
     const image = await docker(['image', 'inspect', '--format', '{{.Id}}', imageName]);
     need(/^sha256:[a-f0-9]{64}$/.test(image), 'invalid Docker image ID');
     const { stdout } = await exec('git', ['rev-parse', 'HEAD'], { cwd: repo });
-    const appSourceArchiveSha256 = await hash(join(stage, 'app-source.tar'));
+    const appSourceArchiveSha256 = await appSourceHash(join(stage, 'app-source.tar'), appSourceRevision);
     const sidecarSha256 = await hash(sidecar);
     const lease = await acquireDesktopLease({ entrypoint, worktree: repo, waitMs: desktopLockWaitMs() });
     const output = join(stage, lease.leaseId);
@@ -125,8 +135,8 @@ async function main() {
         const scriptsRevision = stdout.trim();
         need(/^[a-f0-9]{40}$/.test(scriptsRevision), 'invalid collector commit');
         const files = await snapshotSources(sources, scriptsRevision);
-        printJson(join(output, 'identity.json'), { appSourceArchiveSha256, sidecarSha256, scriptsRevision, files });
-        await runContainer('ntilde-identity-' + lease.leaseId, output, image, sources, sidecar, lease);
+        printJson(join(output, 'identity.json'), { appSourceRevision, appSourceArchiveSha256, sidecarSha256, scriptsRevision, files });
+        await runContainer('ntilde-identity-' + lease.leaseId, output, image, sources, sidecar, lease, appSourceRevision);
         const after = await Promise.all(Object.entries(files).map(async ([name, sha]) => await hash(join(sources, name)) === sha));
         need(after.every(Boolean) && await hash(sidecar) === sidecarSha256, 'measured inputs changed');
     } catch (error) {

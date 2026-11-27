@@ -273,6 +273,7 @@ function verifyLease(container, audit, runId) {
 function sourceInputs(directory) {
     const identity = readJson(directory, 'identity.json');
     assert.match(identity.scriptsRevision, revision);
+    assert.match(identity.appSourceRevision, revision);
     assert.match(identity.appSourceArchiveSha256, sha256);
     assert.match(identity.sidecarSha256, sha256);
     const names = ['Dockerfile', 'collect.py', 'desktop-lock.mjs', 'plan.json', 'pty_child.py', 'terminfo-rich-identity-owned.mjs', 'vte_reference.py'];
@@ -308,6 +309,7 @@ export async function verifyRun(directory) {
     const vte = verifyVte(run, plan);
     const appRevision = run.app.version.split('+')[1];
     assert.match(appRevision, revision);
+    assert.equal(appRevision, identity.appSourceRevision, 'App embedded revision differs from verified source archive');
     const baseId = app.samples.baseline.appId;
     const native = app.samples.baseline.shell === 'xdg_shell' && typeof baseId === 'string' && baseId !== 'terminfo-test';
     const xwayland = app.samples.baseline.shell === 'xwayland';
@@ -337,7 +339,7 @@ export async function buildPublication() {
     const measured = await withMeasurement(async (directory, manifest) => {
         const run = await verifyRun(directory);
         assert.equal(manifest.schemaVersion, 1);
-        for (const field of ['runId', 'appRevision', 'scriptsRevision']) assert.equal(manifest[field], run[field]);
+        for (const field of ['runId', 'appRevision', 'appSourceArchiveSha256', 'scriptsRevision']) assert.equal(manifest[field], run[field]);
         return run;
     });
     const baseline = pinnedJson(join(qa, '2026-11-09-stock-baseline.json'), baselineSha);
