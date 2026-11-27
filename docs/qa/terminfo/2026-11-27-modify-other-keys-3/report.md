@@ -28,11 +28,11 @@ The #1002 policy regression passed on main for starting levels 0, 1 and 2 on bot
 | Measurement | App source | Collector source | Run |
 | --- | --- | --- | --- |
 | Ignored request | `6d16bd84bdac25cd8b51a0fa7a4554d74702401d` | `d33840549b1684e1d9278f60df670f9daf67de6d` | `f3106ab6a428a316b68f8ce0b0f38cd7` |
-| Level 3 | `4a39ecaae1e40145778123cb945d33fc115338c6` | `4a39ecaae1e40145778123cb945d33fc115338c6` | `48c261696338ff8db99945c47b863b09` |
+| Level 3 | `d569b5180b86ec8369b6668f4d8d7b3cadc68c45` | `d569b5180b86ec8369b6668f4d8d7b3cadc68c45` | `78b3dbd7ec1be90575890efad4f1fb07` |
 
-The initial implementation and the mixed-pane broadcast correction each passed all 22 observations. The table uses a full repeat after the backend-symbol correction and review fixes. [First implementation receipt](https://github.com/benyblack/ntilde/blob/95e23798a9f36e455c67fd512d0de1aa7888a1d0/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip) · [Mixed-pane revision receipt](https://github.com/benyblack/ntilde/blob/57d04d2815702bd4270c1e8bf559e6fe327a1a46/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
+All three earlier implementation runs also passed the 22 observations. The table uses the complete repeat after separating printable and named key handling. [First implementation receipt](https://github.com/benyblack/ntilde/blob/95e23798a9f36e455c67fd512d0de1aa7888a1d0/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip) · [Mixed-pane revision receipt](https://github.com/benyblack/ntilde/blob/57d04d2815702bd4270c1e8bf559e6fe327a1a46/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
 
-An earlier attempt on the final measured build, `7d940ab92c5f2beab8e89316c8b5dfe8`, captured `CSI B` on both sides of its third ordering fence. The trailing input invalidated the capture. The runner stopped, verified cleanup and released the lease. A fresh pane then completed the entire plan. [Rejected raw capture](rejected-input.json)
+An earlier attempt on the backend-symbol revision `4a39ecaa`, `7d940ab92c5f2beab8e89316c8b5dfe8`, captured `CSI B` on both sides of its third ordering fence. The trailing input invalidated the capture. The runner stopped, verified cleanup and released the lease. A fresh pane then completed the entire plan. [Rejected raw capture](rejected-input.json) · [Backend-symbol revision receipt](https://github.com/benyblack/ntilde/blob/61ba9f3853eabbeb552821ced031c0baa39d7afb/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
 
 Both runs used Node 24.22.3, a 140 × 40 pane, source policy `readonly-owned-source-graph-modify-other-keys-3-v1` and receipt schema 1. The App revision is build provenance. The archives bind the executable, managed App assembly and captured collector sources by SHA-256. [Fixed manifest](manifest.json) · [Baseline manifest](baseline/manifest.json)
 

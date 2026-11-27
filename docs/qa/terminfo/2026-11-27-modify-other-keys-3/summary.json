@@ -1,8 +1,8 @@
 {
-  "ownedRunId": "48c261696338ff8db99945c47b863b09",
-  "measuredAt": "2026-11-27T14:35:19.562Z",
-  "appRevision": "4a39ecaae1e40145778123cb945d33fc115338c6",
-  "scriptsRevision": "4a39ecaae1e40145778123cb945d33fc115338c6",
+  "ownedRunId": "78b3dbd7ec1be90575890efad4f1fb07",
+  "measuredAt": "2026-11-27T14:42:56.900Z",
+  "appRevision": "d569b5180b86ec8369b6668f4d8d7b3cadc68c45",
+  "scriptsRevision": "d569b5180b86ec8369b6668f4d8d7b3cadc68c45",
   "context": {
     "adapter": "ntilde-owned-modify-other-keys-3-v1",
     "collectionScope": {
@@ -10,11 +10,11 @@
       "persistence": "Off",
       "deadlineMs": 90000
     },
-    "appVersion": "0.14.0+4a39ecaae1e40145778123cb945d33fc115338c6",
+    "appVersion": "0.14.0+d569b5180b86ec8369b6668f4d8d7b3cadc68c45",
     "appVersionSource": "operator supplied; not independently verified",
     "sourceSnapshotPolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
     "sourceSnapshotManifestSha256": "79068a92d8f26c4c0b80aeda6044db6d5d465da608df499628ad332e8ff42a75",
-    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-2S428i",
+    "sourceSnapshotRoot": "/private/var/folders/y_/56y55kgx31qd7x6nf0vm50l00000gn/T/ntilde-owned-sources-V78Mwj",
     "runnerSourceSha256": "e68b0076d54617a14901accb287a805224614d29567838cebd60bea9993009b5",
     "adapterSourceSha256": "d21ad64158e39ca20c093cb1cad82f772a42afc0a460b5117ed6f3ff3f4d50e3",
     "ownershipSourceSha256": "65f599b31de43913682a7baf1182a1a8b70da216ae8c38a0acdbe37d68783f8c",
@@ -512,25 +512,25 @@
     "mok3ContractsSourceSha256": "263fe46155f974d66fc5f07f2fc11037155388b3fca2b22a0d99064708008ad2",
     "mok3OwnedSourceSha256": "74e55214269f4e3f8fa1b6df788fe8460b95132c03d7c11a9822802d116affb6",
     "mok3WorkerSourceSha256": "a429a4a5a9bd4237cf634259ae1ba496dd4dcb3313ebd846fe9389251337d5cc",
-    "initialSettingsSha256": "4ddc771ca46e9d965c3f42efc1b68f868983f96853ed08518bc8f50cbbc840f4",
-    "executable": "/Users/behnam/.ntilde-qa-sidecars/mok3-fixed-4a39ecaa/Ntilde",
+    "initialSettingsSha256": "0fae9523d2237b06ecbeab0668c6b7dcfae8d5167e709555af79f5b20f75ede0",
+    "executable": "/Users/behnam/.ntilde-qa-sidecars/mok3-fixed-d569b51/Ntilde",
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-    "assemblySha256": "24f95f8f12c01b0d16462ff4dcf0e7c66f81194e702f0b7126bbbb22192dd515",
+    "assemblySha256": "399661da59425c82fc61a31a126390124a82c3b1c5267ef2347eab0931091523",
     "nodeVersion": "v24.22.3",
-    "startedAt": "2026-11-27T14:35:19.562Z",
-    "runId": "48c261696338ff8db99945c47b863b09",
-    "ownerPid": 90865
+    "startedAt": "2026-11-27T14:42:56.900Z",
+    "runId": "78b3dbd7ec1be90575890efad4f1fb07",
+    "ownerPid": 4997
   },
   "receipt": {
     "schemaVersion": 1,
     "suiteId": "ntilde-owned-modify-other-keys-3-v1",
-    "runId": "48c261696338ff8db99945c47b863b09",
+    "runId": "78b3dbd7ec1be90575890efad4f1fb07",
     "fixtureRemoved": true,
     "files": {
-      "mok3-journal.json": "790f84c1ec4ab94006c9840a04ffcd105f3a37fc3cbae491c17cdb98c49a81d8",
-      "context.json": "4390a7cac31e8468c2213605d59a7f882349a80516b234fab216722a8b20fa74",
-      "ownership-proof.json": "64bc459357821ec6053539424965b92d7825d3b15acd4b1d91388c03dadbf062",
-      "initial-settings.json": "4ddc771ca46e9d965c3f42efc1b68f868983f96853ed08518bc8f50cbbc840f4",
+      "mok3-journal.json": "bc28a660b510b1367d989ecaadede457edb4f1dc938a05d8e83281f7818fa748",
+      "context.json": "b3be431f2ac5a4ddf73ae6b4bb62fcde6104fc07b76d15e9d374e134d7d5e113",
+      "ownership-proof.json": "70a9eb39693b09d497afcc4b7d859015f4dfe6bc70bc942fd935d95777c9296b",
+      "initial-settings.json": "0fae9523d2237b06ecbeab0668c6b7dcfae8d5167e709555af79f5b20f75ede0",
       "source-snapshot.json": "79068a92d8f26c4c0b80aeda6044db6d5d465da608df499628ad332e8ff42a75"
     },
     "verdict": "supported"
