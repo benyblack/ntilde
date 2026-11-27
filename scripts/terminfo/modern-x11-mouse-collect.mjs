@@ -371,6 +371,18 @@ function keyboardScope(keypad, richKitty) {
 async function observeRoutedInput(run) {
     const { record } = run;
     if (run.keyboard === '--focus-tracking') return observeFocus(run);
+    if (run.keyboard === '--rich-kitty-clicks') {
+        const clicks = await import('./rich-x11-kitty-clicks.mjs');
+        await clicks.collectClicks(record, plan => exchangeModes(run, 'kitty prompt clicks', plan),
+            (step, request, key, fence) => recordAction(run, step, request, key, fence),
+            async () => {
+                checkLineage(run);
+                const pane = await listPane(run);
+                need(equal(pane, record.identity.pane), 'wrong current prompt-click pane');
+                return agent(run, 'readScreen', { paneId: pane.paneId });
+            });
+        return clicks.replayClicks;
+    }
     if (run.keyboard) {
         const keypad = run.keyboard === '--application-keypad';
         const richKitty = run.keyboard === '--rich-kitty-keyboard';
@@ -418,6 +430,10 @@ function configure(run) {
     } else if (run.clipboard) {
         markerPrefix = 'x11-osc52-';
         profilePrefix = 'X11 OSC 52 ';
+    }
+    if (run.keyboard === '--rich-kitty-clicks') {
+        markerPrefix = 'x11-prompt-';
+        profilePrefix = 'X11 Kitty Prompt ';
     }
     const marker = markerPrefix + runId;
     const config = { runId, marker, ownerPid: process.pid, socket: join(run.scratch, 'child.sock'), ready: join(run.scratch, 'child.json') };
