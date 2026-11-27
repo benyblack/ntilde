@@ -125,9 +125,9 @@ public partial class TerminalBuffer
         _clickPromptEnd = primary;
         for (int row = erasedRow - 1; row >= Math.Max(0, primaryRow); row--)
         {
-            int column = LastPromptTextColumn(_viewport[row]);
-            if (column < 0) continue;
-            _clickPromptEnd = CaptureClickPosition(row, column + 1);
+            int columns = _viewport[row].PromptTextColumns;
+            if (columns == 0) continue;
+            _clickPromptEnd = CaptureClickPosition(row, columns);
             break;
         }
 
@@ -145,17 +145,6 @@ public partial class TerminalBuffer
             return false;
         }
         return mode == 1 && _cursorCol + 1 >= _clickPromptEnd.Column;
-    }
-
-    private static int LastPromptTextColumn(TerminalRow row)
-    {
-        for (int column = row.WrittenColumns - 1; column >= 0; column--)
-        {
-            var cell = row.Cells[column];
-            if (cell.Character is not (' ' or '\0') || cell.HasExtendedText)
-                return column;
-        }
-        return -1;
     }
 
     internal void EraseClickPromptTail(ShellIntegrationMark cursor)

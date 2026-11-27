@@ -37,8 +37,21 @@ namespace Ntilde.VT
             }
         }
 
+        private int _writtenColumns;
+        private int _promptTextColumns = -1;
+
         /// <summary>Conservative extent of authored cells; keeps typed spaces distinct from unused padding.</summary>
-        public int WrittenColumns { get; internal set; }
+        public int WrittenColumns
+        {
+            get => _writtenColumns;
+            internal set
+            {
+                _writtenColumns = value;
+                _promptTextColumns = -1;
+            }
+        }
+
+        internal int PromptTextColumns => _promptTextColumns < 0 ? _writtenColumns : _promptTextColumns;
 
         internal void SetSoftWrap(int columns)
         {
@@ -66,7 +79,23 @@ namespace Ntilde.VT
 
         internal void NoteColumnsWritten(int endExclusive)
         {
-            if (endExclusive > WrittenColumns) WrittenColumns = System.Math.Min(endExclusive, Cells.Length);
+            if (_promptTextColumns >= 0 && endExclusive > _promptTextColumns)
+                _promptTextColumns = System.Math.Min(endExclusive, Cells.Length);
+            NoteLayoutColumnsWritten(endExclusive);
+        }
+
+        internal void NoteLineErasure(int from, int to)
+        {
+            // EL preserves erased cells in the layout extent for reflow. Prompt
+            // clicks need the text that survived, which can itself be all spaces.
+            int textColumns = PromptTextColumns;
+            _promptTextColumns = to >= textColumns ? System.Math.Min(from, textColumns) : textColumns;
+            NoteLayoutColumnsWritten(to);
+        }
+
+        private void NoteLayoutColumnsWritten(int endExclusive)
+        {
+            if (endExclusive > _writtenColumns) _writtenColumns = System.Math.Min(endExclusive, Cells.Length);
             if (_wrappedColumns is int width && endExclusive > width)
                 _wrappedColumns = endExclusive < Cells.Length ? endExclusive : null;
         }

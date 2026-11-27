@@ -182,6 +182,41 @@ public class PromptClickTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void ErasingTheLastRowKeepsRetainedTypedSpaces(int mode)
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        var parser = new AnsiParser(buffer);
+        parser.Process($"\x1b]133;A;click_events={mode}\a" + new string('a', 20) + new string(' ', 20) + "last");
+
+        parser.Process("\x1b[2K\x1b[H");
+
+        Assert.True(buffer.TryGetPromptClickRow(1, out int row, out _));
+        Assert.Equal(2, row);
+        Assert.False(buffer.TryGetPromptClickRow(2, out _, out _));
+
+        parser.Process("\x1b[2;1H\x1b[K\x1b[H");
+        Assert.False(buffer.TryGetPromptClickRow(1, out _, out _));
+    }
+
+    [Theory]
+    [InlineData("\x1b[K")]
+    [InlineData("\x1b[20G\x1b[1K")]
+    public void ErasingAnEarlierRowSeparatesItFromTypedSpaces(string erase)
+    {
+        var buffer = new TerminalBuffer(20, 12);
+        var parser = new AnsiParser(buffer);
+        parser.Process("\x1b]133;A;click_events=2\a" + new string('a', 20) + new string(' ', 20) + "last");
+        parser.Process("\x1b[2;1H" + erase + "\x1b[3;1H\x1b[2K\x1b[H");
+        Assert.False(buffer.TryGetPromptClickRow(1, out _, out _));
+
+        parser.Process("\x1b[2;1H \r\nlast\x1b[2K\x1b[H");
+        Assert.True(buffer.TryGetPromptClickRow(1, out int row, out _));
+        Assert.Equal(2, row);
+    }
+
+    [Theory]
     [InlineData("K")]
     [InlineData("J")]
     public void PartialTailErasureDoesNotReflowOldPromptPadding(string erase)
