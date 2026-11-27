@@ -164,6 +164,7 @@ class Run:
         runtime = Path(self.env["XDG_RUNTIME_DIR"])
         with self.launch("sway", ["/usr/bin/sway", "-c", str(config)], self.env) as sway:
             self.record["compositor"] = process_facts(sway.pid)
+            self.record["compositor"]["sha256"] = digest(Path("/usr/bin/sway"))
             sock = wait_for(lambda: single(runtime.glob("sway-ipc.*.sock")), "Sway IPC", sway)
             display = wait_for(lambda: single(p for p in runtime.glob("wayland-*") if p.is_socket()), "Wayland display", sway)
             x_socket = wait_for(lambda: single(Path("/tmp/.X11-unix").glob("X[0-9]*")), "Xwayland display", sway)
@@ -228,6 +229,7 @@ class Run:
     def terminal(self, name, proc, path, data=None):
         record = self.record[name]
         record["terminal"] = process_facts(proc.pid)
+        record["terminal"]["sha256"] = digest(Path(record["terminal"]["exe"]))
         wait_for(lambda: path if path.is_socket() else None, name + " raw PTY", proc)
         with private_peer(path) as (child, stream):
             record["child"] = process_facts(child)
@@ -253,7 +255,6 @@ class Run:
                     self.observe_app(sample, proc, endpoint, pane, admission, phase)
             record["termios"] = rpc(stream, None)
         wait_for(lambda: True if not Path("/proc", str(child)).exists() else None, name + " PTY child exit")
-        record["ptyGone"] = not Path(record["tty"]["path"]).exists()
         record["workerSocketGone"] = not path.exists()
 
     def find_window(self, window_id, pid, expected):
@@ -288,15 +289,16 @@ class Run:
 
     def after_terminal(self, name):
         record = self.record[name]
+        record["ptyGone"] = not Path(record["tty"]["path"]).exists()
         pid = record["terminal"]["pid"]
         wait_for(lambda: True if not any(w["pid"] == pid for w in windows(tree(self.env))) else None, name + " window removal")
         record["afterTree"] = tree(self.env)
 
     def run_vte(self):
-        with self.launch("vte", [PYTHON, "-I", "-B", str(SOURCE / "vte_reference.py"), str(SOURCE / "plan.json")],
+        with self.launch("vte", [PYTHON, "-I", "-B", str(SOURCE / "vte_reference.py"), str(SOURCE / "plan.json"), str(self.output / "vte.json")],
                          {**self.env, "GDK_BACKEND": "wayland"}) as proc:
             need(proc.wait(timeout=12) == 0, "VTE reference observer failed")
-        self.record["vte"] = read(self.output / "vte.log")
+        self.record["vte"] = read(self.output / "vte.json")
 
 
 def main(output, run_id):

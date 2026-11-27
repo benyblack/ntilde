@@ -18,7 +18,7 @@ terminal = Vte.Terminal()
 window.add(terminal)
 window.show_all()
 events = []
-terminal.connect("termprops-changed", lambda widget, ids: events.extend(Vte.get_termprop_name(i) for i in ids))
+terminal.connect("termprop-changed", lambda widget, name: events.append(name))
 samples = {}
 phase = iter(json.loads(Path(sys.argv[1]).read_text())["vte"].items())
 
@@ -44,6 +44,6 @@ def advance():
 
 GLib.idle_add(advance)
 Gtk.main()
-print(json.dumps({"version": [Vte.get_major_version(), Vte.get_minor_version(), Vte.get_micro_version()],
-                  "registered": sorted(Vte.get_termprops()), "samples": samples}))
+Path(sys.argv[2]).write_text(json.dumps({"version": [Vte.get_major_version(), Vte.get_minor_version(), Vte.get_micro_version()],
+                  "registered": sorted(Vte.get_termprops()), "samples": samples}) + "\n")
 window.destroy()
