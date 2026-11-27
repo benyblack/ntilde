@@ -18,13 +18,13 @@ function writePlan(nonce, marker) {
     return { osc52Hex, writeHex: osc52Hex + hex('\x1b[6n'), replyHex: hex('\x1b[1;' + (marker.length + 1) + 'R') };
 }
 
-function verifyPeer(step, record, previous) {
+export function verifyPeer(step, record, previous, fixture = 'text') {
     const { process, before: incoming, result, after } = step;
     const { identity, settings, coordinatorPid, uid, python } = record;
     const scratch = settings.Profiles[0].StartingDirectory;
     need(process.platform === 'linux' && process.executable === python && process.ppid === coordinatorPid
         && process.uids.length === 4 && process.uids.every(value => value === uid)
-        && same(process.argv.slice(0, 6), [python, '-E', '-s', '-B', scratch + '/sources/peer-linux.py', 'text'])
+        && same(process.argv.slice(0, 6), [python, '-E', '-s', '-B', scratch + '/sources/peer-linux.py', fixture])
         && process.argv.length === 7 && /^\d+$/.test(process.argv[6].slice((scratch + '/gtk-').length))
         && process.argv[6].startsWith(scratch + '/gtk-'), 'wrong retained GTK peer process');
     need([incoming, after].every(state => state.selection === 'CLIPBOARD' && state.peerPid === process.pid
@@ -34,7 +34,7 @@ function verifyPeer(step, record, previous) {
         && Number.isSafeInteger(state.ownerWindow)
         && (state.ownerPid === null ? state.ownerWindow === 0 : state.ownerWindow > 1))
         && incoming.peerWindow === after.peerWindow, 'wrong retained X11 clipboard authority');
-    need(typeof result?.text === 'string' && !result.error && before(previous, incoming.at)
+    need((fixture === 'text' ? typeof result?.text === 'string' : typeof result?.values === 'object') && !result.error && before(previous, incoming.at)
         && before(incoming.at, step.dispatched) && before(step.dispatched, result.started) && before(result.started, result.finished)
         && before(result.finished, after.at), 'stale or incomplete GTK clipboard reading');
     return after.at;

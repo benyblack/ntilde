@@ -1,0 +1,165 @@
+{
+  "suiteId": "ntilde-owned-x11-osc5522-clipboard-v1",
+  "contractsVersion": 1,
+  "scope": "One disposable direct-local Linux X11 pane, default CLIPBOARD and normal Ctrl+V.",
+  "measurement": {
+    "startedAt": "2026-11-27T08:43:17.666Z",
+    "fixtureRemovedAt": "2026-11-27T08:43:39.415Z",
+    "leaseReleasedAt": "2026-11-27T08:43:39.418Z",
+    "sha256": "a95b6d670e90f787d86f32249bf27e2f8b2a5850fead4c3f8687759876bc1171",
+    "source": {
+      "policy": "owned-modern-x11-osc5522-clipboard-v1",
+      "sha256": "8c9e0fe0430dc1721b2c334dc458f4bab21b2698a70758b5106b4e7d5e4bc9b7"
+    },
+    "nodeVersion": "v24.22.2",
+    "display": ":0",
+    "window": 2097171,
+    "serverPid": 13991,
+    "appPid": 13994,
+    "workerPid": 14049,
+    "pane": {
+      "paneId": "2fc08f39-926f-4fd0-9fac-cce43e7595b7",
+      "profileName": "X11 OSC 5522 a92c856d073873d4a5c75893f0c48664",
+      "rows": 40,
+      "cols": 149,
+      "kind": "local",
+      "isActive": true
+    },
+    "tty": "/dev/pts/0",
+    "peerPids": [
+      14092,
+      14175,
+      14260,
+      14343,
+      14440,
+      14524,
+      14624,
+      14705
+    ],
+    "clipboardWriteEnabled": false
+  },
+  "cases": [
+    {
+      "caseId": "extensions.osc5522-clipboard",
+      "pinned": {
+        "pass": true,
+        "note": "Protocol recognized; clipboard access permissions not tested",
+        "response": "\u001b[?5522;2$y",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query",
+          "note": "Protocol recognized; clipboard access permissions not tested"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DECRPM 5522 has Ps=1, 2 or 3; Ps=0 or 4 explicitly rejects support",
+            "observed": "\u001b[?5522;2$y"
+          }
+        ],
+        "termless": {
+          "pass": true,
+          "note": "Protocol recognized; clipboard access permissions not tested",
+          "response": "\u001b[?5522;2$y",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Protocol recognized; clipboard access permissions not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "DECRPM 5522 has Ps=1, 2 or 3; Ps=0 or 4 explicitly rejects support",
+              "observed": "\u001b[?5522;2$y"
+            }
+          ]
+        }
+      },
+      "contractResult": {
+        "offHex": "6e74696c64652d353532322d70617374652d3465303536653236613163613831366433633235383534306638313036396433",
+        "notificationHex": "1b5d353532323b747970653d726561643a7374617475733d4f4b3a70773d4f5441784e454d7a4e7a4642516a6c464f45517a516b553352545a424d6a49784d6a68474d7a45784d44524251544130517a5577526a41324e5451314d5449314e54457a4f5449794d5545794e544535525442434e413d3d1b5c1b5d353532323b747970653d726561643a7374617475733d444154413a6d696d653d4c673d3d3b644756346443397762474670626942305a5868304c3268306257773d1b5c1b5d353532323b747970653d726561643a7374617475733d444f4e451b5c",
+        "mimes": [
+          "text/plain",
+          "text/html"
+        ],
+        "readHex": "1b5d353532323b747970653d726561643a7374617475733d4f4b3a69643d636170747572651b5c1b5d353532323b747970653d726561643a7374617475733d444154413a69643d636170747572653a6d696d653d64475634644339776247467062673d3d3b626e52706247526c4c5455314d6a49746347467a644755744e4755774e545a6c4d6a5a684d574e684f4445325a444e6a4d6a55344e5451775a6a67784d4459355a444d3d1b5c1b5d353532323b747970653d726561643a7374617475733d444154413a69643d636170747572653a6d696d653d644756346443396f644731733b5047492b626e52706247526c4c5455314d6a49746347467a644755744e4755774e545a6c4d6a5a684d574e684f4445325a444e6a4d6a55344e5451775a6a67784d4459355a444d384c32492b1b5c1b5d353532323b747970653d726561643a7374617475733d444f4e453a69643d636170747572651b5c",
+        "reuseHex": "1b5d353532323b747970653d726561643a7374617475733d455045524d3a69643d72657573651b5c",
+        "osc52Hex": "1b5d35323b633b1b5c1b5b3f36323b343b323263",
+        "outcome": "supported"
+      },
+      "conclusion": {
+        "outcome": "supported",
+        "grading": "ntilde-owned-x11-osc5522-clipboard-v1",
+        "evidence": "generated-input-child-bytes"
+      },
+      "stock": {
+        "outcome": "unsupported",
+        "runId": "02be5c606e0e7d79ab8e11f142d21ae0",
+        "target": {
+          "kind": "app",
+          "id": "ntilde",
+          "version": "0.12.0",
+          "os": "macos",
+          "osVersion": "27.0.1",
+          "outerTerminal": null,
+          "mux": null,
+          "config": null,
+          "permissions": null
+        }
+      },
+      "exchange": {
+        "writeHex": "1b5b3f3535323224701b5b63",
+        "rawHex": "1b5b3f353532323b3224791b5b3f36323b343b323263"
+      },
+      "modeControls": [
+        {
+          "key": "off-set",
+          "writeHex": "1b5b3f353532326c",
+          "replyHex": ""
+        },
+        {
+          "key": "off-query",
+          "writeHex": "1b5b3f3535323224701b5b63",
+          "replyHex": "1b5b3f353532323b3224791b5b3f36323b343b323263"
+        },
+        {
+          "key": "on-set",
+          "writeHex": "1b5b3f3535323268",
+          "replyHex": ""
+        },
+        {
+          "key": "on-query",
+          "writeHex": "1b5b3f3535323224701b5b63",
+          "replyHex": "1b5b3f353532323b3124791b5b3f36323b343b323263"
+        },
+        {
+          "key": "off-reset",
+          "writeHex": "1b5b3f353532326c",
+          "replyHex": ""
+        },
+        {
+          "key": "off-again",
+          "writeHex": "1b5b3f3535323224701b5b63",
+          "replyHex": "1b5b3f353532323b3224791b5b3f36323b343b323263"
+        }
+      ],
+      "restorationHex": "1b5b3f353532323b3224791b5b3f36323b343b3232631b5b3f323030343b322479",
+      "history": [
+        {
+          "phase": "before",
+          "appRevision": "04019dbacf1c02aa7ccd85c39fcd2670ec2905eb",
+          "outcome": "unsupported",
+          "writeHex": "1b5b3f3535323224701b5b63",
+          "rawHex": "1b5b3f353532323b3024791b5b3f36323b343b323263"
+        },
+        {
+          "phase": "after",
+          "appRevision": "5aa7481b2d3187325378168f68c0548111322ac3",
+          "outcome": "supported",
+          "writeHex": "1b5b3f3535323224701b5b63",
+          "rawHex": "1b5b3f353532323b3224791b5b3f36323b343b323263"
+        }
+      ]
+    }
+  ]
+}

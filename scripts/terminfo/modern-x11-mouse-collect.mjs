@@ -271,7 +271,8 @@ async function clipboardPeer(run, step, request, ownerPids, restoring) {
     if (!(run.paste && restoring)) checkLineage(run, restoring);
     const directory = join(run.scratch, 'gtk-' + run.clipboardPeers.length);
     mkdirSync(directory, { mode });
-    const argv = ['-E', '-s', '-B', join(run.sources, 'peer-linux.py'), 'text', directory];
+    const fixture = run.mimePaste ? 'mime' : 'text';
+    const argv = ['-E', '-s', '-B', join(run.sources, 'peer-linux.py'), fixture, directory];
     const peer = ownChild(run.python, argv, { env: { ...run.env, CI: 'true', GDK_BACKEND: 'x11', GTK_A11Y: 'none' },
         stdio: ['pipe', 'pipe', 'pipe'] }, run.logs, 'GTK peer ' + run.clipboardPeers.length);
     run.clipboardPeers.push(peer);
@@ -298,7 +299,7 @@ async function clipboardPeer(run, step, request, ownerPids, restoring) {
         need(!peer.status, 'GTK peer exited before its result');
     }, 'GTK peer did not finish the clipboard operation', aborted, 2500);
     need(!step.result.error, 'GTK text operation failed: ' + step.result.error);
-    need(typeof step.result.text === 'string', 'GTK text operation returned no text');
+    need(run.mimePaste ? step.result.values != null : typeof step.result.text === 'string', 'GTK clipboard result is missing');
     if (!(run.paste && restoring)) checkLineage(run, restoring);
     step.after = await state();
 }
@@ -311,6 +312,33 @@ async function observePaste(run) {
         action: (step, chord, key, tag) => recordAction(run, step, { kind: 'keyboard', chord }, key, tag),
     });
     return paste.replayPaste;
+}
+
+async function recordClipboardExchange(run, step, key, writeHex, dismiss) {
+    checkLineage(run, key === 'restore');
+    step.arm = await worker(run, { kind: 'arm', key });
+    let failure;
+    try {
+        step.checkpoint = await worker(run, { kind: 'checkpoint', key, writeHex });
+        if (dismiss) {
+            step.dialog = await x11(run, { kind: 'dismiss-clipboard-consent', window: run.record.identity.window });
+        }
+    } catch (error) { failure = error; }
+    try { step.capture = await worker(run, { kind: 'seal', key }); }
+    catch (error) {
+        throw failure ? new AggregateError([failure, error], 'exchange and capture sealing failed') : error;
+    }
+    if (failure) throw failure;
+}
+
+async function observeMimePaste(run) {
+    const clipboard = await import('./modern-x11-osc5522-clipboard.mjs');
+    await clipboard.observe(run.record, {
+        peer: (...args) => clipboardPeer(run, ...args),
+        exchange: (...args) => recordClipboardExchange(run, ...args),
+        action: (step, chord, key, tag) => recordAction(run, step, { kind: 'keyboard', chord }, key, tag),
+    });
+    return clipboard.replay;
 }
 
 async function observeClipboard(run) {
@@ -348,7 +376,8 @@ async function verifyRestoredPane(run) {
 async function restoreClipboardPane(run) {
     let replay, failure;
     try {
-        replay = await (run.paste ? observePaste(run) : observeClipboard(run));
+        if (run.mimePaste) replay = await observeMimePaste(run);
+        else replay = await (run.paste ? observePaste(run) : observeClipboard(run));
         await verifyRestoredPane(run);
     } catch (error) { failure = error; }
     try {
@@ -408,13 +437,14 @@ function configure(run) {
     const home = join(run.scratch, 'home'), appData = join(run.scratch, 'appdata'), runtime = join(run.scratch, 'runtime');
     for (const path of [home, appData, runtime]) mkdirSync(path, { mode });
     const runId = run.lease.leaseId;
-    run.paste = run.keyboard === '--clipboard-paste';
+    run.mimePaste = run.keyboard === '--osc5522-clipboard';
+    run.paste = run.mimePaste || run.keyboard === '--clipboard-paste';
     run.clipboard = run.paste || run.keyboard === '--osc52-write' || run.keyboard === '--osc52-clipboard';
     let markerPrefix = run.keyboard ? 'x11-key-' : 'x11-mouse-';
     let profilePrefix = run.keyboard ? 'X11 Keyboard ' : 'X11 Mouse ';
     if (run.paste) {
-        markerPrefix = 'x11-paste-';
-        profilePrefix = 'X11 Clipboard Paste ';
+        markerPrefix = run.mimePaste ? 'x11-osc5522-' : 'x11-paste-';
+        profilePrefix = run.mimePaste ? 'X11 OSC 5522 ' : 'X11 Clipboard Paste ';
     } else if (run.clipboard) {
         markerPrefix = 'x11-osc52-';
         profilePrefix = 'X11 OSC 52 ';
