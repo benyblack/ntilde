@@ -76,6 +76,15 @@ function pathFor(root, file) {
     return join(root, 'scripts', relative);
 }
 const policy = 'readonly-owned-source-graph-v80';
+const flashScope = {
+    policy: 'readonly-owned-source-graph-osc555-v1',
+    sources: {
+        oscFlashContractSourceSha256: 'osc-flash-contract.mjs',
+        oscFlashOwnedSourceSha256: 'osc-flash-owned.mjs',
+        oscFlashWorkerSourceSha256: 'osc-flash-worker.mjs',
+    },
+    entry: 'osc-flash-owned.mjs',
+};
 const blinkPolicy = 'readonly-owned-source-graph-v75';
 const blinkSources = {
     modernBlinkSourceSha256: 'modern-blink.mjs',
@@ -150,6 +159,8 @@ const unicodeWidthSources = {
 };
 const requestedScope = process.argv[6] === '--scope' ? process.argv[7] : null;
 const scopes = {
+    'osc555': flashScope,
+    'osc555-disabled': flashScope,
     'font-ligatures': { policy: 'readonly-owned-source-graph-font-ligatures-v1', sources: fontLigatureSources, entry: fontLigatureSources.fontLigaturesOwnedSourceSha256 },
     'osc633-metadata': { policy: 'readonly-owned-source-graph-v86', sources: osc633MetadataSources, entry: osc633MetadataSources.osc633MetadataOwnedSourceSha256 },
     'sixel-reports': { policy: 'readonly-owned-source-graph-v85', sources: sixelReportsSources, entry: sixelReportsSources.sixelReportsOwnedSourceSha256 },
@@ -266,7 +277,7 @@ async function launch() {
             const suite = await import(pathToFileURL(pathFor(root, focusedScope.entry)).href);
             globalThis[focusedSuiteKey] = focusedScope.policy === blinkPolicy
                 ? { scope: suite.scope, workerFile: suite.workerFile, prefix: 'mblink-', Collection: suite.BlinkCollection, completeReceipt: suite.completeBlinkReceipt }
-                : suite;
+                : suite.selectScope ? suite.selectScope(requestedScope) : suite;
         }
         await import(pathToFileURL(pathFor(root, 'terminfo-owned-runner.mjs')).href);
         if (interrupted) process.exitCode = 1;
