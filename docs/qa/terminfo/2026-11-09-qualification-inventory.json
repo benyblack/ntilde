@@ -4833,30 +4833,30 @@
         "extensions.osc133-p"
       ],
       "evidence": {
-        "files": 5,
-        "bytes": 1916749,
-        "sha256": "6378752074a91260cb479525bb1e4f683372d507909004704ae94087e0ce5350"
+        "files": 6,
+        "bytes": 1927017,
+        "sha256": "f9de6d7a789bd211fec7750d616fc8825cc500c3343e9c1ca28c92126ff8fa05"
       },
       "receipt": {
         "schemaVersion": 1,
-        "runId": "47a92da8f85fb432df81c5881176f60c",
+        "runId": "0d999d70d16a818fa0e7da75a2e020d4",
         "cellReceipt": null,
         "suiteEvidence": null
       },
       "run": {
-        "ownedRunId": "47a92da8f85fb432df81c5881176f60c",
-        "measuredAt": "2026-11-27T14:44:26.367Z",
-        "appRevision": "3ddb0c3543b620589b925b96ae622f0a6ad44f63",
-        "appVersion": "0.14.0+3ddb0c3543b620589b925b96ae622f0a6ad44f63",
+        "ownedRunId": "0d999d70d16a818fa0e7da75a2e020d4",
+        "measuredAt": "2026-11-27T14:56:34.739Z",
+        "appRevision": "c05d9c10a1ac7b1e6badcf90b0f58a9fa26767b6",
+        "appVersion": "0.14.0+c05d9c10a1ac7b1e6badcf90b0f58a9fa26767b6",
         "appVersionSource": "operator supplied; not independently verified",
         "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
-        "scriptsRevision": "3ddb0c3543b620589b925b96ae622f0a6ad44f63",
+        "scriptsRevision": "66e24f7c262aaf89ed0533df3c6850458e6c28aa",
         "collectorAdapterId": "ntilde-owned-contour-prompt-parts-v1",
         "collectorAdapterBundleSha256": null,
         "gradingAdapterId": null,
         "gradingAdapterBundleSha256": null,
         "sourceSnapshotPolicy": "readonly-owned-source-graph-prompt-parts-v1",
-        "sourceSnapshotManifestSha256": "1ae8acb1ef5f91696ac7791d191b6c93737e938d3ad76448be389124a0ae47c7"
+        "sourceSnapshotManifestSha256": "25835b4e5f94589a1d8a1604fb3d4c976b085182119741ddc927390c42310572"
       },
       "stock": {
         "basis": "carried-forward",
@@ -4871,7 +4871,7 @@
       "rederivation": {
         "status": "passed",
         "command": "node --test scripts/terminfo/prompt-parts-publication.test.mjs",
-        "testSha256": "33b076284c262b645b6b860ced80c37aca722a28c365cea36f387c32e7868a6c"
+        "testSha256": "3263fc97631c68e51beca48d7bcd4e58acef63bd471477bd05d73e6fe145ff9a"
       }
     },
     {

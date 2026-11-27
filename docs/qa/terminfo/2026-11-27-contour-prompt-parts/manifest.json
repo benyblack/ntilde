@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "measurement": {
-    "runId": "47a92da8f85fb432df81c5881176f60c",
-    "appRevision": "3ddb0c3543b620589b925b96ae622f0a6ad44f63",
-    "scriptsRevision": "3ddb0c3543b620589b925b96ae622f0a6ad44f63",
+    "runId": "0d999d70d16a818fa0e7da75a2e020d4",
+    "appRevision": "c05d9c10a1ac7b1e6badcf90b0f58a9fa26767b6",
+    "scriptsRevision": "66e24f7c262aaf89ed0533df3c6850458e6c28aa",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-prompt-parts-v1",
     "receiptSchema": 1
   },
   "archives": {
-    "owned-run.zip": "b8d275f2554b656f3d4f1deadeec8e5f2e22fc7ff3d7ea2b7d8e3c87e9cb0747"
+    "owned-run.zip": "d94b1333fc606b5500f04861151d4146e8962a204f9f4063782a6edbdfdaeb10"
   }
 }

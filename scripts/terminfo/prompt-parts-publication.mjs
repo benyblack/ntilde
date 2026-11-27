@@ -10,7 +10,7 @@ import { focusedMeasurement, pinnedBundle, readJson, readManifest, withOwnedArch
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(qa, '2026-11-27-contour-prompt-parts');
-const manifestHash = 'e8fc18451ba35dd3f6f87aa86f62bb474c6765bf5aa15d79b85c38a5dbc2338f';
+const manifestHash = '367cf5ca0a896b32e943cc2b1b5413ebd40c31eb68f4fe24daf4a5a1f7cde1ee';
 export const withArchive = callback => withOwnedArchive(publication, readManifest(publication, manifestHash, assert.ok), callback);
 
 export async function buildPublication() {
