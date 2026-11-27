@@ -53,7 +53,7 @@ function exchanges(step, key, write, previous) {
 
 function modeReply(sample) {
     const match = /^(\x1b\[\?5522;([0-4])\$y)(\x1b\[\?62;4;22c)$/.exec(sample.raw);
-    need(match, 'missing or malformed OSC 5522 DECRPM and independent DA1 fence');
+    need(match?.[0] === sample.raw, 'missing or malformed OSC 5522 DECRPM and independent DA1 fence');
     return Number(match[2]);
 }
 
@@ -77,9 +77,14 @@ const frameData = (id, mime, value) => response('DATA', id, ':mime=' + base64(mi
 
 function notification(raw) {
     // Strict framing across the entire retained window excludes any ordinary or duplicate paste.
-    const match = /^\x1b\]5522;type=read:status=OK:pw=([A-Za-z0-9+/=]+)\x1b\\\x1b\]5522;type=read:status=DATA:mime=Lg==;([A-Za-z0-9+/=]+)\x1b\\\x1b\]5522;type=read:status=DONE\x1b\\$/.exec(raw);
-    need(match, 'expected exactly one MIME paste notification without ordinary paste bytes: ' + hex(raw));
-    const [, encodedToken, encodedMimes] = match;
+    const frames = raw.split(st);
+    const ok = osc + 'type=read:status=OK:pw=';
+    const data = osc + 'type=read:status=DATA:mime=Lg==;';
+    need(frames.length === 4 && frames[0].startsWith(ok) && frames[1].startsWith(data)
+        && frames[2] + st === response('DONE') && frames[3] === '',
+    'expected exactly one MIME paste notification without ordinary paste bytes: ' + hex(raw));
+    const encodedToken = frames[0].slice(ok.length);
+    const encodedMimes = frames[1].slice(data.length);
     const token = text(encodedToken);
     const mimes = text(encodedMimes).split(' ');
     need(/^[0-9A-F]{64}$/.test(token) && base64(token) === encodedToken && base64(mimes.join(' ')) === encodedMimes
@@ -214,7 +219,8 @@ function verifyPasteEffect(trial, record, previous) {
         && BigInt(trial.reuse.checkpoint.started) - BigInt(trial.on.native.events[0].at) < 15_000_000_000n,
     'paste credential reuse was not denied inside its validity window');
     const legacy = exchanges(trial.osc52, 'osc52', osc52 + sentinel, reused.at);
-    need(/^\x1b\]52;c;(?:\x07|\x1b\\)\x1b\[\?62;4;22c$/.test(legacy.raw), 'OSC 52 read did not return empty denial');
+    const da1 = '\x1b[?62;4;22c';
+    need(['\x07', st].some(end => legacy.raw === '\x1b]52;c;' + end + da1), 'OSC 52 read did not return empty denial');
     return { at: legacy.at, offHex: off.raw, notificationHex: on.raw, mimes, readHex: hex(readback.raw),
         reuseHex: hex(reused.raw), osc52Hex: hex(legacy.raw) };
 }
