@@ -28,7 +28,9 @@ The #1002 policy regression passed on main for starting levels 0, 1 and 2 on bot
 | Measurement | App source | Collector source | Run |
 | --- | --- | --- | --- |
 | Ignored request | `6d16bd84bdac25cd8b51a0fa7a4554d74702401d` | `d33840549b1684e1d9278f60df670f9daf67de6d` | `f3106ab6a428a316b68f8ce0b0f38cd7` |
-| Level 3 | `a7e677814275cf898f57f6c4aae713ebaadaab8b` | `a7e677814275cf898f57f6c4aae713ebaadaab8b` | `45878ec802c1455724d847d94c85b4e5` |
+| Level 3 | `ff91b0c24803fa3da751cce619522cbf37ccae0a` | `ff91b0c24803fa3da751cce619522cbf37ccae0a` | `3b6d05faeba7f0a8a1f5ae5aff6ede85` |
+
+The first implementation run also passed all 22 observations. The table uses the full repeat after the mixed-pane broadcast correction. [First implementation receipt](https://github.com/benyblack/ntilde/blob/95e23798a9f36e455c67fd512d0de1aa7888a1d0/docs/qa/terminfo/2026-11-27-modify-other-keys-3/owned-run.zip)
 
 Both runs used Node 24.22.3, a 140 × 40 pane, source policy `readonly-owned-source-graph-modify-other-keys-3-v1` and receipt schema 1. The App revision is build provenance. The archives bind the executable, managed App assembly and captured collector sources by SHA-256. [Fixed manifest](manifest.json) · [Baseline manifest](baseline/manifest.json)
 

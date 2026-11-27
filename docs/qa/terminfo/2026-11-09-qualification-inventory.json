@@ -40,15 +40,15 @@
     ]
   },
   "totals": {
-    "uniqueBenchmarkIds": 159,
-    "suiteClaims": 163,
+    "uniqueBenchmarkIds": 160,
+    "suiteClaims": 164,
     "idsWithMultipleClaims": [
       "extensions.osc-633-vscode",
       "extensions.sixel",
       "sgr.bg.standard",
       "sgr.fg.standard"
     ],
-    "effectSupportedIds": 152,
+    "effectSupportedIds": 153,
     "effectUnsupportedIds": 6,
     "effectOtherIds": 1,
     "pinnedAndEffectSupportedIds": 98,
@@ -90,6 +90,7 @@
       "extensions.semantic-prompts",
       "input.button-event-mouse",
       "input.modify-other-keys",
+      "input.modify-other-keys-3",
       "input.pixel-mouse",
       "input.urxvt-mouse",
       "input.x10-mouse",
@@ -116,7 +117,7 @@
       "modes.deccolm",
       "modes.decsclm"
     ],
-    "effectSupportedOfStockInconclusive": 150,
+    "effectSupportedOfStockInconclusive": 151,
     "effectUnsupportedOfStockInconclusive": 6,
     "pinnedSupportedOfStockInconclusive": 96,
     "reassessedStockUnsupportedIds": [
@@ -134,10 +135,10 @@
       "stockInconclusive": 168
     },
     "remainingAgainstStockInconclusive": {
-      "effectUnqualified": 18,
+      "effectUnqualified": 17,
       "effectMeasuredUnsupported": 6,
       "effectMeasuredOther": 1,
-      "effectNotMeasured": 11,
+      "effectNotMeasured": 10,
       "notPinnedSupported": 72
     }
   },
@@ -3638,6 +3639,59 @@
         "status": "passed",
         "command": "node --test scripts/terminfo/osc633-implementation-publication.test.mjs",
         "testSha256": "a300678b3afdbbded85d7355ab0080553b97ce712458dec6841b745556f701f1"
+      }
+    },
+    {
+      "suite": "modify-other-keys-3",
+      "suiteId": "ntilde-owned-modify-other-keys-3-v1",
+      "contractsVersion": 1,
+      "liveContractsVersion": 1,
+      "publication": "2026-11-27-modify-other-keys-3/",
+      "doc": "2026-11-27-modify-other-keys-3/report.md",
+      "caseCount": 1,
+      "caseIds": [
+        "input.modify-other-keys-3"
+      ],
+      "evidence": {
+        "files": 7,
+        "bytes": 3732818,
+        "sha256": "93ec967f472a10e9056bba56de7d745eb0225689468dc57983c886e78a4d25c1"
+      },
+      "receipt": {
+        "schemaVersion": 1,
+        "runId": "3b6d05faeba7f0a8a1f5ae5aff6ede85",
+        "cellReceipt": null,
+        "suiteEvidence": null
+      },
+      "run": {
+        "ownedRunId": "3b6d05faeba7f0a8a1f5ae5aff6ede85",
+        "measuredAt": "2026-11-27T14:25:47.313Z",
+        "appRevision": "ff91b0c24803fa3da751cce619522cbf37ccae0a",
+        "appVersion": "0.14.0+ff91b0c24803fa3da751cce619522cbf37ccae0a",
+        "appVersionSource": "operator supplied; not independently verified",
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "scriptsRevision": "ff91b0c24803fa3da751cce619522cbf37ccae0a",
+        "collectorAdapterId": "ntilde-owned-modify-other-keys-3-v1",
+        "collectorAdapterBundleSha256": null,
+        "gradingAdapterId": null,
+        "gradingAdapterBundleSha256": null,
+        "sourceSnapshotPolicy": "readonly-owned-source-graph-modify-other-keys-3-v1",
+        "sourceSnapshotManifestSha256": "c7990abf0d11b67c8ea4112995199b01276e01a7a06677bd5671d23cf0196ba7"
+      },
+      "stock": {
+        "basis": "carried-forward",
+        "runId": null,
+        "counts": null,
+        "suiteComplete": null,
+        "probeHash": null,
+        "rawSha256": null,
+        "sourceRevision": null,
+        "note": "Retained stock baseline."
+      },
+      "rederivation": {
+        "status": "passed",
+        "command": "node --test scripts/terminfo/modify-other-keys-3-publication.test.mjs",
+        "testSha256": "91da309c03381dcba7c3d5012ae46dd82d60ed54002c049c99fe01f778c65e3f"
       }
     },
     {
@@ -9576,6 +9630,58 @@
             "generated-input-child-bytes"
           ],
           "evidenceTag": "owned-generated-input-child-bytes"
+        }
+      ]
+    },
+    {
+      "id": "input.modify-other-keys-3",
+      "kind": "benchmark",
+      "stockOutcome": "inconclusive",
+      "pinned": {
+        "best": "inconclusive",
+        "byClaim": [
+          {
+            "suite": "modify-other-keys-3",
+            "verdict": "inconclusive"
+          }
+        ]
+      },
+      "effect": {
+        "verdict": "supported",
+        "byClaim": [
+          {
+            "suite": "modify-other-keys-3",
+            "verdict": "supported"
+          }
+        ]
+      },
+      "claims": [
+        {
+          "id": "input.modify-other-keys-3",
+          "suite": "modify-other-keys-3",
+          "status": "qualified",
+          "pinned": {
+            "verdict": "inconclusive",
+            "note": null
+          },
+          "effect": {
+            "verdict": "supported"
+          },
+          "reportedConclusion": {
+            "outcome": "inconclusive",
+            "grading": "pinned"
+          },
+          "divergence": {
+            "recordedInReport": true,
+            "kind": "pinned-inconclusive-by-design",
+            "pinned": "inconclusive",
+            "effect": "supported",
+            "reason": null
+          },
+          "measuredLayers": [
+            "generated-input-child-bytes"
+          ],
+          "evidenceTag": "generated-input-child-bytes"
         }
       ]
     },
