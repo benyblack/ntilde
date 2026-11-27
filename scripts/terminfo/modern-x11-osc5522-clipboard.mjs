@@ -211,7 +211,7 @@ function verifyPasteEffect(trial, record, previous) {
     'ordinary paste control or captured values differ');
     const reused = exchanges(trial.reuse, 'reuse', readRequest('reuse', token), readback.at);
     checkDismissal(trial.reuse, reused, identity);
-    need(reused.raw === response('EACCES', 'reuse')
+    need(reused.raw === response('EPERM', 'reuse')
         && BigInt(trial.reuse.checkpoint.started) - BigInt(trial.on.native.events[0].at) < 15_000_000_000n,
     'paste credential reuse was not denied inside its validity window');
     const legacy = exchanges(trial.osc52, 'osc52', osc52 + sentinel, reused.at);
