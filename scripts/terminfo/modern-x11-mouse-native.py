@@ -173,6 +173,7 @@ class XDisplay:
         event.client = ClientMessage(33, 0, 1, self.display, dialog, atom(self.display, b"WM_PROTOCOLS", 1), 32)
         event.client.data[0] = atom(self.display, b"WM_DELETE_WINDOW", 1)
         demand(event.client.message_type and event.client.data[0], "missing WM_DELETE_WINDOW protocol")
+        sent = str(time.monotonic_ns())
         demand(send(self.display, dialog, 0, 0, ct.byref(event)), "consent dialog close failed")
         self.sync(self.display, 0)
         deadline = time.monotonic() + 1
@@ -182,7 +183,7 @@ class XDisplay:
         focus = self.focus_transition(parent["id"])
         demand(focus["observed"] == parent["id"], "App focus was not restored after consent")
         return {"dialog": dialog, "title": title, "owner": owner.value, "serverPid": self.server_pid,
-                "appPid": app_pid, "started": started, "focus": focus, "finished": str(time.monotonic_ns())}
+                "appPid": app_pid, "started": started, "sent": sent, "focus": focus, "finished": str(time.monotonic_ns())}
 
     def focus(self):
         window, revert = XID(), INT()

@@ -101,9 +101,9 @@ function checkDismissal(step, exchange, identity) {
     need(d.title === 'Clipboard access' && Number.isSafeInteger(d.dialog) && d.dialog > 1 && d.dialog !== owner
         && d.owner === owner && d.appPid === identity.appPid && d.serverPid === identity.serverPid
         && d.focus.target === owner && d.focus.observed === owner && exchange.early === ''
-        && before(step.checkpoint.finished, d.started) && before(d.started, d.focus.requested)
+        && before(step.checkpoint.finished, d.started) && before(d.started, d.sent) && before(d.sent, d.focus.requested)
         && before(d.focus.requested, d.focus.at) && before(d.focus.at, d.finished)
-        && before(d.finished, exchange.at) && before(d.started, step.capture.chunks[0]?.at),
+        && before(d.finished, exchange.at) && before(d.sent, step.capture.chunks[0]?.at),
     'token reuse did not require fresh explicit consent');
 }
 
@@ -130,7 +130,7 @@ async function transact(trial, ops, key, write, dismiss = false) {
 }
 
 async function prepare(trial, ops, phase, owners, restoring = false) {
-    const values = trial[phase];
+    const values = phase === 'restore' ? trial.baseline : trial[phase];
     await ops.peer(trial[phase + 'Seed'], { kind: 'seed', values }, owners, restoring);
     await ops.peer(trial[phase + 'Read'], read, [trial[phase + 'Seed'].process.pid], restoring);
 }
@@ -174,7 +174,6 @@ export async function observe(record, ops) {
     } catch (error) { failure = failure ? new AggregateError([failure, error], 'clipboard run and mode restore failed') : error; }
     try {
         if (trial.baselineSeed.dispatched) {
-            trial.restore = trial.baseline;
             const owners = [null, ...['baselineSeed', 'pasteSeed', 'laterSeed'].map(key => trial[key].process?.pid)];
             await prepare(trial, ops, 'restore', owners, true);
         }
