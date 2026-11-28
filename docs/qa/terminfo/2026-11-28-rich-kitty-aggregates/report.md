@@ -33,9 +33,12 @@ The retained animation and Unicode-placeholder publications grade each listed ef
 
 ## Reproduction
 
-Run `5f0d82f5a2086ad6f8ab7119e2f0ba72` used macOS 27.0.1 (26A434), arm64, Node `v24.22.2`, a 41 × 140 grid, App `a2727571cbd07165797602a4271ef019099401eb` and collector `7a2195218a71447e3a03170300ae1fa46fcaec40`. The initial screen and PTY mode were restored, the fixture and captured-source directory were removed, and the desktop lease was released after verification. The App build revision and the retained executable and assembly hashes are recorded separately. [Owned archive](owned-run.zip) · [Machine-readable report](report.json)
+Run `7be345f006f672668a65752f9bd1bccc` used macOS 27.0.1 (26A434), arm64, Node `v24.22.2`, a 41 × 140 grid, App `a2727571cbd07165797602a4271ef019099401eb` and collector `ab4073b7c5c8ebacc8a1f962b985b4049d36cfd0`. The initial screen and PTY mode were restored, the fixture and captured-source directory were removed, and the desktop lease was released after verification. The App build revision and the retained executable and assembly hashes are recorded separately. [Owned archive](owned-run.zip) · [Machine-readable report](report.json)
 
-Run `49ba958906332ecce520862be85d1e65` also passed on collector `83c1b6e0f69a50394e53f782e71a0f16492b4462`. The worker and receipt code were then shared with the existing graphics collector, so the current archive comes from a fresh run of the revised collector. [First run archive](https://github.com/benyblack/ntilde/blob/b3ba2a87f48beddeeb4a5f91d482a8129b9f3af9/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip)
+Earlier runs also passed on the same App. Each collector change was followed by a fresh measurement.
+
+- Run `49ba958906332ecce520862be85d1e65`, collector `83c1b6e0f69a50394e53f782e71a0f16492b4462`. The first run passed. Sharing the worker and receipt code changed captured source, so the same App was remeasured. [Archive](https://github.com/benyblack/ntilde/blob/b3ba2a87f48beddeeb4a5f91d482a8129b9f3af9/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip)
+- Run `5f0d82f5a2086ad6f8ab7119e2f0ba72`, collector `7a2195218a71447e3a03170300ae1fa46fcaec40`. The repeat run passed. Sharing the owner journal implementation changed the measured observer source, so the same App was measured again. [Archive](https://github.com/benyblack/ntilde/blob/fc147ae542df2af7db9fce4e38900dcb2bb13870/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip)
 
 Run the offline verification from the repository root with Node 24 and Python 3.
 

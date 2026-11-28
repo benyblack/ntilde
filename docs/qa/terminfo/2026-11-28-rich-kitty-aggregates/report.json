@@ -253,40 +253,53 @@
     }
   },
   "measurement": {
-    "runId": "5f0d82f5a2086ad6f8ab7119e2f0ba72",
+    "runId": "7be345f006f672668a65752f9bd1bccc",
     "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
-    "scriptsRevision": "7a2195218a71447e3a03170300ae1fa46fcaec40",
+    "scriptsRevision": "ab4073b7c5c8ebacc8a1f962b985b4049d36cfd0",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v2",
     "receiptSchema": 1,
     "version": "0.14.0+a2727571cbd07165797602a4271ef019099401eb",
     "nodeVersion": "v24.22.2",
-    "startedAt": "2026-11-28T14:54:00.269Z",
-    "releasedAt": "2026-11-28T14:54:03.260Z",
+    "startedAt": "2026-11-28T15:01:19.566Z",
+    "releasedAt": "2026-11-28T15:01:22.525Z",
     "geometry": {
       "rows": 41,
       "cols": 140
     },
-    "paneId": "70c0517d-15a8-490a-96d6-07987bcfbde4",
+    "paneId": "b24297f3-5da0-4ac4-bd38-aea14e2a83b1",
     "tty": "/dev/ttys003",
-    "appPid": 75054,
-    "workerPid": 75055,
+    "appPid": 75928,
+    "workerPid": 75929,
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "32cbb747ca0692101e636e3ef29de75f0e0ea188d006e7540803ccecf8df4f22",
-    "sourceSnapshotManifestSha256": "794c08cb7aa0ffbf72fc1e40e6fa0b3baf28aae249bfd2685001421d7ca8ab61",
-    "archiveSha256": "0d6686d334f95d847cd14d071100ed285683fb6f9c266e267b8e1c09eafd9470"
+    "sourceSnapshotManifestSha256": "ee2d5eea475e0de642216f6058e8d126b6a40a934b686834d3df17f44bf0c31c",
+    "archiveSha256": "69ec3663015fd33cc012c3e41515753ccb770d84ff03c4d525e1bcbdae156d51"
   },
-  "superseded": {
-    "runId": "49ba958906332ecce520862be85d1e65",
-    "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
-    "scriptsRevision": "83c1b6e0f69a50394e53f782e71a0f16492b4462",
-    "platform": "macOS 27.0.1 (26A434), arm64",
-    "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v1",
-    "receiptSchema": 1,
-    "archiveSha256": "c0d2c6ac956d3fddf0265b6a51540a66ca68ff466f3553272625ebae71320f01",
-    "archive": "https://github.com/benyblack/ntilde/blob/b3ba2a87f48beddeeb4a5f91d482a8129b9f3af9/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip",
-    "reason": "The first run passed. Sharing the worker and receipt code changed captured source, so the same App was remeasured."
-  },
+  "superseded": [
+    {
+      "runId": "49ba958906332ecce520862be85d1e65",
+      "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
+      "scriptsRevision": "83c1b6e0f69a50394e53f782e71a0f16492b4462",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v1",
+      "receiptSchema": 1,
+      "archiveSha256": "c0d2c6ac956d3fddf0265b6a51540a66ca68ff466f3553272625ebae71320f01",
+      "archive": "https://github.com/benyblack/ntilde/blob/b3ba2a87f48beddeeb4a5f91d482a8129b9f3af9/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip",
+      "reason": "The first run passed. Sharing the worker and receipt code changed captured source, so the same App was remeasured."
+    },
+    {
+      "runId": "5f0d82f5a2086ad6f8ab7119e2f0ba72",
+      "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
+      "scriptsRevision": "7a2195218a71447e3a03170300ae1fa46fcaec40",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v2",
+      "receiptSchema": 1,
+      "archiveSha256": "0d6686d334f95d847cd14d071100ed285683fb6f9c266e267b8e1c09eafd9470",
+      "archive": "https://github.com/benyblack/ntilde/blob/fc147ae542df2af7db9fce4e38900dcb2bb13870/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip",
+      "reason": "The repeat run passed. Sharing the owner journal implementation changed the measured observer source, so the same App was measured again."
+    }
+  ],
   "retainedCapabilities": {
     "routedInput": {
       "measurement": {

@@ -9,7 +9,7 @@ import { digest, focusedMeasurement, pinnedBundle, readJson, readManifest, withO
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(qa, '2026-11-28-rich-kitty-aggregates');
-const manifestHash = '3733f07c2da3359d32c101c3370392b7683e9aac9e47f6ea5d1f0a88cfc24dac';
+const manifestHash = '844319ea469a564e2199e24fa42039c408421df2233ba2885010d4a6d589857f';
 export const bundleArchive = join(qa, '2026-11-16-static-images/terminfo-dev-4.0.0.bundle.mjs.gz');
 
 function verifySources(output, context) {
@@ -119,7 +119,8 @@ export function renderReport(report) {
             '[Publication](../' + row.publication + ')'].join(' | ') + ' |'),
         '', '## Reproduction', '',
         'Run ' + code(m.runId) + ' used ' + m.platform + ', Node ' + code(m.nodeVersion) + ', a ' + m.geometry.rows + ' × ' + m.geometry.cols + ' grid, App ' + code(m.appRevision) + ' and collector ' + code(m.scriptsRevision) + '. The initial screen and PTY mode were restored, the fixture and captured-source directory were removed, and the desktop lease was released after verification. The App build revision and the retained executable and assembly hashes are recorded separately. [Owned archive](owned-run.zip) · [Machine-readable report](report.json)', '',
-        'Run ' + code(report.superseded.runId) + ' also passed on collector ' + code(report.superseded.scriptsRevision) + '. The worker and receipt code were then shared with the existing graphics collector, so the current archive comes from a fresh run of the revised collector. [First run archive](' + report.superseded.archive + ')', '',
+        'Earlier runs also passed on the same App. Each collector change was followed by a fresh measurement.', '',
+        ...report.superseded.map(run => '- Run ' + code(run.runId) + ', collector ' + code(run.scriptsRevision) + '. ' + run.reason + ' [Archive](' + run.archive + ')'), '',
         'Run the offline verification from the repository root with Node 24 and Python 3.', '',
         '~~~sh',
         'node scripts/terminfo/kitty-aggregate-publication.mjs --check',
