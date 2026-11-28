@@ -21,28 +21,36 @@ function span(source, start, end) {
     return source.slice(from, to);
 }
 
-export function readPinnedProbes() {
+export function readPinnedDeviceProbes(ids, spans) {
     const archive = readFileSync(join(qa, '2026-11-16-static-images/terminfo-dev-4.0.0.bundle.mjs.gz'));
     const bytes = gunzipSync(archive, { maxOutputLength: 1_000_000 });
     assert.equal(digest(bytes), pinnedBundle);
     const source = bytes.toString('utf8');
     const probe = span(source, 'function probe(id, termless, term, termObservationEvidence) {', '\nfunction readHyperlinkMetadata(');
     const helper = span(source, 'function deviceReplyResult(', '\nvar iconLabelReply,');
-    const registrations = [span(source, registration(caseIds[0]), registration('device.decrqss')),
-        span(source, registration(caseIds[1]), '    probe("device.term-features"')].join('');
+    const registrationMarker = marker => marker.startsWith('device.') ? registration(marker) : marker;
+    const registrations = spans.map(([start, end]) =>
+        span(source, registrationMarker(start), registrationMarker(end))).join('\n');
     const probes = runInNewContext(probe + helper + '\n[' + registrations + ']', Object.create(null), { timeout: 1000 }); // NOSONAR: digest-pinned upstream code in isolation.
-    assert.deepEqual(Array.from(probes, item => item.id), caseIds);
+    assert.deepEqual(Array.from(probes, item => item.id), ids);
     return probes;
 }
 
-export async function replay(probe, exchange) {
-    const index = caseIds.indexOf(probe.id);
-    assert.ok(index >= 0 && exchange.id === probe.id);
+export function readPinnedProbes() {
+    return readPinnedDeviceProbes(caseIds, [[caseIds[0], 'device.decrqss'], [caseIds[1], '    probe("device.term-features"']]);
+}
+
+export function replay(probe, exchange) {
+    return replayDeviceProbe(probe, exchange, requests[caseIds.indexOf(probe.id)]);
+}
+
+export async function replayDeviceProbe(probe, exchange, request) {
+    assert.ok(request && exchange.id === probe.id);
     assert.equal(exchange.raw, exchange.reply + da1);
     let calls = 0;
     const verifySequence = sequence => {
         calls++;
-        assert.equal(sequence, requests[index]);
+        assert.equal(sequence, request);
         assert.equal(sequence + da, exchange.request);
     };
     const terminal = await probe.term({
@@ -64,18 +72,18 @@ export async function replay(probe, exchange) {
     return { id: probe.id, terminal: structuredClone(terminal), termlessReplay: structuredClone(termlessReplay) };
 }
 
-function verifySources(directory, context) {
+export function verifySources(directory, context, sourceFiles, policy) {
     const retained = join(directory, 'sources'), manifest = readJson(directory, 'source-snapshot.json');
-    const files = Object.entries(capturedDeviceIdentitySourceFiles);
-    assert.equal(context.sourceSnapshotPolicy, capturedDeviceIdentitySourcePolicy);
+    const files = Object.entries(sourceFiles);
+    assert.equal(context.sourceSnapshotPolicy, policy);
     assert.equal(manifest.policy, context.sourceSnapshotPolicy);
     assert.equal(manifest.schemaVersion, 1);
     assert.equal(readdirSync(retained).length, files.length);
-    assert.deepEqual(readJson(retained, 'owned-source-inventory.json'), capturedDeviceIdentitySourceFiles);
+    assert.deepEqual(readJson(retained, 'owned-source-inventory.json'), sourceFiles);
     const hashes = Object.fromEntries(files.map(([field, file]) => [field, digest(readFileSync(join(retained, file)))]));
     assert.deepEqual(hashes, manifest.hashes);
     assert.deepEqual(hashes, Object.fromEntries(files.map(([field]) => [field, context[field]])));
-    assertRetainedSourceClosure(retained, capturedDeviceIdentitySourceFiles);
+    assertRetainedSourceClosure(retained, sourceFiles);
 }
 
 export function withIdentityArchive(callback) {
@@ -87,7 +95,7 @@ export async function buildPublication() {
         const { context, frames, report, receipt } = deriveRun(directory);
         assert.deepEqual(report, readJson(directory, 'identity-report.json'));
         assert.deepEqual(receipt, readJson(directory, 'identity-receipt.json'));
-        verifySources(directory, context);
+        verifySources(directory, context, capturedDeviceIdentitySourceFiles, capturedDeviceIdentitySourcePolicy);
         return { owned: report, measurement: focusedMeasurement(directory, manifest, context, receipt, frames[0].screen),
             superseded: manifest.superseded };
     });
