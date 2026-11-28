@@ -2,14 +2,25 @@
   "schemaVersion": 1,
   "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "measurement": {
+    "runId": "5f0d82f5a2086ad6f8ab7119e2f0ba72",
+    "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
+    "scriptsRevision": "7a2195218a71447e3a03170300ae1fa46fcaec40",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v2",
+    "receiptSchema": 1
+  },
+  "archives": {
+    "owned-run.zip": "0d6686d334f95d847cd14d071100ed285683fb6f9c266e267b8e1c09eafd9470"
+  },
+  "superseded": {
     "runId": "49ba958906332ecce520862be85d1e65",
     "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
     "scriptsRevision": "83c1b6e0f69a50394e53f782e71a0f16492b4462",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v1",
-    "receiptSchema": 1
-  },
-  "archives": {
-    "owned-run.zip": "c0d2c6ac956d3fddf0265b6a51540a66ca68ff466f3553272625ebae71320f01"
+    "receiptSchema": 1,
+    "archiveSha256": "c0d2c6ac956d3fddf0265b6a51540a66ca68ff466f3553272625ebae71320f01",
+    "archive": "https://github.com/benyblack/ntilde/blob/b3ba2a87f48beddeeb4a5f91d482a8129b9f3af9/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip",
+    "reason": "The first run passed. Sharing the worker and receipt code changed captured source, so the same App was remeasured."
   }
 }
