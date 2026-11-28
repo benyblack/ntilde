@@ -120,10 +120,10 @@ export function stableImageContext(details) {
 export function imageBackgroundReply(argb) {
     return '\x1b]11;rgb:' + [16, 8, 0].map(shift => (((argb >>> shift) & 255) * 257).toString(16).padStart(4, '0')).join('/') + '\x1b\\';
 }
-export function imageRawReplies(capture, used, backgroundArgb) {
-    const raw = capture?.hex; checkImages(typeof raw === 'string' && raw.endsWith(imageModeReplyHex));
+export function imageRawReplies(capture, used, backgroundArgb, modeReplyHex = imageModeReplyHex) {
+    const raw = capture?.hex; checkImages(typeof raw === 'string' && raw.endsWith(modeReplyHex));
     validateInputBytes(capture, raw, used);
-    const bytes = Buffer.from(raw.slice(0, -imageModeReplyHex.length), 'hex'); checkImages(bytes.every(byte => byte <= 127));
+    const bytes = Buffer.from(raw.slice(0, -modeReplyHex.length), 'hex'); checkImages(bytes.every(byte => byte <= 127));
     const text = bytes.toString('ascii'), start = text.lastIndexOf('\x1b]11;'); checkImages(start >= 0);
     const colorRaw = text.slice(start), backgroundQuery = parseColorReply(colorRaw, { code: 11 });
     checkImages(colorRaw.toLowerCase() === imageBackgroundReply(backgroundArgb));
@@ -239,7 +239,7 @@ export class StaticImageReport {
     }
     readReply(frame) {
         const argb = frame.kind === this.suite.prefix + 'finish' ? this.initialBackground : 0xff101010;
-        const { replyBytes, backgroundQuery } = imageRawReplies(frame.capture, this.used, argb);
+        const { replyBytes, backgroundQuery } = imageRawReplies(frame.capture, this.used, argb, this.suite.modeReplyHex?.(frame));
         this.backgrounds.push({ snapshot: frame.index, argb, query: backgroundQuery });
         return replyBytes;
     }

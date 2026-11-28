@@ -193,6 +193,15 @@ const osc66Sources = {
     osc66OwnedSourceSha256: 'osc66-owned.mjs',
     osc66WorkerSourceSha256: 'osc66-worker.mjs',
 };
+const kittyAggregateScope = {
+    policy: 'readonly-owned-source-graph-kitty-aggregate-v1',
+    sources: {
+        kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
+        kittyAggregateOwnedSourceSha256: 'kitty-aggregate-owned.mjs',
+        kittyAggregateWorkerSourceSha256: 'kitty-aggregate-worker.mjs',
+    },
+    entry: 'kitty-aggregate-owned.mjs',
+};
 const kittyGraphicsSources = {
     kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
     kittyGraphicsWorkerSourceSha256: 'kitty-graphics-worker.mjs',
@@ -227,6 +236,7 @@ const scopes = {
         sources: xtwinopsPixelsSources, entry: xtwinopsPixelsSources.xtwinopsPixelsOwnedSourceSha256 },
     'sixel-reports': { policy: 'readonly-owned-source-graph-v85', sources: sixelReportsSources, entry: sixelReportsSources.sixelReportsOwnedSourceSha256 },
     'osc66': { policy: 'readonly-owned-source-graph-v84', sources: osc66Sources, entry: osc66Sources.osc66OwnedSourceSha256 },
+    'kitty-aggregate': kittyAggregateScope,
     'kitty-graphics': { policy: 'readonly-owned-source-graph-v83', sources: kittyGraphicsSources, entry: kittyGraphicsSources.kittyGraphicsOwnedSourceSha256 },
     'unicode-boundaries': { policy: 'readonly-owned-source-graph-v82', sources: unicodeBoundarySources, entry: unicodeBoundarySources.unicodeBoundaryOwnedSourceSha256 },
     'unicode-width': { policy: 'readonly-owned-source-graph-v81', sources: unicodeWidthSources, entry: unicodeWidthSources.unicodeWidthOwnedSourceSha256 },

@@ -110,7 +110,7 @@ export class OwnedStaticImageObserver {
     }
     acceptRaw(request, entry) {
         const argb = entry.kind === 'finish' ? this.initialBackground : 0xff101010;
-        const { replyBytes: reply } = imageRawReplies(request.capture, this.used, argb);
+        const { replyBytes: reply } = imageRawReplies(request.capture, this.used, argb, this.suite.modeReplyHex?.(entry));
         if (entry.kind !== 'read' || this.actions.at(-1).skipReason) { checkImages(reply.length === 0); return; }
         this.suite.acceptReply(reply, entry, this.states);
     }
