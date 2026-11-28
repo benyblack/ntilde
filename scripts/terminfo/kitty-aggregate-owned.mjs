@@ -1,11 +1,10 @@
-import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { redPixels } from './kitty-graphics-owned.mjs';
-import { OwnedStaticImageObserver } from './static-images-capture.mjs';
+import { FocusedImageCollection } from './static-images-capture.mjs';
 import { deriveFocusedImageRun } from './static-images-receipt.mjs';
 import { checkImages, imageModeQueries, imageModeReplyHex, imageRestore, imageSetup, retainedImagePixel,
     StaticImageReport, staticImageSuite } from './static-images.mjs';
-import { pngHash } from './pixels-capture.mjs';
 
 export const scope = Object.freeze({ id: 'ntilde-owned-kitty-aggregate-v1', persistence: 'Off', deadlineMs: 90000 });
 export const prefix = 'kitty-aggregate-';
@@ -132,28 +131,8 @@ const files = {
 };
 const write = (output, name, value) => writeFileSync(join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
 
-export class Collection {
-    constructor(run) {
-        this.output = run.output;
-        this.observer = new OwnedStaticImageObserver({
-            output: run.output, appData: run.appData, ownerPid: run.app.pid,
-            profileName: run.profileName, nonce: 'NTILDE_IMG_' + run.runId, suite, deferReport: true,
-        });
-    }
-
-    async observe(request, budget, ownership) {
-        const { observer, output } = this;
-        const response = await observer.handle(request, budget, ownership);
-        if (request.kind === prefix + 'seal') write(output, files.seal, observer.seal);
-        else {
-            const admitted = request.kind === prefix + 'admit';
-            const fact = (admitted ? observer.actions : observer.frames).at(-1);
-            appendFileSync(join(output, admitted ? files.actions : files.frames), JSON.stringify(fact) + '\n', { mode: 0o600 });
-        }
-        return response;
-    }
-
-    get restored() { return this.observer.captureRestored; }
+export class Collection extends FocusedImageCollection {
+    constructor(run) { super(run, suite, files); }
 }
 
 export function deriveRun(output) {

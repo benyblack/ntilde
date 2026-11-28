@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
-import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { OwnedStaticImageObserver } from './static-images-capture.mjs';
+import { FocusedImageCollection } from './static-images-capture.mjs';
 import { parseStaticKittyReply, staticImageAnchor } from './static-images-cases.mjs';
 import { staticImageEnvelope } from './static-images-oracle.mjs';
 import { deriveFocusedImageRun } from './static-images-receipt.mjs';
@@ -142,26 +142,8 @@ const files = { frames: 'graphics-frames.jsonl', actions: 'graphics-actions.json
     source: 'source-snapshot.json', settings: 'initial-settings.json' };
 const write = (output, name, value) => writeFileSync(join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
 
-export class Collection {
-    constructor(run) {
-        this.output = run.output;
-        this.observer = new OwnedStaticImageObserver({ output: run.output, appData: run.appData, ownerPid: run.app.pid,
-            profileName: run.profileName, nonce: 'NTILDE_IMG_' + run.runId, suite, deferReport: true });
-    }
-
-    async observe(request, budget, ownership) {
-        const { observer, output } = this;
-        const response = await observer.handle(request, budget, ownership);
-        if (request.kind === prefix + 'seal') write(output, files.seal, observer.seal);
-        else {
-            const admitted = request.kind === prefix + 'admit';
-            const fact = (admitted ? observer.actions : observer.frames).at(-1);
-            appendFileSync(join(output, admitted ? files.actions : files.frames), JSON.stringify(fact) + '\n', { mode: 0o600 });
-        }
-        return response;
-    }
-
-    get restored() { return this.observer.captureRestored; }
+export class Collection extends FocusedImageCollection {
+    constructor(run) { super(run, suite, files); }
 }
 
 export function deriveRun(output) {
