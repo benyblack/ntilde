@@ -9,7 +9,7 @@ import { deriveRun } from './device-state-owned.mjs';
 
 const qa = fileURLToPath(new URL('../../docs/qa/terminfo/', import.meta.url));
 export const publication = join(qa, '2026-11-28-rich-device-state');
-const manifestHash = '55f892c7fb89ca496713ef1354a1cef8504f30b349dbe5710e82891b08cd6148';
+const manifestHash = '1c2a88684f9372df3ddebc388764c0860912a591f292ec8f0a785c6e7291229d';
 
 export function readPinnedProbes() {
     return readPinnedDeviceProbes(caseIds, [

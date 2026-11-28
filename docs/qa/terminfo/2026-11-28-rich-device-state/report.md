@@ -22,7 +22,9 @@ Paired App observations showed the query stages preserved the cells, cursor, geo
 
 ## Reproduce
 
-Run `4c57bfa9a3bd28c9dc38956f11838e08` used macOS 27.0.1 (26A434), arm64, App revision `d56bc224cfc17e286aa48d7c4f0a93d02fe6d334` and collector revision `877dc367ff02987b4d62ef0f705405661fdfc914`. The [owned archive](owned-run.zip) contains the raw exchanges, pane observations, App and collector identity records, and cleanup proof. [Machine-readable report](report.json)
+Run `849868fe1bf0a750de37a4c7ebba758c` used macOS 27.0.1 (26A434), arm64, App revision `d56bc224cfc17e286aa48d7c4f0a93d02fe6d334` and collector revision `8009366ce82441831a52952c4d5e21145fddb009`. The [owned archive](owned-run.zip) contains the raw exchanges, pane observations, App and collector identity records, and cleanup proof. [Machine-readable report](report.json)
+
+The first run passed. The collector was remeasured after the SonarCloud changes to share cleanup validation and simplify the scheme oracle. [Superseded run 4c57bfa9a3bd28c9dc38956f11838e08](https://github.com/benyblack/ntilde/blob/a9e730c9e9346ed702857dbd5224c07c8c0a4dd2/docs/qa/terminfo/2026-11-28-rich-device-state/owned-run.zip)
 
 Build the recorded App revision with the repository .NET SDK. Run the collector from the recorded collector revision with Node 24 or later.
 
