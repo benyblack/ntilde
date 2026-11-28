@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OwnedCellObserver, snapshotHash, observerEndpoint, imageCaptureRequest } from './agent-observer.mjs';
 import { pngHash, totalPixelLimit } from './pixels-capture.mjs';
@@ -110,7 +110,7 @@ export class OwnedStaticImageObserver {
     }
     acceptRaw(request, entry) {
         const argb = entry.kind === 'finish' ? this.initialBackground : 0xff101010;
-        const { replyBytes: reply } = imageRawReplies(request.capture, this.used, argb);
+        const { replyBytes: reply } = imageRawReplies(request.capture, this.used, argb, this.suite.modeReplyHex?.(entry));
         if (entry.kind !== 'read' || this.actions.at(-1).skipReason) { checkImages(reply.length === 0); return; }
         this.suite.acceptReply(reply, entry, this.states);
     }
@@ -152,4 +152,32 @@ export class OwnedStaticImageObserver {
         } catch (error) { this.failed = true; this.lastAttempt.error = String(error.message ?? error); throw error; }
         finally { this.busy = false; }
     }
+}
+
+/** Persist each focused image action and observation as the owner accepts it. */
+export class FocusedImageCollection {
+    constructor(run, suite, files) {
+        this.output = run.output;
+        this.prefix = suite.prefix;
+        this.files = files;
+        this.observer = new OwnedStaticImageObserver({
+            output: run.output, appData: run.appData, ownerPid: run.app.pid,
+            profileName: run.profileName, nonce: 'NTILDE_IMG_' + run.runId, suite, deferReport: true,
+        });
+    }
+
+    async observe(request, budget, ownership) {
+        const { observer, output, files, prefix } = this;
+        const response = await observer.handle(request, budget, ownership);
+        if (request.kind === prefix + 'seal') {
+            writeFileSync(join(output, files.seal), JSON.stringify(observer.seal, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
+        } else {
+            const admitted = request.kind === prefix + 'admit';
+            const fact = (admitted ? observer.actions : observer.frames).at(-1);
+            appendFileSync(join(output, admitted ? files.actions : files.frames), JSON.stringify(fact) + '\n', { mode: 0o600 });
+        }
+        return response;
+    }
+
+    get restored() { return this.observer.captureRestored; }
 }

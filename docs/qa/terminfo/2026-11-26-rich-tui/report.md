@@ -14,6 +14,24 @@ The [evidence map](evidence-map.json) records the state of Ntilde main at `caea9
 
 The stock categories partition the 96 cases. An inventory claim can also have a stock outcome, so the inventory count overlaps the stock categories. The frozen Core, Modern and common-harness Core assessments contribute zero exact IDs to this list. The map is a record of existing evidence. Each Rich TUI probe still needs its own criterion applied before it can take a Rich verdict.
 
+## Published Ntilde evidence
+
+The [current reconciliation](published-evidence.json) covers **96 of 96** frozen IDs with published Ntilde evidence. There are zero stock-only rows. The count includes qualified inventory claims and separately published exact-ID assessments. The frozen membership, evidence map and historical stock outcomes retain their original inputs.
+
+| Published outcome | Cases |
+| --- | ---: |
+| Supported | 84 |
+| Unsupported | 3 |
+| Inconclusive | 3 |
+| Inapplicable | 5 |
+| Mixed | 1 |
+
+The outcomes use the inventory effect verdict when a qualified claim exists and the bounded standalone assessment elsewhere. Sixel remains mixed across the retained inventory claims.
+
+## Kitty keyboard and graphics aggregate probes
+
+Both pinned paths grade the keyboard negotiation and the image query supported. The keyboard pop restored the original flags. The graphics query left ID 31 absent and the pane unchanged. The owned run, exact replies and previously measured routed-input and rendering capabilities have their own revisions and scopes. [Two-case assessment and offline replay](../2026-11-28-rich-kitty-aggregates/report.md)
+
 ## First batch
 
 The [Kitty keyboard assessment](kitty-report.md) records the bytes the child received for disambiguation, event reporting, alternate keys, all-key reporting and associated text. All five tested App effects were supported on the isolated Linux X11 run. Its separately retained query exchanges measure flag negotiation alongside the routed-input tests.
@@ -90,4 +108,4 @@ The [two-case identity and property assessment](../2026-11-27-rich-identity/repo
 
 The macOS pane flashed for both the pinned BEL terminator and foot's ST terminator, then returned to its original pixels. With visual flash disabled, the ST control stayed steady. Timing left the BEL-terminated suppression control inconclusive on the revised App. The pinned cursor-only probe also grades inconclusive. [Owned frames, controls and reproduction](../2026-11-27-osc555-flash/report.md)
 
-Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the list and map against the recorded Git revision. The checkout needs that revision in its local Git history.
+Run `python3 scripts/terminfo-rich-baseline.py --check` to verify the frozen list and map against the recorded Git revision and rederive the current exact-ID reconciliation. The checkout needs that revision in its local Git history.

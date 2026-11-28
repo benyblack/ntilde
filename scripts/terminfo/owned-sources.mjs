@@ -22,6 +22,7 @@ export const capturedXtwinopsPixelsSourcePolicy = 'readonly-owned-source-graph-x
 export const capturedSixelReportsSourcePolicy = 'readonly-owned-source-graph-v85';
 export const capturedFontLigaturesSourcePolicy = 'readonly-owned-source-graph-font-ligatures-v1';
 export const capturedOsc66SourcePolicy = 'readonly-owned-source-graph-v84';
+export const capturedKittyAggregateSourcePolicy = 'readonly-owned-source-graph-kitty-aggregate-v2';
 export const capturedKittyGraphicsSourcePolicy = 'readonly-owned-source-graph-v83';
 export const capturedUnicodeBoundarySourcePolicy = 'readonly-owned-source-graph-v82';
 export const capturedUnicodeWidthSourcePolicy = 'readonly-owned-source-graph-v81';
@@ -41,6 +42,7 @@ const focusedSourcePolicies = [
     ['osc633MetadataOwnedSourceSha256', capturedOsc633MetadataSourcePolicy],
     ['sixelReportsOwnedSourceSha256', capturedSixelReportsSourcePolicy],
     ['osc66OwnedSourceSha256', capturedOsc66SourcePolicy],
+    ['kittyAggregateOwnedSourceSha256', capturedKittyAggregateSourcePolicy],
     ['kittyGraphicsOwnedSourceSha256', capturedKittyGraphicsSourcePolicy],
     ['unicodeBoundaryContractsSourceSha256', capturedUnicodeBoundarySourcePolicy],
     ['unicodeWidthContractsSourceSha256', capturedUnicodeWidthSourcePolicy],
@@ -1118,6 +1120,14 @@ export const capturedOsc66SourceFiles = Object.freeze({
     osc66WorkerSourceSha256: 'osc66-worker.mjs',
 });
 
+export const capturedKittyAggregateSourceFiles = Object.freeze({
+    ...capturedV82SourceFiles,
+    kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
+    kittyGraphicsWorkerSourceSha256: 'kitty-graphics-worker.mjs',
+    kittyAggregateOwnedSourceSha256: 'kitty-aggregate-owned.mjs',
+    kittyAggregateWorkerSourceSha256: 'kitty-aggregate-worker.mjs',
+});
+
 export const capturedKittyGraphicsSourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
@@ -1223,6 +1233,7 @@ export function readSourceSnapshot(root) {
         [capturedOsc66SourcePolicy]: capturedOsc66SourceFiles,
         [capturedMok3SourcePolicy]: capturedMok3SourceFiles,
         [capturedFontLigaturesSourcePolicy]: capturedFontLigaturesSourceFiles,
+        [capturedKittyAggregateSourcePolicy]: capturedKittyAggregateSourceFiles,
         [capturedKittyGraphicsSourcePolicy]: capturedKittyGraphicsSourceFiles,
         [capturedUnicodeBoundarySourcePolicy]: capturedUnicodeBoundarySourceFiles,
         [capturedUnicodeWidthSourcePolicy]: capturedUnicodeWidthSourceFiles,

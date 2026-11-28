@@ -1,11 +1,10 @@
 import { randomInt } from 'node:crypto';
-import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { isDeepStrictEqual as same } from 'node:util';
-import { OwnedStaticImageObserver } from './static-images-capture.mjs';
+import { FocusedImageCollection } from './static-images-capture.mjs';
 import { parseStaticKittyReply, staticImageAnchor } from './static-images-cases.mjs';
 import { staticImageEnvelope } from './static-images-oracle.mjs';
-import { journal, json, read } from './static-images-receipt.mjs';
+import { deriveFocusedImageRun } from './static-images-receipt.mjs';
 import { checkImages, imageRestore, imageSetup, retainedImagePixel, StaticImageReport, staticImageSuite } from './static-images.mjs';
 import { pngHash } from './pixels-capture.mjs';
 
@@ -143,48 +142,12 @@ const files = { frames: 'graphics-frames.jsonl', actions: 'graphics-actions.json
     source: 'source-snapshot.json', settings: 'initial-settings.json' };
 const write = (output, name, value) => writeFileSync(join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
 
-export class Collection {
-    constructor(run) {
-        this.output = run.output;
-        this.observer = new OwnedStaticImageObserver({ output: run.output, appData: run.appData, ownerPid: run.app.pid,
-            profileName: run.profileName, nonce: 'NTILDE_IMG_' + run.runId, suite, deferReport: true });
-    }
-
-    async observe(request, budget, ownership) {
-        const { observer, output } = this;
-        const response = await observer.handle(request, budget, ownership);
-        if (request.kind === prefix + 'seal') write(output, files.seal, observer.seal);
-        else {
-            const admitted = request.kind === prefix + 'admit';
-            const fact = (admitted ? observer.actions : observer.frames).at(-1);
-            appendFileSync(join(output, admitted ? files.actions : files.frames), JSON.stringify(fact) + '\n', { mode: 0o600 });
-        }
-        return response;
-    }
-
-    get restored() { return this.observer.captureRestored; }
+export class Collection extends FocusedImageCollection {
+    constructor(run) { super(run, suite, files); }
 }
 
 export function deriveRun(output) {
-    const context = json(output, files.context), proof = json(output, files.proof), settings = json(output, files.settings);
-    const worker = proof.proofs?.[0], raw = worker?.privateClipboard;
-    const frames = journal(output, files.frames), actions = journal(output, files.actions), seal = json(output, files.seal);
-    const ownership = frames[0]?.ownership;
-    checkImages(!['failure.json', 'cleanup-failure.json', 'graphics-raw-failure.json'].some(name => existsSync(join(output, name)))
-        && same(context.collectionScope, scope) && same(proof.collectionScope, scope) && proof.proofs?.length === 1
-        && proof.completed === true && !proof.cleanupError && !proof.persistentDaemon
-        && proof.sourceSnapshot?.policy === context.sourceSnapshotPolicy
-        && Date.parse(proof.cleanedUpAt) <= Date.parse(proof.sourceSnapshot.removedAt)
-        && worker?.app.pid === context.ownerPid && same(worker.app, ownership?.app) && same(worker.worker, ownership?.worker)
-        && worker.tty === ownership.tty && typeof raw?.originalTerminalState === 'string'
-        && raw.originalTerminalState === raw.restoredTerminalState
-        && settings.SessionPersistence === 'Off' && settings.AllowOsc52ClipboardWrite === false && settings.AgentAccessActEnabled === false);
-    const report = suite.buildReport(frames, actions, seal, context.runId, output, []);
-    const boundFiles = [files.context, files.proof, files.source, files.settings, files.frames, files.actions, files.seal, input.file,
-        ...frames.flatMap(frame => frame.pixels.map(pixel => pixel.file))];
-    const hashes = Object.fromEntries(boundFiles.map(name => [name, pngHash(read(output, name))]));
-    checkImages(hashes[files.settings] === context.initialSettingsSha256 && hashes[files.source] === context.sourceSnapshotManifestSha256);
-    return { context, frames, report, receipt: { schemaVersion: 1, runId: context.runId, suite: scope.id, fixtureRemoved: true, files: hashes } };
+    return deriveFocusedImageRun(output, { files, rawFailure: 'graphics-raw-failure.json', scope, suite });
 }
 
 export function completeReceipt(output, scratch) {

@@ -141,6 +141,7 @@ export const nonInventoryPublicationTests = Object.freeze({
     'xtwinops-pixels-publication.test.mjs': 'standalone owned text-area and cell pixel reports for two stock-supported cases',
     'sixel-reports-publication.test.mjs': 'standalone owned DA1 and Sixel geometry replies for two stock-supported cases',
     'osc66-publication.test.mjs': 'standalone owned OSC 66 cursor and rendered ink evidence for a stock-supported case',
+    'kitty-aggregate-publication.test.mjs': 'standalone Rich TUI Kitty negotiation and graphics query assessments for two stock-supported cases',
     'kitty-graphics-publication.test.mjs': 'standalone owned Kitty transmit and display pixels for two cases already supported by the stock baseline',
     'rich-x11-kitty-keyboard-publication.test.mjs': 'standalone owned Rich TUI keyboard effects for five stock-supported negotiation cases',
     'rich-term-features-publication.test.mjs': 'standalone direct-local TERM_FEATURES inheritance and capability-reply assessment',

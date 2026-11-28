@@ -1,5 +1,6 @@
-import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { isDeepStrictEqual as same } from 'node:util';
 import { snapshotHash } from './agent-observer.mjs';
 import { staticImageSuiteId } from './static-images-cases.mjs';
 import { buildStaticImageReport, checkImages, ownedStaticImagePolicy, imageInputs, validateImageOwnership } from './static-images.mjs';
@@ -18,6 +19,28 @@ export function read(output, file, limit = 16 * 1024 * 1024) {
 }
 export const json = (output, file) => JSON.parse(read(output, file));
 export const journal = (output, file) => read(output, file).toString().trim().split('\n').filter(Boolean).map(value => JSON.parse(value));
+export function deriveFocusedImageRun(output, { files, rawFailure, scope, suite }) {
+    const context = json(output, files.context), proof = json(output, files.proof), settings = json(output, files.settings);
+    const worker = proof.proofs?.[0], raw = worker?.privateClipboard;
+    const frames = journal(output, files.frames), actions = journal(output, files.actions), seal = json(output, files.seal);
+    const ownership = frames[0]?.ownership;
+    checkImages(!['failure.json', 'cleanup-failure.json', rawFailure].some(name => existsSync(join(output, name)))
+        && same(context.collectionScope, scope) && same(proof.collectionScope, scope) && proof.proofs?.length === 1
+        && proof.completed === true && !proof.cleanupError && !proof.persistentDaemon
+        && proof.sourceSnapshot?.policy === context.sourceSnapshotPolicy
+        && Date.parse(proof.cleanedUpAt) <= Date.parse(proof.sourceSnapshot.removedAt)
+        && worker?.app.pid === context.ownerPid && same(worker.app, ownership?.app) && same(worker.worker, ownership?.worker)
+        && worker.tty === ownership.tty && typeof raw?.originalTerminalState === 'string'
+        && raw.originalTerminalState === raw.restoredTerminalState
+        && settings.SessionPersistence === 'Off' && settings.AllowOsc52ClipboardWrite === false && settings.AgentAccessActEnabled === false);
+    const report = suite.buildReport(frames, actions, seal, context.runId, output, []);
+    const boundFiles = [files.context, files.proof, files.source, files.settings, files.frames, files.actions, files.seal, ...suite.inputs().map(input => input.file),
+        ...frames.flatMap(frame => frame.pixels.map(pixel => pixel.file))];
+    const hashes = Object.fromEntries(boundFiles.map(name => [name, pngHash(read(output, name))]));
+    checkImages(hashes[files.settings] === context.initialSettingsSha256 && hashes[files.source] === context.sourceSnapshotManifestSha256);
+    return { context, frames, report, receipt: { schemaVersion: 1, runId: context.runId, suite: scope.id, fixtureRemoved: true, files: hashes } };
+}
+
 /** Retained imports and directories prevent a coherent downgrade to schema9 by field stripping. */
 export function includesStaticImageEvidence(output, evidence, context, proof) {
     if (['readonly-owned-source-graph-v3', 'readonly-owned-source-graph-v4', 'readonly-owned-source-graph-v5', 'readonly-owned-source-graph-v6', 'readonly-owned-source-graph-v7', 'readonly-owned-source-graph-v8', 'readonly-owned-source-graph-v9', 'readonly-owned-source-graph-v10', 'readonly-owned-source-graph-v11', 'readonly-owned-source-graph-v12', 'readonly-owned-source-graph-v13', 'readonly-owned-source-graph-v14', 'readonly-owned-source-graph-v15', 'readonly-owned-source-graph-v16', 'readonly-owned-source-graph-v17', 'readonly-owned-source-graph-v18', 'readonly-owned-source-graph-v19', 'readonly-owned-source-graph-v20', 'readonly-owned-source-graph-v21', 'readonly-owned-source-graph-v22', 'readonly-owned-source-graph-v23', 'readonly-owned-source-graph-v24', 'readonly-owned-source-graph-v25', 'readonly-owned-source-graph-v26', 'readonly-owned-source-graph-v27', 'readonly-owned-source-graph-v28', 'readonly-owned-source-graph-v29', 'readonly-owned-source-graph-v30', 'readonly-owned-source-graph-v31', 'readonly-owned-source-graph-v32', 'readonly-owned-source-graph-v33', 'readonly-owned-source-graph-v34', 'readonly-owned-source-graph-v35', 'readonly-owned-source-graph-v36', 'readonly-owned-source-graph-v37', 'readonly-owned-source-graph-v38', 'readonly-owned-source-graph-v39', 'readonly-owned-source-graph-v40', 'readonly-owned-source-graph-v41', 'readonly-owned-source-graph-v42', 'readonly-owned-source-graph-v43', 'readonly-owned-source-graph-v44', 'readonly-owned-source-graph-v45', 'readonly-owned-source-graph-v46', 'readonly-owned-source-graph-v47', 'readonly-owned-source-graph-v48', 'readonly-owned-source-graph-v49', 'readonly-owned-source-graph-v50', 'readonly-owned-source-graph-v51', 'readonly-owned-source-graph-v52', 'readonly-owned-source-graph-v53', 'readonly-owned-source-graph-v54', 'readonly-owned-source-graph-v55', 'readonly-owned-source-graph-v56', 'readonly-owned-source-graph-v57', 'readonly-owned-source-graph-v58', 'readonly-owned-source-graph-v59', 'readonly-owned-source-graph-v60', 'readonly-owned-source-graph-v61', 'readonly-owned-source-graph-v62', 'readonly-owned-source-graph-v63', 'readonly-owned-source-graph-v64', 'readonly-owned-source-graph-v65', 'readonly-owned-source-graph-v66', 'readonly-owned-source-graph-v67', 'readonly-owned-source-graph-v68', 'readonly-owned-source-graph-v69', 'readonly-owned-source-graph-v70', 'readonly-owned-source-graph-v71', 'readonly-owned-source-graph-v72', 'readonly-owned-source-graph-v73', 'readonly-owned-source-graph-v74', 'readonly-owned-source-graph-v80'].includes(context.sourceSnapshotPolicy)

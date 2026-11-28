@@ -1,0 +1,1057 @@
+{
+  "schemaVersion": 1,
+  "suite": "ntilde-owned-kitty-aggregate-v1",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "cases": [
+    {
+      "id": "extensions.kitty-keyboard",
+      "stock": "supported",
+      "pinned": {
+        "terminal": {
+          "pass": true,
+          "response": "\u001b[?1u",
+          "note": "Queried enhancement flags=1; actual key press, repeat and release events were not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Queried enhancement flags=1; actual key press, repeat and release events were not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Acknowledged flags include mask 1",
+              "observed": "flags=1"
+            }
+          ]
+        },
+        "termless": {
+          "pass": true,
+          "response": "\u001b[?1u",
+          "note": "Queried enhancement flags=1; actual key press, repeat and release events were not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Queried enhancement flags=1; actual key press, repeat and release events were not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Acknowledged flags include mask 1",
+              "observed": "flags=1"
+            }
+          ]
+        }
+      },
+      "owned": {
+        "scope": "Keyboard enhancement bit 1 negotiation and flag restoration",
+        "verdict": "supported"
+      }
+    },
+    {
+      "id": "extensions.kitty-graphics",
+      "stock": "supported",
+      "pinned": {
+        "terminal": {
+          "pass": true,
+          "response": "\u001b_Gi=31;OK\u001b\\",
+          "note": "Graphics query accepted RGB pixel data; visible rendering was not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Graphics query accepted RGB pixel data; visible rendering was not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Graphics reply i=31;OK",
+              "observed": "\u001b_Gi=31;OK\u001b\\"
+            }
+          ]
+        },
+        "termless": {
+          "pass": true,
+          "response": "\u001b_Gi=31;OK\u001b\\",
+          "note": "Graphics query accepted RGB pixel data; visible rendering was not tested",
+          "observation": {
+            "outcome": "supported",
+            "evidence": "query",
+            "note": "Graphics query accepted RGB pixel data; visible rendering was not tested"
+          },
+          "assertions": [
+            {
+              "kind": "positive",
+              "expected": "Graphics reply i=31;OK",
+              "observed": "\u001b_Gi=31;OK\u001b\\"
+            }
+          ]
+        }
+      },
+      "owned": {
+        "scope": "Acceptance of the direct RGB query",
+        "verdict": "supported"
+      }
+    }
+  ],
+  "observations": [
+    {
+      "caseId": "extensions.kitty-keyboard",
+      "stage": "detect",
+      "snapshot": 2,
+      "requestHex": "1b5b3f75",
+      "replyHex": "1b5b3f3075",
+      "sentinelRequestHex": "1b5b63",
+      "sentinelReplyHex": "1b5b3f36323b343b323263",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-keyboard",
+      "stage": "push",
+      "snapshot": 3,
+      "requestHex": "1b5b3e3175",
+      "replyHex": "",
+      "sentinelRequestHex": "",
+      "sentinelReplyHex": "",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-keyboard",
+      "stage": "active",
+      "snapshot": 4,
+      "requestHex": "1b5b3f75",
+      "replyHex": "1b5b3f3175",
+      "sentinelRequestHex": "1b5b63",
+      "sentinelReplyHex": "1b5b3f36323b343b323263",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-keyboard",
+      "stage": "pop",
+      "snapshot": 5,
+      "requestHex": "1b5b3c75",
+      "replyHex": "",
+      "sentinelRequestHex": "",
+      "sentinelReplyHex": "",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-keyboard",
+      "stage": "restored",
+      "snapshot": 6,
+      "requestHex": "1b5b3f75",
+      "replyHex": "1b5b3f3075",
+      "sentinelRequestHex": "1b5b63",
+      "sentinelReplyHex": "1b5b3f36323b343b323263",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-graphics",
+      "stage": "missing-before",
+      "snapshot": 7,
+      "requestHex": "1b5f47613d702c693d33312c633d322c723d312c433d311b5c",
+      "replyHex": "1b5f47693d33313b454e4f454e543a496d616765206e6f7420666f756e641b5c",
+      "sentinelRequestHex": "",
+      "sentinelReplyHex": "",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-graphics",
+      "stage": "query",
+      "snapshot": 8,
+      "requestHex": "1b5f47693d33312c733d312c763d312c613d712c743d642c663d32343b414141411b5c",
+      "replyHex": "1b5f47693d33313b4f4b1b5c",
+      "sentinelRequestHex": "1b5b63",
+      "sentinelReplyHex": "1b5b3f36323b343b323263",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-graphics",
+      "stage": "missing-after",
+      "snapshot": 9,
+      "requestHex": "1b5f47613d702c693d33312c633d322c723d312c433d311b5c",
+      "replyHex": "1b5f47693d33313b454e4f454e543a496d616765206e6f7420666f756e641b5c",
+      "sentinelRequestHex": "",
+      "sentinelReplyHex": "",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-graphics",
+      "stage": "upload-control",
+      "snapshot": 10,
+      "requestHex": "1b5f47613d742c693d33312c733d312c763d312c743d642c663d32343b2f7741411b5c",
+      "replyHex": "1b5f47693d33313b4f4b1b5c",
+      "sentinelRequestHex": "",
+      "sentinelReplyHex": "",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-graphics",
+      "stage": "place-control",
+      "snapshot": 11,
+      "requestHex": "1b5f47613d702c693d33312c633d322c723d312c433d311b5c",
+      "replyHex": "1b5f47693d33313b4f4b1b5c",
+      "sentinelRequestHex": "",
+      "sentinelReplyHex": "",
+      "placementCount": 1,
+      "unchanged": false,
+      "painted": true
+    },
+    {
+      "caseId": "extensions.kitty-graphics",
+      "stage": "delete-control",
+      "snapshot": 12,
+      "requestHex": "1b5f47613d642c643d492c693d33312c713d321b5c",
+      "replyHex": "",
+      "sentinelRequestHex": "",
+      "sentinelReplyHex": "",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    },
+    {
+      "caseId": "extensions.kitty-graphics",
+      "stage": "missing-after-delete",
+      "snapshot": 13,
+      "requestHex": "1b5f47613d702c693d33312c633d322c723d312c433d311b5c",
+      "replyHex": "1b5f47693d33313b454e4f454e543a496d616765206e6f7420666f756e641b5c",
+      "sentinelRequestHex": "",
+      "sentinelReplyHex": "",
+      "placementCount": 0,
+      "unchanged": true,
+      "painted": false
+    }
+  ],
+  "effects": {
+    "keyboard": {
+      "before": 0,
+      "active": 1,
+      "after": 0,
+      "bitOneActivated": true
+    },
+    "graphics": {
+      "accepted": true,
+      "imageAbsent": true,
+      "placementCount": 0,
+      "unchanged": true
+    }
+  },
+  "measurement": {
+    "runId": "7be345f006f672668a65752f9bd1bccc",
+    "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
+    "scriptsRevision": "ab4073b7c5c8ebacc8a1f962b985b4049d36cfd0",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v2",
+    "receiptSchema": 1,
+    "version": "0.14.0+a2727571cbd07165797602a4271ef019099401eb",
+    "nodeVersion": "v24.22.2",
+    "startedAt": "2026-11-28T15:01:19.566Z",
+    "releasedAt": "2026-11-28T15:01:22.525Z",
+    "geometry": {
+      "rows": 41,
+      "cols": 140
+    },
+    "paneId": "b24297f3-5da0-4ac4-bd38-aea14e2a83b1",
+    "tty": "/dev/ttys003",
+    "appPid": 75928,
+    "workerPid": 75929,
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "32cbb747ca0692101e636e3ef29de75f0e0ea188d006e7540803ccecf8df4f22",
+    "sourceSnapshotManifestSha256": "ee2d5eea475e0de642216f6058e8d126b6a40a934b686834d3df17f44bf0c31c",
+    "archiveSha256": "69ec3663015fd33cc012c3e41515753ccb770d84ff03c4d525e1bcbdae156d51"
+  },
+  "superseded": [
+    {
+      "runId": "49ba958906332ecce520862be85d1e65",
+      "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
+      "scriptsRevision": "83c1b6e0f69a50394e53f782e71a0f16492b4462",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v1",
+      "receiptSchema": 1,
+      "archiveSha256": "c0d2c6ac956d3fddf0265b6a51540a66ca68ff466f3553272625ebae71320f01",
+      "archive": "https://github.com/benyblack/ntilde/blob/b3ba2a87f48beddeeb4a5f91d482a8129b9f3af9/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip",
+      "reason": "The first run passed. Sharing the worker and receipt code changed captured source, so the same App was remeasured."
+    },
+    {
+      "runId": "5f0d82f5a2086ad6f8ab7119e2f0ba72",
+      "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
+      "scriptsRevision": "7a2195218a71447e3a03170300ae1fa46fcaec40",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v2",
+      "receiptSchema": 1,
+      "archiveSha256": "0d6686d334f95d847cd14d071100ed285683fb6f9c266e267b8e1c09eafd9470",
+      "archive": "https://github.com/benyblack/ntilde/blob/fc147ae542df2af7db9fce4e38900dcb2bb13870/docs/qa/terminfo/2026-11-28-rich-kitty-aggregates/owned-run.zip",
+      "reason": "The repeat run passed. Sharing the owner journal implementation changed the measured observer source, so the same App was measured again."
+    }
+  ],
+  "retainedCapabilities": {
+    "routedInput": {
+      "measurement": {
+        "manifestSha256": "df18fe95b651d4e86bc9f7ee1976294f9702fee6b8261819b64a128d59649e2c",
+        "schemaVersion": 1,
+        "runId": "280c46035958c01f0e6f1317b2733c6c",
+        "appRevision": "caea956de1f8b391892f61f89ba6fbf6c462cc77",
+        "scriptsRevision": "fc73fe7ae8ab701f36aff06a8f1fdd9a8907eec5",
+        "appSourceArchiveSha256": "24c892fcbe3889202016f8ff15b0fc284f0935017590fb5cfd3ab93b526dd0f6",
+        "dotnetSdk": "10.0.403",
+        "platform": "Ubuntu 24.04.5 LTS, Linux 7.0.14-linuxkit aarch64 (Docker Desktop)",
+        "archives": {
+          "owned-run.zip": "d4a15db38f5a5b2bfe1eb2f906b4472c1b3df6a44ea89bad4a4ecb08dd53830e"
+        },
+        "startedAt": "2026-11-26T08:22:47.015Z",
+        "fixtureRemovedAt": "2026-11-26T08:22:51.298Z",
+        "leaseReleasedAt": "2026-11-26T08:22:51.299Z",
+        "sha256": "ac17959b7180c86282da4aa659c726648af8849d4c746be93ca25dfd55b8d1b2",
+        "source": {
+          "policy": "owned-rich-x11-kitty-keyboard-v1",
+          "sha256": "f390480bcc7d932d53fc3f47fe76d3c707c17c5f50b5114a5b1bbed098383419"
+        },
+        "nodeVersion": "v24.22.2",
+        "appVersion": "0.14.0",
+        "appExecutableSha256": "dbd81c3f926ef5cf9d1cd9dca425d2c0841eb9aaae52578eb21057771e0f1b81",
+        "assemblySha256": "5e983d054f59990ed2d5aeaabcebb7e085e25f144c333ed55863250321259a5c",
+        "xtest": [
+          2,
+          2
+        ],
+        "appPid": 30,
+        "childPid": 83,
+        "paneId": "d90c0442-4e2d-4251-894e-5a28effd1099",
+        "tty": "/dev/pts/0",
+        "geometry": {
+          "rows": 40,
+          "columns": 149
+        }
+      },
+      "rows": [
+        {
+          "id": "extensions.kitty-keyboard.disambiguate",
+          "mask": 1,
+          "chord": "ctrl+i",
+          "childHex": "1b5b3130353b3575",
+          "effect": "supported",
+          "repeats": null,
+          "negotiation": {
+            "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f31751b5b3e343b306d",
+            "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+          }
+        },
+        {
+          "id": "extensions.kitty-keyboard.report-events",
+          "mask": 3,
+          "chord": "escape-hold",
+          "childHex": "1b5b3237751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a32751b5b32373b313a3375",
+          "effect": "supported",
+          "repeats": 6,
+          "negotiation": {
+            "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f33751b5b3e343b306d",
+            "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+          }
+        },
+        {
+          "id": "extensions.kitty-keyboard.report-alternate",
+          "mask": 5,
+          "chord": "ctrl+shift+a",
+          "childHex": "1b5b39373a36353b3675",
+          "effect": "supported",
+          "repeats": null,
+          "negotiation": {
+            "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f35751b5b3e343b306d",
+            "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+          }
+        },
+        {
+          "id": "extensions.kitty-keyboard.report-all-keys",
+          "mask": 9,
+          "chord": "a",
+          "childHex": "1b5b393775",
+          "effect": "supported",
+          "repeats": null,
+          "negotiation": {
+            "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f39751b5b3e343b306d",
+            "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+          }
+        },
+        {
+          "id": "extensions.kitty-keyboard.report-text",
+          "mask": 25,
+          "chord": "a",
+          "childHex": "1b5b39373b313b393775",
+          "effect": "supported",
+          "repeats": null,
+          "negotiation": {
+            "pushedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f3235751b5b3e343b306d",
+            "poppedReplyHex": "1b5b3f313b3224791b5b3f36363b3224791b5b3f313034393b3224791b5b3f30751b5b3e343b306d"
+          }
+        }
+      ]
+    },
+    "transmitAndDisplay": {
+      "measurement": {
+        "runId": "a83ff5f0a70531e98b66522d26e2e72e",
+        "appRevision": "eb0abcdae2da73b55a6a2905be11acd316d66121",
+        "scriptsRevision": "dae4f1f1763a7a324eac00f8d891cdd4d2b6c199",
+        "platform": "macOS 27.0.1 (26A434), arm64",
+        "sourcePolicy": "readonly-owned-source-graph-v83",
+        "receiptSchema": 1,
+        "version": "0.14.0+eb0abcdae2da73b55a6a2905be11acd316d66121",
+        "nodeVersion": "v24.22.2",
+        "startedAt": "2026-11-26T08:56:58.048Z",
+        "releasedAt": "2026-11-26T08:57:00.933Z",
+        "geometry": {
+          "rows": 41,
+          "cols": 140
+        },
+        "grid": {
+          "renderWidthPx": 1264,
+          "renderHeightPx": 779,
+          "cellWidthDip": 8.5,
+          "cellHeightDip": 18.5,
+          "baselineDip": 14.5,
+          "originXPx": 4,
+          "originYPx": 0,
+          "cellWidthPx": 9,
+          "cellHeightPx": 19,
+          "baselineOffsetPx": 15,
+          "underlineOffsetPx": 16,
+          "strikeOffsetPx": 10
+        },
+        "scale": 1,
+        "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+        "assemblySha256": "4051a95e2c6714bb3a054b495b6f2dbf4a4c576cc067312ef64fee329c7d63a5",
+        "sourceSnapshotManifestSha256": "4e5f3a080ad1973f6798592dfbca0519bc74f691f0a3637405e83c827f19fdc6",
+        "archiveSha256": "ef1e00cc5ee8eab8c219dad406d2fe48d454b79141d9f2e11280e1399b71aa2e"
+      },
+      "cases": [
+        {
+          "id": "extensions.kitty-graphics.transmit",
+          "stock": "supported",
+          "pinnedReplies": {
+            "termless": {
+              "pass": true,
+              "response": "\u001b_Gi=1,I=394287356;OK\u001b\\",
+              "note": "RGB image transmission acknowledged; display was not tested",
+              "observation": {
+                "outcome": "supported",
+                "evidence": "query",
+                "note": "RGB image transmission acknowledged; display was not tested"
+              },
+              "assertions": [
+                {
+                  "kind": "positive",
+                  "expected": "A fresh image ID and I=394287356;OK acknowledge the transmitted RGB pixel",
+                  "observed": "\u001b_Gi=1,I=394287356;OK\u001b\\"
+                }
+              ]
+            },
+            "terminal": {
+              "pass": true,
+              "response": "\u001b_Gi=1,I=394287356;OK\u001b\\",
+              "note": "RGB image transmission acknowledged; display was not tested",
+              "observation": {
+                "outcome": "supported",
+                "evidence": "query",
+                "note": "RGB image transmission acknowledged; display was not tested"
+              },
+              "assertions": [
+                {
+                  "kind": "positive",
+                  "expected": "A fresh image ID and I=394287356;OK acknowledge the transmitted RGB pixel",
+                  "observed": "\u001b_Gi=1,I=394287356;OK\u001b\\"
+                }
+              ]
+            },
+            "stages": [
+              {
+                "stage": "upload",
+                "requestHex": "1b5f47613d742c663d32342c733d312c763d312c743d642c493d3339343238373335363b2f7741411b5c",
+                "replyHex": "1b5f47693d312c493d3339343238373335363b4f4b1b5c"
+              },
+              {
+                "stage": "delete",
+                "requestHex": "1b5f47613d642c643d492c693d312c713d321b5c",
+                "replyHex": ""
+              }
+            ]
+          },
+          "ownedPixels": [
+            {
+              "stage": "upload",
+              "snapshot": 2,
+              "verdict": "passed",
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 18,
+                  "height": 19
+                },
+                "bounds": null,
+                "changed": 0,
+                "outside": 0,
+                "otherColor": 0,
+                "background": true,
+                "redSquare": false
+              },
+              "placement": null
+            },
+            {
+              "stage": "delete",
+              "snapshot": 3,
+              "verdict": "passed",
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 18,
+                  "height": 19
+                },
+                "bounds": null,
+                "changed": 0,
+                "outside": 0,
+                "otherColor": 0,
+                "background": true,
+                "redSquare": false
+              },
+              "placement": null
+            }
+          ]
+        },
+        {
+          "id": "extensions.kitty-graphics.display",
+          "stock": "supported",
+          "pinnedReplies": {
+            "termless": {
+              "pass": true,
+              "response": "\u001b_Gi=2;OK\u001b\\",
+              "note": "Image placement acknowledged; visible pixels were not tested",
+              "observation": {
+                "outcome": "supported",
+                "evidence": "query",
+                "note": "Image placement acknowledged; visible pixels were not tested"
+              },
+              "assertions": [
+                {
+                  "kind": "positive",
+                  "expected": "Graphics reply i=2;OK",
+                  "observed": "\u001b_Gi=2;OK\u001b\\"
+                }
+              ]
+            },
+            "terminal": {
+              "pass": true,
+              "response": "\u001b_Gi=2;OK\u001b\\",
+              "note": "Image placement acknowledged; visible pixels were not tested",
+              "observation": {
+                "outcome": "supported",
+                "evidence": "query",
+                "note": "Image placement acknowledged; visible pixels were not tested"
+              },
+              "assertions": [
+                {
+                  "kind": "positive",
+                  "expected": "Graphics reply i=2;OK",
+                  "observed": "\u001b_Gi=2;OK\u001b\\"
+                }
+              ]
+            },
+            "stages": [
+              {
+                "stage": "upload",
+                "requestHex": "1b5f47613d742c663d32342c733d312c763d312c743d642c493d313830313537383236383b2f7741411b5c",
+                "replyHex": "1b5f47693d322c493d313830313537383236383b4f4b1b5c"
+              },
+              {
+                "stage": "place",
+                "requestHex": "1b5f47613d702c693d322c633d322c723d312c433d311b5c",
+                "replyHex": "1b5f47693d323b4f4b1b5c"
+              },
+              {
+                "stage": "delete",
+                "requestHex": "1b5f47613d642c643d492c693d322c713d321b5c",
+                "replyHex": ""
+              }
+            ]
+          },
+          "ownedPixels": [
+            {
+              "stage": "upload",
+              "snapshot": 4,
+              "verdict": "passed",
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 18,
+                  "height": 19
+                },
+                "bounds": null,
+                "changed": 0,
+                "outside": 0,
+                "otherColor": 0,
+                "background": true,
+                "redSquare": false
+              },
+              "placement": null
+            },
+            {
+              "stage": "place",
+              "snapshot": 5,
+              "verdict": "passed",
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 18,
+                  "height": 19
+                },
+                "bounds": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 18,
+                  "height": 18
+                },
+                "changed": 324,
+                "outside": 0,
+                "otherColor": 0,
+                "background": true,
+                "redSquare": true
+              },
+              "placement": {
+                "index": 0,
+                "placementId": "48732024-3c02-4dba-8349-81144079a831",
+                "col": 3,
+                "viewportRow": 4,
+                "widthCells": 2,
+                "heightCells": 1,
+                "clipTopRows": 0,
+                "clipBottomRows": 0,
+                "clipRightColumns": 0,
+                "preserveAspectRatio": true,
+                "bitmapWidthPx": 1,
+                "bitmapHeightPx": 1,
+                "sixelPlacement": null
+              }
+            },
+            {
+              "stage": "delete",
+              "snapshot": 6,
+              "verdict": "passed",
+              "measurement": {
+                "envelope": {
+                  "x": 31,
+                  "y": 76,
+                  "width": 18,
+                  "height": 19
+                },
+                "bounds": null,
+                "changed": 0,
+                "outside": 0,
+                "otherColor": 0,
+                "background": true,
+                "redSquare": false
+              },
+              "placement": null
+            }
+          ]
+        }
+      ]
+    },
+    "rendering": [
+      {
+        "id": "extensions.kitty-graphics.animation",
+        "scope": "Ordinary-tab timed playback, loop, stop and PNG frame blending",
+        "publication": "2026-11-16-kitty-animation-qualification.md",
+        "platform": "macOS",
+        "appRevision": "cf59628f0ef73dd0a99dba0952acb4b6552678a4",
+        "scriptsRevision": "cf59628f0ef73dd0a99dba0952acb4b6552678a4",
+        "runId": "99d639356e6c79215fd29c5cd655b4b8",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish timed animation playback",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish timed animation playback"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No timed frame playback or pixel readback for Kitty animation",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No timed frame playback or pixel readback for Kitty animation"
+            }
+          }
+        },
+        "effect": "supported"
+      },
+      {
+        "id": "extensions.kitty-graphics.animation",
+        "scope": "Live persistent-tab timed playback, loop, stop and PNG frame blending",
+        "publication": "2026-11-17-kitty-animation-persistent-qualification.md",
+        "platform": "macOS",
+        "appRevision": "33394ffaef9bd7dd29852a420974e8dd17f26cdd",
+        "scriptsRevision": "33394ffaef9bd7dd29852a420974e8dd17f26cdd",
+        "runId": "7462f86c6e54ea7671b53dd349286de2",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish timed animation playback",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish timed animation playback"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No timed frame playback or pixel readback for Kitty animation",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No timed frame playback or pixel readback for Kitty animation"
+            }
+          }
+        },
+        "effect": "supported"
+      },
+      {
+        "id": "extensions.kitty-graphics.animation",
+        "scope": "Persistent-tab App reattach after SIGTERM, including playback restoration",
+        "publication": "2026-11-17-kitty-animation-restore-qualification.md",
+        "platform": "macOS",
+        "appRevision": "601cd0514a515383b33a27435d5dcb2f3183a9fd",
+        "scriptsRevision": "69c4571e91e628184ffa738d91612439f2fd2023",
+        "runId": "ed38c29e2ec11addd58967cc32186103",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish timed animation playback",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish timed animation playback"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No timed frame playback or pixel readback for Kitty animation",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No timed frame playback or pixel readback for Kitty animation"
+            }
+          }
+        },
+        "effect": "supported"
+      },
+      {
+        "id": "extensions.kitty-graphics.animation",
+        "scope": "Ordinary-tab whole-frame replacement, blending and rejection",
+        "publication": "2026-11-18-kitty-animation-compose-direct-qualification.md",
+        "platform": "macOS",
+        "appRevision": "91b111e03dfbfba2a24bfcac85f6e05ede291182",
+        "scriptsRevision": "a3404c55d55e67955ca212cd676ead81f7fe14fd",
+        "runId": "bb8b9354f65098ed5e5219f7792819ce",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish timed animation playback",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish timed animation playback"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No timed frame playback or pixel readback for Kitty animation",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No timed frame playback or pixel readback for Kitty animation"
+            }
+          }
+        },
+        "effect": "supported"
+      },
+      {
+        "id": "extensions.kitty-graphics.animation",
+        "scope": "Persistent-tab whole-frame replacement, blending and rejection",
+        "publication": "2026-11-18-kitty-animation-compose-qualification.md",
+        "platform": "macOS",
+        "appRevision": "91b111e03dfbfba2a24bfcac85f6e05ede291182",
+        "scriptsRevision": "a3404c55d55e67955ca212cd676ead81f7fe14fd",
+        "runId": "d7277dd1ca4e84f9d837c00d84849f33",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish timed animation playback",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish timed animation playback",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish timed animation playback"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No timed frame playback or pixel readback for Kitty animation",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No timed frame playback or pixel readback for Kitty animation"
+            }
+          }
+        },
+        "effect": "supported"
+      },
+      {
+        "id": "extensions.kitty-graphics.unicode-placeholders",
+        "scope": "Ordinary-tab two-cell tiles, erasure and mark inheritance",
+        "publication": "2026-11-19-kitty-placeholders-qualification.md",
+        "platform": "macOS",
+        "appRevision": "8a2eb2952a7b965c101580093607d3f2681b7932",
+        "scriptsRevision": "c46e42c786fc0646443b6d913771c86050b49da5",
+        "runId": "efccf352e690986d61ee2bf3d2ca9ef4",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders"
+            }
+          }
+        },
+        "effect": "supported"
+      },
+      {
+        "id": "extensions.kitty-graphics.unicode-placeholders",
+        "scope": "Persistent-tab two-cell tiles, erasure and mark inheritance",
+        "publication": "2026-11-19-kitty-placeholders-qualification.md",
+        "platform": "macOS",
+        "appRevision": "8a2eb2952a7b965c101580093607d3f2681b7932",
+        "scriptsRevision": "c46e42c786fc0646443b6d913771c86050b49da5",
+        "runId": "c1a30deac2ef9ce8f9017c98656919c9",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders"
+            }
+          }
+        },
+        "effect": "supported"
+      },
+      {
+        "id": "extensions.kitty-graphics.unicode-placeholders",
+        "scope": "Ordinary-tab 4 × 2 grid, nonzero row inheritance and tile movement with text",
+        "publication": "2026-11-19-kitty-placeholder-grid-qualification.md",
+        "platform": "macOS",
+        "appRevision": "b5e6cec9fde963cceffb56e2498c13b50af570d7",
+        "scriptsRevision": "dc45f4cd241968a003919410899d3923769a6f2d",
+        "runId": "f1d51a79eab405455289257cf20a3c33",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders"
+            }
+          }
+        },
+        "effect": "supported"
+      },
+      {
+        "id": "extensions.kitty-graphics.unicode-placeholders",
+        "scope": "Persistent-tab 4 × 2 grid, nonzero row inheritance and tile movement with text",
+        "publication": "2026-11-19-kitty-placeholder-grid-qualification.md",
+        "platform": "macOS",
+        "appRevision": "b5e6cec9fde963cceffb56e2498c13b50af570d7",
+        "scriptsRevision": "dc45f4cd241968a003919410899d3923769a6f2d",
+        "runId": "4f457a01cc1024837bac6382ea7f2d0d",
+        "pinned": {
+          "pass": false,
+          "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+          "observation": {
+            "outcome": "inconclusive",
+            "reason": "insufficient-evidence",
+            "evidence": "legacy",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+          },
+          "termless": {
+            "pass": false,
+            "response": "{\"declared\":true}",
+            "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "legacy",
+              "note": "Declared Kitty graphics capability does not establish Unicode placeholder rendering"
+            },
+            "declaredFalseResponse": "{\"declared\":false}"
+          },
+          "terminal": {
+            "pass": false,
+            "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders",
+            "observation": {
+              "outcome": "inconclusive",
+              "reason": "insufficient-evidence",
+              "evidence": "none",
+              "note": "No pixel and placeholder-cell readback for Kitty Unicode placeholders"
+            }
+          }
+        },
+        "effect": "supported"
+      }
+    ]
+  }
+}
