@@ -21,7 +21,8 @@ function verifyPane(frame, initial) {
     const screen = screenSnapshot(frame.screen, false, true, true, true, true, true);
     const metadata = copyPaneMetadata(frame.metadata);
     requireStack(!frame.ownership.daemon && frame.paneId === initial.paneId && metadata.paneId === frame.paneId
-        && frame.sha256 === snapshotHash(screen) && frame.afterSha256 === frame.sha256 && same(frame.screen, screen)
+        && frame.sha256 === snapshotHash(screen) && frame.afterSha256 === snapshotHash(frame.afterScreen)
+        && frame.afterSha256 === frame.sha256 && same(frame.screen, screen) && same(frame.afterScreen, screen)
         && metadata.presentation.paneActive && metadata.presentation.windowVisible
         && same(gridOf(screen), gridOf(initial.screen)) && same(gridOf(screen), gridOf(metadata.buffer))
         && metadata.buffer.alternateScreen === screen.bufferState.alternateScreen
@@ -92,8 +93,8 @@ export class Collection extends ReportCollection {
         const rendered = await colorCaptureRequest(endpoint, paneId, null, budget());
         // Retain the App's structured theme projection. The experiment makes no pixel assertion.
         const { details: { theme } } = validateColorCapture(rendered, screen, null);
-        const after = await this.after.capture(budget);
-        return { paneId, screen, metadata, theme, sha256: snapshotHash(screen), afterSha256: snapshotHash(after) };
+        const afterScreen = await this.after.capture(budget);
+        return { paneId, screen, metadata, theme, afterScreen, sha256: snapshotHash(screen), afterSha256: snapshotHash(afterScreen) };
     }
 
     async observeStage(request, budget, ownership, step) {

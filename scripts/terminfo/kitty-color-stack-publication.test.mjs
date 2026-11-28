@@ -84,15 +84,18 @@ test('receipt refuses cross-case fences, stale modes, changed palette or overrid
                 const { colorBinding } = frame.screen;
                 // This palette index is absent from the stored cells and both observers report the forged color.
                 colorBinding.ansiPaletteArgb[255] = frame.theme.ansiPaletteArgb[255] = 0xff010203;
+                frame.afterScreen = structuredClone(frame.screen);
                 frame.sha256 = frame.afterSha256 = snapshotHash(frame.screen);
             }, /expected colors, overrides and full palette/],
             [at => { at('pop-a').theme.selectionForegroundOverride = false; }, /expected colors, overrides and full palette/],
             [at => {
                 const frame = at('pop-b');
                 frame.screen.lines[1] = 'Ab Bb';
+                frame.afterScreen = structuredClone(frame.screen);
                 frame.sha256 = frame.afterSha256 = snapshotHash(frame.screen);
             }, /operation changed stored cells/],
             [at => { at('reset').theme.backgroundOverride = true; }, /App color observations disagreed/],
+            [at => { at('pop-a').afterScreen.cursorCol++; }, /paired screen and metadata did not agree/],
         ]) {
             const frames = structuredClone(original);
             mutate(stage => frames.find(frame => frame.stage === stage));
