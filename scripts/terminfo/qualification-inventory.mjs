@@ -135,6 +135,7 @@ export const benchmarkSuites = Object.freeze([
 export const nonInventoryPublicationTests = Object.freeze({
     'rich-identity-publication.test.mjs': 'standalone Rich TUI applicability and observer-gap assessment for OSC 176 and OSC 666',
     'font-ligatures-publication.test.mjs': 'standalone Rich TUI render qualification for an unprobed case',
+    'device-state-publication.test.mjs': 'standalone owned DECRQSS SGR and DSR 996 state checks for two stock-supported cases',
     'device-identity-publication.test.mjs': 'standalone owned DA3 and XTVERSION replies for two stock-supported cases',
     'xtwinops-pixels-publication.test.mjs': 'standalone owned text-area and cell pixel reports for two stock-supported cases',
     'sixel-reports-publication.test.mjs': 'standalone owned DA1 and Sixel geometry replies for two stock-supported cases',

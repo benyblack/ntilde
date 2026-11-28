@@ -157,6 +157,12 @@ const deviceIdentitySources = {
     deviceIdentityOwnedSourceSha256: 'device-identity-owned.mjs',
     deviceIdentityWorkerSourceSha256: 'device-identity-worker.mjs',
 };
+const deviceStateSources = {
+    ...sixelReportsSources,
+    deviceStateContractsSourceSha256: 'device-state-contracts.mjs',
+    deviceStateOwnedSourceSha256: 'device-state-owned.mjs',
+    deviceStateWorkerSourceSha256: 'device-state-worker.mjs',
+};
 const xtwinopsPixelsSources = {
     ...sixelReportsSources,
     modernBlinkWindowSourceSha256: 'modern-blink-window.jxa',
@@ -205,6 +211,8 @@ const scopes = {
     'font-ligatures': { policy: 'readonly-owned-source-graph-font-ligatures-v1', sources: fontLigatureSources, entry: fontLigatureSources.fontLigaturesOwnedSourceSha256 },
     'prompt-parts': { policy: 'readonly-owned-source-graph-prompt-parts-v1', sources: promptPartsSources, entry: promptPartsSources.promptPartsOwnedSourceSha256 },
     'osc633-metadata': { policy: 'readonly-owned-source-graph-v86', sources: osc633MetadataSources, entry: osc633MetadataSources.osc633MetadataOwnedSourceSha256 },
+    'device-state': { policy: 'readonly-owned-source-graph-device-state-v1',
+        sources: deviceStateSources, entry: deviceStateSources.deviceStateOwnedSourceSha256 },
     'device-identity': { policy: 'readonly-owned-source-graph-device-identity-v1',
         sources: deviceIdentitySources, entry: deviceIdentitySources.deviceIdentityOwnedSourceSha256 },
     'xtwinops-pixels': { policy: 'readonly-owned-source-graph-xtwinops-pixels-v1',

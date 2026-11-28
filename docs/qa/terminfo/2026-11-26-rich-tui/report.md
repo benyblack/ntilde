@@ -74,6 +74,10 @@ The [vendor environment assessment](../2026-11-27-rich-vendor-environment/report
 
 The [direct-local assessment](../2026-11-27-rich-term-features/report.md) pairs each child's actual environment with its own capability reply. A clean launch left the variable absent and a seeded launch preserved the outer value. The App's live clipboard permission can change the reply after launch. The pinned callback grades both declaration states inconclusive.
 
+## DECRQSS SGR and DSR 996 color scheme
+
+The [DECRQSS and DSR 996 assessment](../2026-11-28-rich-device-state/report.md) replays both pinned callbacks and verifies the exact active pen and effective pane background replies across controlled transitions, rejection and restoration.
+
 ## OSC 176 app ID and OSC 666 terminal properties
 
 The [two-case identity and property assessment](../2026-11-27-rich-identity/report.md) replays both inconclusive cursor probes and records the native foot app-ID and registered VTE property controls. The native app-ID effect is inapplicable to the measured Ntilde XWayland window. The registered property effect remains inconclusive on Ntilde.

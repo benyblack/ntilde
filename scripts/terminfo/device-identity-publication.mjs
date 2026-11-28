@@ -21,28 +21,36 @@ function span(source, start, end) {
     return source.slice(from, to);
 }
 
-export function readPinnedProbes() {
+export function readPinnedDeviceProbes(ids, spans) {
     const archive = readFileSync(join(qa, '2026-11-16-static-images/terminfo-dev-4.0.0.bundle.mjs.gz'));
     const bytes = gunzipSync(archive, { maxOutputLength: 1_000_000 });
     assert.equal(digest(bytes), pinnedBundle);
     const source = bytes.toString('utf8');
     const probe = span(source, 'function probe(id, termless, term, termObservationEvidence) {', '\nfunction readHyperlinkMetadata(');
     const helper = span(source, 'function deviceReplyResult(', '\nvar iconLabelReply,');
-    const registrations = [span(source, registration(caseIds[0]), registration('device.decrqss')),
-        span(source, registration(caseIds[1]), '    probe("device.term-features"')].join('');
+    const registrationMarker = marker => marker.startsWith('device.') ? registration(marker) : marker;
+    const registrations = spans.map(([start, end]) =>
+        span(source, registrationMarker(start), registrationMarker(end))).join('\n');
     const probes = runInNewContext(probe + helper + '\n[' + registrations + ']', Object.create(null), { timeout: 1000 }); // NOSONAR: digest-pinned upstream code in isolation.
-    assert.deepEqual(Array.from(probes, item => item.id), caseIds);
+    assert.deepEqual(Array.from(probes, item => item.id), ids);
     return probes;
 }
 
-export async function replay(probe, exchange) {
-    const index = caseIds.indexOf(probe.id);
-    assert.ok(index >= 0 && exchange.id === probe.id);
+export function readPinnedProbes() {
+    return readPinnedDeviceProbes(caseIds, [[caseIds[0], 'device.decrqss'], [caseIds[1], '    probe("device.term-features"']]);
+}
+
+export function replay(probe, exchange) {
+    return replayDeviceProbe(probe, exchange, requests[caseIds.indexOf(probe.id)]);
+}
+
+export async function replayDeviceProbe(probe, exchange, request) {
+    assert.ok(request && exchange.id === probe.id);
     assert.equal(exchange.raw, exchange.reply + da1);
     let calls = 0;
     const verifySequence = sequence => {
         calls++;
-        assert.equal(sequence, requests[index]);
+        assert.equal(sequence, request);
         assert.equal(sequence + da, exchange.request);
     };
     const terminal = await probe.term({
@@ -64,18 +72,18 @@ export async function replay(probe, exchange) {
     return { id: probe.id, terminal: structuredClone(terminal), termlessReplay: structuredClone(termlessReplay) };
 }
 
-function verifySources(directory, context) {
+export function verifySources(directory, context, sourceFiles, policy) {
     const retained = join(directory, 'sources'), manifest = readJson(directory, 'source-snapshot.json');
-    const files = Object.entries(capturedDeviceIdentitySourceFiles);
-    assert.equal(context.sourceSnapshotPolicy, capturedDeviceIdentitySourcePolicy);
+    const files = Object.entries(sourceFiles);
+    assert.equal(context.sourceSnapshotPolicy, policy);
     assert.equal(manifest.policy, context.sourceSnapshotPolicy);
     assert.equal(manifest.schemaVersion, 1);
     assert.equal(readdirSync(retained).length, files.length);
-    assert.deepEqual(readJson(retained, 'owned-source-inventory.json'), capturedDeviceIdentitySourceFiles);
+    assert.deepEqual(readJson(retained, 'owned-source-inventory.json'), sourceFiles);
     const hashes = Object.fromEntries(files.map(([field, file]) => [field, digest(readFileSync(join(retained, file)))]));
     assert.deepEqual(hashes, manifest.hashes);
     assert.deepEqual(hashes, Object.fromEntries(files.map(([field]) => [field, context[field]])));
-    assertRetainedSourceClosure(retained, capturedDeviceIdentitySourceFiles);
+    assertRetainedSourceClosure(retained, sourceFiles);
 }
 
 export function withIdentityArchive(callback) {
@@ -87,7 +95,7 @@ export async function buildPublication() {
         const { context, frames, report, receipt } = deriveRun(directory);
         assert.deepEqual(report, readJson(directory, 'identity-report.json'));
         assert.deepEqual(receipt, readJson(directory, 'identity-receipt.json'));
-        verifySources(directory, context);
+        verifySources(directory, context, capturedDeviceIdentitySourceFiles, capturedDeviceIdentitySourcePolicy);
         return { owned: report, measurement: focusedMeasurement(directory, manifest, context, receipt, frames[0].screen),
             superseded: manifest.superseded };
     });
@@ -100,6 +108,20 @@ export async function buildPublication() {
 
 const code = value => '\x60' + value + '\x60';
 const wire = value => value ? code(value.replaceAll('\x1b[', 'CSI ').replaceAll('\x1bP', 'DCS ').replaceAll('\x1b\\', ' ST')) : 'Silence';
+
+export function deviceQueryReproduction(version, collector, offlineIntroduction) {
+    return [
+        '~~~sh',
+        'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
+        'node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ' + version + ' --scope ' + collector,
+        '~~~', '',
+        offlineIntroduction, '',
+        '~~~sh',
+        'node scripts/terminfo/' + collector + '-publication.mjs --check',
+        'python3 scripts/terminfo-rich-baseline.py --check',
+        '~~~', '',
+    ];
+}
 
 export function renderReport(report) {
     const { owned, measurement: m, pinned } = report;
@@ -122,15 +144,7 @@ export function renderReport(report) {
         'Run ' + code(m.runId) + ' used ' + m.platform + ', App revision ' + code(m.appRevision) + ' and collector revision ' + code(m.scriptsRevision) + '. The [owned archive](owned-run.zip) retains the original requests, reply and fence bytes, app and worker identity, snapshots, VT assembly, and cleanup records. The [machine-readable report](report.json) records both verdicts.', '',
         ...report.superseded.map(row => 'The first run also passed. The collector was remeasured after it switched to a fixed path for the .NET host. [Superseded run ' + row.runId + '](' + row.archive + ')'), '',
         'Build the recorded App revision with the repository .NET SDK. Run the collector from the recorded collector revision with Node 24+ and the macOS .NET host at /usr/local/share/dotnet/dotnet.', '',
-        '~~~sh',
-        'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
-        'node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ' + m.version + ' --scope device-identity',
-        '~~~', '',
-        'At the publication revision, rederive the archived evidence and verify the frozen map.', '',
-        '~~~sh',
-        'node scripts/terminfo/device-identity-publication.mjs --check',
-        'python3 scripts/terminfo-rich-baseline.py --check',
-        '~~~', '',
+        ...deviceQueryReproduction(m.version, 'device-identity', 'At the publication revision, rederive the archived evidence and verify the frozen map.'),
     ].join('\n');
 }
 

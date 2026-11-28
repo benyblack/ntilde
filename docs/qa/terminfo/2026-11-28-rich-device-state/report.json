@@ -1,0 +1,406 @@
+{
+  "schemaVersion": 1,
+  "suite": "ntilde-owned-device-state-v1",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "stock": {
+    "device.decrqss": "supported",
+    "device.dsr-996-color-scheme": "supported"
+  },
+  "pinned": [
+    {
+      "stage": "neutral",
+      "id": "device.decrqss",
+      "terminal": {
+        "pass": true,
+        "response": "\u001bP1$r0m\u001b\\\u001b[?62;4;22c",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete DECRQSS status 1 SGR parameters ending m and ST",
+            "observed": "\u001bP1$r0m\u001b\\"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "response": "\u001bP1$r0m\u001b\\",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete DECRQSS status 1 SGR parameters ending m and ST",
+            "observed": "\u001bP1$r0m\u001b\\"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "styled",
+      "id": "device.decrqss",
+      "terminal": {
+        "pass": true,
+        "response": "\u001bP1$r0;1;4:3;31;48;5;200;58;2;9;8;7m\u001b\\\u001b[?62;4;22c",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete DECRQSS status 1 SGR parameters ending m and ST",
+            "observed": "\u001bP1$r0;1;4:3;31;48;5;200;58;2;9;8;7m\u001b\\"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "response": "\u001bP1$r0;1;4:3;31;48;5;200;58;2;9;8;7m\u001b\\",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete DECRQSS status 1 SGR parameters ending m and ST",
+            "observed": "\u001bP1$r0;1;4:3;31;48;5;200;58;2;9;8;7m\u001b\\"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "reset",
+      "id": "device.decrqss",
+      "terminal": {
+        "pass": true,
+        "response": "\u001bP1$r0m\u001b\\\u001b[?62;4;22c",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete DECRQSS status 1 SGR parameters ending m and ST",
+            "observed": "\u001bP1$r0m\u001b\\"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "response": "\u001bP1$r0m\u001b\\",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "complete DECRQSS status 1 SGR parameters ending m and ST",
+            "observed": "\u001bP1$r0m\u001b\\"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "dark",
+      "id": "device.dsr-996-color-scheme",
+      "terminal": {
+        "pass": true,
+        "note": "dark",
+        "response": "\u001b[?997;1n",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query",
+          "note": "Current scheme queried; unsolicited change events were not tested"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DSR ?996 yields complete DSR ?997;1n or ?997;2n",
+            "observed": "\u001b[?997;1n"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "note": "dark",
+        "response": "\u001b[?997;1n",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query",
+          "note": "Current scheme queried; unsolicited change events were not tested"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DSR ?996 yields complete DSR ?997;1n or ?997;2n",
+            "observed": "\u001b[?997;1n"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "light",
+      "id": "device.dsr-996-color-scheme",
+      "terminal": {
+        "pass": true,
+        "note": "light",
+        "response": "\u001b[?997;2n",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query",
+          "note": "Current scheme queried; unsolicited change events were not tested"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DSR ?996 yields complete DSR ?997;1n or ?997;2n",
+            "observed": "\u001b[?997;2n"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "note": "light",
+        "response": "\u001b[?997;2n",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query",
+          "note": "Current scheme queried; unsolicited change events were not tested"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DSR ?996 yields complete DSR ?997;1n or ?997;2n",
+            "observed": "\u001b[?997;2n"
+          }
+        ]
+      }
+    },
+    {
+      "stage": "restored",
+      "id": "device.dsr-996-color-scheme",
+      "terminal": {
+        "pass": true,
+        "note": "dark",
+        "response": "\u001b[?997;1n",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query",
+          "note": "Current scheme queried; unsolicited change events were not tested"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DSR ?996 yields complete DSR ?997;1n or ?997;2n",
+            "observed": "\u001b[?997;1n"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "note": "dark",
+        "response": "\u001b[?997;1n",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "query",
+          "note": "Current scheme queried; unsolicited change events were not tested"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "DSR ?996 yields complete DSR ?997;1n or ?997;2n",
+            "observed": "\u001b[?997;1n"
+          }
+        ]
+      }
+    }
+  ],
+  "owned": {
+    "runId": "f342f69cc15b811b56fd2b47f16cdca2",
+    "suite": "ntilde-owned-device-state-v1",
+    "exchanges": [
+      {
+        "stage": "neutral",
+        "id": "device.decrqss",
+        "request": "\u001bP$qm\u001b\\\u001b[c",
+        "raw": "\u001bP1$r0m\u001b\\\u001b[?62;4;22c",
+        "reply": "\u001bP1$r0m\u001b\\",
+        "expected": "\u001bP1$r0m\u001b\\",
+        "outcome": "passed"
+      },
+      {
+        "stage": "styled",
+        "id": "device.decrqss",
+        "request": "\u001bP$qm\u001b\\\u001b[c",
+        "raw": "\u001bP1$r0;1;4:3;31;48;5;200;58;2;9;8;7m\u001b\\\u001b[?62;4;22c",
+        "reply": "\u001bP1$r0;1;4:3;31;48;5;200;58;2;9;8;7m\u001b\\",
+        "expected": "\u001bP1$r0;1;4:3;31;48;5;200;58;2;9;8;7m\u001b\\",
+        "outcome": "passed"
+      },
+      {
+        "stage": "reset",
+        "id": "device.decrqss",
+        "request": "\u001bP$qm\u001b\\\u001b[c",
+        "raw": "\u001bP1$r0m\u001b\\\u001b[?62;4;22c",
+        "reply": "\u001bP1$r0m\u001b\\",
+        "expected": "\u001bP1$r0m\u001b\\",
+        "outcome": "passed"
+      },
+      {
+        "stage": "unknown",
+        "request": "\u001bP$qunknown\u001b\\",
+        "raw": "\u001bP0$r\u001b\\",
+        "reply": "\u001bP0$r\u001b\\",
+        "expected": "\u001bP0$r\u001b\\",
+        "outcome": "passed"
+      },
+      {
+        "stage": "dark",
+        "id": "device.dsr-996-color-scheme",
+        "request": "\u001b[?996n\u001b[c",
+        "raw": "\u001b[?997;1n\u001b[?62;4;22c",
+        "reply": "\u001b[?997;1n",
+        "expected": "\u001b[?997;1n",
+        "background": 4279242768,
+        "outcome": "passed"
+      },
+      {
+        "stage": "light",
+        "id": "device.dsr-996-color-scheme",
+        "request": "\u001b[?996n\u001b[c",
+        "raw": "\u001b[?997;2n\u001b[?62;4;22c",
+        "reply": "\u001b[?997;2n",
+        "expected": "\u001b[?997;2n",
+        "background": 4293980400,
+        "outcome": "passed"
+      },
+      {
+        "stage": "restored",
+        "id": "device.dsr-996-color-scheme",
+        "request": "\u001b[?996n\u001b[c",
+        "raw": "\u001b[?997;1n\u001b[?62;4;22c",
+        "reply": "\u001b[?997;1n",
+        "expected": "\u001b[?997;1n",
+        "background": 4278190080,
+        "outcome": "passed"
+      }
+    ],
+    "colorControls": [
+      {
+        "stage": "initial-colors",
+        "background": 4278190080,
+        "responses": [
+          "\u001b[?2031;2$y",
+          "\u001b]11;rgb:0000/0000/0000\u001b\\"
+        ]
+      },
+      {
+        "stage": "dark-before",
+        "background": 4279242768,
+        "responses": [
+          "\u001b[?2031;2$y",
+          "\u001b]11;rgb:1010/1010/1010\u001b\\"
+        ]
+      },
+      {
+        "stage": "dark-after",
+        "background": 4279242768,
+        "responses": [
+          "\u001b[?2031;2$y",
+          "\u001b]11;rgb:1010/1010/1010\u001b\\"
+        ]
+      },
+      {
+        "stage": "light-before",
+        "background": 4293980400,
+        "responses": [
+          "\u001b[?2031;2$y",
+          "\u001b]11;rgb:f0f0/f0f0/f0f0\u001b\\"
+        ]
+      },
+      {
+        "stage": "light-after",
+        "background": 4293980400,
+        "responses": [
+          "\u001b[?2031;2$y",
+          "\u001b]11;rgb:f0f0/f0f0/f0f0\u001b\\"
+        ]
+      },
+      {
+        "stage": "restored-before",
+        "background": 4278190080,
+        "responses": [
+          "\u001b[?2031;2$y",
+          "\u001b]11;rgb:0000/0000/0000\u001b\\"
+        ]
+      },
+      {
+        "stage": "restored-after",
+        "background": 4278190080,
+        "responses": [
+          "\u001b[?2031;2$y",
+          "\u001b]11;rgb:0000/0000/0000\u001b\\"
+        ]
+      }
+    ],
+    "initialBackground": 4278190080,
+    "paneId": "be127780-c95a-4e41-88ee-d0eb5aca789b",
+    "tty": "/dev/ttys003",
+    "appPid": 56926,
+    "workerPid": 56928,
+    "restored": true
+  },
+  "measurement": {
+    "runId": "f342f69cc15b811b56fd2b47f16cdca2",
+    "appRevision": "d56bc224cfc17e286aa48d7c4f0a93d02fe6d334",
+    "scriptsRevision": "97cd79babadfdee0c478c4281c9456361f2d1dbe",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-device-state-v1",
+    "receiptSchema": 1,
+    "version": "0.14.0+d56bc224cfc17e286aa48d7c4f0a93d02fe6d334",
+    "nodeVersion": "v24.22.2",
+    "startedAt": "2026-11-28T10:39:05.912Z",
+    "releasedAt": "2026-11-28T10:39:07.824Z",
+    "geometry": {
+      "rows": 41,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "164436350bf62b176a6b39a4382acfd9863c1d01b61b6fd41f48a7bccc41fe25",
+    "sourceSnapshotManifestSha256": "8ca533bb0ac73550e03b83bfdaefba4241e4bffd686621ff5d985d1e5f0348a5",
+    "archiveSha256": "0be47e566964777b6c1a0bf56d32542b771342d538a8a14b2437d6fb461f5ab0"
+  },
+  "superseded": [
+    {
+      "runId": "4c57bfa9a3bd28c9dc38956f11838e08",
+      "appRevision": "d56bc224cfc17e286aa48d7c4f0a93d02fe6d334",
+      "scriptsRevision": "877dc367ff02987b4d62ef0f705405661fdfc914",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-device-state-v1",
+      "receiptSchema": 1,
+      "archiveSha256": "2ec2395735b0204da550978d77c5fd6f5d2e24bccd71c25ba7bd3055fcaff9a5",
+      "archive": "https://github.com/benyblack/ntilde/blob/a9e730c9e9346ed702857dbd5224c07c8c0a4dd2/docs/qa/terminfo/2026-11-28-rich-device-state/owned-run.zip",
+      "reason": "The first run passed. The collector was remeasured after the SonarCloud changes to share cleanup validation and simplify the scheme oracle."
+    },
+    {
+      "runId": "849868fe1bf0a750de37a4c7ebba758c",
+      "appRevision": "d56bc224cfc17e286aa48d7c4f0a93d02fe6d334",
+      "scriptsRevision": "8009366ce82441831a52952c4d5e21145fddb009",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-device-state-v1",
+      "receiptSchema": 1,
+      "archiveSha256": "9388d6f8561cf7882579f0703ecca845f543a305e2046516913bafe58c293eaa",
+      "archive": "https://github.com/benyblack/ntilde/blob/8d387950ff9b90a20f3bd78b5532c463598e90c6/docs/qa/terminfo/2026-11-28-rich-device-state/owned-run.zip",
+      "reason": "The second run passed. The collector was remeasured after correcting the restored-color oracle at the floating-point luma boundary."
+    }
+  ]
+}
