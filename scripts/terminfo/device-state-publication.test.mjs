@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { snapshotHash } from './agent-observer.mjs';
 import { replayDeviceProbe } from './device-identity-publication.mjs';
-import { da1, planFor, requests, verifySamples } from './device-state-contracts.mjs';
+import { da1, planFor, requests, schemeReply, verifySamples } from './device-state-contracts.mjs';
 import { deriveRun } from './device-state-owned.mjs';
 import { buildPublication, publication, readPinnedProbes, renderReport, withDeviceStateArchive } from './device-state-publication.mjs';
 import { leaseReleasedAt, readJson } from './unicode-publication-inputs.mjs';
@@ -24,6 +24,12 @@ test('archived query and state evidence rederives the publication', async () => 
     ]);
     assert.ok(report.owned.exchanges.every(row => row.outcome === 'passed'));
     assert.ok(report.owned.restored);
+});
+
+test('the restored scheme follows the effective-background policy at half luma', () => {
+    assert.equal(schemeReply('restored', 0xff00cc44), '\x1b[?997;1n');
+    assert.equal(schemeReply('restored', 0xff7f7f7f), '\x1b[?997;1n');
+    assert.equal(schemeReply('restored', 0xff808080), '\x1b[?997;2n');
 });
 
 const framesFile = 'device-state-frames.jsonl';
