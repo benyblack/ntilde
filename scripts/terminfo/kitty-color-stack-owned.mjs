@@ -125,6 +125,7 @@ function deriveStages(frames, runId) {
     for (const [index, step] of plan.entries()) {
         const result = verifyStage(frames[index], step, { initial: frames[0], previous: frames[index - 1], runId, used, reads });
         if (step.pinned) cases.find(row => row.id === step.pinned).exchanges.push(result);
+        else if (step.continuation) observations.at(-1).queriedPaletteEntries += result.queriedPaletteEntries;
         else if (result) observations.push(result);
     }
     return { cases, nested: { id: effectId, outcome: 'passed', observations } };

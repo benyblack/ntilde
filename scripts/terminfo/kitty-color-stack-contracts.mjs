@@ -40,8 +40,12 @@ const paletteQuery = indices => osc('4;' + indices.map(index => index + ';?').jo
 // Sixteen OSC 4 replies fit inside the existing 512-byte raw-input budget.
 const fullPalette = Array.from({ length: 16 }, (_, batch) => paletteIndices.slice(batch * 16, (batch + 1) * 16));
 const observe = (stage, state, full, enabled = true) => {
-    const batches = full ? fullPalette : [sampleIndices];
-    return { stage, state, sample: true, batches, enabled, queries: [dynamicQueries + modeQueries, ...batches.map(paletteQuery)] };
+    // At most four reply batches per owner request, within its existing 8 KiB limit.
+    const batches = full ? Array.from({ length: 4 }, (_, index) => fullPalette.slice(index * 4, (index + 1) * 4)) : [[sampleIndices]];
+    return batches.map((group, index) => ({
+        stage: index ? stage + '-palette-' + index : stage, state, sample: true, batches: group, enabled, continuation: index > 0,
+        queries: [...(index ? [] : [dynamicQueries + modeQueries]), ...group.map(paletteQuery)],
+    }));
 };
 const setColors = state => osc('104') + channels.map(([code], index) => osc(code + ';#' + sets[state][index])).join('')
     + Object.entries(palettes[state]).map(([index, rgb]) => osc('4;' + index + ';#' + rgb)).join('');
@@ -58,19 +62,19 @@ function pinnedSteps(id) {
 
 export function planFor(runId) {
     return [
-        { stage: 'start' }, observe('original', 'original', true, false),
+        { stage: 'start' }, ...observe('original', 'original', true, false),
         { stage: 'bind', write: '\x1b[?1049h\x1b[0m\x1b[2J\x1b[H' + nonce(runId)
             + '\x1b[2;1H\x1b[1;31mAa\x1b[0m Bb' + modes(true), state: 'original' },
         ...caseIds.flatMap(pinnedSteps),
-        { stage: 'set-a', write: setColors('A'), state: 'A' }, observe('a', 'A', false),
-        { stage: 'push-a', write: push, state: 'A' }, observe('pushed-a', 'A', false),
-        { stage: 'set-b', write: setColors('B'), state: 'B' }, observe('b', 'B', false),
-        { stage: 'push-b', write: push, state: 'B' }, observe('pushed-b', 'B', false),
-        { stage: 'set-c', write: setColors('C'), state: 'C' }, observe('c', 'C', false),
-        { stage: 'pop-b', write: pop, state: 'B' }, observe('restored-b', 'B', true),
-        { stage: 'pop-a', write: pop, state: 'A' }, observe('restored-a', 'A', true),
-        { stage: 'empty-pop', write: pop, state: 'A' }, observe('after-empty-pop', 'A', false),
-        { stage: 'reset', write: resetColors + modes(false), state: 'original' }, observe('restored-original', 'original', true, false),
+        { stage: 'set-a', write: setColors('A'), state: 'A' }, ...observe('a', 'A', false),
+        { stage: 'push-a', write: push, state: 'A' }, ...observe('pushed-a', 'A', false),
+        { stage: 'set-b', write: setColors('B'), state: 'B' }, ...observe('b', 'B', false),
+        { stage: 'push-b', write: push, state: 'B' }, ...observe('pushed-b', 'B', false),
+        { stage: 'set-c', write: setColors('C'), state: 'C' }, ...observe('c', 'C', false),
+        { stage: 'pop-b', write: pop, state: 'B' }, ...observe('restored-b', 'B', true),
+        { stage: 'pop-a', write: pop, state: 'A' }, ...observe('restored-a', 'A', true),
+        { stage: 'empty-pop', write: pop, state: 'A' }, ...observe('after-empty-pop', 'A', false),
+        { stage: 'reset', write: resetColors + modes(false), state: 'original' }, ...observe('restored-original', 'original', true, false),
         { stage: 'finish', write: leave, state: 'original' }, { stage: 'seal' },
     ];
 }
@@ -133,15 +137,16 @@ export function verifySamples(step, samples, used, state) {
         requireStack(samples[index].requestBytes === request, 'query bytes or order changed');
         return rawText(samples[index].sample, used);
     });
-    const [first, ...paletteReplies] = observed;
     if (step.pinned) {
-        const reply = pinnedReply(first);
+        const reply = pinnedReply(observed[0]);
         requireStack(reply === replyOf(10, state.colors.foreground), 'pinned OSC 10 reply disagreed with the App foreground');
-        return { type: 'query', request: step.queries[0], reply, raw: first };
+        return { type: 'query', request: step.queries[0], reply, raw: observed[0] };
     }
-    const dynamic = channels.map(([code, key]) => replyOf(code, state.colors[key])).join('');
-    requireStack(first === dynamic + modeReplies(step.enabled), 'dynamic OSC or unrelated mode replies disagreed with the observed state');
-    requireStack(step.batches.every((batch, at) => paletteReplies[at] === batch.map(index => replyOf('4;' + index, state.palette[index])).join('')),
+    if (!step.continuation) {
+        const dynamic = channels.map(([code, key]) => replyOf(code, state.colors[key])).join('');
+        requireStack(observed.shift() === dynamic + modeReplies(step.enabled), 'dynamic OSC or unrelated mode replies disagreed with the observed state');
+    }
+    requireStack(step.batches.every((batch, at) => observed[at] === batch.map(index => replyOf('4;' + index, state.palette[index])).join('')),
         'OSC 4 palette replies disagreed with the App readback');
     return { stage: step.stage, ...state, queriedPaletteEntries: step.batches.flat().length, modes: step.enabled ? 'set' : 'reset' };
 }
