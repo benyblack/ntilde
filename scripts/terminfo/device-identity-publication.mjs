@@ -109,6 +109,20 @@ export async function buildPublication() {
 const code = value => '\x60' + value + '\x60';
 const wire = value => value ? code(value.replaceAll('\x1b[', 'CSI ').replaceAll('\x1bP', 'DCS ').replaceAll('\x1b\\', ' ST')) : 'Silence';
 
+export function deviceQueryReproduction(version, collector, offlineIntroduction) {
+    return [
+        '~~~sh',
+        'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
+        'node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ' + version + ' --scope ' + collector,
+        '~~~', '',
+        offlineIntroduction, '',
+        '~~~sh',
+        'node scripts/terminfo/' + collector + '-publication.mjs --check',
+        'python3 scripts/terminfo-rich-baseline.py --check',
+        '~~~', '',
+    ];
+}
+
 export function renderReport(report) {
     const { owned, measurement: m, pinned } = report;
     const { metadata } = owned;
@@ -130,15 +144,7 @@ export function renderReport(report) {
         'Run ' + code(m.runId) + ' used ' + m.platform + ', App revision ' + code(m.appRevision) + ' and collector revision ' + code(m.scriptsRevision) + '. The [owned archive](owned-run.zip) retains the original requests, reply and fence bytes, app and worker identity, snapshots, VT assembly, and cleanup records. The [machine-readable report](report.json) records both verdicts.', '',
         ...report.superseded.map(row => 'The first run also passed. The collector was remeasured after it switched to a fixed path for the .NET host. [Superseded run ' + row.runId + '](' + row.archive + ')'), '',
         'Build the recorded App revision with the repository .NET SDK. Run the collector from the recorded collector revision with Node 24+ and the macOS .NET host at /usr/local/share/dotnet/dotnet.', '',
-        '~~~sh',
-        'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
-        'node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ' + m.version + ' --scope device-identity',
-        '~~~', '',
-        'At the publication revision, rederive the archived evidence and verify the frozen map.', '',
-        '~~~sh',
-        'node scripts/terminfo/device-identity-publication.mjs --check',
-        'python3 scripts/terminfo-rich-baseline.py --check',
-        '~~~', '',
+        ...deviceQueryReproduction(m.version, 'device-identity', 'At the publication revision, rederive the archived evidence and verify the frozen map.'),
     ].join('\n');
 }
 

@@ -91,7 +91,8 @@ export function schemeReply(stage, argb) {
     // The two overrides are unambiguous grayscale controls. For the restored host color use the documented luma policy.
     const [r, g, b] = rgb(argb);
     const restoredDark = 299 * r + 587 * g + 114 * b < 127500;
-    return '\x1b[?997;' + ((stage === 'restored' ? restoredDark : stage === 'dark') ? '1' : '2') + 'n';
+    const dark = stage === 'restored' ? restoredDark : stage === 'dark';
+    return '\x1b[?997;' + (dark ? '1' : '2') + 'n';
 }
 
 export function verifySamples(step, samples, used, screen) {

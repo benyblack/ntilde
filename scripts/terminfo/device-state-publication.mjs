@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { capturedDeviceStateSourceFiles, capturedDeviceStateSourcePolicy } from './owned-sources.mjs';
 import { focusedMeasurement, pinnedBundle, readJson, readManifest, withOwnedArchive, writeUnicodeReport } from './unicode-publication-inputs.mjs';
-import { readPinnedDeviceProbes, replayDeviceProbe, verifySources } from './device-identity-publication.mjs';
+import { deviceQueryReproduction, readPinnedDeviceProbes, replayDeviceProbe, verifySources } from './device-identity-publication.mjs';
 import { caseIds, requests } from './device-state-contracts.mjs';
 import { deriveRun } from './device-state-owned.mjs';
 
@@ -23,12 +23,12 @@ export function withDeviceStateArchive(callback) {
 }
 
 export async function buildPublication() {
-    const { owned, measurement } = withDeviceStateArchive((directory, manifest) => {
+    const { owned, measurement, superseded } = withDeviceStateArchive((directory, manifest) => {
         const { context, frames, report, receipt } = deriveRun(directory);
         assert.deepEqual(report, readJson(directory, 'device-state-report.json'));
         assert.deepEqual(receipt, readJson(directory, 'device-state-receipt.json'));
         verifySources(directory, context, capturedDeviceStateSourceFiles, capturedDeviceStateSourcePolicy);
-        return { owned: report, measurement: focusedMeasurement(directory, manifest, context, receipt, frames[0].screen) };
+        return { owned: report, measurement: focusedMeasurement(directory, manifest, context, receipt, frames[0].screen), superseded: manifest.superseded };
     });
     const map = readJson(join(qa, '2026-11-26-rich-tui'), 'evidence-map.json');
     const stock = Object.fromEntries(caseIds.map(id => [id, map.rows.find(row => row.id === id)?.stock]));
@@ -38,7 +38,7 @@ export async function buildPublication() {
         const index = caseIds.indexOf(row.id);
         return { stage: row.stage, ...await replayDeviceProbe(probes[index], row, requests[index]) };
     }));
-    return { schemaVersion: 1, suite: owned.suite, pinnedBundleSha256: pinnedBundle, stock, pinned, owned, measurement };
+    return { schemaVersion: 1, suite: owned.suite, pinnedBundleSha256: pinnedBundle, stock, pinned, owned, measurement, superseded };
 }
 
 const code = value => '\x60' + value + '\x60';
@@ -67,16 +67,9 @@ export function renderReport(report) {
         'Paired App observations showed the query stages preserved the cells, cursor, geometry, buffer modes and effective colors. The background reset removed the override and restored the initial RGB ' + code(rgb(owned.initialBackground)) + '. Leaving the alternate screen restored the original pane snapshot. The runner verified exact kernel PTY mode restoration, fixture removal and desktop lease release. The measured App worked with its existing handlers.', '',
         '## Reproduce', '',
         'Run ' + code(m.runId) + ' used ' + m.platform + ', App revision ' + code(m.appRevision) + ' and collector revision ' + code(m.scriptsRevision) + '. The [owned archive](owned-run.zip) contains the raw exchanges, pane observations, App and collector identity records, and cleanup proof. [Machine-readable report](report.json)', '',
+        ...report.superseded.map(run => run.reason + ' [Superseded run ' + run.runId + '](' + run.archive + ')'), '',
         'Build the recorded App revision with the repository .NET SDK. Run the collector from the recorded collector revision with Node 24 or later.', '',
-        '~~~sh',
-        'scripts/build.sh publish src/Ntilde.App -c Release -r osx-arm64 --self-contained false -p:PublishAot=false -p:PublishTrimmed=false -p:PublishSingleFile=false -p:SkipCliShim=true -o /absolute/private/sidecar',
-        'node scripts/terminfo-owned.mjs --executable /absolute/private/sidecar/Ntilde --app-version ' + m.version + ' --scope device-state',
-        '~~~', '',
-        'Rederive the archived evidence and verify the frozen map from the publication revision.', '',
-        '~~~sh',
-        'node scripts/terminfo/device-state-publication.mjs --check',
-        'python3 scripts/terminfo-rich-baseline.py --check',
-        '~~~', '',
+        ...deviceQueryReproduction(m.version, 'device-state', 'Rederive the archived evidence and verify the frozen map from the publication revision.'),
     ].join('\n');
 }
 

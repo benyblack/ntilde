@@ -155,6 +155,24 @@ export class Collection {
     get restored() { return !this.aborted && this.frames.length === this.plan.length; }
 }
 
+/** Recheck the direct-local custody and kernel restoration common to the owned device queries. */
+export function verifyDirectReportCleanup(output, context, frames, { scope, require, allowAct }) {
+    const proof = json(output, names.proof), settings = json(output, names.settings);
+    const worker = proof.proofs?.[0], raw = worker?.privateClipboard, initial = frames[0]?.ownership;
+    const error = 'direct local ownership and exact PTY cleanup did not verify';
+    require(!['failure.json', 'cleanup-failure.json'].some(file => existsSync(join(output, file)))
+        && same(context.collectionScope, scope) && same(proof.collectionScope, scope) && proof.proofs?.length === 1
+        && proof.completed === true && !proof.cleanupError && !proof.persistentDaemon
+        && proof.sourceSnapshot?.policy === context.sourceSnapshotPolicy && Date.parse(proof.cleanedUpAt) <= Date.parse(proof.sourceSnapshot.removedAt), error);
+    require(Date.parse(frames.at(-1)?.ownership?.at) <= Date.parse(raw?.restoredAt) && Date.parse(raw?.restoredAt) <= Date.parse(proof.cleanedUpAt)
+        && worker?.app.pid === context.ownerPid && worker.app.executable === context.executable
+        && same(worker.app, initial?.app) && same(worker.worker, initial?.worker) && worker.tty === initial.tty
+        && typeof raw?.originalTerminalState === 'string' && raw.originalTerminalState === raw.restoredTerminalState, error);
+    require(settings.SessionPersistence === 'Off' && settings.AllowOsc52ClipboardWrite === false && settings.AgentAccessObserveEnabled === true
+        && (allowAct === undefined || settings.AgentAccessActEnabled === allowAct), error);
+    return worker;
+}
+
 function deriveStages(frames, actions, runId) {
     const plan = planFor(runId), initial = frames[0];
     requireSixel(frames.length === plan.length && actions.length === 2 && /^[a-f\d]{32}$/.test(runId)

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { isDeepStrictEqual as same } from 'node:util';
 import { screenSnapshot, snapshotHash } from './agent-observer.mjs';
 import { copyPaneMetadata } from './metadata-state.mjs';
-import { Collection as ReportCollection, verifySeal } from './sixel-reports-owned.mjs';
+import { Collection as ReportCollection, verifyDirectReportCleanup, verifySeal } from './sixel-reports-owned.mjs';
 import { gridOf, verifyControl } from './sixel-reports-contracts.mjs';
 import { pristineImageBaseline, validateImageOwnership } from './static-images.mjs';
 import { journal, json, read } from './static-images-receipt.mjs';
@@ -82,26 +82,9 @@ export class Collection extends ReportCollection {
     }
 }
 
-function verifyCleanup(output, context, frames) {
-    const proof = json(output, 'ownership-proof.json'), settings = json(output, 'initial-settings.json');
-    const worker = proof.proofs?.[0], raw = worker?.privateClipboard, initial = frames[0]?.ownership;
-    requireState(!['failure.json', 'cleanup-failure.json'].some(file => existsSync(join(output, file)))
-        && same(context.collectionScope, scope) && same(proof.collectionScope, scope) && proof.proofs?.length === 1
-        && proof.completed === true && !proof.cleanupError && !proof.persistentDaemon
-        && proof.sourceSnapshot?.policy === context.sourceSnapshotPolicy && Date.parse(proof.cleanedUpAt) <= Date.parse(proof.sourceSnapshot.removedAt)
-        && Date.parse(frames.at(-1)?.ownership?.at) <= Date.parse(raw?.restoredAt) && Date.parse(raw?.restoredAt) <= Date.parse(proof.cleanedUpAt)
-        && worker?.app.pid === context.ownerPid && worker.app.executable === context.executable
-        && same(worker.app, initial?.app) && same(worker.worker, initial?.worker) && worker.tty === initial.tty
-        && typeof raw?.originalTerminalState === 'string' && raw.originalTerminalState === raw.restoredTerminalState
-        && settings.SessionPersistence === 'Off' && settings.AllowOsc52ClipboardWrite === false
-        && settings.AgentAccessObserveEnabled === true && settings.AgentAccessActEnabled === false,
-    'direct local ownership and exact PTY cleanup did not verify');
-    return worker;
-}
-
 export function deriveRun(output) {
     const context = json(output, 'context.json'), frames = journal(output, framesFile);
-    const worker = verifyCleanup(output, context, frames);
+    const worker = verifyDirectReportCleanup(output, context, frames, { scope, require: requireState, allowAct: false });
     const plan = planFor(context.runId), used = new Set();
     requireState(/^[a-f\d]{32}$/.test(context.runId) && frames.length === plan.length, 'incomplete pane journal');
     const samples = plan.map((step, index) =>
