@@ -4,6 +4,7 @@ import argparse
 from collections import Counter
 import hashlib
 import io
+from itertools import chain
 import json
 from pathlib import Path
 import subprocess
@@ -137,13 +138,33 @@ def evidence_map(frozen):
     }
 
 
-def published_evidence(frozen_map):
+def inventory_publications(ids):
     inventory = read(ROOT / SOURCES["inventory"])
     suites = {suite["suite"]: suite["doc"] for suite in inventory["suites"]}
+    for row in inventory["benchmark"]:
+        if row["id"] not in ids:
+            continue
+        publications = [suites[claim["suite"]] for claim in row["claims"] if claim["status"] == "qualified"]
+        if publications:
+            yield row["id"], row["effect"]["verdict"], publications
+
+
+def aggregate_publications():
+    cases = read(ROOT / KITTY_AGGREGATE / "report.json")["cases"]
+    if len(cases) != len(KITTY_AGGREGATE_IDS) or {case["id"] for case in cases} != KITTY_AGGREGATE_IDS:
+        raise ValueError("Kitty aggregate report does not cover the two frozen IDs")
+    for case in cases:
+        verdict = case["owned"]["verdict"]
+        if any(case["pinned"][path]["observation"]["outcome"] != verdict for path in ("terminal", "termless")):
+            raise ValueError(f"Kitty aggregate replay disagrees with the bounded check for {case['id']}")
+        yield case["id"], verdict, [f"{KITTY_AGGREGATE}/report.md"]
+
+
+def published_evidence(frozen_map):
     ids = {row["id"] for row in frozen_map["rows"]}
     evidence = {}
-
-    def admit(case_id, outcome, publications):
+    standalone = ((case_id, outcome, [path]) for path, outcome, case_ids in STANDALONE for case_id in case_ids.split())
+    for case_id, outcome, publications in chain(inventory_publications(ids), standalone, aggregate_publications()):
         if case_id not in ids or case_id in evidence:
             raise ValueError(f"Unexpected or duplicate Rich TUI evidence for {case_id}")
         if outcome not in {"supported", "unsupported", "inconclusive", "inapplicable", "mixed"}:
@@ -151,25 +172,6 @@ def published_evidence(frozen_map):
         if not publications or any(not (ROOT / path).is_file() for path in publications):
             raise ValueError(f"Missing Rich TUI publication for {case_id}")
         evidence[case_id] = {"outcome": outcome, "publications": publications}
-
-    for row in inventory["benchmark"]:
-        if row["id"] not in ids:
-            continue
-        publications = [suites[claim["suite"]] for claim in row["claims"] if claim["status"] == "qualified"]
-        if publications:
-            admit(row["id"], row["effect"]["verdict"], publications)
-    for path, outcome, case_ids in STANDALONE:
-        for case_id in case_ids.split():
-            admit(case_id, outcome, [path])
-
-    aggregate = read(ROOT / KITTY_AGGREGATE / "report.json")["cases"]
-    if len(aggregate) != len(KITTY_AGGREGATE_IDS) or {case["id"] for case in aggregate} != KITTY_AGGREGATE_IDS:
-        raise ValueError("Kitty aggregate report does not cover the two frozen IDs")
-    for case in aggregate:
-        verdict = case["owned"]["verdict"]
-        if any(case["pinned"][path]["observation"]["outcome"] != verdict for path in ("terminal", "termless")):
-            raise ValueError(f"Kitty aggregate replay disagrees with the bounded check for {case['id']}")
-        admit(case["id"], verdict, [f"{KITTY_AGGREGATE}/report.md"])
 
     rows = [{"id": row["id"], "stock": row["stock"], "evidence": evidence.get(row["id"])} for row in frozen_map["rows"]]
     outcomes = Counter(row["outcome"] for row in evidence.values())

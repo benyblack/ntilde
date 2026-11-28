@@ -194,9 +194,10 @@ const osc66Sources = {
     osc66WorkerSourceSha256: 'osc66-worker.mjs',
 };
 const kittyAggregateScope = {
-    policy: 'readonly-owned-source-graph-kitty-aggregate-v1',
+    policy: 'readonly-owned-source-graph-kitty-aggregate-v2',
     sources: {
         kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
+        kittyGraphicsWorkerSourceSha256: 'kitty-graphics-worker.mjs',
         kittyAggregateOwnedSourceSha256: 'kitty-aggregate-owned.mjs',
         kittyAggregateWorkerSourceSha256: 'kitty-aggregate-worker.mjs',
     },

@@ -1,9 +1,8 @@
 import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { isDeepStrictEqual as same } from 'node:util';
 import { redPixels } from './kitty-graphics-owned.mjs';
 import { OwnedStaticImageObserver } from './static-images-capture.mjs';
-import { journal, json, read } from './static-images-receipt.mjs';
+import { deriveFocusedImageRun } from './static-images-receipt.mjs';
 import { checkImages, imageModeQueries, imageModeReplyHex, imageRestore, imageSetup, retainedImagePixel,
     StaticImageReport, staticImageSuite } from './static-images.mjs';
 import { pngHash } from './pixels-capture.mjs';
@@ -60,7 +59,7 @@ function action(entry, _state, runId, cursorVisible) {
 function splitReply(entry, bytes) {
     const raw = bytes.toString('ascii');
     if (!entry.sentinel) return { raw, sentinel: '' };
-    const da1 = /\x1b\[\?[0-9]+(?:;[0-9]+)*c$/.exec(raw);
+    const da1 = /\x1b\[\?\d+(?:;\d+)*c$/.exec(raw);
     checkImages(da1 && !/\x1b\[\?[0-9;]+c/.test(raw.slice(0, da1.index)));
     return { raw: raw.slice(0, da1.index), sentinel: da1[0] };
 }
@@ -158,26 +157,7 @@ export class Collection {
 }
 
 export function deriveRun(output) {
-    const context = json(output, files.context), proof = json(output, files.proof), settings = json(output, files.settings);
-    const worker = proof.proofs?.[0], raw = worker?.privateClipboard;
-    const frames = journal(output, files.frames), actions = journal(output, files.actions), seal = json(output, files.seal);
-    const ownership = frames[0]?.ownership;
-    checkImages(!['failure.json', 'cleanup-failure.json', 'aggregate-raw-failure.json'].some(name => existsSync(join(output, name)))
-        && same(context.collectionScope, scope) && same(proof.collectionScope, scope) && proof.proofs?.length === 1
-        && proof.completed === true && !proof.cleanupError && !proof.persistentDaemon
-        && proof.sourceSnapshot?.policy === context.sourceSnapshotPolicy
-        && Date.parse(proof.cleanedUpAt) <= Date.parse(proof.sourceSnapshot.removedAt)
-        && worker?.app.pid === context.ownerPid && same(worker.app, ownership?.app) && same(worker.worker, ownership?.worker)
-        && worker.tty === ownership.tty && typeof raw?.originalTerminalState === 'string'
-        && raw.originalTerminalState === raw.restoredTerminalState
-        && settings.SessionPersistence === 'Off' && settings.AllowOsc52ClipboardWrite === false && settings.AgentAccessActEnabled === false);
-    const report = suite.buildReport(frames, actions, seal, context.runId, output);
-    const boundFiles = [files.context, files.proof, files.source, files.settings, files.frames, files.actions, files.seal,
-        ...frames.flatMap(frame => frame.pixels.map(pixel => pixel.file))];
-    const hashes = Object.fromEntries(boundFiles.map(name => [name, pngHash(read(output, name))]));
-    checkImages(hashes[files.settings] === context.initialSettingsSha256 && hashes[files.source] === context.sourceSnapshotManifestSha256);
-    const receipt = { schemaVersion: 1, runId: context.runId, suite: scope.id, fixtureRemoved: true, files: hashes };
-    return { context, frames, actions, report, receipt };
+    return deriveFocusedImageRun(output, { files, rawFailure: 'aggregate-raw-failure.json', scope, suite });
 }
 
 export function completeReceipt(output, scratch) {

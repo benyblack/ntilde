@@ -22,7 +22,7 @@ export const capturedXtwinopsPixelsSourcePolicy = 'readonly-owned-source-graph-x
 export const capturedSixelReportsSourcePolicy = 'readonly-owned-source-graph-v85';
 export const capturedFontLigaturesSourcePolicy = 'readonly-owned-source-graph-font-ligatures-v1';
 export const capturedOsc66SourcePolicy = 'readonly-owned-source-graph-v84';
-export const capturedKittyAggregateSourcePolicy = 'readonly-owned-source-graph-kitty-aggregate-v1';
+export const capturedKittyAggregateSourcePolicy = 'readonly-owned-source-graph-kitty-aggregate-v2';
 export const capturedKittyGraphicsSourcePolicy = 'readonly-owned-source-graph-v83';
 export const capturedUnicodeBoundarySourcePolicy = 'readonly-owned-source-graph-v82';
 export const capturedUnicodeWidthSourcePolicy = 'readonly-owned-source-graph-v81';
@@ -1123,6 +1123,7 @@ export const capturedOsc66SourceFiles = Object.freeze({
 export const capturedKittyAggregateSourceFiles = Object.freeze({
     ...capturedV82SourceFiles,
     kittyGraphicsOwnedSourceSha256: 'kitty-graphics-owned.mjs',
+    kittyGraphicsWorkerSourceSha256: 'kitty-graphics-worker.mjs',
     kittyAggregateOwnedSourceSha256: 'kitty-aggregate-owned.mjs',
     kittyAggregateWorkerSourceSha256: 'kitty-aggregate-worker.mjs',
 });

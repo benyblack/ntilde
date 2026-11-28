@@ -78,14 +78,14 @@ export async function buildPublication() {
     const replay = await replayPinnedAggregates(readFileSync(bundleArchive), report.observations);
     const evidence = readJson(join(qa, '2026-11-26-rich-tui'), 'evidence-map.json');
     const contracts = [
-        ['Keyboard enhancement bit 1 negotiation and flag restoration', report.effects.keyboard.bitOneActivated],
-        ['Acceptance of the direct RGB query', report.effects.graphics.accepted],
+        ['Keyboard enhancement bit 1 negotiation and flag restoration', report.effects.keyboard.bitOneActivated, 'unsupported'],
+        ['Acceptance of the direct RGB query', report.effects.graphics.accepted, 'inconclusive'],
     ];
     const cases = caseIds.map((id, index) => {
         const stock = evidence.rows.find(row => row.id === id)?.stock;
         assert.equal(stock, 'supported');
-        const [scope, supported] = contracts[index];
-        const verdict = supported ? 'supported' : (index === 0 ? 'unsupported' : 'inconclusive');
+        const [scope, supported, withoutSupport] = contracts[index];
+        const verdict = supported ? 'supported' : withoutSupport;
         assert.ok(Object.values(replay[id]).every(path => path.observation.outcome === verdict));
         return { id, stock, pinned: replay[id], owned: { scope, verdict } };
     });

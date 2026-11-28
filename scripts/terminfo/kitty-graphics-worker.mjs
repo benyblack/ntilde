@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { rawInputCapture } from './input-bytes.mjs';
 import { assertPrivateFile, requestOwner, verifyNtildeOutput } from './ownership.mjs';
 import { withOwnedOutput } from './terminal-output.mjs';
@@ -8,7 +9,7 @@ import { write } from './static-images-collector.mjs';
 import { pngHash } from './pixels-capture.mjs';
 import { plan, prefix } from './kitty-graphics-owned.mjs';
 
-async function collect(config, tty) {
+async function collect(config, tty, { plan, prefix, modeQueries, failureFile }) {
     const send = (step, value = {}) => requestOwner(config, prefix + step, { tty, ...value });
     const initial = await send('start');
     const capture = rawInputCapture(process.stdin, process.stdout);
@@ -20,28 +21,28 @@ async function collect(config, tty) {
             checkImages(bytes.toString('hex') === action.commandHex && pngHash(bytes) === action.commandSha256
                 && action.index === index && action.kind === prefix + entry.kind
                 && action.caseId === (entry.caseId ?? null) && action.stageId === (entry.stageId ?? null));
-            const observed = await capture.capture(() => write(process.stdout, Buffer.concat([bytes, Buffer.from(imageModeQueries)]))); // NOSONAR: finish each PTY capture before admitting the next write.
+            const observed = await capture.capture(() => write(process.stdout, Buffer.concat([bytes, Buffer.from(modeQueries(entry))]))); // NOSONAR: finish each PTY capture before admitting the next write.
             await send(entry.kind, { ...ids, capture: observed }); // NOSONAR: owner must seal each pixel pair before the next write.
         }
         capture.dispose();
         await send('seal', { captureStatus: { failed: capture.failed, disposed: true, attempts: plan.length, lastAttempt: capture.lastAttempt } });
     } catch (error) {
-        writeFileSync(join(config.output, 'graphics-raw-failure.json'), JSON.stringify({
+        writeFileSync(join(config.output, failureFile), JSON.stringify({
             lastAttempt: capture.lastAttempt, error: String(error.message ?? error),
         }) + '\n', { flag: 'wx', mode: 0o600 });
         try { await write(process.stdout, imageRestore(initial.screen.cursorVisible)); }
-        catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Kitty graphics collection and restoration failed.'); }
+        catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Focused image collection and restoration failed.'); }
         throw error;
     } finally { capture.dispose(); }
 }
 
-async function run(config) {
+async function run(config, options) {
     const binding = await verifyNtildeOutput(config, process.stdout);
     const tty = binding.tabTty;
     try {
         await withOwnedOutput({ tty, original: binding.originalTerminalState, restoreInput: () => {} }, async () => {
             await requestOwner(config, 'raw-output', { tty });
-            await collect(config, tty);
+            await collect(config, tty, options);
         });
         await requestOwner(config, 'done', { tty });
     } catch (error) {
@@ -51,10 +52,17 @@ async function run(config) {
     }
 }
 
-try {
-    assertPrivateFile(process.argv[2]);
-    await run(JSON.parse(readFileSync(process.argv[2], 'utf8')));
-} catch (error) {
-    console.error(error.message);
-    process.exitCode = 1;
+export async function runFocusedImageWorker({ plan, prefix, failureFile, modeQueries = () => imageModeQueries }) {
+    try {
+        assertPrivateFile(process.argv[2]);
+        const config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+        await run(config, { plan, prefix, failureFile, modeQueries });
+    } catch (error) {
+        console.error(error.message);
+        process.exitCode = 1;
+    }
+}
+
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+    await runFocusedImageWorker({ plan, prefix, failureFile: 'graphics-raw-failure.json' });
 }
