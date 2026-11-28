@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "measurement": {
+    "runId": "49ba958906332ecce520862be85d1e65",
+    "appRevision": "a2727571cbd07165797602a4271ef019099401eb",
+    "scriptsRevision": "83c1b6e0f69a50394e53f782e71a0f16492b4462",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-kitty-aggregate-v1",
+    "receiptSchema": 1
+  },
+  "archives": {
+    "owned-run.zip": "c0d2c6ac956d3fddf0265b6a51540a66ca68ff466f3553272625ebae71320f01"
+  }
+}

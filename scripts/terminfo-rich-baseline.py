@@ -35,6 +35,35 @@ ADDITIONAL = {
 }
 
 
+# Exact-ID assessments published outside the stock-inconclusive qualification inventory.
+# The legacy evidence-map.json keeps the original revision and inputs above.
+STANDALONE = [
+    ("2026-11-26-rich-tui/kitty-report.md", "supported",
+     "extensions.kitty-keyboard.disambiguate extensions.kitty-keyboard.report-events "
+     "extensions.kitty-keyboard.report-alternate extensions.kitty-keyboard.report-all-keys "
+     "extensions.kitty-keyboard.report-text"),
+    ("2026-11-26-rich-kitty-graphics/report.md", "supported",
+     "extensions.kitty-graphics.transmit extensions.kitty-graphics.display"),
+    ("2026-11-26-rich-osc66/report.md", "supported", "extensions.osc66-text-sizing"),
+    ("2026-11-26-rich-sixel-reports/report.md", "supported",
+     "extensions.sixel-da1 extensions.sixel-geometry-report"),
+    ("2026-11-27-rich-xtwinops-pixels/report.md", "supported", "device.xtwinops-14 device.xtwinops-16"),
+    ("2026-11-27-rich-device-identity/report.md", "supported", "device.tertiary-da device.xtversion"),
+    ("2026-11-28-rich-device-state/report.md", "supported", "device.decrqss device.dsr-996-color-scheme"),
+    ("2026-11-28-rich-kitty-color-stack/report.md", "supported",
+     "extensions.osc30001-color-stack-push extensions.osc30101-color-stack-pop"),
+    ("2026-11-27-rich-font-ligatures/report.md", "supported", "extensions.font-ligatures"),
+    ("2026-11-27-rich-kitty-clicks/report.md", "supported", "input.kitty-click-events"),
+    ("2026-11-27-rich-identity/report.md", "inapplicable", "extensions.osc176-app-id"),
+    ("2026-11-27-rich-identity/report.md", "inconclusive", "extensions.osc666-termprop"),
+    ("2026-11-27-rich-term-features/report.md", "inconclusive", "device.term-features"),
+    ("2026-11-27-rich-vendor-environment/report.md", "inapplicable",
+     "device.env-lc-terminal device.env-kitty device.env-wezterm device.env-wt-session"),
+]
+KITTY_AGGREGATE = "2026-11-28-rich-kitty-aggregates"
+KITTY_AGGREGATE_IDS = {"extensions.kitty-keyboard", "extensions.kitty-graphics"}
+
+
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -108,14 +137,64 @@ def evidence_map(frozen):
     }
 
 
+def published_evidence(frozen_map):
+    inventory = read(ROOT / SOURCES["inventory"])
+    suites = {suite["suite"]: suite["doc"] for suite in inventory["suites"]}
+    ids = {row["id"] for row in frozen_map["rows"]}
+    evidence = {}
+
+    def admit(case_id, outcome, publications):
+        if case_id not in ids or case_id in evidence:
+            raise ValueError(f"Unexpected or duplicate Rich TUI evidence for {case_id}")
+        if outcome not in {"supported", "unsupported", "inconclusive", "inapplicable", "mixed"}:
+            raise ValueError(f"Unrecognized Rich TUI outcome for {case_id}")
+        if not publications or any(not (ROOT / path).is_file() for path in publications):
+            raise ValueError(f"Missing Rich TUI publication for {case_id}")
+        evidence[case_id] = {"outcome": outcome, "publications": publications}
+
+    for row in inventory["benchmark"]:
+        if row["id"] not in ids:
+            continue
+        publications = [suites[claim["suite"]] for claim in row["claims"] if claim["status"] == "qualified"]
+        if publications:
+            admit(row["id"], row["effect"]["verdict"], publications)
+    for path, outcome, case_ids in STANDALONE:
+        for case_id in case_ids.split():
+            admit(case_id, outcome, [path])
+
+    aggregate = read(ROOT / KITTY_AGGREGATE / "report.json")["cases"]
+    if len(aggregate) != len(KITTY_AGGREGATE_IDS) or {case["id"] for case in aggregate} != KITTY_AGGREGATE_IDS:
+        raise ValueError("Kitty aggregate report does not cover the two frozen IDs")
+    for case in aggregate:
+        verdict = case["owned"]["verdict"]
+        if any(case["pinned"][path]["observation"]["outcome"] != verdict for path in ("terminal", "termless")):
+            raise ValueError(f"Kitty aggregate replay disagrees with the bounded check for {case['id']}")
+        admit(case["id"], verdict, [f"{KITTY_AGGREGATE}/report.md"])
+
+    rows = [{"id": row["id"], "stock": row["stock"], "evidence": evidence.get(row["id"])} for row in frozen_map["rows"]]
+    outcomes = Counter(row["outcome"] for row in evidence.values())
+    return {
+        "schemaVersion": 1,
+        "totals": {
+            "cases": len(rows),
+            "withPublishedNtildeEvidence": len(evidence),
+            "stockOnly": sum(row["evidence"] is None and row["stock"] is not None for row in rows),
+            "publishedOutcomes": dict(sorted(outcomes.items())),
+        },
+        "rows": rows,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     frozen = requirements(read(PUBLICATION / "upstream-membership.json"))
+    frozen_map = evidence_map(frozen)
     outputs = {
         "requirements-v1.json": frozen,
-        "evidence-map.json": evidence_map(frozen),
+        "evidence-map.json": frozen_map,
+        "published-evidence.json": published_evidence(frozen_map),
     }
     for name, value in outputs.items():
         target = PUBLICATION / name
