@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
   "measurement": {
-    "runId": "8cf62e1ffb3864e4fbcd6c5b53067047",
+    "runId": "88f4eacce514f390970b3fbea08d5924",
     "appRevision": "9454ef76b41f2f7fb0e6a0f3447e90a9321cc358",
-    "scriptsRevision": "2de2743e139e507ac78979b79c920a2f2383909c",
+    "scriptsRevision": "3749051caec8d42a7fbf476ca2c9b3c1243f95cf",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-kitty-color-stack-v1",
     "receiptSchema": 1
   },
   "archives": {
-    "owned-run.zip": "7a2ddbbd249ae587f3fd6fd96a5282081b484385c3c998bf5abed8a8bed7490f",
+    "owned-run.zip": "7b0970de67751e0a8c2c9ef6bc5278172c40106e8f4913a984bd3835b47a0ae0",
     "attempt-1.zip": "7b80fcaf0a61c7e5911431343fd11bfe26f56a504ac21fda0178b9e45e17e4c5"
   },
   "refused": {
@@ -18,5 +18,16 @@
     "scriptsRevision": "92bd2690357a01838606101a38f4c5b32df5f194",
     "archive": "attempt-1.zip",
     "reason": "The first attempt exceeded the existing owner request size limit during the initial palette query. It produced no verdict. The runner cleaned up and released its lease."
+  },
+  "superseded": {
+    "runId": "8cf62e1ffb3864e4fbcd6c5b53067047",
+    "appRevision": "9454ef76b41f2f7fb0e6a0f3447e90a9321cc358",
+    "scriptsRevision": "2de2743e139e507ac78979b79c920a2f2383909c",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-kitty-color-stack-v1",
+    "receiptSchema": 1,
+    "archiveSha256": "7a2ddbbd249ae587f3fd6fd96a5282081b484385c3c998bf5abed8a8bed7490f",
+    "archive": "https://github.com/benyblack/ntilde/blob/20375a1b4b28aa58d59c79631da7f3f077648386/docs/qa/terminfo/2026-11-28-rich-kitty-color-stack/owned-run.zip",
+    "reason": "An earlier run passed and retained the second App screen hash. The current run also retains the full second App screen at every observed stage."
   }
 }

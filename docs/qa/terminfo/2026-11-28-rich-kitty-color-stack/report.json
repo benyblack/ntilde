@@ -83,7 +83,7 @@
     }
   ],
   "owned": {
-    "runId": "8cf62e1ffb3864e4fbcd6c5b53067047",
+    "runId": "88f4eacce514f390970b3fbea08d5924",
     "suite": "ntilde-owned-kitty-color-stack-v1",
     "cases": [
       {
@@ -485,36 +485,47 @@
         }
       ]
     },
-    "paneId": "1e1d36ac-9240-43cc-bfc5-64a8c2d3e17b",
+    "paneId": "e623dc25-4c50-42f0-bc3d-ed9578795456",
     "tty": "/dev/ttys003",
-    "appPid": 64427,
-    "workerPid": 64428,
+    "appPid": 66638,
+    "workerPid": 66639,
     "restored": true
   },
   "measurement": {
-    "runId": "8cf62e1ffb3864e4fbcd6c5b53067047",
+    "runId": "88f4eacce514f390970b3fbea08d5924",
     "appRevision": "9454ef76b41f2f7fb0e6a0f3447e90a9321cc358",
-    "scriptsRevision": "2de2743e139e507ac78979b79c920a2f2383909c",
+    "scriptsRevision": "3749051caec8d42a7fbf476ca2c9b3c1243f95cf",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-kitty-color-stack-v1",
     "receiptSchema": 1,
     "version": "0.14.0+9454ef76b41f2f7fb0e6a0f3447e90a9321cc358",
     "nodeVersion": "v24.22.3",
-    "startedAt": "2026-11-28T12:04:21.594Z",
-    "releasedAt": "2026-11-28T12:04:25.172Z",
+    "startedAt": "2026-11-28T12:15:12.682Z",
+    "releasedAt": "2026-11-28T12:15:16.324Z",
     "geometry": {
       "rows": 41,
       "cols": 140
     },
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "98406f4a84e7369d424e526b3b384e8f94a3edbdd77160277b22abd9b39d13e9",
-    "sourceSnapshotManifestSha256": "99d74b47c814de7589c6b97d63b3fc7892ffea62a3ba39e8012dbcd7600c0213",
-    "archiveSha256": "7a2ddbbd249ae587f3fd6fd96a5282081b484385c3c998bf5abed8a8bed7490f"
+    "sourceSnapshotManifestSha256": "bdc6d46f41af2a9dd89edafdaab3bf59c7773ed13ca26b693049eee4dcf49f96",
+    "archiveSha256": "7b0970de67751e0a8c2c9ef6bc5278172c40106e8f4913a984bd3835b47a0ae0"
   },
   "refused": {
     "runId": "c1fd0e4364b6f24e20fadae29bd17a9e",
     "scriptsRevision": "92bd2690357a01838606101a38f4c5b32df5f194",
     "archive": "attempt-1.zip",
     "reason": "The first attempt exceeded the existing owner request size limit during the initial palette query. It produced no verdict. The runner cleaned up and released its lease."
+  },
+  "superseded": {
+    "runId": "8cf62e1ffb3864e4fbcd6c5b53067047",
+    "appRevision": "9454ef76b41f2f7fb0e6a0f3447e90a9321cc358",
+    "scriptsRevision": "2de2743e139e507ac78979b79c920a2f2383909c",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-kitty-color-stack-v1",
+    "receiptSchema": 1,
+    "archiveSha256": "7a2ddbbd249ae587f3fd6fd96a5282081b484385c3c998bf5abed8a8bed7490f",
+    "archive": "https://github.com/benyblack/ntilde/blob/20375a1b4b28aa58d59c79631da7f3f077648386/docs/qa/terminfo/2026-11-28-rich-kitty-color-stack/owned-run.zip",
+    "reason": "An earlier run passed and retained the second App screen hash. The current run also retains the full second App screen at every observed stage."
   }
 }

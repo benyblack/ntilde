@@ -32,9 +32,11 @@ This grades direct-local color state. xterm CSI color stack commands, numbered s
 
 The measured App passed with its existing handlers. The first attempt exceeded the existing owner request size limit during the initial palette query. It produced no verdict. The runner cleaned up and released its lease. [First attempt](attempt-1.zip)
 
+An earlier run passed and retained the second App screen hash. The current run also retains the full second App screen at every observed stage. [Earlier owned archive](https://github.com/benyblack/ntilde/blob/20375a1b4b28aa58d59c79631da7f3f077648386/docs/qa/terminfo/2026-11-28-rich-kitty-color-stack/owned-run.zip)
+
 ## Reproduce
 
-Run `8cf62e1ffb3864e4fbcd6c5b53067047` used macOS 27.0.1 (26A434), arm64, App revision `9454ef76b41f2f7fb0e6a0f3447e90a9321cc358` and collector revision `2de2743e139e507ac78979b79c920a2f2383909c`. The [owned archive](owned-run.zip) contains the raw fenced exchanges, paired pane observations, source and binary identity records, and cleanup receipt. [Machine-readable report](report.json)
+Run `88f4eacce514f390970b3fbea08d5924` used macOS 27.0.1 (26A434), arm64, App revision `9454ef76b41f2f7fb0e6a0f3447e90a9321cc358` and collector revision `3749051caec8d42a7fbf476ca2c9b3c1243f95cf`. The [owned archive](owned-run.zip) contains the raw fenced exchanges, paired pane observations, source and binary identity records, and cleanup receipt. [Machine-readable report](report.json)
 
 Build the recorded App revision with the repository .NET SDK. Run the collector from the recorded collector revision with Node 24 or later.
 
