@@ -225,7 +225,7 @@
     }
   ],
   "owned": {
-    "runId": "849868fe1bf0a750de37a4c7ebba758c",
+    "runId": "f342f69cc15b811b56fd2b47f16cdca2",
     "suite": "ntilde-owned-device-state-v1",
     "exchanges": [
       {
@@ -353,31 +353,31 @@
       }
     ],
     "initialBackground": 4278190080,
-    "paneId": "21448e2b-0349-42f7-b0a9-19fc0f76d3fd",
-    "tty": "/dev/ttys002",
-    "appPid": 54541,
-    "workerPid": 54542,
+    "paneId": "be127780-c95a-4e41-88ee-d0eb5aca789b",
+    "tty": "/dev/ttys003",
+    "appPid": 56926,
+    "workerPid": 56928,
     "restored": true
   },
   "measurement": {
-    "runId": "849868fe1bf0a750de37a4c7ebba758c",
+    "runId": "f342f69cc15b811b56fd2b47f16cdca2",
     "appRevision": "d56bc224cfc17e286aa48d7c4f0a93d02fe6d334",
-    "scriptsRevision": "8009366ce82441831a52952c4d5e21145fddb009",
+    "scriptsRevision": "97cd79babadfdee0c478c4281c9456361f2d1dbe",
     "platform": "macOS 27.0.1 (26A434), arm64",
     "sourcePolicy": "readonly-owned-source-graph-device-state-v1",
     "receiptSchema": 1,
     "version": "0.14.0+d56bc224cfc17e286aa48d7c4f0a93d02fe6d334",
     "nodeVersion": "v24.22.2",
-    "startedAt": "2026-11-28T10:36:13.565Z",
-    "releasedAt": "2026-11-28T10:36:15.498Z",
+    "startedAt": "2026-11-28T10:39:05.912Z",
+    "releasedAt": "2026-11-28T10:39:07.824Z",
     "geometry": {
       "rows": 41,
       "cols": 140
     },
     "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
     "assemblySha256": "164436350bf62b176a6b39a4382acfd9863c1d01b61b6fd41f48a7bccc41fe25",
-    "sourceSnapshotManifestSha256": "e9c4dbdfe5a1736a3049e40e6e15e7ba5bda3cf704cff29c8361a249f87688b5",
-    "archiveSha256": "9388d6f8561cf7882579f0703ecca845f543a305e2046516913bafe58c293eaa"
+    "sourceSnapshotManifestSha256": "8ca533bb0ac73550e03b83bfdaefba4241e4bffd686621ff5d985d1e5f0348a5",
+    "archiveSha256": "0be47e566964777b6c1a0bf56d32542b771342d538a8a14b2437d6fb461f5ab0"
   },
   "superseded": [
     {
@@ -390,6 +390,17 @@
       "archiveSha256": "2ec2395735b0204da550978d77c5fd6f5d2e24bccd71c25ba7bd3055fcaff9a5",
       "archive": "https://github.com/benyblack/ntilde/blob/a9e730c9e9346ed702857dbd5224c07c8c0a4dd2/docs/qa/terminfo/2026-11-28-rich-device-state/owned-run.zip",
       "reason": "The first run passed. The collector was remeasured after the SonarCloud changes to share cleanup validation and simplify the scheme oracle."
+    },
+    {
+      "runId": "849868fe1bf0a750de37a4c7ebba758c",
+      "appRevision": "d56bc224cfc17e286aa48d7c4f0a93d02fe6d334",
+      "scriptsRevision": "8009366ce82441831a52952c4d5e21145fddb009",
+      "platform": "macOS 27.0.1 (26A434), arm64",
+      "sourcePolicy": "readonly-owned-source-graph-device-state-v1",
+      "receiptSchema": 1,
+      "archiveSha256": "9388d6f8561cf7882579f0703ecca845f543a305e2046516913bafe58c293eaa",
+      "archive": "https://github.com/benyblack/ntilde/blob/8d387950ff9b90a20f3bd78b5532c463598e90c6/docs/qa/terminfo/2026-11-28-rich-device-state/owned-run.zip",
+      "reason": "The second run passed. The collector was remeasured after correcting the restored-color oracle at the floating-point luma boundary."
     }
   ]
 }
