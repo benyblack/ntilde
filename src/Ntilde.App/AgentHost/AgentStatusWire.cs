@@ -1,5 +1,6 @@
 using System;
 using Ntilde.AgentHost.Contracts;
+using Ntilde.CommandAssist.Domain;
 
 namespace Ntilde.AgentHost
 {
@@ -10,6 +11,16 @@ namespace Ntilde.AgentHost
     /// </summary>
     public static class AgentStatusWire
     {
+        private static readonly SecretsFilter CommandSecretsFilter = new();
+
+        /// <summary>
+        /// Command text on its way to an agent: the in-flight command in a status read, and the finished command on a
+        /// <c>commandFinished</c> event. Both pass the same filter Command Assist applies before text leaves the app, so
+        /// a <c>--password</c> or bearer token typed at the prompt is not handed to every observing agent.
+        /// </summary>
+        public static string? RedactCommand(string? commandText)
+            => commandText is null ? null : CommandSecretsFilter.Redact(commandText).RedactedText;
+
         public static string ToWire(this AgentSessionStatusKind kind) => kind switch
         {
             AgentSessionStatusKind.Running => AgentHostProtocol.StatusKinds.Running,
@@ -53,7 +64,7 @@ namespace Ntilde.AgentHost
             Confidence = snapshot.Confidence.ToWire(),
             ExitCode = snapshot.ExitCode,
             NeedsUser = snapshot.NeedsUser?.ToWire(),
-            CurrentCommand = snapshot.CurrentCommand,
+            CurrentCommand = RedactCommand(snapshot.CurrentCommand),
             StatusSinceMs = snapshot.StatusSince.ToUnixTimeMilliseconds(),
             LastOutputAtMs = snapshot.LastOutputAt.ToUnixTimeMilliseconds(),
             IsStalled = snapshot.IsStalled,

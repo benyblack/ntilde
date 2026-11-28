@@ -8,6 +8,18 @@ using Ntilde.AgentHost.Contracts;
 namespace Ntilde.AgentHost
 {
     /// <summary>
+    /// The optional fields of one <see cref="AgentEventDto"/>, already in wire form. Which ones are set depends on the
+    /// event type: exit code and duration on <c>commandFinished</c>, the command too when shell integration reported it;
+    /// exit code and <c>needsUser</c> on an exit. Grouped so each new field is one more property here rather than one
+    /// more parameter on <see cref="AgentEventRing.Append"/>.
+    /// </summary>
+    public readonly record struct AgentEventDetails(
+        int? ExitCode = null,
+        long? DurationMs = null,
+        string? NeedsUser = null,
+        string? Command = null);
+
+    /// <summary>
     /// Bounded, thread-safe event log behind <c>waitForEvents</c>
     /// (docs/plans/2026-07-07-agent-host-a2-status-design.md). Sequence
     /// numbers are monotonic across the endpoint's lifetime; when capacity is
@@ -31,7 +43,7 @@ namespace Ntilde.AgentHost
         }
 
         /// <summary>Appends with the next sequence number and wakes any parked long-pollers.</summary>
-        public long Append(Guid paneId, string type, string status, DateTimeOffset timestamp, int? exitCode = null, long? durationMs = null, string? needsUser = null)
+        public long Append(Guid paneId, string type, string status, DateTimeOffset timestamp, AgentEventDetails details = default)
         {
             TaskCompletionSource<bool> toPulse;
             long seq;
@@ -45,9 +57,10 @@ namespace Ntilde.AgentHost
                     PaneId = paneId,
                     Type = type,
                     Status = status,
-                    ExitCode = exitCode,
-                    NeedsUser = needsUser,
-                    DurationMs = durationMs,
+                    ExitCode = details.ExitCode,
+                    NeedsUser = details.NeedsUser,
+                    DurationMs = details.DurationMs,
+                    Command = details.Command,
                 });
                 while (_events.Count > _capacity)
                 {

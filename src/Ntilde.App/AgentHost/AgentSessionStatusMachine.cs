@@ -124,9 +124,12 @@ namespace Ntilde.AgentHost
                 _commandInFlight = false;
                 var duration = _commandStartedAt.HasValue ? now - _commandStartedAt.Value : (TimeSpan?)null;
                 _commandStartedAt = null;
+                // The event carries the command it finishes, read before it is cleared: once the
+                // command is gone from the snapshot, this event is the only place an agent can pair
+                // the exit code with what ran.
                 var events = new List<AgentSessionStatusEvent>
                 {
-                    MakeEvent(AgentSessionEventType.CommandFinished, ComputeKind(now), now, exitCode, duration),
+                    MakeEvent(AgentSessionEventType.CommandFinished, ComputeKind(now), now, exitCode, duration, command: _currentCommand),
                 };
                 _currentCommand = null;
                 return events;
@@ -347,7 +350,8 @@ namespace Ntilde.AgentHost
             DateTimeOffset timestamp,
             int? exitCode = null,
             TimeSpan? duration = null,
-            AgentNeedsUserReason? needsUser = null) => new()
+            AgentNeedsUserReason? needsUser = null,
+            string? command = null) => new()
             {
                 Type = type,
                 Status = status,
@@ -355,6 +359,7 @@ namespace Ntilde.AgentHost
                 ExitCode = exitCode,
                 NeedsUser = needsUser,
                 Duration = duration,
+                Command = command,
             };
     }
 }
