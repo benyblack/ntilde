@@ -1,0 +1,520 @@
+{
+  "schemaVersion": 1,
+  "suite": "ntilde-owned-kitty-color-stack-v1",
+  "pinnedBundleSha256": "aa5f2bf9956fb16870b581157e6bac8c5f11242d6eeee7975be1d92b61d5e1f6",
+  "stock": {
+    "extensions.osc30001-color-stack-push": "supported",
+    "extensions.osc30101-color-stack-pop": "supported"
+  },
+  "pinned": [
+    {
+      "id": "extensions.osc30001-color-stack-push",
+      "terminal": {
+        "pass": true,
+        "response": "{\"before\":\"rgb:d3d3/d3d3/d3d3\",\"changed\":\"rgb:aaaa/bbbb/cccc\",\"restored\":\"rgb:d3d3/d3d3/d3d3\"}",
+        "note": "Foreground changed and color-stack pop restored its original value",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "behavior",
+          "note": "Foreground changed and color-stack pop restored its original value"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "Changed foreground and restored original after color-stack pop",
+            "observed": "{\"before\":\"rgb:d3d3/d3d3/d3d3\",\"changed\":\"rgb:aaaa/bbbb/cccc\",\"restored\":\"rgb:d3d3/d3d3/d3d3\"}"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "response": "{\"before\":\"rgb:d3d3/d3d3/d3d3\",\"changed\":\"rgb:aaaa/bbbb/cccc\",\"restored\":\"rgb:d3d3/d3d3/d3d3\"}",
+        "note": "Foreground changed and color-stack pop restored its original value",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "behavior",
+          "note": "Foreground changed and color-stack pop restored its original value"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "Changed foreground and restored original after color-stack pop",
+            "observed": "{\"before\":\"rgb:d3d3/d3d3/d3d3\",\"changed\":\"rgb:aaaa/bbbb/cccc\",\"restored\":\"rgb:d3d3/d3d3/d3d3\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "extensions.osc30101-color-stack-pop",
+      "terminal": {
+        "pass": true,
+        "response": "{\"before\":\"rgb:d3d3/d3d3/d3d3\",\"changed\":\"rgb:aaaa/bbbb/cccc\",\"restored\":\"rgb:d3d3/d3d3/d3d3\"}",
+        "note": "Foreground changed and color-stack pop restored its original value",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "behavior",
+          "note": "Foreground changed and color-stack pop restored its original value"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "Changed foreground and restored original after color-stack pop",
+            "observed": "{\"before\":\"rgb:d3d3/d3d3/d3d3\",\"changed\":\"rgb:aaaa/bbbb/cccc\",\"restored\":\"rgb:d3d3/d3d3/d3d3\"}"
+          }
+        ]
+      },
+      "termlessReplay": {
+        "pass": true,
+        "response": "{\"before\":\"rgb:d3d3/d3d3/d3d3\",\"changed\":\"rgb:aaaa/bbbb/cccc\",\"restored\":\"rgb:d3d3/d3d3/d3d3\"}",
+        "note": "Foreground changed and color-stack pop restored its original value",
+        "observation": {
+          "outcome": "supported",
+          "evidence": "behavior",
+          "note": "Foreground changed and color-stack pop restored its original value"
+        },
+        "assertions": [
+          {
+            "kind": "positive",
+            "expected": "Changed foreground and restored original after color-stack pop",
+            "observed": "{\"before\":\"rgb:d3d3/d3d3/d3d3\",\"changed\":\"rgb:aaaa/bbbb/cccc\",\"restored\":\"rgb:d3d3/d3d3/d3d3\"}"
+          }
+        ]
+      }
+    }
+  ],
+  "owned": {
+    "runId": "8cf62e1ffb3864e4fbcd6c5b53067047",
+    "suite": "ntilde-owned-kitty-color-stack-v1",
+    "cases": [
+      {
+        "id": "extensions.osc30001-color-stack-push",
+        "exchanges": [
+          {
+            "type": "query",
+            "request": "\u001b]10;?\u0007\u001b[c",
+            "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c"
+          },
+          {
+            "type": "write",
+            "request": "\u001b]30001\u001b\\"
+          },
+          {
+            "type": "write",
+            "request": "\u001b]10;rgb:aa/bb/cc\u0007"
+          },
+          {
+            "type": "query",
+            "request": "\u001b]10;?\u0007\u001b[c",
+            "reply": "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\",
+            "raw": "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\\u001b[?62;4;22c"
+          },
+          {
+            "type": "write",
+            "request": "\u001b]30101\u001b\\"
+          },
+          {
+            "type": "query",
+            "request": "\u001b]10;?\u0007\u001b[c",
+            "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c"
+          },
+          {
+            "type": "write",
+            "request": "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+          }
+        ]
+      },
+      {
+        "id": "extensions.osc30101-color-stack-pop",
+        "exchanges": [
+          {
+            "type": "query",
+            "request": "\u001b]10;?\u0007\u001b[c",
+            "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c"
+          },
+          {
+            "type": "write",
+            "request": "\u001b]30001\u001b\\"
+          },
+          {
+            "type": "write",
+            "request": "\u001b]10;rgb:aa/bb/cc\u0007"
+          },
+          {
+            "type": "query",
+            "request": "\u001b]10;?\u0007\u001b[c",
+            "reply": "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\",
+            "raw": "\u001b]10;rgb:aaaa/bbbb/cccc\u001b\\\u001b[?62;4;22c"
+          },
+          {
+            "type": "write",
+            "request": "\u001b]30101\u001b\\"
+          },
+          {
+            "type": "query",
+            "request": "\u001b]10;?\u0007\u001b[c",
+            "reply": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\",
+            "raw": "\u001b]10;rgb:d3d3/d3d3/d3d3\u001b\\\u001b[?62;4;22c"
+          },
+          {
+            "type": "write",
+            "request": "\u001b]10;rgb:d3d3/d3d3/d3d3\u0007"
+          }
+        ]
+      }
+    ],
+    "nested": {
+      "id": "ntilde-kitty-color-stack-nested-v1",
+      "outcome": "passed",
+      "observations": [
+        {
+          "stage": "original",
+          "colors": {
+            "foreground": 4292072403,
+            "background": 4278190080,
+            "cursor": 4294967295,
+            "selectionBackground": null,
+            "selectionForeground": null
+          },
+          "overrides": {
+            "foreground": false,
+            "background": false,
+            "cursor": false,
+            "selectionBackground": false,
+            "selectionForeground": false
+          },
+          "indices": [],
+          "queriedPaletteEntries": 256,
+          "modes": "reset",
+          "palette": {
+            "1": 4291624960,
+            "5": 4291625165,
+            "9": 4294901760,
+            "200": 4294901975,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "3b5f8873fb941580eca357ebccb98f22291c4fd1bdd3a6877113be4efc6d35e9"
+        },
+        {
+          "stage": "a",
+          "colors": {
+            "foreground": 4279641912,
+            "background": 4280694600,
+            "cursor": 4281747288,
+            "selectionBackground": 4282799976,
+            "selectionForeground": 4283852664
+          },
+          "overrides": {
+            "foreground": true,
+            "background": true,
+            "cursor": true,
+            "selectionBackground": true,
+            "selectionForeground": true
+          },
+          "indices": [
+            1,
+            5,
+            200
+          ],
+          "queriedPaletteEntries": 5,
+          "modes": "set",
+          "palette": {
+            "1": 4285542416,
+            "5": 4285546512,
+            "9": 4294901760,
+            "200": 4285550608,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "e1618d2fbd1c0731afece05c4d680d16d43a2e0a94302c30996cd9d5a2a90679"
+        },
+        {
+          "stage": "pushed-a",
+          "colors": {
+            "foreground": 4279641912,
+            "background": 4280694600,
+            "cursor": 4281747288,
+            "selectionBackground": 4282799976,
+            "selectionForeground": 4283852664
+          },
+          "overrides": {
+            "foreground": true,
+            "background": true,
+            "cursor": true,
+            "selectionBackground": true,
+            "selectionForeground": true
+          },
+          "indices": [
+            1,
+            5,
+            200
+          ],
+          "queriedPaletteEntries": 5,
+          "modes": "set",
+          "palette": {
+            "1": 4285542416,
+            "5": 4285546512,
+            "9": 4294901760,
+            "200": 4285550608,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "e1618d2fbd1c0731afece05c4d680d16d43a2e0a94302c30996cd9d5a2a90679"
+        },
+        {
+          "stage": "b",
+          "colors": {
+            "foreground": 4288787139,
+            "background": 4289839827,
+            "cursor": 4290892515,
+            "selectionBackground": 4291945203,
+            "selectionForeground": 4292936211
+          },
+          "overrides": {
+            "foreground": true,
+            "background": true,
+            "cursor": true,
+            "selectionBackground": true,
+            "selectionForeground": true
+          },
+          "indices": [
+            1,
+            9,
+            200
+          ],
+          "queriedPaletteEntries": 5,
+          "modes": "set",
+          "palette": {
+            "1": 4279251056,
+            "5": 4291625165,
+            "9": 4279255152,
+            "200": 4279259248,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "0ae7964834013f42d16db14c2319b2d75000da08f70cdb12caab18535604f6b4"
+        },
+        {
+          "stage": "pushed-b",
+          "colors": {
+            "foreground": 4288787139,
+            "background": 4289839827,
+            "cursor": 4290892515,
+            "selectionBackground": 4291945203,
+            "selectionForeground": 4292936211
+          },
+          "overrides": {
+            "foreground": true,
+            "background": true,
+            "cursor": true,
+            "selectionBackground": true,
+            "selectionForeground": true
+          },
+          "indices": [
+            1,
+            9,
+            200
+          ],
+          "queriedPaletteEntries": 5,
+          "modes": "set",
+          "palette": {
+            "1": 4279251056,
+            "5": 4291625165,
+            "9": 4279255152,
+            "200": 4279259248,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "0ae7964834013f42d16db14c2319b2d75000da08f70cdb12caab18535604f6b4"
+        },
+        {
+          "stage": "c",
+          "colors": {
+            "foreground": 4294038195,
+            "background": 4292985507,
+            "cursor": 4291932819,
+            "selectionBackground": 4290880131,
+            "selectionForeground": 4289827443
+          },
+          "overrides": {
+            "foreground": true,
+            "background": true,
+            "cursor": true,
+            "selectionBackground": true,
+            "selectionForeground": true
+          },
+          "indices": [
+            1,
+            5,
+            9,
+            200,
+            255
+          ],
+          "queriedPaletteEntries": 5,
+          "modes": "set",
+          "palette": {
+            "1": 4279267376,
+            "5": 4279267392,
+            "9": 4279267408,
+            "200": 4279267424,
+            "255": 4279267456
+          },
+          "fullPaletteSha256": "2bbacc9b77b29732dd2e9250d4bb21c589189344d82842b28be4d5bc61a68856"
+        },
+        {
+          "stage": "restored-b",
+          "colors": {
+            "foreground": 4288787139,
+            "background": 4289839827,
+            "cursor": 4290892515,
+            "selectionBackground": 4291945203,
+            "selectionForeground": 4292936211
+          },
+          "overrides": {
+            "foreground": true,
+            "background": true,
+            "cursor": true,
+            "selectionBackground": true,
+            "selectionForeground": true
+          },
+          "indices": [
+            1,
+            9,
+            200
+          ],
+          "queriedPaletteEntries": 256,
+          "modes": "set",
+          "palette": {
+            "1": 4279251056,
+            "5": 4291625165,
+            "9": 4279255152,
+            "200": 4279259248,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "0ae7964834013f42d16db14c2319b2d75000da08f70cdb12caab18535604f6b4"
+        },
+        {
+          "stage": "restored-a",
+          "colors": {
+            "foreground": 4279641912,
+            "background": 4280694600,
+            "cursor": 4281747288,
+            "selectionBackground": 4282799976,
+            "selectionForeground": 4283852664
+          },
+          "overrides": {
+            "foreground": true,
+            "background": true,
+            "cursor": true,
+            "selectionBackground": true,
+            "selectionForeground": true
+          },
+          "indices": [
+            1,
+            5,
+            200
+          ],
+          "queriedPaletteEntries": 256,
+          "modes": "set",
+          "palette": {
+            "1": 4285542416,
+            "5": 4285546512,
+            "9": 4294901760,
+            "200": 4285550608,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "e1618d2fbd1c0731afece05c4d680d16d43a2e0a94302c30996cd9d5a2a90679"
+        },
+        {
+          "stage": "after-empty-pop",
+          "colors": {
+            "foreground": 4279641912,
+            "background": 4280694600,
+            "cursor": 4281747288,
+            "selectionBackground": 4282799976,
+            "selectionForeground": 4283852664
+          },
+          "overrides": {
+            "foreground": true,
+            "background": true,
+            "cursor": true,
+            "selectionBackground": true,
+            "selectionForeground": true
+          },
+          "indices": [
+            1,
+            5,
+            200
+          ],
+          "queriedPaletteEntries": 5,
+          "modes": "set",
+          "palette": {
+            "1": 4285542416,
+            "5": 4285546512,
+            "9": 4294901760,
+            "200": 4285550608,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "e1618d2fbd1c0731afece05c4d680d16d43a2e0a94302c30996cd9d5a2a90679"
+        },
+        {
+          "stage": "restored-original",
+          "colors": {
+            "foreground": 4292072403,
+            "background": 4278190080,
+            "cursor": 4294967295,
+            "selectionBackground": null,
+            "selectionForeground": null
+          },
+          "overrides": {
+            "foreground": false,
+            "background": false,
+            "cursor": false,
+            "selectionBackground": false,
+            "selectionForeground": false
+          },
+          "indices": [],
+          "queriedPaletteEntries": 256,
+          "modes": "reset",
+          "palette": {
+            "1": 4291624960,
+            "5": 4291625165,
+            "9": 4294901760,
+            "200": 4294901975,
+            "255": 4293848814
+          },
+          "fullPaletteSha256": "3b5f8873fb941580eca357ebccb98f22291c4fd1bdd3a6877113be4efc6d35e9"
+        }
+      ]
+    },
+    "paneId": "1e1d36ac-9240-43cc-bfc5-64a8c2d3e17b",
+    "tty": "/dev/ttys003",
+    "appPid": 64427,
+    "workerPid": 64428,
+    "restored": true
+  },
+  "measurement": {
+    "runId": "8cf62e1ffb3864e4fbcd6c5b53067047",
+    "appRevision": "9454ef76b41f2f7fb0e6a0f3447e90a9321cc358",
+    "scriptsRevision": "2de2743e139e507ac78979b79c920a2f2383909c",
+    "platform": "macOS 27.0.1 (26A434), arm64",
+    "sourcePolicy": "readonly-owned-source-graph-kitty-color-stack-v1",
+    "receiptSchema": 1,
+    "version": "0.14.0+9454ef76b41f2f7fb0e6a0f3447e90a9321cc358",
+    "nodeVersion": "v24.22.3",
+    "startedAt": "2026-11-28T12:04:21.594Z",
+    "releasedAt": "2026-11-28T12:04:25.172Z",
+    "geometry": {
+      "rows": 41,
+      "cols": 140
+    },
+    "executableSha256": "f5814e51a9d361d665c5818fe3dd385086f3eec0f789eb8715ad1e6931fb9bf8",
+    "assemblySha256": "98406f4a84e7369d424e526b3b384e8f94a3edbdd77160277b22abd9b39d13e9",
+    "sourceSnapshotManifestSha256": "99d74b47c814de7589c6b97d63b3fc7892ffea62a3ba39e8012dbcd7600c0213",
+    "archiveSha256": "7a2ddbbd249ae587f3fd6fd96a5282081b484385c3c998bf5abed8a8bed7490f"
+  },
+  "refused": {
+    "runId": "c1fd0e4364b6f24e20fadae29bd17a9e",
+    "scriptsRevision": "92bd2690357a01838606101a38f4c5b32df5f194",
+    "archive": "attempt-1.zip",
+    "reason": "The first attempt exceeded the existing owner request size limit during the initial palette query. It produced no verdict. The runner cleaned up and released its lease."
+  }
+}

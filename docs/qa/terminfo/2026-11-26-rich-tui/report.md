@@ -78,6 +78,10 @@ The [direct-local assessment](../2026-11-27-rich-term-features/report.md) pairs 
 
 The [DECRQSS and DSR 996 assessment](../2026-11-28-rich-device-state/report.md) replays both pinned callbacks and verifies the exact active pen and effective pane background replies across controlled transitions, rejection and restoration.
 
+## Kitty OSC 30001 and OSC 30101 color stack
+
+The [Kitty color stack assessment](../2026-11-28-rich-kitty-color-stack/report.md) replays both pinned foreground fixtures. Two nested pops restored five dynamic colors and all 256 palette entries in LIFO order, with a silent empty-pop control.
+
 ## OSC 176 app ID and OSC 666 terminal properties
 
 The [two-case identity and property assessment](../2026-11-27-rich-identity/report.md) replays both inconclusive cursor probes and records the native foot app-ID and registered VTE property controls. The native app-ID effect is inapplicable to the measured Ntilde XWayland window. The registered property effect remains inconclusive on Ntilde.
