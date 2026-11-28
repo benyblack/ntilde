@@ -15,6 +15,7 @@ export const capturedChildEnvironmentSourcePolicy = 'readonly-owned-source-graph
 export const capturedOscCwdSourcePolicy = 'readonly-owned-source-graph-v78';
 export const capturedPromptPartsSourcePolicy = 'readonly-owned-source-graph-prompt-parts-v1';
 export const capturedOsc633MetadataSourcePolicy = 'readonly-owned-source-graph-v86';
+export const capturedKittyColorStackSourcePolicy = 'readonly-owned-source-graph-kitty-color-stack-v1';
 export const capturedDeviceStateSourcePolicy = 'readonly-owned-source-graph-device-state-v1';
 export const capturedDeviceIdentitySourcePolicy = 'readonly-owned-source-graph-device-identity-v1';
 export const capturedXtwinopsPixelsSourcePolicy = 'readonly-owned-source-graph-xtwinops-pixels-v1';
@@ -29,6 +30,7 @@ export const capturedBlinkSourcePolicy = 'readonly-owned-source-graph-v75';
 export const ownedSourceFiles = Object.freeze(JSON.parse(readFileSync(new URL('./owned-source-inventory.json', import.meta.url))));
 export const capturedMok3SourcePolicy = 'readonly-owned-source-graph-modify-other-keys-3-v1';
 const focusedSourcePolicies = [
+    ['kittyColorStackOwnedSourceSha256', capturedKittyColorStackSourcePolicy],
     ['deviceStateOwnedSourceSha256', capturedDeviceStateSourcePolicy],
     ['deviceIdentityOwnedSourceSha256', capturedDeviceIdentitySourcePolicy],
     ['xtwinopsPixelsOwnedSourceSha256', capturedXtwinopsPixelsSourcePolicy],
@@ -1072,6 +1074,13 @@ export const capturedDeviceIdentitySourceFiles = Object.freeze({
     deviceIdentityWorkerSourceSha256: 'device-identity-worker.mjs',
 });
 
+export const capturedKittyColorStackSourceFiles = Object.freeze({
+    ...capturedSixelReportsSourceFiles,
+    kittyColorStackContractsSourceSha256: 'kitty-color-stack-contracts.mjs',
+    kittyColorStackOwnedSourceSha256: 'kitty-color-stack-owned.mjs',
+    kittyColorStackWorkerSourceSha256: 'kitty-color-stack-worker.mjs',
+});
+
 export const capturedDeviceStateSourceFiles = Object.freeze({
     ...capturedSixelReportsSourceFiles,
     deviceStateContractsSourceSha256: 'device-state-contracts.mjs',
@@ -1206,6 +1215,7 @@ export function readSourceSnapshot(root) {
         [capturedPromptPartsSourcePolicy]: capturedPromptPartsSourceFiles,
         [capturedFlashSourcePolicy]: capturedFlashSourceFiles,
         [capturedOsc633MetadataSourcePolicy]: capturedOsc633MetadataSourceFiles,
+        [capturedKittyColorStackSourcePolicy]: capturedKittyColorStackSourceFiles,
         [capturedDeviceStateSourcePolicy]: capturedDeviceStateSourceFiles,
         [capturedDeviceIdentitySourcePolicy]: capturedDeviceIdentitySourceFiles,
         [capturedXtwinopsPixelsSourcePolicy]: capturedXtwinopsPixelsSourceFiles,

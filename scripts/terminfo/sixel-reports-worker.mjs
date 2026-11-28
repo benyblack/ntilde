@@ -6,7 +6,7 @@ import { rawInputCapture } from './input-bytes.mjs';
 import { write } from './static-images-collector.mjs';
 import { leave, planFor, prefix, queryWrites, requireSixel } from './sixel-reports-contracts.mjs';
 
-async function measure(step, capture, send) {
+async function measure(step, capture, send, resolveWrite, reads) {
     if (step.sample) {
         const samples = [];
         for (const requestBytes of step.queries ?? queryWrites) {
@@ -14,21 +14,24 @@ async function measure(step, capture, send) {
             samples.push({ requestBytes, sample });
         }
         await send(step.stage, { samples });
+        if (resolveWrite) reads.set(step.stage, samples);
     } else if (step.write) {
-        const sample = await capture.capture(() => write(process.stdout, step.write));
-        await send(step.stage, { requestBytes: step.write, sample });
+        const requestBytes = resolveWrite ? resolveWrite(step, reads) : step.write;
+        const sample = await capture.capture(() => write(process.stdout, requestBytes));
+        await send(step.stage, { requestBytes, sample });
     } else {
         await send(step.stage);
     }
 }
 
-async function collect(runId, request, plan, stagePrefix) {
+async function collect(runId, request, plan, stagePrefix, resolveWrite) {
     const send = (stage, value) => request(stagePrefix + stage, value);
     await send('start');
     const capture = rawInputCapture(process.stdin, process.stdout);
+    const reads = new Map();
     try {
         for (const step of plan(runId).slice(1, -1)) {
-            await measure(step, capture, send); // NOSONAR: owner verifies each stage before the next.
+            await measure(step, capture, send, resolveWrite, reads); // NOSONAR: owner verifies each stage before the next.
         }
         requireSixel(!capture.failed, 'raw reply capture failed after the final fence');
         capture.dispose();
@@ -43,13 +46,13 @@ async function collect(runId, request, plan, stagePrefix) {
     } finally { capture.dispose(); }
 }
 
-async function run(config, plan, stagePrefix) {
+async function run(config, plan, stagePrefix, resolveWrite) {
     const { tabTty: tty, originalTerminalState: original } = await verifyNtildeOutput(config, process.stdout);
     const request = (kind, details) => requestOwner(config, kind, { ...details, tty });
     try {
         await withOwnedOutput({ tty, original, restoreInput: () => {} }, async () => {
             await request('raw-output');
-            await collect(config.runId, request, plan, stagePrefix);
+            await collect(config.runId, request, plan, stagePrefix, resolveWrite);
         });
         await request('done');
     } catch (error) {
@@ -59,10 +62,10 @@ async function run(config, plan, stagePrefix) {
     }
 }
 
-export async function runReportWorker(plan, stagePrefix) {
+export async function runReportWorker(plan, stagePrefix, resolveWrite) {
     try {
         assertPrivateFile(process.argv[2]);
-        await run(JSON.parse(readFileSync(process.argv[2], 'utf8')), plan, stagePrefix);
+        await run(JSON.parse(readFileSync(process.argv[2], 'utf8')), plan, stagePrefix, resolveWrite);
     } catch (error) {
         console.error(error.message);
         process.exitCode = 1;
